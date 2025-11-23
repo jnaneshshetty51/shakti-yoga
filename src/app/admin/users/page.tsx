@@ -1,9 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
-import { mockUsers, User } from "@/utils/adminData";
+
+export type User = {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    status: 'Active' | 'Inactive' | 'Trial';
+    plan?: string;
+    lastLogin: string;
+    joinedAt: string;
+};
 
 export default function AdminUsersPage() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                if (response.ok) {
+                    const data = await response.json();
+                    setUsers(data.users || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch users:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchUsers();
+    }, []);
     const columns = [
         { header: "Name", accessor: "name" as keyof User, className: "font-bold text-gray-800", sortable: true },
         { header: "Email", accessor: "email" as keyof User, sortable: true },
@@ -72,6 +102,18 @@ export default function AdminUsersPage() {
         }
     };
 
+    if (loading) {
+        return (
+            <div>
+                <div className="mb-8">
+                    <h1 className="font-serif text-3xl text-gray-800 mb-2">User Management</h1>
+                    <p className="text-gray-500">Manage all registered users, members, and staff.</p>
+                </div>
+                <div className="text-gray-500">Loading...</div>
+            </div>
+        );
+    }
+
     return (
         <div>
             <div className="mb-8">
@@ -80,7 +122,7 @@ export default function AdminUsersPage() {
             </div>
 
             <DTable
-                data={mockUsers}
+                data={users}
                 columns={columns}
                 title="All Users"
                 searchable={true}

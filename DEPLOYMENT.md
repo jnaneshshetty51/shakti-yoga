@@ -32,7 +32,7 @@ Or manually install:
 apt-get update && apt-get upgrade -y
 
 # Install required packages
-apt-get install -y curl wget git build-essential nginx docker.io docker-compose nodejs npm
+apt-get install -y curl wget git build-essential nginx docker.io docker compose nodejs npm
 
 # Install Node.js 20.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -88,10 +88,10 @@ NEXT_PUBLIC_APP_URL="https://your-domain.com"
 
 ### 2.3 Update Docker Compose environment
 
-Edit `docker-compose.yml` and update the environment variables:
+Edit `docker compose.yml` and update the environment variables:
 
 ```bash
-nano docker-compose.yml
+nano docker compose.yml
 ```
 
 Update these values to match your `.env` file:
@@ -106,7 +106,7 @@ Update these values to match your `.env` file:
 
 ```bash
 cd /var/www/shakti-yoga
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 3.2 Verify services are running
@@ -317,7 +317,7 @@ tail -f /var/log/nginx/shakti-yoga-error.log
 
 ## Security Recommendations
 
-1. **Change default passwords**: Update all default passwords in `.env` and `docker-compose.yml`
+1. **Change default passwords**: Update all default passwords in `.env` and `docker compose.yml`
 2. **Restrict MinIO ports**: Only allow MinIO access from trusted IPs or use VPN
 3. **Regular updates**: Keep system and packages updated
 4. **Firewall**: Use UFW to restrict unnecessary ports

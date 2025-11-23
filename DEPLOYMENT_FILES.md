@@ -5,7 +5,7 @@ This document lists all the files created for VPS deployment.
 ## 📁 Files Created
 
 ### Docker & Infrastructure
-- **`docker-compose.yml`** - Docker Compose configuration for PostgreSQL and MinIO
+- **`docker compose.yml`** - Docker Compose configuration for PostgreSQL and MinIO
   - PostgreSQL 16 Alpine container
   - MinIO server with console
   - Automatic bucket creation and public access setup
@@ -85,7 +85,7 @@ cp env.template .env
 nano .env  # Update values
 
 # 3. Start services
-docker-compose up -d
+docker compose up -d
 
 # 4. Deploy app
 ./deploy/deploy.sh

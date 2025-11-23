@@ -1,24 +1,83 @@
 "use client";
 
-import { useState } from "react";
-import { initialGroups, updateGroup, CommunityGroup } from "@/utils/community";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
+export type CommunityGroup = {
+    id: string;
+    name: string;
+    role: string;
+    whatsappLink: string;
+    pinnedMessage: string;
+};
+
 export default function AdminCommunityPage() {
-    const [groups, setGroups] = useState<CommunityGroup[]>(initialGroups);
+    const [groups, setGroups] = useState<CommunityGroup[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<{ link: string; message: string }>({ link: "", message: "" });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchGroups() {
+            try {
+                const response = await fetch('/api/admin/community');
+                if (response.ok) {
+                    const data = await response.json();
+                    setGroups(data.groups || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch community groups:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchGroups();
+    }, []);
 
     const handleEdit = (group: CommunityGroup) => {
         setEditingId(group.id);
         setEditForm({ link: group.whatsappLink, message: group.pinnedMessage });
     };
 
-    const handleSave = (id: string) => {
-        updateGroup(id, { whatsappLink: editForm.link, pinnedMessage: editForm.message });
-        setGroups(prev => prev.map(g => g.id === id ? { ...g, whatsappLink: editForm.link, pinnedMessage: editForm.message } : g));
-        setEditingId(null);
+    const handleSave = async (id: string) => {
+        try {
+            const response = await fetch('/api/admin/community', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id,
+                    whatsappLink: editForm.link,
+                    pinnedMessage: editForm.message,
+                }),
+            });
+
+            if (response.ok) {
+                setGroups(prev => prev.map(g => g.id === id ? { ...g, whatsappLink: editForm.link, pinnedMessage: editForm.message } : g));
+                setEditingId(null);
+            } else {
+                alert('Failed to update group');
+            }
+        } catch (error) {
+            console.error('Failed to update group:', error);
+            alert('Failed to update group');
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="p-8">
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="font-serif text-3xl text-primary">Community Management</h1>
+                    <Link href="/admin" className="text-sm font-bold text-text/50 hover:text-primary uppercase tracking-widest">
+                        ← Back to Dashboard
+                    </Link>
+                </div>
+                <div className="text-gray-500">Loading...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">

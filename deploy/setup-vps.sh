@@ -35,9 +35,16 @@ apt-get install -y \
     certbot \
     python3-certbot-nginx \
     docker.io \
-    docker-compose \
     nodejs \
     npm
+
+# Install Docker Compose V2 plugin
+echo -e "${GREEN}📦 Installing Docker Compose plugin...${NC}"
+apt-get install -y docker-compose-plugin || {
+    echo -e "${YELLOW}⚠️  docker-compose-plugin not available, installing standalone docker-compose...${NC}"
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+}
 
 # Install Node.js 20.x if not already installed
 if ! command -v node &> /dev/null || [ "$(node -v | cut -d'v' -f2 | cut -d'.' -f1)" -lt 20 ]; then
@@ -58,6 +65,7 @@ systemctl enable docker
 # Create application directory
 APP_DIR="/var/www/shakti-yoga"
 echo -e "${GREEN}📁 Creating application directory at ${APP_DIR}...${NC}"
+mkdir -p /var/www
 mkdir -p $APP_DIR
 mkdir -p /var/log/shakti-yoga
 

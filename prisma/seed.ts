@@ -1,31 +1,61 @@
 import { PrismaClient, Role, PlanType, SubscriptionStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+// Create Prisma client for seeding (standalone script)
+const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+});
 
 async function main() {
   console.log('🌱 Starting seed...');
+
+  // Check if database tables exist by trying to query
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      console.error('\n❌ Database tables do not exist yet!');
+      console.error('\n📋 Please run migrations first:');
+      console.error('   1. Create initial migration: npx prisma migrate dev --name init');
+      console.error('   2. Or deploy migrations: npx prisma migrate deploy');
+      console.error('   3. Then run seed: npm run db:seed\n');
+      process.exit(1);
+    }
+    throw error;
+  }
 
   // Hash password for all users (using "Password123!" as default)
   const hashedPassword = await bcrypt.hash('Password123!', 10);
 
   // Clear existing users (optional - comment out if you want to keep existing data)
   console.log('🧹 Cleaning up existing seed users...');
-  await prisma.user.deleteMany({
-    where: {
-      email: {
-        in: [
-          'superadmin@shaktiyoga.com',
-          'staffadmin@shaktiyoga.com',
-          'teacher@shaktiyoga.com',
-          'member.everyday@shaktiyoga.com',
-          'member.therapy@shaktiyoga.com',
-          'trial@shaktiyoga.com',
-          'visitor@shaktiyoga.com',
-        ],
+  try {
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: [
+            'superadmin@shaktiyoga.com',
+            'staffadmin@shaktiyoga.com',
+            'teacher@shaktiyoga.com',
+            'member.everyday@shaktiyoga.com',
+            'member.therapy@shaktiyoga.com',
+            'trial@shaktiyoga.com',
+            'visitor@shaktiyoga.com',
+          ],
+        },
       },
-    },
-  });
+    });
+  } catch (error: any) {
+    if (error.code === 'P2021') {
+      console.error('\n❌ Database tables do not exist yet!');
+      console.error('\n📋 Please run migrations first:');
+      console.error('   1. Create initial migration: npx prisma migrate dev --name init');
+      console.error('   2. Or deploy migrations: npx prisma migrate deploy');
+      console.error('   3. Then run seed: npm run db:seed\n');
+      process.exit(1);
+    }
+    throw error;
+  }
 
   // 1. SUPER_ADMIN
   const superAdmin = await prisma.user.create({

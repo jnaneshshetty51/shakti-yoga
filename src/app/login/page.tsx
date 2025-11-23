@@ -2,18 +2,59 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
     const { login } = useAuth();
-    const router = useRouter();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleQuickLogin = (role: 'admin' | 'member_everyday' | 'member_therapy' | 'trial') => {
-        login(role);
-        if (role === 'admin') {
-            router.push('/admin');
-        } else {
-            router.push('/dashboard');
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+        try {
+            await login(email, password);
+        } catch (err: any) {
+            setError(err.message || "Login failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleQuickLogin = async (role: 'admin' | 'member_everyday' | 'member_therapy' | 'trial') => {
+        let quickEmail = "";
+        const quickPassword = "Password123!";
+
+        switch (role) {
+            case 'admin':
+                quickEmail = 'superadmin@shaktiyoga.com';
+                break;
+            case 'member_everyday':
+                quickEmail = 'member.everyday@shaktiyoga.com';
+                break;
+            case 'member_therapy':
+                quickEmail = 'member.therapy@shaktiyoga.com';
+                break;
+            case 'trial':
+                quickEmail = 'trial@shaktiyoga.com';
+                break;
+        }
+
+        setEmail(quickEmail);
+        setPassword(quickPassword);
+
+        // Auto submit
+        setError("");
+        setLoading(true);
+        try {
+            await login(quickEmail, quickPassword);
+        } catch (err: any) {
+            setError(err.message || "Login failed");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -27,14 +68,36 @@ export default function LoginPage() {
                     <h2 className="mt-4 text-xl font-sans text-text/80">Welcome Back</h2>
                 </div>
 
-                <form className="space-y-6">
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+                        {error}
+                    </div>
+                )}
+
+                <form className="space-y-6" onSubmit={handleSubmit}>
                     <div>
                         <label htmlFor="email" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Email</label>
-                        <input type="email" id="email" className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors" placeholder="your@email.com" />
+                        <input
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors"
+                            placeholder="your@email.com"
+                            required
+                        />
                     </div>
                     <div>
                         <label htmlFor="password" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Password</label>
-                        <input type="password" id="password" className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors" placeholder="••••••••" />
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors"
+                            placeholder="••••••••"
+                            required
+                        />
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
@@ -45,8 +108,12 @@ export default function LoginPage() {
                         <a href="#" className="text-primary hover:text-secondary transition-colors">Forgot password?</a>
                     </div>
 
-                    <button type="button" className="w-full py-3 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors">
-                        Log In
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-70"
+                    >
+                        {loading ? 'Logging in...' : 'Log In'}
                     </button>
                 </form>
 

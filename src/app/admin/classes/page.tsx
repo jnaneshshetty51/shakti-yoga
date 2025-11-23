@@ -1,9 +1,37 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
-import { mockBatches, ClassBatch } from "@/utils/adminData";
+
+export type ClassBatch = {
+    id: string;
+    name: string;
+    time: string;
+    days: string[];
+    teacher: string;
+    active: boolean;
+};
 
 export default function AdminClassesPage() {
+    const [batches, setBatches] = useState<ClassBatch[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchBatches() {
+            try {
+                const response = await fetch('/api/admin/classes');
+                if (response.ok) {
+                    const data = await response.json();
+                    setBatches(data.batches || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch classes:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchBatches();
+    }, []);
     const columns = [
         { header: "Batch Name", accessor: "name" as keyof ClassBatch, className: "font-bold text-gray-800" },
         { header: "Time", accessor: "time" as keyof ClassBatch },
@@ -33,6 +61,18 @@ export default function AdminClassesPage() {
         alert("Create Batch Modal would open here.");
     };
 
+    if (loading) {
+        return (
+            <div>
+                <div className="mb-8">
+                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Class Management</h1>
+                    <p className="text-gray-500">Manage recurring class batches and schedules.</p>
+                </div>
+                <div className="text-gray-500">Loading...</div>
+            </div>
+        );
+    }
+
     return (
         <div>
             <div className="mb-8">
@@ -41,7 +81,7 @@ export default function AdminClassesPage() {
             </div>
 
             <DTable
-                data={mockBatches}
+                data={batches}
                 columns={columns}
                 title="Class Batches"
                 onCreate={handleCreate}
