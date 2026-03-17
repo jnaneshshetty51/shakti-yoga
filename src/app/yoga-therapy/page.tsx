@@ -16,7 +16,7 @@ export default function TherapyPage() {
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="font-serif text-3xl text-primary mb-8">Conditions We Treat</h2>
                     <div className="flex flex-wrap justify-center gap-4 mb-12">
-                        {["Back Pain", "Sciatica", "Anxiety & Depression", "PCOS/PCOD", "Thyroid Issues", "Insomnia", "Hypertension", "Post-Natal Recovery"].map((condition, index) => (
+                        {["Back Pain", "Sciatica", "Anxiety & Depression", "PCOS/PCOD", "Thyroid Issues", "Insomnia", "Hypertension", "Post-Natal Recovery", "Diabetes", "Menstrual Issues", "Obesity"].map((condition, index) => (
                             <span key={index} className="px-6 py-3 bg-white rounded-full shadow-sm text-text font-sans border border-primary/10">
                                 {condition}
                             </span>

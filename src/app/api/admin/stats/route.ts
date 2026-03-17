@@ -13,7 +13,7 @@ export async function GET() {
         }
 
         const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'SUPER_ADMIN' && payload.role !== 'STAFF_ADMIN')) {
+        if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -35,11 +35,11 @@ export async function GET() {
             }),
         ]);
 
-        const activeMembers = users.filter(u => 
+        const activeMembers = users.filter(u =>
             u.subscription?.status === 'ACTIVE'
         ).length;
 
-        const trialUsers = users.filter(u => 
+        const trialUsers = users.filter(u =>
             u.role === 'TRIAL' || u.subscription?.status === 'TRIAL'
         ).length;
 

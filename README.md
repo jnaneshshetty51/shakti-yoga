@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shakti Yoga Kendra 🧘‍♂️
 
-## Getting Started
+Shakti Yoga Kendra is a comprehensive digital platform designed for yoga practitioners, teachers, and administrators. Built with a modern tech stack, it provides a seamless experience for booking classes, managing consultations, and participating in live sessions.
 
-First, run the development server:
+## ✨ Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Class Management**: Browse and book yoga classes with ease.
+- **Therapy & Consultations**: Integrated booking system for specialized therapy and consultation sessions.
+- **Live Sessions**: Real-time video interaction powered by **Daily.co**.
+- **User Dashboard**: Personalized dashboards for students and instructors.
+- **Real-time Updates**: Instant notifications and updates using **Socket.io**.
+- **Secure Authentication**: Robust authentication system with **Bcryptjs** and **Jose**.
+- **Dynamic Media**: Media storage and management via **AWS S3**.
+- **Admin Panel**: Comprehensive tools for administrators to manage users, bookings, and content.
+
+## 🚀 Tech Stack
+
+- **Frontend**: [Next.js 15](https://nextjs.org/) (App Router), React 19, Tailwind CSS
+- **Backend**: Next.js API Routes, [Prisma ORM](https://www.prisma.io/)
+- **Real-time**: [Socket.io](https://socket.io/)
+- **Video Conferencing**: [Daily.co](https://www.daily.co/)
+- **Storage**: [AWS S3](https://aws.amazon.com/s3/)
+- **Database**: PostgreSQL (via Prisma)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Icons**: [React Icons](https://react-icons.github.io/react-icons/)
+
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- Node.js (Latest LTS)
+- npm or yarn
+- Database (PostgreSQL recommended)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/jnaneshshetty51/shakti-yoga.git
+   cd shakti-yoga
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Set up your environment variables:
+   - Copy `.env.example` to `.env` (if provided) or create a new `.env` file.
+   - Fill in your database URL, AWS credentials, Daily.co API key, etc.
+
+4. Initialize the database:
+   ```bash
+   npm run db:generate
+   npm run db:migrate:dev
+   npm run db:seed
+   ```
+
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📦 Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev`: Starts the development server.
+- `npm run build`: Builds the application for production.
+- `npm run start`: Starts the production server.
+- `npm run lint`: Runs ESLint for code quality.
+- `npm run db:setup`: Helper script to set up the database.
+- `npm run db:studio`: Opens Prisma Studio for database management.
 
-## Learn More
+## 📄 License
 
-To learn more about Next.js, take a look at the following resources:
+This project is private and proprietary. All rights reserved.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with ❤️ for Shakti Yoga Kendra.

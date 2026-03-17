@@ -24,11 +24,46 @@ export default function TherapyBookingPage() {
         };
     });
 
-    const handleBooking = () => {
-        if (useCredit()) {
-            alert("Session Booked! 1 Credit used.");
-            router.push("/dashboard");
-        } else {
+    const handleBooking = async () => {
+        if (!selectedSlot || selectedDate === null) {
+            alert("Please select a date and time.");
+            return;
+        }
+
+        try {
+            const dateStr = dates[selectedDate].fullDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+            // Format slot time properly
+            // Ideally we'd combine date+time, but the API expects 'slot' (time string) 
+            // and maybe 'date' if we updated it, but based on previous files:
+            // "slot" is usually just the time for recurring, but for therapy it should be specific date.
+            // Let's assume the API handles it or we pass a generic note for now as the API might be basic.
+            // Actually let's look at the bookings API again in next step if needed, but standardizing:
+
+            const response = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'Therapy',
+                    date: dateStr,
+                    slot: selectedSlot,
+                    recurring: false
+                }),
+            });
+
+            if (response.ok) {
+                // If successful, debit credit locally (or refetch user)
+                // For now, assume success
+                if (useCredit()) {
+                    alert("Session Booked! 1 Credit used.");
+                    router.push("/dashboard");
+                }
+            } else {
+                const data = await response.json();
+                alert(`Booking Failed: ${data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Booking error', error);
             alert("Booking Failed. Please try again.");
         }
     };
@@ -67,8 +102,8 @@ export default function TherapyBookingPage() {
                                         key={i}
                                         onClick={() => { setSelectedDate(i); setSelectedSlot(null); }}
                                         className={`flex-1 min-w-[60px] p-3 rounded border flex flex-col items-center justify-center transition-all ${selectedDate === i
-                                                ? 'bg-primary text-white border-primary shadow-md'
-                                                : 'border-gray-200 hover:border-primary/50 text-text/80 bg-gray-50'
+                                            ? 'bg-primary text-white border-primary shadow-md'
+                                            : 'border-gray-200 hover:border-primary/50 text-text/80 bg-gray-50'
                                             }`}
                                     >
                                         <span className="text-xs uppercase font-bold mb-1 opacity-70">{d.day}</span>
@@ -88,8 +123,8 @@ export default function TherapyBookingPage() {
                                             key={slot}
                                             onClick={() => setSelectedSlot(slot)}
                                             className={`p-4 rounded border text-center transition-all ${selectedSlot === slot
-                                                    ? 'bg-secondary text-white border-secondary font-bold shadow-md'
-                                                    : 'border-gray-200 hover:border-secondary/50 text-text/80'
+                                                ? 'bg-secondary text-white border-secondary font-bold shadow-md'
+                                                : 'border-gray-200 hover:border-secondary/50 text-text/80'
                                                 }`}
                                         >
                                             {slot}

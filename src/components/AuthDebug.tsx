@@ -41,10 +41,10 @@ export default function AuthDebug() {
                 {roles.map((role) => (
                     <button
                         key={role.value}
-                        onClick={() => role.value === 'visitor' ? logout() : login(role.value)}
+                        onClick={() => role.value === 'visitor' ? logout() : console.log('Mock login no longer supported', role.value)}
                         className={`w-full text-left px-3 py-2 text-xs rounded transition-colors ${(user?.role === role.value) || (!user && role.value === 'visitor')
-                                ? "bg-primary text-white font-bold"
-                                : "hover:bg-gray-100 text-gray-700"
+                            ? "bg-primary text-white font-bold"
+                            : "hover:bg-gray-100 text-gray-700"
                             }`}
                     >
                         {role.label}

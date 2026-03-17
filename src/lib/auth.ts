@@ -36,3 +36,23 @@ export async function getSession() {
     if (!token) return null;
     return await verifyToken(token);
 }
+
+export function mapDatabaseRole(dbRole: string): string {
+    switch (dbRole) {
+        case 'SUPER_ADMIN':
+        case 'STAFF_ADMIN':
+            return 'admin';
+        case 'TEACHER':
+            return 'admin'; // Providing admin access to teachers for now
+        case 'MEMBER_EVERYDAY':
+            return 'member_everyday';
+        case 'MEMBER_THERAPY':
+            return 'member_therapy';
+        case 'TRIAL':
+            return 'trial';
+        case 'VISITOR':
+            return 'visitor';
+        default:
+            return 'visitor';
+    }
+}

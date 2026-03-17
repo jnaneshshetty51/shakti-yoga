@@ -80,10 +80,10 @@ export default function Footer() {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-6 uppercase tracking-wider">
-                    <Link href="#" className="hover:text-secondary transition-colors">Terms</Link>
-                    <Link href="#" className="hover:text-secondary transition-colors">Privacy</Link>
+                    <Link href="/terms" className="hover:text-secondary transition-colors">Terms</Link>
+                    <Link href="/privacy" className="hover:text-secondary transition-colors">Privacy</Link>
                     <Link href="#" className="hover:text-secondary transition-colors">Refunds</Link>
-                    <Link href="#" className="hover:text-secondary transition-colors">Disclaimer</Link>
+                    <Link href="/disclaimer" className="hover:text-secondary transition-colors">Disclaimer</Link>
                 </div>
 
                 <div className="flex items-center gap-3 opacity-80">

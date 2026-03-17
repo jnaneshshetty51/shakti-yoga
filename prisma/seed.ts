@@ -28,22 +28,34 @@ async function main() {
   const hashedPassword = await bcrypt.hash('Password123!', 10);
 
   // Clear existing users (optional - comment out if you want to keep existing data)
-  console.log('🧹 Cleaning up existing seed users...');
+  console.log('🧹 Cleaning up existing seed data...');
   try {
+    const seedEmails = [
+      'superadmin@shaktiyoga.com',
+      'staffadmin@shaktiyoga.com',
+      'teacher@shaktiyoga.com',
+      'member.everyday@shaktiyoga.com',
+      'member.therapy@shaktiyoga.com',
+      'trial@shaktiyoga.com',
+      'visitor@shaktiyoga.com',
+    ];
+
+    // Delete related data first to avoid foreign key constraints
+    await prisma.subscription.deleteMany({
+      where: { user: { email: { in: seedEmails } } },
+    });
+    await prisma.userProfile.deleteMany({
+      where: { user: { email: { in: seedEmails } } },
+    });
+    await prisma.classBatch.deleteMany({});
+    await prisma.blogPost.deleteMany({});
+    await prisma.story.deleteMany({});
+    await prisma.whatsAppGroup.deleteMany({});
+    await prisma.booking.deleteMany({});
+
+    // Now delete users
     await prisma.user.deleteMany({
-      where: {
-        email: {
-          in: [
-            'superadmin@shaktiyoga.com',
-            'staffadmin@shaktiyoga.com',
-            'teacher@shaktiyoga.com',
-            'member.everyday@shaktiyoga.com',
-            'member.therapy@shaktiyoga.com',
-            'trial@shaktiyoga.com',
-            'visitor@shaktiyoga.com',
-          ],
-        },
-      },
+      where: { email: { in: seedEmails } },
     });
   } catch (error: any) {
     if (error.code === 'P2021') {
@@ -200,6 +212,176 @@ async function main() {
     },
   });
   console.log('✅ Created VISITOR:', visitor.email);
+
+  // ========================================
+  // SAMPLE DATA FOR ADMIN PANEL
+  // ========================================
+
+  console.log('\n📦 Creating sample data for admin panel...');
+
+  // Create Class Batches
+  const morningBatch = await prisma.classBatch.create({
+    data: {
+      name: 'Morning Hatha Yoga',
+      planType: PlanType.EVERYDAY_YOGA,
+      daysOfWeek: ['Mon', 'Wed', 'Fri'],
+      timeSlot: '05:00 AM IST',
+      teacherId: teacher.id,
+      active: true,
+      meetingLink: 'https://meet.google.com/morning-hatha',
+    },
+  });
+  console.log('✅ Created Class Batch:', morningBatch.name);
+
+  const eveningBatch = await prisma.classBatch.create({
+    data: {
+      name: 'Evening Vinyasa Flow',
+      planType: PlanType.EVERYDAY_YOGA,
+      daysOfWeek: ['Tue', 'Thu', 'Sat'],
+      timeSlot: '06:00 PM IST',
+      teacherId: teacher.id,
+      active: true,
+      meetingLink: 'https://meet.google.com/evening-vinyasa',
+    },
+  });
+  console.log('✅ Created Class Batch:', eveningBatch.name);
+
+  const therapyBatch = await prisma.classBatch.create({
+    data: {
+      name: 'Therapeutic Yoga Sessions',
+      planType: PlanType.YOGA_THERAPY,
+      daysOfWeek: ['Mon', 'Wed', 'Fri'],
+      timeSlot: '10:00 AM IST',
+      teacherId: teacher.id,
+      active: true,
+      meetingLink: 'https://meet.google.com/therapy-yoga',
+    },
+  });
+  console.log('✅ Created Class Batch:', therapyBatch.name);
+
+  // Create Blog Posts
+  const blog1 = await prisma.blogPost.create({
+    data: {
+      slug: 'benefits-of-morning-yoga',
+      title: '5 Amazing Benefits of Morning Yoga Practice',
+      excerpt: 'Discover how starting your day with yoga can transform your life and boost your energy levels.',
+      content: '# Benefits of Morning Yoga\n\nMorning yoga is a powerful way to start your day...\n\n## 1. Increased Energy\nYoga helps wake up your body and mind...\n\n## 2. Better Focus\nMorning practice improves concentration...',
+      category: 'Wellness',
+      author: 'Yoga Teacher',
+      publishedAt: new Date(),
+      status: 'PUBLISHED',
+      imageUrl: '/blog/morning-yoga.jpg',
+    },
+  });
+  console.log('✅ Created Blog Post:', blog1.title);
+
+  const blog2 = await prisma.blogPost.create({
+    data: {
+      slug: 'yoga-for-back-pain',
+      title: 'Yoga Therapy for Chronic Back Pain Relief',
+      excerpt: 'Learn how therapeutic yoga can help alleviate chronic back pain and improve your quality of life.',
+      content: '# Yoga for Back Pain\n\nChronic back pain affects millions...\n\n## Understanding Back Pain\nBack pain can be caused by...\n\n## Yoga Poses for Relief\n1. Cat-Cow Stretch\n2. Child\'s Pose...',
+      category: 'Therapy',
+      author: 'Yoga Teacher',
+      publishedAt: new Date(),
+      status: 'PUBLISHED',
+      imageUrl: '/blog/back-pain.jpg',
+    },
+  });
+  console.log('✅ Created Blog Post:', blog2.title);
+
+  const blog3 = await prisma.blogPost.create({
+    data: {
+      slug: 'getting-started-with-yoga',
+      title: 'Getting Started with Yoga: A Beginner\'s Guide',
+      excerpt: 'New to yoga? This comprehensive guide will help you start your yoga journey with confidence.',
+      content: '# Beginner\'s Guide to Yoga\n\nStarting yoga can be intimidating...\n\n## What You Need\n- Yoga mat\n- Comfortable clothing\n- Open mind...',
+      category: 'Beginners',
+      author: 'Yoga Teacher',
+      status: 'DRAFT',
+      imageUrl: '/blog/beginners-guide.jpg',
+    },
+  });
+  console.log('✅ Created Blog Post:', blog3.title);
+
+  // Create Success Stories
+  const story1 = await prisma.story.create({
+    data: {
+      userId: memberEveryday.id,
+      authorName: 'Everyday Yoga Member',
+      location: 'Los Angeles, USA',
+      planType: 'Everyday Yoga',
+      quote: 'Yoga has completely transformed my daily routine and energy levels!',
+      content: 'I started with Shakti Yoga 6 months ago and it has been life-changing. The morning classes help me start my day with focus and energy. The teachers are amazing and the community is so supportive.',
+      rating: 5,
+      status: 'PUBLISHED',
+      imageUrl: '/stories/member1.jpg',
+    },
+  });
+  console.log('✅ Created Story:', story1.authorName);
+
+  const story2 = await prisma.story.create({
+    data: {
+      userId: memberTherapy.id,
+      authorName: 'Yoga Therapy Member',
+      location: 'New York, USA',
+      planType: 'Yoga Therapy',
+      quote: 'The therapeutic yoga sessions helped me overcome chronic back pain.',
+      content: 'After years of struggling with back pain, I found relief through personalized yoga therapy. The 1:1 sessions are tailored to my needs and I\'ve seen tremendous improvement in just 3 months.',
+      rating: 5,
+      status: 'PUBLISHED',
+      imageUrl: '/stories/member2.jpg',
+    },
+  });
+  console.log('✅ Created Story:', story2.authorName);
+
+  const story3 = await prisma.story.create({
+    data: {
+      authorName: 'Sarah Johnson',
+      location: 'London, UK',
+      planType: 'Everyday Yoga',
+      quote: 'Best decision I made for my wellness journey!',
+      content: 'The flexibility of online classes and the quality of instruction is outstanding. Highly recommend to anyone looking to start or deepen their yoga practice.',
+      rating: 5,
+      status: 'PUBLISHED',
+      imageUrl: '/stories/member3.jpg',
+    },
+  });
+  console.log('✅ Created Story:', story3.authorName);
+
+  // Create WhatsApp Groups
+  const whatsapp1 = await prisma.whatsAppGroup.create({
+    data: {
+      name: 'Everyday Yoga Community',
+      link: 'https://chat.whatsapp.com/everyday-yoga-group',
+      role: Role.MEMBER_EVERYDAY,
+      pinnedMessage: 'Welcome to the Everyday Yoga community! Share your progress, ask questions, and connect with fellow yogis.',
+      active: true,
+    },
+  });
+  console.log('✅ Created WhatsApp Group:', whatsapp1.name);
+
+  const whatsapp2 = await prisma.whatsAppGroup.create({
+    data: {
+      name: 'Yoga Therapy Support',
+      link: 'https://chat.whatsapp.com/therapy-support-group',
+      role: Role.MEMBER_THERAPY,
+      pinnedMessage: 'This is a safe space for yoga therapy members to share experiences and support each other on the healing journey.',
+      active: true,
+    },
+  });
+  console.log('✅ Created WhatsApp Group:', whatsapp2.name);
+
+  const whatsapp3 = await prisma.whatsAppGroup.create({
+    data: {
+      name: 'Trial Members Welcome',
+      link: 'https://chat.whatsapp.com/trial-members-group',
+      role: Role.TRIAL,
+      pinnedMessage: 'Welcome trial members! Feel free to ask any questions about our programs.',
+      active: true,
+    },
+  });
+  console.log('✅ Created WhatsApp Group:', whatsapp3.name);
 
   console.log('\n🎉 Seed completed successfully!');
   console.log('\n📋 User Credentials:');

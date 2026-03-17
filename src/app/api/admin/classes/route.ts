@@ -13,7 +13,7 @@ export async function GET() {
         }
 
         const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'SUPER_ADMIN' && payload.role !== 'STAFF_ADMIN')) {
+        if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

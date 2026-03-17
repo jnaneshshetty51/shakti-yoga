@@ -62,6 +62,8 @@ function CheckoutContent() {
         // Simulate payment processing
         setTimeout(() => {
             // Update mock auth state based on plan
+            // TODO: Implement actual subscription update via API
+            /*
             if (planType === 'therapy') {
                 login('member_therapy');
             } else if (planType === 'trial') {
@@ -69,6 +71,8 @@ function CheckoutContent() {
             } else {
                 login('member_everyday');
             }
+            */
+            console.log('Payment successful for plan:', planType);
 
             router.push("/welcome");
         }, 2000);

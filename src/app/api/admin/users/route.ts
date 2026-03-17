@@ -13,7 +13,7 @@ export async function GET() {
         }
 
         const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'SUPER_ADMIN' && payload.role !== 'STAFF_ADMIN')) {
+        if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -29,7 +29,7 @@ export async function GET() {
         const formattedUsers = users.map(user => {
             const subscription = user.subscription;
             let status: 'Active' | 'Inactive' | 'Trial' = 'Inactive';
-            
+
             if (subscription) {
                 if (subscription.status === 'ACTIVE') {
                     status = 'Active';
@@ -46,9 +46,9 @@ export async function GET() {
                 email: user.email,
                 role: user.role.toLowerCase(),
                 status,
-                plan: subscription ? 
+                plan: subscription ?
                     subscription.planType === 'EVERYDAY_YOGA' ? 'Everyday Yoga' :
-                    subscription.planType === 'YOGA_THERAPY' ? 'Yoga Therapy' : 'Trial' : undefined,
+                        subscription.planType === 'YOGA_THERAPY' ? 'Yoga Therapy' : 'Trial' : undefined,
                 lastLogin: user.lastLogin ? formatRelativeTime(user.lastLogin) : 'Never',
                 joinedAt: formatDate(user.createdAt),
             };
@@ -76,10 +76,10 @@ function formatRelativeTime(date: Date): string {
 }
 
 function formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
     }).format(date);
 }
 

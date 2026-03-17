@@ -40,7 +40,8 @@ function TrialBookingContent() {
 
     const handleConfirm = () => {
         // Update user role to trial
-        login('trial');
+        // login('trial');
+        // TODO: Implement actual trial activation via API
         router.push("/trial/confirmation");
     };
 

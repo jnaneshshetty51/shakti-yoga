@@ -52,51 +52,62 @@ enum ContentStatus {
   ARCHIVED
 }
 
+enum LiveClassStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
 // Models
 
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  passwordHash  String?
-  role          Role      @default(VISITOR)
-  phone         String?
-  country       String?
-  timezone      String    @default("IST")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLogin     DateTime?
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String?
+  role         Role      @default(VISITOR)
+  phone        String?
+  country      String?
+  timezone     String    @default("IST")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLogin    DateTime?
 
   // Relations
-  profile       UserProfile?
-  subscription  Subscription?
-  bookings      Booking[]
-  stories       Story[]
-  
+  profile      UserProfile?
+  subscription Subscription?
+  bookings     Booking[]
+  stories      Story[]
+
   // For Teachers
-  classesTaught ClassBatch[]
-  sessionsTaught Booking[] @relation("TeacherBookings")
+  classesTaught     ClassBatch[]
+  sessionsTaught    Booking[]    @relation("TeacherBookings")
+  liveClassesTaught LiveClass[]  @relation("TeacherLiveClasses")
+
+  // For Students
+  liveClassParticipation LiveClassParticipant[]
 }
 
 model UserProfile {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goals           String?
-  medicalHistory  String?
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals             String?
+  medicalHistory    String?
   communicationPref String? // Email, WhatsApp, Phone
 }
 
 model Subscription {
-  id            String             @id @default(cuid())
-  userId        String             @unique
-  user          User               @relation(fields: [userId], references: [id])
-  planType      PlanType
-  amount        Float
-  currency      String             @default("USD")
-  status        SubscriptionStatus @default(ACTIVE)
-  startDate     DateTime           @default(now())
-  renewalDate   DateTime
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id])
+  planType          PlanType
+  amount            Float
+  currency          String             @default("USD")
+  status            SubscriptionStatus @default(ACTIVE)
+  startDate         DateTime           @default(now())
+  renewalDate       DateTime
   billingProviderId String? // Stripe/Razorpay ID
 }
 
@@ -105,23 +116,23 @@ model ClassBatch {
   name        String
   planType    PlanType
   daysOfWeek  String[] // ["Mon", "Wed", "Fri"]
-  timeSlot    String   // "06:00 AM"
+  timeSlot    String // "06:00 AM"
   teacherId   String
   teacher     User     @relation(fields: [teacherId], references: [id])
   active      Boolean  @default(true)
   meetingLink String?
-  
-  instances   ClassInstance[]
+
+  instances ClassInstance[]
 }
 
 model ClassInstance {
-  id          String   @id @default(cuid())
-  batchId     String
-  batch       ClassBatch @relation(fields: [batchId], references: [id])
-  date        DateTime
-  status      String   // Scheduled, Completed, Cancelled
-  recordingUrl String?
-  attendanceCount Int @default(0)
+  id              String     @id @default(cuid())
+  batchId         String
+  batch           ClassBatch @relation(fields: [batchId], references: [id])
+  date            DateTime
+  status          String // Scheduled, Completed, Cancelled
+  recordingUrl    String?
+  attendanceCount Int        @default(0)
 }
 
 model Booking {
@@ -133,24 +144,24 @@ model Booking {
   type        BookingType
   status      BookingStatus @default(PENDING)
   date        DateTime
-  notes       String?       // Session notes by teacher
+  notes       String? // Session notes by teacher
   meetingLink String?
   createdAt   DateTime      @default(now())
 }
 
 model Story {
-  id          String        @id @default(cuid())
-  userId      String?
-  user        User?         @relation(fields: [userId], references: [id])
-  authorName  String        // Fallback if no user
-  location    String?
-  planType    String?
-  quote       String
-  content     String?       // Longer testimonial
-  rating      Int           @default(5)
-  status      ContentStatus @default(DRAFT)
-  imageUrl    String?
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(cuid())
+  userId     String?
+  user       User?         @relation(fields: [userId], references: [id])
+  authorName String // Fallback if no user
+  location   String?
+  planType   String?
+  quote      String
+  content    String? // Longer testimonial
+  rating     Int           @default(5)
+  status     ContentStatus @default(DRAFT)
+  imageUrl   String?
+  createdAt  DateTime      @default(now())
 }
 
 model BlogPost {
@@ -158,7 +169,7 @@ model BlogPost {
   slug        String        @unique
   title       String
   excerpt     String?
-  content     String        // Markdown or HTML
+  content     String // Markdown or HTML
   category    String
   author      String
   publishedAt DateTime?
@@ -168,10 +179,48 @@ model BlogPost {
 }
 
 model WhatsAppGroup {
-  id          String   @id @default(cuid())
-  name        String
-  link        String
-  role        Role     // Which role this group is for
+  id            String  @id @default(cuid())
+  name          String
+  link          String
+  role          Role // Which role this group is for
   pinnedMessage String?
-  active      Boolean  @default(true)
+  active        Boolean @default(true)
+}
+
+model LiveClass {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  teacherId   String
+  teacher     User    @relation("TeacherLiveClasses", fields: [teacherId], references: [id])
+
+  scheduledAt DateTime
+  startedAt   DateTime?
+  endedAt     DateTime?
+
+  roomUrl String? // Daily.co room URL
+  roomId  String? // Daily.co room ID
+
+  maxParticipants Int             @default(50)
+  status          LiveClassStatus @default(SCHEDULED)
+
+  participants LiveClassParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LiveClassParticipant {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  liveClassId String
+  liveClass   LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime?
+  leftAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, liveClassId])
 }

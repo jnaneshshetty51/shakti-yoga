@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, mapDatabaseRole } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 
@@ -35,7 +35,12 @@ export async function GET() {
             return NextResponse.json({ user: null });
         }
 
-        return NextResponse.json({ user });
+        return NextResponse.json({
+            user: {
+                ...user,
+                role: mapDatabaseRole(user.role)
+            }
+        });
     } catch (error) {
         console.error('Me API error:', error);
         return NextResponse.json({ user: null });

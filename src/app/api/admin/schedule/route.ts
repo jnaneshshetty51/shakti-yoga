@@ -13,7 +13,7 @@ export async function GET() {
         }
 
         const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'SUPER_ADMIN' && payload.role !== 'STAFF_ADMIN')) {
+        if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -59,7 +59,7 @@ export async function GET() {
         instances.forEach(instance => {
             const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(instance.date);
             const dayKey = dayName as keyof typeof scheduleByDay;
-            
+
             if (scheduleByDay[dayKey]) {
                 scheduleByDay[dayKey].push({
                     id: instance.id,
@@ -108,7 +108,7 @@ function formatTimeSlot(date: Date): string {
         minute: '2-digit',
         hour12: true,
     }).format(date);
-    
+
     const endDate = new Date(date);
     endDate.setHours(endDate.getHours() + 1);
     const endTime = new Intl.DateTimeFormat('en-US', {
@@ -116,7 +116,7 @@ function formatTimeSlot(date: Date): string {
         minute: '2-digit',
         hour12: true,
     }).format(endDate);
-    
+
     return `${time} - ${endTime} IST`;
 }
 

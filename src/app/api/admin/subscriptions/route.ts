@@ -13,7 +13,7 @@ export async function GET() {
         }
 
         const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'SUPER_ADMIN' && payload.role !== 'STAFF_ADMIN')) {
+        if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -37,10 +37,10 @@ export async function GET() {
             userId: sub.userId,
             userName: sub.user.name,
             plan: sub.planType === 'EVERYDAY_YOGA' ? 'Everyday Yoga' :
-                  sub.planType === 'YOGA_THERAPY' ? 'Yoga Therapy' : 'Trial',
+                sub.planType === 'YOGA_THERAPY' ? 'Yoga Therapy' : 'Trial',
             amount: sub.amount,
             status: sub.status === 'ACTIVE' ? 'Active' :
-                    sub.status === 'TRIAL' ? 'Trial' :
+                sub.status === 'TRIAL' ? 'Trial' :
                     sub.status === 'CANCELLED' ? 'Cancelled' : 'Paused',
             renewalDate: formatDate(sub.renewalDate),
         }));
@@ -53,10 +53,10 @@ export async function GET() {
 }
 
 function formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
     }).format(date);
 }
 

@@ -33,7 +33,7 @@ export default function Hero() {
                 </div>
 
                 <div className="mt-8 py-2 px-6 bg-black/20 backdrop-blur-sm rounded-full border border-white/20 text-xs md:text-sm tracking-wider uppercase font-light">
-                    Live from India · IST timings flexible · WhatsApp support community
+                    Live from India · Classes start 5:00 AM IST · WhatsApp support community
                 </div>
             </div>
         </section>

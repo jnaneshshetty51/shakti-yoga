@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ConsultationsPage() {
     const [activeTab, setActiveTab] = useState<'request' | 'history'>('request');
@@ -38,7 +38,26 @@ export default function ConsultationsPage() {
                         Request a 15-minute consultation with one of our senior teachers.
                     </p>
 
-                    <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                    <form className="space-y-6" onSubmit={(e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.currentTarget);
+                        const slot = formData.get('time') === 'morning' ? '08:00' : '17:00';
+                        const notes = formData.get('notes') as string;
+
+                        // Call API
+                        fetch('/api/bookings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ slot, recurring: false, notes })
+                        }).then(res => {
+                            if (res.ok) {
+                                alert('Consultation requested successfully!');
+                                setActiveTab('history');
+                            } else {
+                                alert('Failed to request consultation.');
+                            }
+                        });
+                    }}>
                         <div>
                             <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Topic</label>
                             <select className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary">
@@ -53,7 +72,7 @@ export default function ConsultationsPage() {
                             <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Preferred Time of Day</label>
                             <div className="flex gap-4">
                                 <label className="flex items-center gap-2 border border-gray-200 p-3 rounded flex-1 cursor-pointer hover:bg-gray-50">
-                                    <input type="radio" name="time" value="morning" />
+                                    <input type="radio" name="time" value="morning" defaultChecked />
                                     <span className="text-sm">Morning</span>
                                 </label>
                                 <label className="flex items-center gap-2 border border-gray-200 p-3 rounded flex-1 cursor-pointer hover:bg-gray-50">
@@ -66,12 +85,13 @@ export default function ConsultationsPage() {
                         <div>
                             <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Notes / Questions</label>
                             <textarea
+                                name="notes"
                                 className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary h-32"
                                 placeholder="Briefly describe what you'd like to discuss..."
                             ></textarea>
                         </div>
 
-                        <button className="px-8 py-3 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors shadow-lg">
+                        <button type="submit" className="px-8 py-3 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors shadow-lg">
                             Submit Request
                         </button>
                     </form>
@@ -79,33 +99,57 @@ export default function ConsultationsPage() {
             )}
 
             {activeTab === 'history' && (
-                <div className="space-y-4">
-                    {/* Mock History Item 1 */}
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800">Progress Review</h3>
-                                <p className="text-sm text-text/60">with Dr. Rao • Oct 15, 2025</p>
-                            </div>
-                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold uppercase tracking-widest rounded">Completed</span>
-                        </div>
-                        <div className="bg-gray-50 p-4 rounded text-sm text-text/80">
-                            <strong>Teacher's Note:</strong> Recommended adding Surya Namaskar B to daily routine. Focus on breath retention.
-                        </div>
-                    </div>
-
-                    {/* Mock History Item 2 */}
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 opacity-70">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-800">Initial Consultation</h3>
-                                <p className="text-sm text-text/60">with Sarah J. • Sep 01, 2025</p>
-                            </div>
-                            <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold uppercase tracking-widest rounded">Completed</span>
-                        </div>
-                    </div>
-                </div>
+                <ConsultationHistory />
             )}
+        </div>
+    );
+}
+
+function ConsultationHistory() {
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/bookings')
+            .then(res => res.json())
+            .then(data => {
+                if (data.bookings) setBookings(data.bookings);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return <div>Loading history...</div>;
+
+    if (bookings.length === 0) {
+        return <div className="text-gray-500">No past consultations found.</div>;
+    }
+
+    return (
+        <div className="space-y-4">
+            {bookings.map((booking: any) => (
+                <div key={booking.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="font-bold text-lg text-gray-800">{booking.type}</h3>
+                            <p className="text-sm text-text/60">
+                                with {booking.teacher?.name || 'Instructor'} • {new Date(booking.date).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold uppercase tracking-widest rounded">
+                            {booking.status}
+                        </span>
+                    </div>
+                    {booking.notes && (
+                        <div className="bg-gray-50 p-4 rounded text-sm text-text/80">
+                            <strong>Note:</strong> {booking.notes}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }

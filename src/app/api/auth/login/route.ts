@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, signToken } from '@/lib/auth';
+import { verifyPassword, signToken, mapDatabaseRole } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
@@ -35,11 +35,14 @@ export async function POST(request: Request) {
             );
         }
 
+        // Map role to frontend expected format
+        const mappedRole = mapDatabaseRole(user.role);
+
         // Create JWT token
         const token = await signToken({
             id: user.id,
             email: user.email,
-            role: user.role,
+            role: mappedRole,
             name: user.name,
         });
 
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
         const { passwordHash, ...userWithoutPassword } = user;
 
         return NextResponse.json({
-            user: userWithoutPassword,
+            user: { ...userWithoutPassword, role: mappedRole },
             message: 'Logged in successfully',
         });
     } catch (error) {

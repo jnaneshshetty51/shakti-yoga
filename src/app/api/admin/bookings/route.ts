@@ -13,7 +13,7 @@ export async function GET() {
         }
 
         const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'SUPER_ADMIN' && payload.role !== 'STAFF_ADMIN')) {
+        if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -43,11 +43,11 @@ export async function GET() {
             userId: booking.userId,
             userName: booking.user.name,
             type: booking.type === 'THERAPY_SESSION' ? 'Therapy' :
-                  booking.type === 'CONSULTATION' ? 'Consultation' : 'Special Session',
+                booking.type === 'CONSULTATION' ? 'Consultation' : 'Special Session',
             date: formatDate(booking.date),
             time: formatTime(booking.date),
             status: booking.status === 'CONFIRMED' ? 'Confirmed' :
-                    booking.status === 'PENDING' ? 'Pending' :
+                booking.status === 'PENDING' ? 'Pending' :
                     booking.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
             teacher: booking.teacher.name,
         }));
@@ -60,18 +60,18 @@ export async function GET() {
 }
 
 function formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
     }).format(date);
 }
 
 function formatTime(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', { 
-        hour: 'numeric', 
+    return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
     }).format(date);
 }
 
