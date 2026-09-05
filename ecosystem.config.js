@@ -1,24 +1,13 @@
 module.exports = {
-  apps: [
-    {
-      name: 'shakti-yoga',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start',
-      cwd: '/var/www/shakti-yoga',
-      instances: 1,
-      exec_mode: 'fork',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3000,
-      },
-      error_file: '/var/log/shakti-yoga/error.log',
-      out_file: '/var/log/shakti-yoga/out.log',
-      log_file: '/var/log/shakti-yoga/combined.log',
-      time: true,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-    },
-  ],
+  apps: [{
+    name: 'shaktiyoga',
+    script: 'node_modules/.bin/next',
+    args: 'start -p 3001',
+    cwd: '/root/shaktiyoga/app',
+    env_file: '/root/shaktiyoga/app/.env.local',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+  }]
 };
-
