@@ -66,6 +66,35 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum LeadSource {
+  WEBSITE
+  WHATSAPP
+  REFERRAL
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  TRIAL
+  CONVERTED
+  LOST
+}
+
+enum ProgramLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum ProgramStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
 // Models
 
 model User {
@@ -97,6 +126,9 @@ model User {
 
   // For Students
   liveClassParticipation LiveClassParticipant[]
+
+  // For Staff/Admins managing leads
+  assignedLeads Lead[]
 }
 
 model UserProfile {
@@ -118,7 +150,8 @@ model Subscription {
   status            SubscriptionStatus @default(ACTIVE)
   startDate         DateTime           @default(now())
   renewalDate       DateTime
-  billingProviderId String? // Razorpay customer/subscription id
+  billingProviderId String? // Razorpay subscription id (sub_xxx) for recurring plans
+  recurring         Boolean            @default(false)
 }
 
 model Setting {
@@ -138,19 +171,20 @@ model ContactMessage {
 }
 
 model Payment {
-  id                String        @id @default(cuid())
-  userId            String
-  user              User          @relation(fields: [userId], references: [id])
-  planType          PlanType
-  amount            Float // major currency units (e.g. rupees)
-  currency          String        @default("INR")
-  status            PaymentStatus @default(CREATED)
-  provider          String        @default("razorpay")
-  providerOrderId   String        @unique
-  providerPaymentId String?       @unique
-  providerSignature String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                     String        @id @default(cuid())
+  userId                 String
+  user                   User          @relation(fields: [userId], references: [id])
+  planType               PlanType
+  amount                 Float // major currency units (e.g. rupees)
+  currency               String        @default("INR")
+  status                 PaymentStatus @default(CREATED)
+  provider               String        @default("razorpay")
+  providerOrderId        String?       @unique // one-time checkout order
+  providerSubscriptionId String? // set for recurring subscription charges
+  providerPaymentId      String?       @unique
+  providerSignature      String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 }
 
 model ClassBatch {
@@ -207,17 +241,24 @@ model Story {
 }
 
 model BlogPost {
-  id          String        @id @default(cuid())
-  slug        String        @unique
-  title       String
-  excerpt     String?
-  content     String // Markdown or HTML
-  category    String
-  author      String
-  publishedAt DateTime?
-  status      ContentStatus @default(DRAFT)
-  imageUrl    String?
-  createdAt   DateTime      @default(now())
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  excerpt         String?
+  content         String // Markdown or HTML
+  category        String
+  author          String
+  publishedAt     DateTime?
+  status          ContentStatus @default(DRAFT)
+  imageUrl        String?
+  featuredImage   String?
+  metaTitle       String?
+  metaDescription String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([category])
 }
 
 model WhatsAppGroup {
@@ -265,4 +306,141 @@ model LiveClassParticipant {
   createdAt DateTime @default(now())
 
   @@unique([userId, liveClassId])
+}
+
+model Lead {
+  id   String @id @default(cuid())
+  name String
+  email String
+  phone   String?
+  country String?
+  source LeadSource @default(WEBSITE)
+  status LeadStatus @default(NEW)
+  notes   String?
+
+  // Trial info
+  trialRequestedAt DateTime?
+  trialDate        DateTime?
+  trialAttended    Boolean   @default(false)
+
+  // Conversion tracking
+  convertedToUserId String?
+  convertedAt       DateTime?
+
+  // Assignment
+  assignedToId String?
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities LeadActivity[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model LeadActivity {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type        String // CALL, EMAIL, WHATSAPP, NOTE, STATUS_CHANGE
+  content     String
+  performedBy String?
+
+  createdAt DateTime @default(now())
+}
+
+model Program {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  duration      String // e.g., "4 Weeks"
+  level         ProgramLevel  @default(ALL_LEVELS)
+  status        ProgramStatus @default(DRAFT)
+  price         Float         @default(0)
+  thumbnail     String? // URL to image
+  enrolledCount Int           @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model FAQ {
+  id        String        @id @default(cuid())
+  question  String
+  answer    String
+  category  String        @default("General") // General, Pricing, Classes, Technical
+  sortOrder Int           @default(0)
+  status    ContentStatus @default(DRAFT)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, category])
+}
+
+model Plan {
+  id          String        @id @default(cuid())
+  name        String
+  planType    PlanType // EVERYDAY_YOGA, YOGA_THERAPY, TRIAL
+  price       Float
+  currency    String        @default("INR")
+  period      String // "month", "week", "once"
+  features    String[] // Array of feature strings
+  description String?
+  status      ContentStatus @default(DRAFT)
+  sortOrder   Int           @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planType, status])
+}
+
+model SiteStats {
+  id        String   @id @default(cuid())
+  statKey   String   @unique // e.g., "totalStudents", "countriesCount"
+  statValue String
+  category  String   @default("general") // general, social_proof, performance
+  updatedAt DateTime @updatedAt
+}
+
+model WhyUsBenefit {
+  id          String        @id @default(cuid())
+  icon        String // Emoji or icon class
+  title       String
+  description String
+  sortOrder   Int           @default(0)
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  eventType String // PAGE_VIEW, SIGNUP, SUBSCRIPTION, BOOKING, etc.
+  userId    String?
+  metadata  Json? // Additional event data
+  timestamp DateTime @default(now())
+
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([userId])
+}
+
+model RevenueRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  amount     Float
+  currency   String   @default("USD")
+  planType   PlanType
+  provider   String? // razorpay, stripe
+  providerId String?
+  status     String   @default("SUCCESS") // SUCCESS, FAILED, REFUNDED
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }
