@@ -1,11 +1,14 @@
 "use client";
 
 import { AuthProvider } from "@/context/AuthContext";
+import { CurrencyProvider } from "@/context/CurrencyContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <AuthProvider>
-            {children}
+            <CurrencyProvider>
+                {children}
+            </CurrencyProvider>
         </AuthProvider>
     );
 }

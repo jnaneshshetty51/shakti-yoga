@@ -1,0 +1,95 @@
+"use client";
+
+import { ReactNode } from "react";
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  change?: string;
+  changeType?: "positive" | "negative" | "neutral";
+  icon?: ReactNode;
+  trend?: "up" | "down" | "stable";
+  prefix?: string;
+  suffix?: string;
+}
+
+export function StatCard({ 
+  title, 
+  value, 
+  change, 
+  changeType = "positive", 
+  icon, 
+  trend,
+  prefix = "",
+  suffix = ""
+}: StatCardProps) {
+  const changeColors = {
+    positive: "text-green-600 bg-green-50",
+    negative: "text-red-600 bg-red-50",
+    neutral: "text-gray-600 bg-gray-50",
+  };
+
+  const trendIcons = {
+    up: "↑",
+    down: "↓",
+    stable: "→",
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-4">
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          {title}
+        </div>
+        {icon && (
+          <div className="p-2 bg-primary/5 rounded-lg text-primary">
+            {icon}
+          </div>
+        )}
+      </div>
+      
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="text-3xl font-bold text-gray-900">
+            {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
+          </div>
+          {change && (
+            <div className={`inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full text-xs font-medium ${changeColors[changeType]}`}>
+              {trend && trendIcons[trend]}
+              <span>{change}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SectionCardProps {
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}
+
+export function SectionCard({ 
+  title, 
+  subtitle, 
+  action, 
+  children,
+  className = ""
+}: SectionCardProps) {
+  return (
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${className}`}>
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-gray-900 text-lg">{title}</h3>
+          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
+        {action && <div>{action}</div>}
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
