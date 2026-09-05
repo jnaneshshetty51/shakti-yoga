@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react";
 import { generateGroupSlots } from "@/utils/slots";
 import { useAuth } from "@/context/AuthContext";
+import type { BookingRow } from "@/types/booking";
 
 export default function ClassesPage() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'upcoming' | 'book'>('upcoming');
     const slots = generateGroupSlots();
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-    const [bookings, setBookings] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<BookingRow[]>([]);
     const [bookingCount, setBookingCount] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
 
     // Fetch user's bookings to check trial limit
     useEffect(() => {
@@ -33,11 +34,12 @@ export default function ClassesPage() {
     }, []);
 
     const isTrial = user?.role === 'trial';
+    const isVisitor = user?.role === 'visitor';
     const hasReachedLimit = isTrial && bookingCount >= 1;
 
     const handleConfirmBooking = async () => {
-        if (hasReachedLimit) {
-            alert('❌ Trial limit reached!\n\nYou can only book 1 trial class.\n\nUpgrade to a membership for unlimited classes.');
+        if (hasReachedLimit || isVisitor) {
+            alert('❌ Membership required!\n\nPlease select a plan to book classes.');
             return;
         }
 
@@ -101,7 +103,7 @@ export default function ClassesPage() {
                     {bookings.length === 0 ? (
                         <div className="text-gray-500 italic">No upcoming classes found. Book one now!</div>
                     ) : (
-                        bookings.map((booking: any) => (
+                        bookings.map((booking) => (
                             <div key={booking.id} className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 flex justify-between items-center">
                                 <div>
                                     <div className="font-bold text-lg text-primary">{booking.type || 'Yoga Class'}</div>
@@ -121,7 +123,21 @@ export default function ClassesPage() {
 
             {activeTab === 'book' && (
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10">
-                    {hasReachedLimit ? (
+                    {isVisitor ? (
+                        <div className="text-center py-12">
+                            <div className="text-6xl mb-4">🔒</div>
+                            <h2 className="font-serif text-2xl text-primary mb-4">Membership Required</h2>
+                            <p className="text-gray-600 mb-6">
+                                You need an active membership or free trial to book live classes.
+                            </p>
+                            <a
+                                href="/programs"
+                                className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors"
+                            >
+                                View Membership Plans
+                            </a>
+                        </div>
+                    ) : hasReachedLimit ? (
                         <div className="text-center py-12">
                             <div className="text-6xl mb-4">🎯</div>
                             <h2 className="font-serif text-2xl text-primary mb-4">Trial Class Completed!</h2>
@@ -129,8 +145,8 @@ export default function ClassesPage() {
                                 You've used your free trial class. Ready to continue your yoga journey?
                             </p>
                             <a
-                                href="/pricing"
-                                className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors"
+                                href="/programs"
+                                className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors"
                             >
                                 View Membership Plans
                             </a>

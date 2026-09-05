@@ -1,75 +1,50 @@
 # Seed User Credentials
 
-This document contains the credentials for all seeded users in the database.
+The seed script (`prisma/seed.ts`) creates one user per role for local
+development and demos.
 
-## Default Password
-**All users use the same password:** `Password123!`
+## Password
 
-## User Credentials by Role
+All seeded users share a single password, resolved in this order:
 
-### 1. SUPER_ADMIN
-- **Email:** `superadmin@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** SUPER_ADMIN
-- **Description:** Highest level admin access with full system control
+1. `SEED_PASSWORD` environment variable (must be at least 8 characters).
+2. Otherwise a random password is generated and **printed once** at the end
+   of the seed run — copy it from the console output.
 
-### 2. STAFF_ADMIN
-- **Email:** `staffadmin@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** STAFF_ADMIN
-- **Description:** Staff-level admin access for managing operations
+For a predictable local login, add `SEED_PASSWORD=...` to your `.env` /
+`.env.local`. Set `NEXT_PUBLIC_SEED_PASSWORD` to the same value if you want the
+dev-only "Quick Login" buttons on `/login` to work.
 
-### 3. TEACHER
-- **Email:** `teacher@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** TEACHER
-- **Description:** Yoga teacher who can teach classes and manage sessions
+## Production safety
 
-### 4. MEMBER_EVERYDAY
-- **Email:** `member.everyday@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** MEMBER_EVERYDAY
-- **Description:** Member with Everyday Yoga subscription (Active)
-- **Subscription:** $29.99/month, Active status
+The seed refuses to run when `NODE_ENV=production` unless `ALLOW_PROD_SEED=true`
+is also set. Do **not** run the seed against a production database with a weak
+`SEED_PASSWORD` — these are shared demo accounts, including a `SUPER_ADMIN`.
 
-### 5. MEMBER_THERAPY
-- **Email:** `member.therapy@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** MEMBER_THERAPY
-- **Description:** Member with Yoga Therapy subscription (Active)
-- **Subscription:** $99.99/month, Active status
+## Accounts by role
 
-### 6. TRIAL
-- **Email:** `trial@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** TRIAL
-- **Description:** Trial user with 7-day trial subscription
-- **Subscription:** Free trial, Trial status
+| Role            | Email                            |
+| --------------- | -------------------------------- |
+| SUPER_ADMIN     | superadmin@shaktiyoga.com        |
+| STAFF_ADMIN     | staffadmin@shaktiyoga.com        |
+| TEACHER         | teacher@shaktiyoga.com           |
+| MEMBER_EVERYDAY | member.everyday@shaktiyoga.com   |
+| MEMBER_THERAPY  | member.therapy@shaktiyoga.com    |
+| TRIAL           | trial@shaktiyoga.com             |
+| VISITOR         | visitor@shaktiyoga.com           |
 
-### 7. VISITOR
-- **Email:** `visitor@shaktiyoga.com`
-- **Password:** `Password123!`
-- **Role:** VISITOR
-- **Description:** Default visitor role (unauthenticated users)
-
-## Running the Seed
-
-To populate the database with these users, run:
+## Running the seed
 
 ```bash
-npx prisma db seed
-```
-
-Or directly:
-
-```bash
+npm run db:seed
+# or
 npx tsx prisma/seed.ts
 ```
 
 ## Notes
 
-- The seed script will delete and recreate users with these specific emails if they already exist
-- All passwords are hashed using bcryptjs
-- Subscriptions are automatically created for MEMBER_EVERYDAY, MEMBER_THERAPY, and TRIAL users
-- User profiles are created for member roles with sample data
-
+- The seed deletes and recreates the accounts above (and sample content) on
+  every run.
+- Passwords are hashed with bcryptjs.
+- Subscriptions are created for MEMBER_EVERYDAY ($59), MEMBER_THERAPY ($120) and
+  TRIAL ($0), matching `src/lib/pricing.ts`.

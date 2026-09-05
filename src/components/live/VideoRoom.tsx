@@ -1,6 +1,7 @@
 'use client';
 
 import { useDaily, DailyProvider } from '@daily-co/daily-react';
+import type { DailyParticipant } from '@daily-co/daily-js';
 import { useEffect, useState } from 'react';
 import VideoTile from './VideoTile';
 
@@ -14,7 +15,7 @@ export default function VideoRoom({ roomUrl, token }: { roomUrl: string; token: 
 
 function VideoRoomContent({ roomUrl, token }: { roomUrl: string; token: string }) {
     const daily = useDaily();
-    const [participants, setParticipants] = useState<any[]>([]);
+    const [participants, setParticipants] = useState<DailyParticipant[]>([]);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { useVideoTrack, useAudioTrack } from '@daily-co/daily-react';
+import type { DailyParticipant } from '@daily-co/daily-js';
 import { useEffect, useRef } from 'react';
 
-export default function VideoTile({ participant }: { participant: any }) {
+export default function VideoTile({ participant }: { participant: DailyParticipant }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const videoTrack = useVideoTrack(participant.session_id);
     const audioTrack = useAudioTrack(participant.session_id);

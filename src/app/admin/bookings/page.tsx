@@ -81,7 +81,7 @@ export default function AdminBookingsPage() {
                 columns={columns}
                 title="All Bookings"
                 onCreate={handleCreate}
-                actions={(bk) => (
+                actions={() => (
                     <div className="flex justify-end gap-2">
                         <button className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Edit</button>
                         <button className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Cancel</button>

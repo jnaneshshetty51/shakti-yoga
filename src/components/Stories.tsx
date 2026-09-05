@@ -23,15 +23,15 @@ export default function Stories() {
     ];
 
     return (
-        <section className="py-20 px-8 bg-accent/30">
+        <section className="py-12 sm:py-20 px-4 sm:px-8 bg-accent/30">
             <div className="max-w-6xl mx-auto">
-                <h2 className="font-serif text-3xl md:text-4xl text-primary text-center mb-16">Stories of Transformation</h2>
+                <h2 className="font-serif text-3xl md:text-4xl text-primary text-center mb-10 sm:mb-16">Stories of Transformation</h2>
 
-                <div className="grid md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                     {testimonials.map((story, index) => (
-                        <div key={index} className="bg-white p-8 rounded-lg shadow-md border border-primary/5 flex flex-col">
-                            <div className="text-secondary text-4xl font-serif mb-4">“</div>
-                            <p className="font-sans text-text/80 italic mb-6 flex-grow">
+                        <div key={index} className="bg-white p-6 sm:p-8 rounded-lg shadow-md border border-primary/5 flex flex-col">
+                            <div className="text-secondary text-3xl sm:text-4xl font-serif mb-2 sm:mb-4">“</div>
+                            <p className="font-sans text-text/80 italic mb-6 flex-grow text-sm sm:text-base">
                                 {story.quote}
                             </p>
                             <div className="mt-auto">
@@ -45,7 +45,7 @@ export default function Stories() {
                     ))}
                 </div>
 
-                <div className="text-center mt-12">
+                <div className="text-center mt-10 sm:mt-12">
                     <Link href="/stories" className="inline-block text-primary font-sans font-bold uppercase tracking-widest text-sm hover:text-secondary transition-colors border-b border-primary hover:border-secondary pb-1">
                         View All Stories
                     </Link>

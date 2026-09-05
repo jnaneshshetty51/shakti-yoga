@@ -85,7 +85,7 @@ export default function AdminClassesPage() {
                 columns={columns}
                 title="Class Batches"
                 onCreate={handleCreate}
-                actions={(batch) => (
+                actions={() => (
                     <div className="flex justify-end gap-2">
                         <button className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Edit</button>
                         <button className="text-gray-400 hover:text-gray-600 text-xs font-bold uppercase tracking-wider">Attendance</button>

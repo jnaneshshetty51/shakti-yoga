@@ -46,7 +46,15 @@ export async function GET() {
         });
 
         // Group by day of week
-        const scheduleByDay: Record<string, any[]> = {
+        interface ScheduleEntry {
+            id: string;
+            batchName: string;
+            timeSlot: string;
+            teacher: string;
+            status: string;
+            attendanceCount: number;
+        }
+        const scheduleByDay: Record<string, ScheduleEntry[]> = {
             'Mon': [],
             'Tue': [],
             'Wed': [],

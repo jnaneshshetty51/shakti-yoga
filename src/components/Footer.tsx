@@ -1,64 +1,66 @@
+"use client";
+
 import Link from 'next/link';
 import { FaInstagram, FaYoutube, FaFacebook, FaWhatsapp, FaCreditCard, FaLock } from 'react-icons/fa';
 import { SiRazorpay } from 'react-icons/si';
 
 export default function Footer() {
     return (
-        <footer className="bg-primary text-white pt-16 pb-8 px-6 md:px-16 mt-auto border-t border-white/10">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <footer className="bg-primary text-white pt-12 sm:pt-16 pb-8 px-4 sm:px-8 md:px-16 mt-auto border-t border-white/10">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12 mb-12 sm:mb-16">
 
                 {/* 1. Brand & Description */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     <div>
-                        <h2 className="font-serif text-2xl font-bold tracking-wider mb-2">Shakti Yoga</h2>
+                        <h2 className="font-serif text-2xl font-bold tracking-wider mb-1">Shakti Yoga</h2>
                         <p className="text-xs uppercase tracking-widest opacity-70">Kendra</p>
                     </div>
                     <p className="font-sans text-sm leading-relaxed opacity-90 text-white/80">
                         Yoga is not just a practice. It’s a way of life. Whether you seek stress relief, physical well-being, or a deeper connection to yourself, Shakti Yoga Kendra welcomes you to embark on this journey with us.
                     </p>
-                    <div className="flex gap-4">
-                        <a href="#" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" aria-label="Instagram"><FaInstagram /></a>
-                        <a href="#" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" aria-label="YouTube"><FaYoutube /></a>
-                        <a href="#" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" aria-label="Facebook"><FaFacebook /></a>
-                        <a href="https://wa.me/917204050478" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" aria-label="WhatsApp"><FaWhatsapp /></a>
+                    <div className="flex gap-3">
+                        <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Instagram"><FaInstagram /></a>
+                        <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="YouTube"><FaYoutube /></a>
+                        <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Facebook"><FaFacebook /></a>
+                        <a href="https://wa.me/917204050478" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="WhatsApp"><FaWhatsapp /></a>
                     </div>
                 </div>
 
                 {/* 2. Quick Navigation */}
-                <div className="grid grid-cols-2 gap-8 lg:col-span-2">
+                <div className="grid grid-cols-2 gap-6 sm:gap-8 lg:col-span-2">
                     <div>
-                        <h3 className="font-serif text-lg mb-6 text-secondary">Programs</h3>
-                        <ul className="space-y-4 text-sm opacity-80 font-sans">
-                            <li><Link href="/everyday-yoga" className="hover:text-secondary transition-colors">Everyday Yoga</Link></li>
-                            <li><Link href="/yoga-therapy" className="hover:text-secondary transition-colors">Yoga Therapy (1:1)</Link></li>
-                            <li><Link href="/trial" className="hover:text-secondary transition-colors font-bold">Free Trial Class</Link></li>
-                            <li><Link href="/yoga-therapy/start" className="hover:text-secondary transition-colors">Consultation Call</Link></li>
+                        <h3 className="font-serif text-lg mb-4 sm:mb-6 text-secondary">Programs</h3>
+                        <ul className="space-y-3 sm:space-y-4 text-sm opacity-80 font-sans">
+                            <li><Link href="/everyday-yoga" className="hover:text-secondary transition-colors inline-block py-1">Everyday Yoga</Link></li>
+                            <li><Link href="/yoga-therapy" className="hover:text-secondary transition-colors inline-block py-1">Yoga Therapy (1:1)</Link></li>
+                            <li><Link href="/trial" className="hover:text-secondary transition-colors font-bold inline-block py-1">Free Trial Class</Link></li>
+                            <li><Link href="/yoga-therapy/start" className="hover:text-secondary transition-colors inline-block py-1">Consultation Call</Link></li>
                         </ul>
                     </div>
                     <div>
-                        <h3 className="font-serif text-lg mb-6 text-secondary">Explore</h3>
-                        <ul className="space-y-4 text-sm opacity-80 font-sans">
-                            <li><Link href="/" className="hover:text-secondary transition-colors">Home</Link></li>
-                            <li><Link href="/about" className="hover:text-secondary transition-colors">About</Link></li>
-                            <li><Link href="/stories" className="hover:text-secondary transition-colors">Success Stories</Link></li>
-                            <li><Link href="/blog" className="hover:text-secondary transition-colors">Blog & Resources</Link></li>
-                            <li><Link href="/contact" className="hover:text-secondary transition-colors">Contact & Support</Link></li>
+                        <h3 className="font-serif text-lg mb-4 sm:mb-6 text-secondary">Explore</h3>
+                        <ul className="space-y-3 sm:space-y-4 text-sm opacity-80 font-sans">
+                            <li><Link href="/" className="hover:text-secondary transition-colors inline-block py-1">Home</Link></li>
+                            <li><Link href="/about" className="hover:text-secondary transition-colors inline-block py-1">About</Link></li>
+                            <li><Link href="/stories" className="hover:text-secondary transition-colors inline-block py-1">Success Stories</Link></li>
+                            <li><Link href="/blog" className="hover:text-secondary transition-colors inline-block py-1">Blog & Resources</Link></li>
+                            <li><Link href="/contact" className="hover:text-secondary transition-colors inline-block py-1">Contact & Support</Link></li>
                         </ul>
                     </div>
                 </div>
 
                 {/* 3. Newsletter & Contact */}
-                <div className="space-y-8">
+                <div className="space-y-6 sm:space-y-8">
                     <div>
-                        <h3 className="font-serif text-lg mb-4 text-secondary">Stay Connected</h3>
+                        <h3 className="font-serif text-lg mb-3 sm:mb-4 text-secondary">Stay Connected</h3>
                         <p className="text-xs opacity-70 mb-4">Get weekly yoga tips and short routines in your inbox.</p>
-                        <form className="flex gap-2">
+                        <form className="flex flex-col sm:flex-row gap-2" onSubmit={(e) => e.preventDefault()}>
                             <input
                                 type="email"
                                 placeholder="Your email address"
-                                className="bg-white/10 border border-white/20 rounded px-4 py-2 text-sm w-full focus:outline-none focus:border-secondary placeholder:text-white/30"
+                                className="bg-white/10 border border-white/20 rounded px-4 py-2.5 text-sm w-full focus:outline-none focus:border-secondary placeholder:text-white/40"
                             />
-                            <button className="px-4 py-2 bg-secondary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-white hover:text-primary transition-colors">
+                            <button type="submit" className="px-5 py-2.5 bg-secondary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-white hover:text-primary transition-colors whitespace-nowrap">
                                 Join
                             </button>
                         </form>
@@ -79,11 +81,11 @@ export default function Footer() {
                     <p>&copy; {new Date().getFullYear()} Shakti Yoga Kendra. All rights reserved. <span className="mx-2">|</span> Made with ❤️ in India</p>
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-6 uppercase tracking-wider">
-                    <Link href="/terms" className="hover:text-secondary transition-colors">Terms</Link>
-                    <Link href="/privacy" className="hover:text-secondary transition-colors">Privacy</Link>
-                    <Link href="#" className="hover:text-secondary transition-colors">Refunds</Link>
-                    <Link href="/disclaimer" className="hover:text-secondary transition-colors">Disclaimer</Link>
+                <div className="flex flex-wrap justify-center gap-4 sm:gap-6 uppercase tracking-wider">
+                    <Link href="/terms" className="hover:text-secondary transition-colors py-1">Terms</Link>
+                    <Link href="/privacy" className="hover:text-secondary transition-colors py-1">Privacy</Link>
+                    <Link href="#" className="hover:text-secondary transition-colors py-1">Refunds</Link>
+                    <Link href="/disclaimer" className="hover:text-secondary transition-colors py-1">Disclaimer</Link>
                 </div>
 
                 <div className="flex items-center gap-3 opacity-80">

@@ -1,9 +1,18 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+
+export interface SessionPayload extends JWTPayload {
+    id: string;
+    email: string;
+    role: string;
+    name: string;
+}
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-change-this-in-prod';
-const key = new TextEncoder().encode(SECRET_KEY);
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+const key = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function hashPassword(password: string): Promise<string> {
     return await bcrypt.hash(password, 10);
@@ -13,7 +22,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     return await bcrypt.compare(password, hash);
 }
 
-export async function signToken(payload: any): Promise<string> {
+export async function signToken(payload: SessionPayload): Promise<string> {
     return await new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
@@ -21,11 +30,11 @@ export async function signToken(payload: any): Promise<string> {
         .sign(key);
 }
 
-export async function verifyToken(token: string): Promise<any> {
+export async function verifyToken(token: string): Promise<SessionPayload | null> {
     try {
         const { payload } = await jwtVerify(token, key);
-        return payload;
-    } catch (error) {
+        return payload as SessionPayload;
+    } catch (_error) {
         return null;
     }
 }
@@ -43,7 +52,7 @@ export function mapDatabaseRole(dbRole: string): string {
         case 'STAFF_ADMIN':
             return 'admin';
         case 'TEACHER':
-            return 'admin'; // Providing admin access to teachers for now
+            return 'teacher';
         case 'MEMBER_EVERYDAY':
             return 'member_everyday';
         case 'MEMBER_THERAPY':

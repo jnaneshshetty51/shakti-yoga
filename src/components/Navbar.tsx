@@ -1,14 +1,30 @@
 "use client";
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    // Prevent background scrolling when mobile menu is open
+    useEffect(() => {
+        if (isMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isMenuOpen]);
+
     return (
-        <nav className="flex justify-between items-center px-6 py-6 md:px-16 bg-background sticky top-0 z-50 border-b border-black/5">
-            <Link href="/" className="font-serif text-2xl font-bold text-primary tracking-wider z-50 relative">
+        <nav className="flex justify-between items-center px-4 py-4 md:px-16 md:py-6 bg-background sticky top-0 z-50 border-b border-black/5">
+            <Link 
+                href="/" 
+                onClick={() => setIsMenuOpen(false)}
+                className="font-serif text-2xl font-bold text-primary tracking-wider z-50 relative"
+            >
                 Shakti Yoga
             </Link>
 
@@ -33,7 +49,7 @@ export default function Navbar() {
 
             {/* Mobile Hamburger Button */}
             <button
-                className="md:hidden z-50 relative p-2"
+                className="md:hidden z-50 relative p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 aria-label="Toggle menu"
             >
@@ -45,34 +61,37 @@ export default function Navbar() {
             </button>
 
             {/* Mobile Drawer */}
-            <div className={`fixed inset-0 bg-background z-40 transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-8 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="flex flex-col gap-6">
-                    <Link href="/trial" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-secondary font-bold">
+            <div className={`fixed inset-0 bg-background z-40 transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 pb-8 overflow-y-auto ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex flex-col gap-5">
+                    <Link href="/" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                        Home
+                    </Link>
+                    <Link href="/trial" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-secondary font-bold py-2">
                         Free Trial Class
                     </Link>
-                    <Link href="/everyday-yoga" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors">
+                    <Link href="/everyday-yoga" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Everyday Yoga
                     </Link>
-                    <Link href="/yoga-therapy" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors">
+                    <Link href="/yoga-therapy" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Yoga Therapy
                     </Link>
-                    <Link href="/about" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors">
+                    <Link href="/about" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         About
                     </Link>
-                    <Link href="/blog" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors">
+                    <Link href="/blog" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Blog
                     </Link>
-                    <Link href="/login" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors">
+                    <Link href="/login" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Login
                     </Link>
                 </div>
 
-                <div className="mt-auto mb-8">
+                <div className="mt-auto pt-8">
                     <a
                         href="https://wa.me/917204050478"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-4 bg-green-600 text-white font-bold uppercase tracking-widest rounded hover:bg-green-700 transition-colors"
+                        className="flex items-center justify-center gap-2 w-full py-4 bg-green-600 text-white font-bold uppercase tracking-widest rounded hover:bg-green-700 transition-colors shadow-md"
                     >
                         <span>Chat on WhatsApp</span>
                     </a>

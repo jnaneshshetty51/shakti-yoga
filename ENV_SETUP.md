@@ -11,6 +11,20 @@ cp env.template .env
 nano .env
 ```
 
+## 🆕 Required & feature variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `JWT_SECRET` | **Yes** | Signs session tokens. App throws on startup if unset. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Yes | NextAuth config. |
+| `DAILY_API_KEY` | For live classes | Daily.co API key. Blank = live-class create/join returns an error. |
+| `NEXT_PUBLIC_PAYMENTS_ENABLED` | No | `"true"` shows the real card form on `/checkout`. Default `false`. |
+| `ALLOW_MOCK_CHECKOUT` | No | `"true"` lets paid checkouts succeed without a charge even in production. Default off. |
+| `PAYMENT_PROVIDER` / `PAYMENT_API_KEY` | No | Placeholder for a future Stripe/Razorpay integration (`src/lib/payments.ts`). |
+| `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. |
+| `NEXT_PUBLIC_SEED_PASSWORD` | No | Same value, for the dev-only Quick Login buttons on `/login`. |
+| `ALLOW_PROD_SEED` | No | Must be `"true"` to run `npm run db:seed` with `NODE_ENV=production`. |
+
 ## 🔑 Environment Variables Explained
 
 ### 1. DATABASE_URL

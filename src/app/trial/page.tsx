@@ -7,7 +7,7 @@ import { generateGroupSlots } from "@/utils/slots";
 import Link from "next/link";
 
 function TrialBookingContent() {
-    const { user, login, isLoading } = useAuth();
+    const { user, isLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const isConsult = searchParams.get("type") === "consult";
@@ -87,19 +87,19 @@ function TrialBookingContent() {
                         </div>
                     </div>
 
-                    <div className="p-8">
+                    <div className="p-4 sm:p-8">
                         {step === 1 && (
                             <div className="animate-in fade-in slide-in-from-right-4">
-                                <h2 className="font-serif text-2xl text-gray-800 mb-6">Choose a time that works for you</h2>
+                                <h2 className="font-serif text-xl sm:text-2xl text-gray-800 mb-6">Choose a time that works for you</h2>
 
                                 <div className="mb-8">
                                     <h3 className="font-bold text-xs text-gray-500 uppercase tracking-widest mb-4">Morning Batches (IST)</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                         {slots.morning.slice(0, 6).map((slot) => (
                                             <button
                                                 key={slot}
                                                 onClick={() => setSelectedSlot(slot)}
-                                                className={`p-3 rounded border text-sm transition-all ${selectedSlot === slot
+                                                className={`p-3 rounded border text-xs sm:text-sm transition-all ${selectedSlot === slot
                                                     ? 'bg-primary text-white border-primary font-bold shadow-md'
                                                     : 'border-gray-200 hover:border-primary/50 text-gray-600'
                                                     }`}
@@ -112,12 +112,12 @@ function TrialBookingContent() {
 
                                 <div className="mb-8">
                                     <h3 className="font-bold text-xs text-gray-500 uppercase tracking-widest mb-4">Evening Batches (IST)</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                         {slots.evening.slice(0, 6).map((slot) => (
                                             <button
                                                 key={slot}
                                                 onClick={() => setSelectedSlot(slot)}
-                                                className={`p-3 rounded border text-sm transition-all ${selectedSlot === slot
+                                                className={`p-3 rounded border text-xs sm:text-sm transition-all ${selectedSlot === slot
                                                     ? 'bg-primary text-white border-primary font-bold shadow-md'
                                                     : 'border-gray-200 hover:border-primary/50 text-gray-600'
                                                     }`}
@@ -132,7 +132,7 @@ function TrialBookingContent() {
                                     <button
                                         onClick={() => setStep(2)}
                                         disabled={!selectedSlot}
-                                        className="px-8 py-3 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full sm:w-auto px-8 py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-xs sm:text-sm rounded hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Next Step
                                     </button>

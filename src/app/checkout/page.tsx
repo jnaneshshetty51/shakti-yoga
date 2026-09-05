@@ -3,13 +3,14 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getPlan } from "@/lib/pricing";
 import Link from "next/link";
 
 function CheckoutContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { login, user, isLoading } = useAuth();
-    const planType = searchParams.get("plan"); // 'everyday', 'therapy', 'trial'
+    const { user, isLoading, refreshUser } = useAuth();
+    const planType = searchParams.get("plan") || "everyday"; // 'everyday', 'therapy', 'trial'
 
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -32,50 +33,33 @@ function CheckoutContent() {
         );
     }
 
-    const planDetails = {
-        everyday: {
-            name: "Everyday Yoga",
-            price: 59,
-            period: "month",
-            features: ["5 Live Classes/week", "Community Access", "Flexible Timings"]
-        },
-        therapy: {
-            name: "Yoga Therapy",
-            price: 120,
-            period: "month",
-            features: ["4 Personal Sessions", "Health Assessment", "Custom Plan"]
-        },
-        trial: {
-            name: "Free Trial",
-            price: 0,
-            period: "7 days",
-            features: ["1 Live Class", "15-min Consult", "Community Access"]
-        }
-    };
+    const selectedPlan = getPlan(planType);
+    const paymentsLive = process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === "true";
 
-    const selectedPlan = planDetails[planType as keyof typeof planDetails] || planDetails.everyday;
-
-    const handlePayment = (e: React.FormEvent) => {
+    const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsProcessing(true);
 
-        // Simulate payment processing
-        setTimeout(() => {
-            // Update mock auth state based on plan
-            // TODO: Implement actual subscription update via API
-            /*
-            if (planType === 'therapy') {
-                login('member_therapy');
-            } else if (planType === 'trial') {
-                login('trial');
-            } else {
-                login('member_everyday');
-            }
-            */
-            console.log('Payment successful for plan:', planType);
+        try {
+            const res = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planType }),
+            });
 
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Payment failed');
+            }
+
+            await refreshUser();
             router.push("/welcome");
-        }, 2000);
+        } catch (err) {
+            console.error('Payment Error:', err);
+            alert(`Subscription failed: ${err instanceof Error ? err.message : 'Please try again.'}`);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -90,7 +74,7 @@ function CheckoutContent() {
                             <h3 className="font-bold text-lg text-gray-800">{selectedPlan.name}</h3>
                             <p className="text-sm text-gray-500">Billed {selectedPlan.period === 'month' ? 'monthly' : 'once'}</p>
                         </div>
-                        <div className="text-2xl font-bold text-primary">${selectedPlan.price}</div>
+                        <div className="text-2xl font-bold text-primary">${selectedPlan.amount}</div>
                     </div>
 
                     <ul className="space-y-3 mb-6">
@@ -103,7 +87,7 @@ function CheckoutContent() {
 
                     <div className="flex justify-between items-center pt-4 border-t border-gray-100 font-bold text-lg">
                         <span>Total</span>
-                        <span>${selectedPlan.price}</span>
+                        <span>${selectedPlan.amount}</span>
                     </div>
                 </div>
 
@@ -112,33 +96,31 @@ function CheckoutContent() {
                     <h2 className="font-serif text-2xl text-primary mb-6">Payment Details</h2>
 
                     <form onSubmit={handlePayment} className="space-y-6">
-                        {selectedPlan.price > 0 && (
-                            <>
+                        {selectedPlan.amount > 0 && !paymentsLive && (
+                            <div className="p-4 border border-amber-200 bg-amber-50 rounded text-sm text-amber-800">
+                                Online card payments aren&apos;t available yet. Complete this step to
+                                register your interest and we&apos;ll reach out to activate your membership,
+                                or <Link href="/contact" className="underline font-bold">contact us</Link> directly.
+                            </div>
+                        )}
+                        {selectedPlan.amount > 0 && paymentsLive && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Card Information</label>
-                                    <div className="p-3 border border-gray-200 rounded bg-gray-50 text-gray-400 text-sm">
-                                        Mock Payment - No Card Needed
-                                    </div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Name on Card</label>
+                                    <input type="text" required className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary text-sm sm:text-base" placeholder="John Doe" />
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Name on Card</label>
-                                        <input type="text" required className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary" placeholder="John Doe" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Zip Code</label>
-                                        <input type="text" required className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary" placeholder="12345" />
-                                    </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Zip Code</label>
+                                    <input type="text" required className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary text-sm sm:text-base" placeholder="12345" />
                                 </div>
-                            </>
+                            </div>
                         )}
 
                         <div className="flex items-start gap-3">
                             <input type="checkbox" id="terms" required className="mt-1" />
                             <label htmlFor="terms" className="text-xs text-gray-600">
                                 I agree to the <Link href="#" className="underline">Terms of Service</Link> and <Link href="#" className="underline">Privacy Policy</Link>.
-                                {selectedPlan.price > 0 && " I authorize Shakti Yoga to charge my card for the amount above."}
+                                {selectedPlan.amount > 0 && " I authorize Shakti Yoga to charge my card for the amount above."}
                             </label>
                         </div>
 
@@ -149,8 +131,12 @@ function CheckoutContent() {
                         >
                             {isProcessing ? (
                                 <>Processing...</>
+                            ) : selectedPlan.amount === 0 ? (
+                                <>Start Free Trial</>
+                            ) : paymentsLive ? (
+                                <>Pay ${selectedPlan.amount}</>
                             ) : (
-                                <>{selectedPlan.price === 0 ? "Start Free Trial" : `Pay $${selectedPlan.price}`}</>
+                                <>Request Membership</>
                             )}
                         </button>
 

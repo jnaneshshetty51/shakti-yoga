@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { BookingRow } from "@/types/booking";
 
 export default function ConsultationsPage() {
     const [activeTab, setActiveTab] = useState<'request' | 'history'>('request');
@@ -106,7 +107,7 @@ export default function ConsultationsPage() {
 }
 
 function ConsultationHistory() {
-    const [bookings, setBookings] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<BookingRow[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -130,7 +131,7 @@ function ConsultationHistory() {
 
     return (
         <div className="space-y-4">
-            {bookings.map((booking: any) => (
+            {bookings.map((booking) => (
                 <div key={booking.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
                     <div className="flex justify-between items-start mb-4">
                         <div>

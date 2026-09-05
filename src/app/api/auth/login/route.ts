@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         });
 
         // Return user data (excluding password)
-        const { passwordHash, ...userWithoutPassword } = user;
+        const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
         return NextResponse.json({
             user: { ...userWithoutPassword, role: mappedRole },

@@ -1,64 +1,151 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+interface ProfileForm {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    location: string;
+    timezone: string;
+    goal: string;
+    conditions: string;
+    emailPref: boolean;
+    whatsappPref: boolean;
+    phonePref: boolean;
+}
+
+const EMPTY_FORM: ProfileForm = {
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    location: "",
+    timezone: "IST",
+    goal: "Stress Relief",
+    conditions: "",
+    emailPref: true,
+    whatsappPref: false,
+    phonePref: false,
+};
+
+function prefsToString(form: ProfileForm): string {
+    return [
+        form.emailPref && "Email",
+        form.whatsappPref && "WhatsApp",
+        form.phonePref && "Phone",
+    ]
+        .filter(Boolean)
+        .join(",");
+}
 
 export default function ProfilePage() {
-    const [formData, setFormData] = useState({
-        firstName: "Jnanesh",
-        lastName: "Shetty",
-        email: "jnanesh@example.com",
-        phone: "+91 98765 43210",
-        location: "Bangalore, India",
-        timezone: "IST",
-        goal: "Stress Relief",
-        conditions: "Mild lower back pain occasionally.",
-        emailPref: true,
-        whatsappPref: true,
-        phonePref: false,
-    });
+    const [formData, setFormData] = useState<ProfileForm>(EMPTY_FORM);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [status, setStatus] = useState<string | null>(null);
+
+    const loadProfile = useCallback(async () => {
+        try {
+            const res = await fetch("/api/profile");
+            if (!res.ok) throw new Error("Failed to load profile");
+            const { profile } = await res.json();
+
+            const [firstName, ...rest] = (profile.name || "").trim().split(" ");
+            const prefs: string = profile.profile?.communicationPref || "";
+
+            setFormData({
+                firstName: firstName || "",
+                lastName: rest.join(" "),
+                email: profile.email || "",
+                phone: profile.phone || "",
+                location: profile.country || "",
+                timezone: profile.timezone || "IST",
+                goal: profile.profile?.goals || "Stress Relief",
+                conditions: profile.profile?.medicalHistory || "",
+                emailPref: prefs.includes("Email"),
+                whatsappPref: prefs.includes("WhatsApp"),
+                phonePref: prefs.includes("Phone"),
+            });
+        } catch (error) {
+            console.error("Failed to load profile:", error);
+            setStatus("Could not load your profile. Please refresh.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
 
     const handleEditPhoto = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-                // TODO: Upload to server
-                alert(`Photo selected: ${file.name}\nUpload functionality coming soon!`);
-            }
-        };
-        input.click();
+        // Profile photos need a storage-backed avatar field on the User model
+        // before this can be wired up (see docs/ENV_SETUP.md). Not available yet.
+        setStatus("Profile photo uploads aren't available yet.");
     };
 
     const handleSaveChanges = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSaving(true);
+        setStatus(null);
         try {
-            // TODO: Call API to save profile
-            alert('Profile saved successfully!\n\nNote: Full API integration coming soon.');
-            console.log('Saving profile:', formData);
+            const res = await fetch("/api/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: `${formData.firstName} ${formData.lastName}`.trim(),
+                    phone: formData.phone,
+                    country: formData.location,
+                    timezone: formData.timezone,
+                    goals: formData.goal,
+                    medicalHistory: formData.conditions,
+                    communicationPref: prefsToString(formData),
+                }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || "Failed to save profile");
+            }
+            setStatus("Profile saved.");
         } catch (error) {
-            console.error('Failed to save profile:', error);
-            alert('Failed to save profile. Please try again.');
+            console.error("Failed to save profile:", error);
+            setStatus(error instanceof Error ? error.message : "Failed to save profile.");
+        } finally {
+            setSaving(false);
         }
     };
 
-    const handleInputChange = (field: string, value: any) => {
+    const handleInputChange = (field: keyof ProfileForm, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
+
+    const initials =
+        `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase() || "SY";
+
+    if (loading) {
+        return <div className="p-20 text-center text-text/60">Loading profile...</div>;
+    }
 
     return (
         <div>
             <h1 className="font-serif text-3xl text-primary mb-8">My Profile</h1>
 
+            {status && (
+                <div className="mb-6 p-3 rounded bg-accent/40 border border-primary/10 text-sm text-text">
+                    {status}
+                </div>
+            )}
+
             <div className="grid md:grid-cols-3 gap-8">
                 <div className="md:col-span-1">
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 text-center">
                         <div className="w-32 h-32 bg-secondary rounded-full mx-auto mb-4 flex items-center justify-center text-4xl text-white font-bold">
-                            JS
+                            {initials}
                         </div>
                         <h2 className="font-serif text-xl font-bold text-text">{formData.firstName} {formData.lastName}</h2>
-                        <p className="text-sm text-text/70 mb-6">Member since Nov 2025</p>
+                        <p className="text-sm text-text/70 mb-6">{formData.email}</p>
                         <button
                             onClick={handleEditPhoto}
                             className="w-full py-2 border border-primary text-primary text-xs font-bold uppercase tracking-widest rounded hover:bg-primary hover:text-white transition-colors"
@@ -95,8 +182,8 @@ export default function ProfilePage() {
                                 <input
                                     type="email"
                                     value={formData.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
+                                    disabled
+                                    className="w-full p-2 border border-gray-200 rounded text-sm bg-gray-50 text-text/60"
                                 />
                             </div>
                             <div>
@@ -164,8 +251,12 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="col-span-2 mt-4">
-                                <button type="submit" className="px-6 py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors">
-                                    Save Changes
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="px-6 py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-60"
+                                >
+                                    {saving ? "Saving..." : "Save Changes"}
                                 </button>
                             </div>
                         </form>
@@ -196,6 +287,9 @@ export default function ProfilePage() {
                                     rows={3}
                                 />
                             </div>
+                            <p className="text-xs text-text/50">
+                                Health profile changes are saved with the Save Changes button above.
+                            </p>
                         </div>
                     </div>
                 </div>

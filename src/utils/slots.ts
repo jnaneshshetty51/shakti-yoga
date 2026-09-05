@@ -51,7 +51,7 @@ function formatTime(hour: number, minute: number): string {
 }
 
 function addMinutes(hour: number, minute: number, minutesToAdd: number): string {
-    let totalMinutes = hour * 60 + minute + minutesToAdd;
+    const totalMinutes = hour * 60 + minute + minutesToAdd;
     const newHour = Math.floor(totalMinutes / 60);
     const newMinute = totalMinutes % 60;
     return formatTime(newHour, newMinute);

@@ -41,7 +41,7 @@ export async function POST(
         // Get user info
         const user = await prisma.user.findUnique({
             where: { id: payload.id },
-            select: { id: true, name: true }
+            select: { id: true, name: true, role: true }
         });
 
         if (!user) {
@@ -49,6 +49,14 @@ export async function POST(
         }
 
         const isTeacher = user.id === liveClass.teacherId;
+
+        // Paywall Check: Non-teachers with VISITOR role cannot join live classes
+        if (!isTeacher && user.role === 'VISITOR') {
+            return NextResponse.json({
+                error: 'Active membership or trial required to join live sessions. Please choose a plan to continue.',
+                paywall: true
+            }, { status: 403 });
+        }
 
         // Create Daily.co meeting token
         const dailyToken = await createDailyToken(liveClass.roomId!, {

@@ -60,6 +60,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
+        // Check paywall role
+        if (user.role === 'VISITOR') {
+            return NextResponse.json({
+                error: 'Subscription required',
+                message: 'You need an active subscription or free trial to book classes. Please choose a plan to continue.'
+            }, { status: 403 });
+        }
+
         // Check trial limit - trial users can only book 1 class
         if (user.role === 'TRIAL' && user.bookings.length >= 1) {
             return NextResponse.json({

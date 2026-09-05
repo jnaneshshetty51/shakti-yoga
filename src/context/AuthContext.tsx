@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export type UserRole = 'visitor' | 'member_everyday' | 'member_therapy' | 'trial' | 'admin';
+export type UserRole = 'visitor' | 'member_everyday' | 'member_therapy' | 'trial' | 'admin' | 'teacher';
 
 interface User {
     id: string;
@@ -20,8 +20,9 @@ interface AuthContextType {
     user: User | null;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    refreshUser: () => Promise<void>;
     isLoading: boolean;
-    useCredit: () => boolean; // Kept for compatibility
+    consumeCredit: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +41,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const res = await fetch('/api/auth/me');
             const data = await res.json();
             if (data.user) {
-                setUser(data.user);
+                const defaultCredits = data.user.role === 'member_therapy' || data.user.role === 'admin'
+                    ? 4
+                    : data.user.role === 'trial' ? 1 : 0;
+
+                setUser({
+                    ...data.user,
+                    credits: data.user.credits ?? defaultCredits
+                });
             } else {
                 setUser(null);
             }
@@ -66,7 +74,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw new Error(data.error || 'Login failed');
             }
 
-            setUser(data.user);
+            const defaultCredits = data.user.role === 'member_therapy' || data.user.role === 'admin'
+                ? 4
+                : data.user.role === 'trial' ? 1 : 0;
+
+            setUser({
+                ...data.user,
+                credits: data.user.credits ?? defaultCredits
+            });
 
             // Redirect based on role
             if (data.user.role === 'admin' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'STAFF_ADMIN') {
@@ -90,8 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const useCredit = () => {
-        // Placeholder for now as credits are not in DB yet
+    const consumeCredit = () => {
         if (user && user.credits && user.credits > 0) {
             const newCredits = user.credits - 1;
             setUser({ ...user, credits: newCredits });
@@ -101,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, isLoading, useCredit }}>
+        <AuthContext.Provider value={{ user, login, logout, refreshUser: checkAuth, isLoading, consumeCredit }}>
             {children}
         </AuthContext.Provider>
     );

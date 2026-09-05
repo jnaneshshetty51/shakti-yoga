@@ -19,15 +19,15 @@ export default function FAQ() {
     ];
 
     return (
-        <section className="py-20 px-8 bg-background">
+        <section className="py-12 sm:py-20 px-4 sm:px-8 bg-background">
             <div className="max-w-3xl mx-auto">
-                <h2 className="font-serif text-3xl md:text-4xl text-primary text-center mb-12">Frequently Asked Questions</h2>
+                <h2 className="font-serif text-3xl md:text-4xl text-primary text-center mb-8 sm:mb-12">Frequently Asked Questions</h2>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     {faqs.map((faq, index) => (
-                        <div key={index} className="border-b border-primary/10 pb-6">
-                            <h3 className="font-serif text-lg text-text font-bold mb-2">{faq.question}</h3>
-                            <p className="font-sans text-text/70 leading-relaxed">{faq.answer}</p>
+                        <div key={index} className="border-b border-primary/10 pb-4 sm:pb-6">
+                            <h3 className="font-serif text-base sm:text-lg text-text font-bold mb-2">{faq.question}</h3>
+                            <p className="font-sans text-xs sm:text-sm text-text/70 leading-relaxed">{faq.answer}</p>
                         </div>
                     ))}
                 </div>

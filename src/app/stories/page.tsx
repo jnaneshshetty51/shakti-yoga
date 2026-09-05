@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { stories, Story } from "@/utils/content";
+import { stories } from "@/utils/content";
 import Link from "next/link";
 
 export default function StoriesPage() {

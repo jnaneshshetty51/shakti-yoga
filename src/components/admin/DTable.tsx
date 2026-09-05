@@ -32,7 +32,7 @@ type DTableProps<T> = {
     onBulkDelete?: (selectedIds: string[]) => void;
 };
 
-export default function DTable<T extends { id: string | number;[key: string]: any }>({
+export default function DTable<T extends { id: string | number;[key: string]: unknown }>({
     data,
     columns,
     title,
@@ -73,8 +73,8 @@ export default function DTable<T extends { id: string | number;[key: string]: an
         if (!sortConfig) return filteredData;
 
         return [...filteredData].sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
+            const aValue = a[sortConfig.key] as string | number;
+            const bValue = b[sortConfig.key] as string | number;
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -143,11 +143,11 @@ export default function DTable<T extends { id: string | number;[key: string]: an
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             {/* Header & Controls */}
-            <div className="p-6 border-b border-gray-100 space-y-4">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="p-4 sm:p-6 border-b border-gray-100 space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                     {title && <h2 className="font-serif text-xl text-gray-800">{title}</h2>}
 
-                    <div className="flex gap-4 w-full md:w-auto">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         {searchable && (
                             <input
                                 type="text"
@@ -157,20 +157,22 @@ export default function DTable<T extends { id: string | number;[key: string]: an
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         )}
-                        <button
-                            onClick={handleExportCSV}
-                            className="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors"
-                        >
-                            Export
-                        </button>
-                        {onCreate && (
+                        <div className="flex gap-2 w-full sm:w-auto justify-end">
                             <button
-                                onClick={onCreate}
-                                className="px-4 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors whitespace-nowrap"
+                                onClick={handleExportCSV}
+                                className="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors flex-1 sm:flex-none text-center"
                             >
-                                + Create
+                                Export
                             </button>
-                        )}
+                            {onCreate && (
+                                <button
+                                    onClick={onCreate}
+                                    className="px-4 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors whitespace-nowrap flex-1 sm:flex-none text-center"
+                                >
+                                    + Create
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 

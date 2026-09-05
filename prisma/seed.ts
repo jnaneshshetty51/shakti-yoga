@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { PrismaClient, Role, PlanType, SubscriptionStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -6,14 +7,38 @@ const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
 });
 
+function isTableMissingError(error: unknown): boolean {
+  const e = error as { code?: string; message?: string };
+  return e?.code === 'P2021' || !!e?.message?.includes('does not exist');
+}
+
+/**
+ * Password used for every seeded account. Taken from SEED_PASSWORD if set,
+ * otherwise a random one is generated and printed once at the end.
+ */
+function resolveSeedPassword(): { password: string; generated: boolean } {
+  const fromEnv = process.env.SEED_PASSWORD;
+  if (fromEnv && fromEnv.length >= 8) {
+    return { password: fromEnv, generated: false };
+  }
+  return { password: `sy_${randomBytes(12).toString('base64url')}`, generated: true };
+}
+
 async function main() {
   console.log('🌱 Starting seed...');
+
+  // Guard: never seed a production database by accident (shared demo passwords).
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== 'true') {
+    console.error('\n❌ Refusing to seed with NODE_ENV=production.');
+    console.error('   Set ALLOW_PROD_SEED=true to override (and set a strong SEED_PASSWORD).\n');
+    process.exit(1);
+  }
 
   // Check if database tables exist by trying to query
   try {
     await prisma.$queryRaw`SELECT 1`;
-  } catch (error: any) {
-    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+  } catch (error: unknown) {
+    if (isTableMissingError(error)) {
       console.error('\n❌ Database tables do not exist yet!');
       console.error('\n📋 Please run migrations first:');
       console.error('   1. Create initial migration: npx prisma migrate dev --name init');
@@ -24,8 +49,8 @@ async function main() {
     throw error;
   }
 
-  // Hash password for all users (using "Password123!" as default)
-  const hashedPassword = await bcrypt.hash('Password123!', 10);
+  const { password: seedPassword, generated: passwordGenerated } = resolveSeedPassword();
+  const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
   // Clear existing users (optional - comment out if you want to keep existing data)
   console.log('🧹 Cleaning up existing seed data...');
@@ -57,8 +82,8 @@ async function main() {
     await prisma.user.deleteMany({
       where: { email: { in: seedEmails } },
     });
-  } catch (error: any) {
-    if (error.code === 'P2021') {
+  } catch (error: unknown) {
+    if (isTableMissingError(error)) {
       console.error('\n❌ Database tables do not exist yet!');
       console.error('\n📋 Please run migrations first:');
       console.error('   1. Create initial migration: npx prisma migrate dev --name init');
@@ -124,7 +149,7 @@ async function main() {
       subscription: {
         create: {
           planType: PlanType.EVERYDAY_YOGA,
-          amount: 29.99,
+          amount: 59,
           currency: 'USD',
           status: SubscriptionStatus.ACTIVE,
           renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -153,7 +178,7 @@ async function main() {
       subscription: {
         create: {
           planType: PlanType.YOGA_THERAPY,
-          amount: 99.99,
+          amount: 120,
           currency: 'USD',
           status: SubscriptionStatus.ACTIVE,
           renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -386,7 +411,12 @@ async function main() {
   console.log('\n🎉 Seed completed successfully!');
   console.log('\n📋 User Credentials:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('All users use the password: Password123!');
+  if (passwordGenerated) {
+    console.log(`All users share this generated password: ${seedPassword}`);
+    console.log('(set SEED_PASSWORD in the environment to choose your own)');
+  } else {
+    console.log('All users share the password from SEED_PASSWORD.');
+  }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('SUPER_ADMIN:     superadmin@shaktiyoga.com');
   console.log('STAFF_ADMIN:     staffadmin@shaktiyoga.com');

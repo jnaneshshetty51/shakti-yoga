@@ -49,7 +49,7 @@ export const mockUsers: User[] = [
 
 export const mockSubscriptions: Subscription[] = [
     { id: 'sub_1', userId: '1', userName: 'Jnanesh Shetty', plan: 'Everyday Yoga', amount: 59, status: 'Active', renewalDate: 'Dec 1, 2025' },
-    { id: 'sub_2', userId: '2', userName: 'Sarah Jones', plan: 'Yoga Therapy', amount: 199, status: 'Active', renewalDate: 'Dec 15, 2025' },
+    { id: 'sub_2', userId: '2', userName: 'Sarah Jones', plan: 'Yoga Therapy', amount: 120, status: 'Active', renewalDate: 'Dec 15, 2025' },
     { id: 'sub_3', userId: '3', userName: 'Mike Ross', plan: 'Trial', amount: 0, status: 'Trial', renewalDate: 'Nov 27, 2025' },
     { id: 'sub_4', userId: '5', userName: 'Harvey Specter', plan: 'Everyday Yoga', amount: 59, status: 'Active', renewalDate: 'Dec 5, 2025' },
 ];

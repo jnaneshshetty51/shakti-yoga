@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function TherapyBookingPage() {
-    const { user, useCredit } = useAuth();
+    const { user, consumeCredit } = useAuth();
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<number | null>(null);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function TherapyBookingPage() {
             if (response.ok) {
                 // If successful, debit credit locally (or refetch user)
                 // For now, assume success
-                if (useCredit()) {
+                if (consumeCredit()) {
                     alert("Session Booked! 1 Credit used.");
                     router.push("/dashboard");
                 }
@@ -68,7 +68,7 @@ export default function TherapyBookingPage() {
         }
     };
 
-    const credits = user?.credits ?? 0;
+    const credits = user?.credits ?? (user?.role === 'member_therapy' || user?.role === 'admin' ? 4 : user?.role === 'trial' ? 1 : 0);
 
     return (
         <div>
@@ -85,10 +85,20 @@ export default function TherapyBookingPage() {
             </div>
 
             {credits === 0 ? (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-lg text-center">
-                    <h3 className="font-bold mb-2">No Credits Remaining</h3>
-                    <p className="text-sm mb-4">You have used all your session credits for this month.</p>
-                    <Link href="/contact" className="text-sm underline font-bold">Contact us to buy more</Link>
+                <div className="bg-white border border-primary/10 p-8 rounded-lg shadow-sm text-center max-w-lg mx-auto">
+                    <div className="text-5xl mb-4">🔒</div>
+                    <h3 className="font-serif text-2xl text-primary mb-2">1:1 Therapy Membership Required</h3>
+                    <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                        You need an active 1:1 Yoga Therapy subscription or available session credits to book private consultations.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link href="/checkout?plan=therapy" className="px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors">
+                            Subscribe to Yoga Therapy ($120/mo)
+                        </Link>
+                        <Link href="/programs" className="px-6 py-3 border border-primary text-primary font-bold uppercase tracking-widest text-xs rounded hover:bg-accent transition-colors">
+                            View All Plans
+                        </Link>
+                    </div>
                 </div>
             ) : (
                 <div className="grid md:grid-cols-3 gap-8">

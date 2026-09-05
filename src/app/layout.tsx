@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Lato } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -20,6 +20,13 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "Shakti Yoga | Find Your Inner Power",
   description: "Minimalistic and earthy yoga studio in India.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#4A6741",
 };
 
 import { Providers } from "./providers";

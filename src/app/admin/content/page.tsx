@@ -76,7 +76,7 @@ export default function AdminContentPage() {
                 {['stories', 'blog', 'whatsapp'].map((tab) => (
                     <button
                         key={tab}
-                        onClick={() => setActiveTab(tab as any)}
+                        onClick={() => setActiveTab(tab as 'stories' | 'blog' | 'whatsapp')}
                         className={`pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === tab ? 'border-b-2 border-primary text-primary' : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >

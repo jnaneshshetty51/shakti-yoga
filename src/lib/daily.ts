@@ -1,7 +1,7 @@
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
 const DAILY_API_URL = 'https://api.daily.co/v1';
 
-export async function createDailyRoom(name: string) {
+export async function createDailyRoom(_name: string) {
     if (!DAILY_API_KEY) {
         throw new Error('DAILY_API_KEY not configured');
     }
