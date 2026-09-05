@@ -5,6 +5,8 @@ import { verifyToken } from '@/lib/auth';
 import { PLANS } from '@/lib/pricing';
 import { verifyPaymentSignature, fetchPayment } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
+import { sendEmail, emailLayout } from '@/lib/email';
+import { formatPrice } from '@/lib/pricing';
 import type { PlanType } from '@prisma/client';
 
 function planConfigForDbType(planType: PlanType) {
@@ -83,6 +85,17 @@ export async function POST(request: Request) {
 
         const plan = planConfigForDbType(paymentRecord.planType);
         const { user, mappedRole } = await activatePlan(payload.id, plan);
+
+        sendEmail({
+            to: user.email,
+            subject: `Payment received — ${plan.name}`,
+            html: emailLayout(
+                `<p>Hi ${user.name.split(' ')[0] || 'there'},</p>
+                 <p>We've received your payment of <strong>${formatPrice(paymentRecord.amount, paymentRecord.currency)}</strong> for the ${plan.name} plan.</p>
+                 <p>Payment reference: <code>${razorpay_payment_id}</code></p>
+                 <p>Your membership is active. Namaste 🙏</p>`,
+            ),
+        }).catch(() => { });
 
         return NextResponse.json({
             success: true,

@@ -20,6 +20,9 @@ nano .env
 | `DAILY_API_KEY` | For live classes | Daily.co API key. Blank = live-class create/join returns an error. |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For paid checkout | Razorpay API keys (dashboard.razorpay.com → Settings → API Keys). Blank = paid plans return 503; free trial still works. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | For paid checkout | Browser copy of the key id, used by Razorpay Checkout. Set to the same value as `RAZORPAY_KEY_ID`. |
+| `RESEND_API_KEY` | For email | Resend API key. Unset = contact/booking/payment emails are logged to the console, not sent. |
+| `EMAIL_FROM` | For email | Verified sender, e.g. `Shakti Yoga <hello@shaktiyoga.in>`. Defaults to Resend's sandbox address. |
+| `ADMIN_EMAIL` | For email | Address that receives contact-form enquiries. |
 | `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. |
 | `NEXT_PUBLIC_SEED_PASSWORD` | No | Same value, for the dev-only Quick Login buttons on `/login`. |
 | `ALLOW_PROD_SEED` | No | Must be `"true"` to run `npm run db:seed` with `NODE_ENV=production`. |

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { sendEmail, emailLayout } from '@/lib/email';
 
 export async function GET() {
     try {
@@ -129,6 +130,20 @@ export async function POST(request: Request) {
                 }
             });
         });
+
+        const when = bookingDate.toLocaleString('en-IN', {
+            weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
+        });
+        sendEmail({
+            to: user.email,
+            subject: `Booking confirmed — ${when}`,
+            html: emailLayout(
+                `<p>Hi ${user.name.split(' ')[0] || 'there'},</p>
+                 <p>Your ${isTherapySession ? '1:1 therapy session' : 'class'} is confirmed for <strong>${when} IST</strong> with ${teacher.name}.</p>
+                 ${isTherapySession ? `<p>Session credits remaining: <strong>${user.credits - 1}</strong>.</p>` : ''}
+                 <p>See you on the mat. 🧘</p>`,
+            ),
+        }).catch(() => { });
 
         return NextResponse.json({
             success: true,

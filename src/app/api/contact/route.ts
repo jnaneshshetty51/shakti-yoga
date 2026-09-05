@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { notifyAdmin, emailLayout } from '@/lib/email';
+
+function escapeHtml(s: string) {
+    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 function isEmail(v: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -26,6 +31,16 @@ export async function POST(request: Request) {
         await prisma.contactMessage.create({
             data: { name, email, subject: subject || null, message },
         });
+
+        // Fire-and-forget admin notification.
+        notifyAdmin(
+            `New enquiry: ${subject || 'General'} — ${name}`,
+            emailLayout(
+                `<p><strong>${escapeHtml(name)}</strong> (${escapeHtml(email)}) sent a message:</p>
+                 <p style="white-space:pre-wrap;background:#f6f5f2;padding:12px;border-radius:6px">${escapeHtml(message)}</p>`,
+            ),
+            email,
+        ).catch(() => { });
 
         return NextResponse.json({ success: true });
     } catch (error) {
