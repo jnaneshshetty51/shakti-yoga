@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
+import { cancelSubscription } from '@/lib/razorpay';
 
 export async function POST() {
     try {
@@ -20,7 +21,16 @@ export async function POST() {
             return NextResponse.json({ error: 'No active subscription' }, { status: 404 });
         }
 
-        // Mark cancelled — access continues until renewalDate, then a future job/login can downgrade.
+        // Stop future Razorpay charges (at cycle end). Local status is set regardless.
+        if (subscription.recurring && subscription.billingProviderId) {
+            try {
+                await cancelSubscription(subscription.billingProviderId, true);
+            } catch (err) {
+                console.error('Razorpay subscription cancel failed (continuing):', err);
+            }
+        }
+
+        // Mark cancelled — access continues until renewalDate, then lazy expiry downgrades.
         const updated = await prisma.subscription.update({
             where: { userId: payload.id },
             data: { status: 'CANCELLED' },

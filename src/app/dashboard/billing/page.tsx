@@ -22,6 +22,7 @@ interface Subscription {
     status: string;
     startDate: string;
     renewalDate: string;
+    recurring: boolean;
 }
 
 const PLAN_LABEL: Record<string, string> = {
@@ -110,7 +111,11 @@ export default function BillingPage() {
                                         : "No charge"}
                                 </p>
                                 <p className="text-text/50 text-xs mt-1">
-                                    {subscription.status === "CANCELLED" ? "Access until" : "Renews"}{" "}
+                                    {subscription.status === "CANCELLED"
+                                        ? "Access until"
+                                        : subscription.recurring
+                                            ? "Auto-renews"
+                                            : "Renew by"}{" "}
                                     {new Date(subscription.renewalDate).toLocaleDateString()}
                                 </p>
                             </div>

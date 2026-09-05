@@ -50,7 +50,7 @@ function CheckoutContent() {
         setIsProcessing(true);
 
         try {
-            const res = await fetch("/api/checkout/order", {
+            const res = await fetch("/api/checkout/subscribe", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ planType }),
@@ -72,11 +72,9 @@ function CheckoutContent() {
 
             const rzp = new window.Razorpay({
                 key: data.keyId,
-                amount: data.amount,
-                currency: data.currency,
                 name: "Shakti Yoga",
-                description: `${data.planName} subscription`,
-                order_id: data.orderId,
+                description: `${data.planName} — monthly membership`,
+                subscription_id: data.subscriptionId,
                 prefill: data.prefill,
                 theme: { color: "#4A6741" },
                 modal: {

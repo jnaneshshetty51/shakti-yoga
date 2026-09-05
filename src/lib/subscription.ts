@@ -45,9 +45,16 @@ export async function syncSubscriptionState(userId: string, currentRole: Role): 
  * subscription with a fresh 30-day renewal date, and re-issue the session cookie
  * so the new role/permissions take effect immediately.
  */
-export async function activatePlan(userId: string, plan: PlanConfig) {
-    const renewalDate = new Date();
-    renewalDate.setDate(renewalDate.getDate() + 30);
+export async function activatePlan(
+    userId: string,
+    plan: PlanConfig,
+    opts: { recurring?: boolean; subscriptionId?: string; renewalDate?: Date } = {},
+) {
+    const renewalDate = opts.renewalDate ?? (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        return d;
+    })();
 
     const user = await prisma.user.update({
         where: { id: userId },
@@ -57,23 +64,20 @@ export async function activatePlan(userId: string, plan: PlanConfig) {
         },
     });
 
+    const subFields = {
+        planType: plan.dbPlanType,
+        amount: plan.amount,
+        currency: plan.currency,
+        status: plan.subscriptionStatus,
+        renewalDate,
+        recurring: opts.recurring ?? false,
+        ...(opts.subscriptionId ? { billingProviderId: opts.subscriptionId } : {}),
+    };
+
     await prisma.subscription.upsert({
         where: { userId },
-        create: {
-            userId,
-            planType: plan.dbPlanType,
-            amount: plan.amount,
-            currency: plan.currency,
-            status: plan.subscriptionStatus,
-            renewalDate,
-        },
-        update: {
-            planType: plan.dbPlanType,
-            amount: plan.amount,
-            currency: plan.currency,
-            status: plan.subscriptionStatus,
-            renewalDate,
-        },
+        create: { userId, ...subFields },
+        update: subFields,
     });
 
     const mappedRole = mapDatabaseRole(user.role);
