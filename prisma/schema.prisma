@@ -127,6 +127,16 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
 model Payment {
   id                String        @id @default(cuid())
   userId            String

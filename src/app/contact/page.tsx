@@ -1,4 +1,5 @@
 import PageHeader from "@/components/PageHeader";
+import ContactForm from "./ContactForm";
 
 export default function ContactPage() {
     return (
@@ -42,35 +43,7 @@ export default function ContactPage() {
                         </div>
                     </div>
 
-                    <div className="bg-white p-8 rounded-lg shadow-lg border-t-4 border-primary">
-                        <h2 className="font-serif text-2xl text-text mb-6">Send us a Message</h2>
-                        <form className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Name</label>
-                                <input type="text" id="name" className="w-full p-3 bg-accent/20 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors" placeholder="Your Name" />
-                            </div>
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Email</label>
-                                <input type="email" id="email" className="w-full p-3 bg-accent/20 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors" placeholder="your@email.com" />
-                            </div>
-                            <div>
-                                <label htmlFor="subject" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Subject</label>
-                                <select id="subject" className="w-full p-3 bg-accent/20 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors">
-                                    <option>General Inquiry</option>
-                                    <option>Free Trial Class</option>
-                                    <option>Yoga Therapy Consultation</option>
-                                    <option>Billing Issue</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="message" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Message</label>
-                                <textarea id="message" rows={4} className="w-full p-3 bg-accent/20 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors" placeholder="How can we help you?"></textarea>
-                            </div>
-                            <button type="submit" className="w-full py-4 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors">
-                                Send Message
-                            </button>
-                        </form>
-                    </div>
+                    <ContactForm />
                 </div>
             </section>
         </main>
