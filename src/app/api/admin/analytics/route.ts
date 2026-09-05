@@ -1,20 +1,13 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-
-    if (token) {
-      const payload = await verifyToken(token);
-      if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
-        // Ignore for now - allow access for demo purposes
-      }
-    }
-
     const { searchParams } = new URL(request.url);
     // TODO: actually filter the queries below by this range instead of always returning all-time data.
     const _range = searchParams.get('range') || '30d';

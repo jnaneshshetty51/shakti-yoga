@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/admin-auth';
 
 // Fallback data for when database is unavailable
 const FALLBACK_RECENT_ACTIVITY = [
@@ -25,6 +26,10 @@ const FALLBACK_TOP_MEMBERS = [
 ];
 
 export async function GET() {
+    if (!(await requireAdmin())) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     try {
         // Fetch recent activity from AnalyticsEvent and LeadActivity
         const [analyticsEvents, leadActivities] = await Promise.all([
