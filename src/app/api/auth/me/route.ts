@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyToken, mapDatabaseRole } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { syncSubscriptionState } from '@/lib/subscription';
 
 export async function GET() {
     try {
@@ -37,10 +38,12 @@ export async function GET() {
             return NextResponse.json({ user: null });
         }
 
+        const effectiveRole = await syncSubscriptionState(user.id, user.role);
+
         return NextResponse.json({
             user: {
                 ...user,
-                role: mapDatabaseRole(user.role)
+                role: mapDatabaseRole(effectiveRole)
             }
         });
     } catch (error) {

@@ -1,7 +1,18 @@
-import { blogPosts } from "@/utils/content";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
-export default function BlogPage() {
+export const dynamic = "force-dynamic";
+
+function formatDate(d: Date) {
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+}
+
+export default async function BlogPage() {
+    const posts = await prisma.blogPost.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    });
+
     return (
         <main className="min-h-screen bg-white">
             {/* Hero Section */}
@@ -18,20 +29,27 @@ export default function BlogPage() {
             {/* Blog Grid */}
             <section className="py-20 px-4">
                 <div className="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-                    {blogPosts.map((post) => (
+                    {posts.length === 0 && (
+                        <p className="text-text/60 italic col-span-full text-center">No articles published yet.</p>
+                    )}
+                    {posts.map((post) => (
                         <article key={post.slug} className="group cursor-pointer">
                             <Link href={`/blog/${post.slug}`}>
                                 <div className="bg-gray-100 aspect-[4/3] rounded-lg mb-6 overflow-hidden relative">
-                                    {/* Placeholder for Image */}
-                                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400 font-serif text-4xl group-hover:scale-105 transition-transform duration-500">
-                                        {post.title.charAt(0)}
-                                    </div>
+                                    {post.imageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={post.imageUrl} alt={post.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    ) : (
+                                        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400 font-serif text-4xl group-hover:scale-105 transition-transform duration-500">
+                                            {post.title.charAt(0)}
+                                        </div>
+                                    )}
                                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded text-xs font-bold uppercase tracking-widest text-secondary">
                                         {post.category}
                                     </div>
                                 </div>
                                 <div className="space-y-3">
-                                    <div className="text-xs text-gray-500 uppercase tracking-widest">{post.date}</div>
+                                    <div className="text-xs text-gray-500 uppercase tracking-widest">{formatDate(post.publishedAt ?? post.createdAt)}</div>
                                     <h2 className="font-serif text-2xl text-gray-800 group-hover:text-primary transition-colors">
                                         {post.title}
                                     </h2>
@@ -48,23 +66,19 @@ export default function BlogPage() {
                 </div>
             </section>
 
-            {/* Newsletter / CTA */}
+            {/* CTA */}
             <section className="bg-primary text-white py-20 px-4">
                 <div className="max-w-xl mx-auto text-center">
                     <h2 className="font-serif text-3xl mb-4">Join the Community</h2>
                     <p className="text-white/80 mb-8">
-                        Get the latest articles, class updates, and daily inspiration delivered to your inbox.
+                        Practice with our teachers and get class updates and daily inspiration in your batch&apos;s WhatsApp group.
                     </p>
-                    <div className="flex gap-2">
-                        <input
-                            type="email"
-                            placeholder="Your email address"
-                            className="flex-1 px-4 py-3 rounded text-gray-800 focus:outline-none"
-                        />
-                        <button className="px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-white hover:text-secondary transition-colors">
-                            Subscribe
-                        </button>
-                    </div>
+                    <Link
+                        href="/trial"
+                        className="inline-block px-8 py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-white hover:text-secondary transition-colors"
+                    >
+                        Book a Free Class
+                    </Link>
                 </div>
             </section>
         </main>

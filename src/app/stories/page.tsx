@@ -1,20 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { stories } from "@/utils/content";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+
+interface StoryRow {
+    id: string;
+    name: string;
+    location: string;
+    plan: string;
+    quote: string;
+    content: string;
+    rating: number;
+    imageUrl: string | null;
+}
 
 export default function StoriesPage() {
     const [filter, setFilter] = useState<string>("All");
+    const [stories, setStories] = useState<StoryRow[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const filteredStories = filter === "All"
-        ? stories
-        : stories.filter(story => {
-            if (filter === "NRI") return story.plan === "NRI";
-            if (filter === "Therapy") return story.plan === "Therapy";
-            if (filter === "Everyday Yoga") return story.plan === "Everyday Yoga";
+    useEffect(() => {
+        fetch("/api/stories")
+            .then(r => r.json())
+            .then(d => setStories(d.stories || []))
+            .catch(() => setStories([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    const filteredStories = useMemo(() => {
+        if (filter === "All") return stories;
+        return stories.filter(story => {
+            const p = story.plan.toLowerCase();
+            if (filter === "NRI") return p.includes("nri");
+            if (filter === "Therapy") return p.includes("therapy");
+            if (filter === "Everyday Yoga") return p.includes("everyday");
             return true;
         });
+    }, [stories, filter]);
 
     return (
         <main className="min-h-screen bg-gray-50">
@@ -49,7 +71,9 @@ export default function StoriesPage() {
             {/* Stories Grid */}
             <section className="py-12 px-4 pb-24">
                 <div className="max-w-6xl mx-auto">
-                    {filteredStories.length === 0 ? (
+                    {loading ? (
+                        <div className="text-center py-20 text-gray-500">Loading stories...</div>
+                    ) : filteredStories.length === 0 ? (
                         <div className="text-center py-20 text-gray-500">
                             No stories found for this category.
                         </div>
@@ -74,9 +98,9 @@ export default function StoriesPage() {
                                         </p>
                                     </div>
 
-                                    {story.beforeAfter && (
+                                    {story.content && (
                                         <div className="bg-gray-50 p-4 rounded text-sm text-gray-600 mb-6 border-l-2 border-primary/30">
-                                            <p>{story.beforeAfter}</p>
+                                            <p>{story.content}</p>
                                         </div>
                                     )}
 

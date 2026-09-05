@@ -1,15 +1,20 @@
-import { blogPosts } from "@/utils/content";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
-// This is a server component
+export const dynamic = "force-dynamic";
+
 export default async function BlogPostPage(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
-    const post = blogPosts.find(p => p.slug === params.slug);
+    const post = await prisma.blogPost.findUnique({ where: { slug: params.slug } });
 
-    if (!post) {
+    if (!post || post.status !== "PUBLISHED") {
         notFound();
     }
+
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+    }).format(post.publishedAt ?? post.createdAt);
 
     return (
         <main className="min-h-screen bg-white pt-24 pb-20">
@@ -19,7 +24,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                     <div className="flex justify-center gap-4 text-xs font-bold uppercase tracking-widest text-gray-500 mb-6">
                         <span className="text-secondary">{post.category}</span>
                         <span>•</span>
-                        <span>{post.date}</span>
+                        <span>{dateLabel}</span>
                     </div>
                     <h1 className="font-serif text-4xl md:text-5xl text-gray-900 mb-8 leading-tight">
                         {post.title}

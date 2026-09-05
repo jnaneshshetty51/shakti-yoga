@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, signToken, mapDatabaseRole } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { syncSubscriptionState } from '@/lib/subscription';
 
 export async function POST(request: Request) {
     try {
@@ -40,8 +41,10 @@ export async function POST(request: Request) {
             data: { lastLogin: new Date() },
         });
 
+        const effectiveRole = await syncSubscriptionState(user.id, user.role);
+
         // Map role to frontend expected format
-        const mappedRole = mapDatabaseRole(user.role);
+        const mappedRole = mapDatabaseRole(effectiveRole);
 
         // Create JWT token
         const token = await signToken({
