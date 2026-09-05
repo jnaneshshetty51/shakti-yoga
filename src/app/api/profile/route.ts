@@ -26,6 +26,7 @@ export async function GET() {
                 phone: true,
                 country: true,
                 timezone: true,
+                avatarUrl: true,
                 profile: {
                     select: { goals: true, medicalHistory: true, communicationPref: true },
                 },
@@ -86,6 +87,7 @@ export async function PATCH(request: Request) {
                 phone: true,
                 country: true,
                 timezone: true,
+                avatarUrl: true,
                 profile: {
                     select: { goals: true, medicalHistory: true, communicationPref: true },
                 },

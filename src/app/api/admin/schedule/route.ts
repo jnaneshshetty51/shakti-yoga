@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/admin-auth';
+
+const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 export async function GET() {
     try {
@@ -107,6 +110,53 @@ export async function GET() {
     } catch (error) {
         console.error('Admin schedule API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function POST(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    try {
+        const { batchId, date } = await request.json().catch(() => ({}));
+        if (!batchId || !date) {
+            return NextResponse.json({ error: 'batchId and date are required' }, { status: 400 });
+        }
+        const instance = await prisma.classInstance.create({
+            data: { batchId, date: new Date(date), status: 'Scheduled' },
+        });
+        return NextResponse.json({ instance: { id: instance.id } });
+    } catch (error) {
+        console.error('Admin schedule POST error:', error);
+        return NextResponse.json({ error: 'Could not add class' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    try {
+        const { id, status, attendanceCount, recordingUrl } = await request.json().catch(() => ({}));
+        if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });
+        const data: Record<string, unknown> = {};
+        if (status !== undefined) data.status = status;
+        if (attendanceCount !== undefined) data.attendanceCount = Math.max(0, Math.trunc(Number(attendanceCount) || 0));
+        if (recordingUrl !== undefined) data.recordingUrl = recordingUrl || null;
+        const instance = await prisma.classInstance.update({ where: { id }, data });
+        return NextResponse.json({ instance: { id: instance.id, status: instance.status } });
+    } catch (error) {
+        console.error('Admin schedule PATCH error:', error);
+        return NextResponse.json({ error: 'Could not update class' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    try {
+        const id = new URL(request.url).searchParams.get('id');
+        if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });
+        await prisma.classInstance.delete({ where: { id } });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Admin schedule DELETE error:', error);
+        return NextResponse.json({ error: 'Could not delete class' }, { status: 500 });
     }
 }
 

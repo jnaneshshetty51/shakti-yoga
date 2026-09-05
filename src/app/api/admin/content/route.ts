@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/admin-auth';
+import { Role, ContentStatus } from '@prisma/client';
+
+const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+type ContentType = 'story' | 'blog' | 'whatsapp';
+
+function toContentStatus(v: unknown): ContentStatus {
+    const s = String(v || '').toUpperCase();
+    return s in ContentStatus ? (s as ContentStatus) : ContentStatus.DRAFT;
+}
+
+function slugify(s: string) {
+    return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 
 export async function GET() {
     try {
@@ -45,10 +59,14 @@ export async function GET() {
         const formattedStories = stories.map(story => ({
             id: story.id,
             name: story.user?.name || story.authorName,
-            location: story.location || 'N/A',
-            plan: story.planType || 'N/A',
+            authorName: story.authorName,
+            location: story.location || '',
+            plan: story.planType || '',
+            planType: story.planType || '',
             rating: story.rating,
             quote: story.quote,
+            content: story.content || '',
+            status: story.status,
         }));
 
         const formattedBlogPosts = blogPosts.map(post => ({
@@ -57,13 +75,18 @@ export async function GET() {
             category: post.category,
             date: formatDate(post.publishedAt || post.createdAt),
             slug: post.slug,
+            excerpt: post.excerpt || '',
+            content: post.content,
+            author: post.author,
+            status: post.status,
         }));
 
         const formattedGroups = groups.map(group => ({
             id: group.id,
             name: group.name,
-            role: group.role.replace('_', ' ').toLowerCase(),
+            role: group.role,
             whatsappLink: group.link,
+            pinnedMessage: group.pinnedMessage || '',
         }));
 
         return NextResponse.json({
@@ -74,6 +97,106 @@ export async function GET() {
     } catch (error) {
         console.error('Admin content API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+async function upsertContent(type: ContentType, body: Record<string, unknown>, isCreate: boolean) {
+    const id = body.id as string | undefined;
+
+    if (type === 'story') {
+        const data = {
+            authorName: (body.authorName as string) || (body.name as string) || 'Anonymous',
+            location: (body.location as string) || null,
+            planType: (body.planType as string) || null,
+            quote: (body.quote as string) || '',
+            content: (body.content as string) || null,
+            rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
+            status: toContentStatus(body.status ?? 'PUBLISHED'),
+        };
+        return isCreate
+            ? prisma.story.create({ data })
+            : prisma.story.update({ where: { id }, data });
+    }
+
+    if (type === 'blog') {
+        const title = (body.title as string) || 'Untitled';
+        const data = {
+            title,
+            slug: (body.slug as string) || slugify(title),
+            excerpt: (body.excerpt as string) || null,
+            content: (body.content as string) || '',
+            category: (body.category as string) || 'General',
+            author: (body.author as string) || 'Shakti Yoga',
+            status: toContentStatus(body.status),
+            publishedAt: body.status === 'PUBLISHED' ? new Date() : null,
+        };
+        return isCreate
+            ? prisma.blogPost.create({ data })
+            : prisma.blogPost.update({ where: { id }, data });
+    }
+
+    // whatsapp
+    const roleRaw = String(body.role || 'MEMBER_EVERYDAY').toUpperCase().replace(/ /g, '_');
+    const data = {
+        name: (body.name as string) || 'Group',
+        link: (body.link as string) || (body.whatsappLink as string) || '',
+        role: (roleRaw in Role ? roleRaw : 'MEMBER_EVERYDAY') as Role,
+        pinnedMessage: (body.pinnedMessage as string) || null,
+        active: body.active === undefined ? true : Boolean(body.active),
+    };
+    return isCreate
+        ? prisma.whatsAppGroup.create({ data })
+        : prisma.whatsAppGroup.update({ where: { id }, data });
+}
+
+function getType(request: Request): ContentType | null {
+    const t = new URL(request.url).searchParams.get('type');
+    return t === 'story' || t === 'blog' || t === 'whatsapp' ? t : null;
+}
+
+export async function POST(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    const type = getType(request);
+    if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
+    try {
+        const body = await request.json().catch(() => ({}));
+        const created = await upsertContent(type, body, true);
+        return NextResponse.json({ id: created.id });
+    } catch (error) {
+        console.error('Admin content POST error:', error);
+        return NextResponse.json({ error: 'Could not create content' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    const type = getType(request);
+    if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
+    try {
+        const body = await request.json().catch(() => ({}));
+        if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+        const updated = await upsertContent(type, body, false);
+        return NextResponse.json({ id: updated.id });
+    } catch (error) {
+        console.error('Admin content PATCH error:', error);
+        return NextResponse.json({ error: 'Could not update content' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    const url = new URL(request.url);
+    const type = getType(request);
+    const id = url.searchParams.get('id');
+    if (!type || !id) return NextResponse.json({ error: 'Missing type or id' }, { status: 400 });
+    try {
+        if (type === 'story') await prisma.story.delete({ where: { id } });
+        else if (type === 'blog') await prisma.blogPost.delete({ where: { id } });
+        else await prisma.whatsAppGroup.delete({ where: { id } });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Admin content DELETE error:', error);
+        return NextResponse.json({ error: 'Could not delete content' }, { status: 500 });
     }
 }
 

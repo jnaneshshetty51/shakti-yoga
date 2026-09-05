@@ -2,17 +2,20 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
+import Script from "next/script";
 import { useAuth } from "@/context/AuthContext";
-import { getPlan } from "@/lib/pricing";
+import { getPlan, formatPrice } from "@/lib/pricing";
 import Link from "next/link";
 
 function CheckoutContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { user, isLoading, refreshUser } = useAuth();
-    const planType = searchParams.get("plan") || "everyday"; // 'everyday', 'therapy', 'trial'
+    const planType = searchParams.get("plan") || "everyday";
 
     const [isProcessing, setIsProcessing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [scriptReady, setScriptReady] = useState(false);
 
     if (!isLoading && !user) {
         return (
@@ -34,47 +37,100 @@ function CheckoutContent() {
     }
 
     const selectedPlan = getPlan(planType);
-    const paymentsLive = process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === "true";
+    const isFree = selectedPlan.amount === 0;
 
-    const handlePayment = async (e: React.FormEvent) => {
+    const finish = async () => {
+        await refreshUser();
+        router.push("/welcome");
+    };
+
+    const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
         setIsProcessing(true);
 
         try {
-            const res = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const res = await fetch("/api/checkout/order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ planType }),
             });
+            const data = await res.json();
 
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Payment failed');
+                throw new Error(data.error || "Checkout failed");
             }
 
-            await refreshUser();
-            router.push("/welcome");
+            if (data.free) {
+                await finish();
+                return;
+            }
+
+            if (!scriptReady || typeof window.Razorpay !== "function") {
+                throw new Error("Payment library is still loading. Please try again in a moment.");
+            }
+
+            const rzp = new window.Razorpay({
+                key: data.keyId,
+                amount: data.amount,
+                currency: data.currency,
+                name: "Shakti Yoga",
+                description: `${data.planName} subscription`,
+                order_id: data.orderId,
+                prefill: data.prefill,
+                theme: { color: "#4A6741" },
+                modal: {
+                    ondismiss: () => {
+                        setIsProcessing(false);
+                        setError("Payment was cancelled.");
+                    },
+                },
+                handler: async (response) => {
+                    try {
+                        const verifyRes = await fetch("/api/checkout/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(response),
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (!verifyRes.ok) {
+                            throw new Error(verifyData.error || "Payment verification failed");
+                        }
+                        await finish();
+                    } catch (err) {
+                        setError(err instanceof Error ? err.message : "Payment verification failed");
+                        setIsProcessing(false);
+                    }
+                },
+            });
+            rzp.open();
         } catch (err) {
-            console.error('Payment Error:', err);
-            alert(`Subscription failed: ${err instanceof Error ? err.message : 'Please try again.'}`);
-        } finally {
+            setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
             setIsProcessing(false);
         }
     };
 
     return (
         <main className="min-h-screen bg-gray-50 py-12 px-4">
+            <Script
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                onLoad={() => setScriptReady(true)}
+                onReady={() => setScriptReady(true)}
+            />
             <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
-
                 {/* Order Summary */}
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 h-fit">
                     <h2 className="font-serif text-2xl text-primary mb-6">Order Summary</h2>
                     <div className="flex justify-between items-baseline mb-4 pb-4 border-b border-gray-100">
                         <div>
                             <h3 className="font-bold text-lg text-gray-800">{selectedPlan.name}</h3>
-                            <p className="text-sm text-gray-500">Billed {selectedPlan.period === 'month' ? 'monthly' : 'once'}</p>
+                            <p className="text-sm text-gray-500">
+                                {isFree ? "7-day free trial" : `Billed monthly`}
+                            </p>
                         </div>
-                        <div className="text-2xl font-bold text-primary">${selectedPlan.amount}</div>
+                        <div className="text-2xl font-bold text-primary">
+                            {isFree ? "Free" : formatPrice(selectedPlan.amount, selectedPlan.currency)}
+                        </div>
                     </div>
 
                     <ul className="space-y-3 mb-6">
@@ -87,40 +143,37 @@ function CheckoutContent() {
 
                     <div className="flex justify-between items-center pt-4 border-t border-gray-100 font-bold text-lg">
                         <span>Total</span>
-                        <span>${selectedPlan.amount}</span>
+                        <span>{isFree ? "Free" : formatPrice(selectedPlan.amount, selectedPlan.currency)}</span>
                     </div>
                 </div>
 
-                {/* Payment Form */}
+                {/* Payment */}
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-                    <h2 className="font-serif text-2xl text-primary mb-6">Payment Details</h2>
+                    <h2 className="font-serif text-2xl text-primary mb-6">
+                        {isFree ? "Confirm" : "Payment"}
+                    </h2>
 
-                    <form onSubmit={handlePayment} className="space-y-6">
-                        {selectedPlan.amount > 0 && !paymentsLive && (
-                            <div className="p-4 border border-amber-200 bg-amber-50 rounded text-sm text-amber-800">
-                                Online card payments aren&apos;t available yet. Complete this step to
-                                register your interest and we&apos;ll reach out to activate your membership,
-                                or <Link href="/contact" className="underline font-bold">contact us</Link> directly.
-                            </div>
-                        )}
-                        {selectedPlan.amount > 0 && paymentsLive && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Name on Card</label>
-                                    <input type="text" required className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary text-sm sm:text-base" placeholder="John Doe" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Zip Code</label>
-                                    <input type="text" required className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary text-sm sm:text-base" placeholder="12345" />
-                                </div>
-                            </div>
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleCheckout} className="space-y-6">
+                        {!isFree && (
+                            <p className="text-sm text-gray-600">
+                                You&apos;ll complete your payment securely through Razorpay (UPI, cards,
+                                net banking and wallets). Your membership activates as soon as the
+                                payment succeeds.
+                            </p>
                         )}
 
                         <div className="flex items-start gap-3">
                             <input type="checkbox" id="terms" required className="mt-1" />
                             <label htmlFor="terms" className="text-xs text-gray-600">
-                                I agree to the <Link href="#" className="underline">Terms of Service</Link> and <Link href="#" className="underline">Privacy Policy</Link>.
-                                {selectedPlan.amount > 0 && " I authorize Shakti Yoga to charge my card for the amount above."}
+                                I agree to the <Link href="/terms" className="underline">Terms of Service</Link> and{" "}
+                                <Link href="/privacy" className="underline">Privacy Policy</Link>.
+                                {!isFree && ` I authorise Shakti Yoga to charge ${formatPrice(selectedPlan.amount, selectedPlan.currency)} for this subscription.`}
                             </label>
                         </div>
 
@@ -129,15 +182,11 @@ function CheckoutContent() {
                             disabled={isProcessing}
                             className="w-full py-4 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-70 flex justify-center items-center gap-2"
                         >
-                            {isProcessing ? (
-                                <>Processing...</>
-                            ) : selectedPlan.amount === 0 ? (
-                                <>Start Free Trial</>
-                            ) : paymentsLive ? (
-                                <>Pay ${selectedPlan.amount}</>
-                            ) : (
-                                <>Request Membership</>
-                            )}
+                            {isProcessing
+                                ? "Processing..."
+                                : isFree
+                                    ? "Start Free Trial"
+                                    : `Pay ${formatPrice(selectedPlan.amount, selectedPlan.currency)}`}
                         </button>
 
                         <div className="text-center">

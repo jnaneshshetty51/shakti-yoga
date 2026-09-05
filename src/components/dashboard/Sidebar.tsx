@@ -109,8 +109,13 @@ export default function Sidebar() {
 
                 <div className="p-4 border-t border-white/10">
                     <div className="flex items-center gap-3 px-4 py-3">
-                        <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center font-bold text-xs">
-                            {getInitials(user?.name)}
+                        <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center font-bold text-xs overflow-hidden">
+                            {user?.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                                getInitials(user?.name)
+                            )}
                         </div>
                         <div className="text-sm truncate">
                             <div className="font-bold truncate">{user?.name || 'Guest User'}</div>

@@ -18,9 +18,8 @@ nano .env
 | `JWT_SECRET` | **Yes** | Signs session tokens. App throws on startup if unset. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Yes | NextAuth config. |
 | `DAILY_API_KEY` | For live classes | Daily.co API key. Blank = live-class create/join returns an error. |
-| `NEXT_PUBLIC_PAYMENTS_ENABLED` | No | `"true"` shows the real card form on `/checkout`. Default `false`. |
-| `ALLOW_MOCK_CHECKOUT` | No | `"true"` lets paid checkouts succeed without a charge even in production. Default off. |
-| `PAYMENT_PROVIDER` / `PAYMENT_API_KEY` | No | Placeholder for a future Stripe/Razorpay integration (`src/lib/payments.ts`). |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For paid checkout | Razorpay API keys (dashboard.razorpay.com → Settings → API Keys). Blank = paid plans return 503; free trial still works. |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | For paid checkout | Browser copy of the key id, used by Razorpay Checkout. Set to the same value as `RAZORPAY_KEY_ID`. |
 | `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. |
 | `NEXT_PUBLIC_SEED_PASSWORD` | No | Same value, for the dev-only Quick Login buttons on `/login`. |
 | `ALLOW_PROD_SEED` | No | Must be `"true"` to run `npm run db:seed` with `NODE_ENV=production`. |

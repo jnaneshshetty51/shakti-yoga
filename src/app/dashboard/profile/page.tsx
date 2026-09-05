@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProfileForm {
     firstName: string;
@@ -41,10 +42,14 @@ function prefsToString(form: ProfileForm): string {
 }
 
 export default function ProfilePage() {
+    const { refreshUser } = useAuth();
     const [formData, setFormData] = useState<ProfileForm>(EMPTY_FORM);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadProfile = useCallback(async () => {
         try {
@@ -55,6 +60,7 @@ export default function ProfilePage() {
             const [firstName, ...rest] = (profile.name || "").trim().split(" ");
             const prefs: string = profile.profile?.communicationPref || "";
 
+            setAvatarUrl(profile.avatarUrl || null);
             setFormData({
                 firstName: firstName || "",
                 lastName: rest.join(" "),
@@ -80,10 +86,28 @@ export default function ProfilePage() {
         loadProfile();
     }, [loadProfile]);
 
-    const handleEditPhoto = () => {
-        // Profile photos need a storage-backed avatar field on the User model
-        // before this can be wired up (see docs/ENV_SETUP.md). Not available yet.
-        setStatus("Profile photo uploads aren't available yet.");
+    const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+
+        setUploadingAvatar(true);
+        setStatus(null);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch("/api/profile/avatar", { method: "POST", body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Upload failed");
+            setAvatarUrl(data.avatarUrl);
+            await refreshUser();
+            setStatus("Photo updated.");
+        } catch (error) {
+            console.error("Avatar upload failed:", error);
+            setStatus(error instanceof Error ? error.message : "Upload failed.");
+        } finally {
+            setUploadingAvatar(false);
+        }
     };
 
     const handleSaveChanges = async (e: React.FormEvent) => {
@@ -141,16 +165,30 @@ export default function ProfilePage() {
             <div className="grid md:grid-cols-3 gap-8">
                 <div className="md:col-span-1">
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 text-center">
-                        <div className="w-32 h-32 bg-secondary rounded-full mx-auto mb-4 flex items-center justify-center text-4xl text-white font-bold">
-                            {initials}
+                        <div className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden bg-secondary flex items-center justify-center text-4xl text-white font-bold">
+                            {avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                initials
+                            )}
                         </div>
                         <h2 className="font-serif text-xl font-bold text-text">{formData.firstName} {formData.lastName}</h2>
                         <p className="text-sm text-text/70 mb-6">{formData.email}</p>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={handleAvatarFile}
+                        />
                         <button
-                            onClick={handleEditPhoto}
-                            className="w-full py-2 border border-primary text-primary text-xs font-bold uppercase tracking-widest rounded hover:bg-primary hover:text-white transition-colors"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingAvatar}
+                            className="w-full py-2 border border-primary text-primary text-xs font-bold uppercase tracking-widest rounded hover:bg-primary hover:text-white transition-colors disabled:opacity-60"
                         >
-                            Edit Photo
+                            {uploadingAvatar ? "Uploading..." : "Edit Photo"}
                         </button>
                     </div>
                 </div>

@@ -16,7 +16,7 @@ export default function Programs() {
                         <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">Group Classes</p>
 
                         <div className="text-4xl font-serif text-primary mb-6">
-                            $59<span className="text-lg text-text/50 font-sans">/month</span>
+                            ₹2,000<span className="text-lg text-text/50 font-sans">/month</span>
                         </div>
 
                         <ul className="space-y-3 sm:space-y-4 mb-8 font-sans text-text/80 text-sm sm:text-base">
@@ -46,7 +46,7 @@ export default function Programs() {
                         <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">1:1 Personalized</p>
 
                         <div className="text-4xl font-serif text-primary mb-6">
-                            $120<span className="text-lg text-text/50 font-sans">/month</span>
+                            ₹5,000<span className="text-lg text-text/50 font-sans">/month</span>
                         </div>
 
                         <ul className="space-y-3 sm:space-y-4 mb-8 font-sans text-text/80 text-sm sm:text-base">

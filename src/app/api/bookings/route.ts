@@ -97,21 +97,43 @@ export async function POST(request: Request) {
         bookingDate.setDate(bookingDate.getDate() + 1);
         bookingDate.setHours(parseInt(slot.split(':')[0]), parseInt(slot.split(':')[1]), 0, 0);
 
-        // Create booking
-        const booking = await prisma.booking.create({
-            data: {
-                userId: user.id,
-                teacherId: teacher.id,
-                type: user.role === 'MEMBER_THERAPY' ? 'THERAPY_SESSION' : 'CONSULTATION',
-                status: 'CONFIRMED',
-                date: bookingDate,
-                notes: recurring ? 'Recurring booking requested' : null
+        const isTherapySession = user.role === 'MEMBER_THERAPY';
+
+        // 1:1 therapy sessions cost a credit.
+        if (isTherapySession && user.credits <= 0) {
+            return NextResponse.json({
+                error: 'No session credits',
+                message: 'You have no 1:1 session credits left this cycle. Renew your Yoga Therapy plan or contact us to add sessions.'
+            }, { status: 403 });
+        }
+
+        // Create the booking and debit a credit atomically for therapy sessions.
+        const booking = await prisma.$transaction(async (tx) => {
+            if (isTherapySession) {
+                const debit = await tx.user.updateMany({
+                    where: { id: user.id, credits: { gt: 0 } },
+                    data: { credits: { decrement: 1 } },
+                });
+                if (debit.count === 0) {
+                    throw new Error('CREDIT_RACE');
+                }
             }
+            return tx.booking.create({
+                data: {
+                    userId: user.id,
+                    teacherId: teacher.id,
+                    type: isTherapySession ? 'THERAPY_SESSION' : 'CONSULTATION',
+                    status: 'CONFIRMED',
+                    date: bookingDate,
+                    notes: recurring ? 'Recurring booking requested' : null
+                }
+            });
         });
 
         return NextResponse.json({
             success: true,
             booking,
+            creditsRemaining: isTherapySession ? user.credits - 1 : user.credits,
             message: 'Booking confirmed!'
         });
     } catch (error) {

@@ -28,6 +28,8 @@ export async function GET() {
                 phone: true,
                 country: true,
                 timezone: true,
+                avatarUrl: true,
+                credits: true,
             },
         });
 

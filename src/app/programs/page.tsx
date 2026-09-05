@@ -21,7 +21,7 @@ export default function ProgramsPage() {
                         <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">Group Classes</p>
 
                         <div className="text-5xl font-serif text-primary mb-6">
-                            $59<span className="text-lg text-text/50 font-sans">/month</span>
+                            ₹2,000<span className="text-lg text-text/50 font-sans">/month</span>
                         </div>
 
                         <p className="font-sans text-text/80 mb-8 leading-relaxed">
@@ -64,7 +64,7 @@ export default function ProgramsPage() {
                         <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">1:1 Personalized</p>
 
                         <div className="text-5xl font-serif text-primary mb-6">
-                            $120<span className="text-lg text-text/50 font-sans">/month</span>
+                            ₹5,000<span className="text-lg text-text/50 font-sans">/month</span>
                         </div>
 
                         <p className="font-sans text-text/80 mb-8 leading-relaxed">
@@ -143,8 +143,8 @@ export default function ProgramsPage() {
                             </div>
                             <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors bg-accent/10">
                                 <div className="font-bold text-primary">Price</div>
-                                <div className="text-center font-bold text-lg">$59 / month</div>
-                                <div className="text-center font-bold text-lg">$120 / month</div>
+                                <div className="text-center font-bold text-lg">₹2,000 / month</div>
+                                <div className="text-center font-bold text-lg">₹5,000 / month</div>
                             </div>
                         </div>
                     </div>

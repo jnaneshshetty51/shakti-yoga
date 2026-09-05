@@ -149,8 +149,8 @@ async function main() {
       subscription: {
         create: {
           planType: PlanType.EVERYDAY_YOGA,
-          amount: 59,
-          currency: 'USD',
+          amount: 2000,
+          currency: 'INR',
           status: SubscriptionStatus.ACTIVE,
           renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         },
@@ -172,14 +172,15 @@ async function main() {
       email: 'member.therapy@shaktiyoga.com',
       passwordHash: hashedPassword,
       role: Role.MEMBER_THERAPY,
+      credits: 4,
       phone: '+1234567894',
       country: 'USA',
       timezone: 'America/New_York',
       subscription: {
         create: {
           planType: PlanType.YOGA_THERAPY,
-          amount: 120,
-          currency: 'USD',
+          amount: 5000,
+          currency: 'INR',
           status: SubscriptionStatus.ACTIVE,
           renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         },
@@ -202,6 +203,7 @@ async function main() {
       email: 'trial@shaktiyoga.com',
       passwordHash: hashedPassword,
       role: Role.TRIAL,
+      credits: 1,
       phone: '+1234567895',
       country: 'USA',
       timezone: 'America/Chicago',
@@ -209,7 +211,7 @@ async function main() {
         create: {
           planType: PlanType.TRIAL,
           amount: 0,
-          currency: 'USD',
+          currency: 'INR',
           status: SubscriptionStatus.TRIAL,
           renewalDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
         },
@@ -250,7 +252,7 @@ async function main() {
       name: 'Morning Hatha Yoga',
       planType: PlanType.EVERYDAY_YOGA,
       daysOfWeek: ['Mon', 'Wed', 'Fri'],
-      timeSlot: '05:00 AM IST',
+      timeSlot: '05:00 AM',
       teacherId: teacher.id,
       active: true,
       meetingLink: 'https://meet.google.com/morning-hatha',
@@ -263,7 +265,7 @@ async function main() {
       name: 'Evening Vinyasa Flow',
       planType: PlanType.EVERYDAY_YOGA,
       daysOfWeek: ['Tue', 'Thu', 'Sat'],
-      timeSlot: '06:00 PM IST',
+      timeSlot: '06:00 PM',
       teacherId: teacher.id,
       active: true,
       meetingLink: 'https://meet.google.com/evening-vinyasa',
@@ -276,7 +278,7 @@ async function main() {
       name: 'Therapeutic Yoga Sessions',
       planType: PlanType.YOGA_THERAPY,
       daysOfWeek: ['Mon', 'Wed', 'Fri'],
-      timeSlot: '10:00 AM IST',
+      timeSlot: '10:00 AM',
       teacherId: teacher.id,
       active: true,
       meetingLink: 'https://meet.google.com/therapy-yoga',

@@ -35,6 +35,11 @@ export async function POST(request: Request) {
             );
         }
 
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() },
+        });
+
         // Map role to frontend expected format
         const mappedRole = mapDatabaseRole(user.role);
 

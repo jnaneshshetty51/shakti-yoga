@@ -39,7 +39,7 @@ export default function YogaTherapy() {
 
                     <div className="flex flex-col sm:flex-row gap-4 w-full">
                         <Link href="/yoga-therapy/start" className="w-full sm:w-auto px-6 py-3.5 bg-primary text-white font-sans text-sm uppercase tracking-widest rounded hover:bg-secondary transition-colors text-center font-bold">
-                            Book Therapy Plan ($120/mo)
+                            Book Therapy Plan (₹5,000/mo)
                         </Link>
                         <Link href="/yoga-therapy/start" className="w-full sm:w-auto px-6 py-3.5 border border-primary text-primary font-sans text-sm uppercase tracking-widest rounded hover:bg-primary/5 transition-colors text-center font-bold">
                             Talk to Us First

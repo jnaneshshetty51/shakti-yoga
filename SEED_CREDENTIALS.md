@@ -46,5 +46,5 @@ npx tsx prisma/seed.ts
 - The seed deletes and recreates the accounts above (and sample content) on
   every run.
 - Passwords are hashed with bcryptjs.
-- Subscriptions are created for MEMBER_EVERYDAY ($59), MEMBER_THERAPY ($120) and
-  TRIAL ($0), matching `src/lib/pricing.ts`.
+- Subscriptions are created for MEMBER_EVERYDAY (₹2,000), MEMBER_THERAPY (₹5,000,
+  with 4 session credits) and TRIAL (₹0, 1 credit), matching `src/lib/pricing.ts`.

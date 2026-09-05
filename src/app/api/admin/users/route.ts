@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/admin-auth';
+import { Role } from '@prisma/client';
+
+const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 export async function GET() {
     try {
@@ -45,6 +49,7 @@ export async function GET() {
                 name: user.name,
                 email: user.email,
                 role: user.role.toLowerCase(),
+                credits: user.credits,
                 status,
                 plan: subscription ?
                     subscription.planType === 'EVERYDAY_YOGA' ? 'Everyday Yoga' :
@@ -58,6 +63,61 @@ export async function GET() {
     } catch (error) {
         console.error('Admin users API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
+
+    try {
+        const body = await request.json().catch(() => ({}));
+        const { id, name, role, credits, phone, country } = body;
+        if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+
+        if (role && !(role in Role)) {
+            return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+        }
+
+        const data: Record<string, unknown> = {};
+        if (name !== undefined) data.name = String(name).trim();
+        if (role !== undefined) data.role = role as Role;
+        if (credits !== undefined) data.credits = Math.max(0, Math.trunc(Number(credits) || 0));
+        if (phone !== undefined) data.phone = phone || null;
+        if (country !== undefined) data.country = country || null;
+
+        const user = await prisma.user.update({ where: { id }, data });
+        return NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });
+    } catch (error) {
+        console.error('Admin users PATCH error:', error);
+        return NextResponse.json({ error: 'Could not update user' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
+
+    try {
+        const id = new URL(request.url).searchParams.get('id');
+        if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+        if (id === admin.id) {
+            return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
+        }
+
+        // Clear dependent rows that have no cascade, then delete.
+        await prisma.$transaction([
+            prisma.subscription.deleteMany({ where: { userId: id } }),
+            prisma.payment.deleteMany({ where: { userId: id } }),
+            prisma.booking.deleteMany({ where: { OR: [{ userId: id }, { teacherId: id }] } }),
+            prisma.liveClassParticipant.deleteMany({ where: { userId: id } }),
+            prisma.story.deleteMany({ where: { userId: id } }),
+            prisma.user.delete({ where: { id } }),
+        ]);
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Admin users DELETE error:', error);
+        return NextResponse.json({ error: 'Could not delete user' }, { status: 500 });
     }
 }
 

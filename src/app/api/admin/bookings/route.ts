@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/admin-auth';
+import { BookingStatus } from '@prisma/client';
+
+const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 export async function GET() {
     try {
@@ -56,6 +60,38 @@ export async function GET() {
     } catch (error) {
         console.error('Admin bookings API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    try {
+        const { id, status, notes } = await request.json().catch(() => ({}));
+        if (!id) return NextResponse.json({ error: 'Missing booking id' }, { status: 400 });
+        if (status && !(status in BookingStatus)) {
+            return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+        }
+        const data: Record<string, unknown> = {};
+        if (status) data.status = status as BookingStatus;
+        if (notes !== undefined) data.notes = notes || null;
+        const booking = await prisma.booking.update({ where: { id }, data });
+        return NextResponse.json({ booking: { id: booking.id, status: booking.status } });
+    } catch (error) {
+        console.error('Admin bookings PATCH error:', error);
+        return NextResponse.json({ error: 'Could not update booking' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    if (!(await requireAdmin())) return forbidden();
+    try {
+        const id = new URL(request.url).searchParams.get('id');
+        if (!id) return NextResponse.json({ error: 'Missing booking id' }, { status: 400 });
+        await prisma.booking.delete({ where: { id } });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Admin bookings DELETE error:', error);
+        return NextResponse.json({ error: 'Could not delete booking' }, { status: 500 });
     }
 }
 

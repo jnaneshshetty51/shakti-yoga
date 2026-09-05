@@ -59,6 +59,13 @@ enum LiveClassStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+  REFUNDED
+}
+
 // Models
 
 model User {
@@ -70,6 +77,8 @@ model User {
   phone        String?
   country      String?
   timezone     String    @default("IST")
+  avatarUrl    String?
+  credits      Int       @default(0) // 1:1 therapy session credits
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLogin    DateTime?
@@ -79,6 +88,7 @@ model User {
   subscription Subscription?
   bookings     Booking[]
   stories      Story[]
+  payments     Payment[]
 
   // For Teachers
   classesTaught     ClassBatch[]
@@ -104,11 +114,33 @@ model Subscription {
   user              User               @relation(fields: [userId], references: [id])
   planType          PlanType
   amount            Float
-  currency          String             @default("USD")
+  currency          String             @default("INR")
   status            SubscriptionStatus @default(ACTIVE)
   startDate         DateTime           @default(now())
   renewalDate       DateTime
-  billingProviderId String? // Stripe/Razorpay ID
+  billingProviderId String? // Razorpay customer/subscription id
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  planType          PlanType
+  amount            Float // major currency units (e.g. rupees)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(CREATED)
+  provider          String        @default("razorpay")
+  providerOrderId   String        @unique
+  providerPaymentId String?       @unique
+  providerSignature String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
 
 model ClassBatch {

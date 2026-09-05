@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function TherapyBookingPage() {
-    const { user, consumeCredit } = useAuth();
+    const { user, refreshUser } = useAuth();
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<number | null>(null);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -51,16 +51,14 @@ export default function TherapyBookingPage() {
                 }),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                // If successful, debit credit locally (or refetch user)
-                // For now, assume success
-                if (consumeCredit()) {
-                    alert("Session Booked! 1 Credit used.");
-                    router.push("/dashboard");
-                }
+                await refreshUser();
+                alert(`Session booked! ${data.creditsRemaining ?? 0} credit(s) remaining.`);
+                router.push("/dashboard");
             } else {
-                const data = await response.json();
-                alert(`Booking Failed: ${data.error || 'Unknown error'}`);
+                alert(`Booking failed: ${data.message || data.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Booking error', error);
@@ -68,7 +66,7 @@ export default function TherapyBookingPage() {
         }
     };
 
-    const credits = user?.credits ?? (user?.role === 'member_therapy' || user?.role === 'admin' ? 4 : user?.role === 'trial' ? 1 : 0);
+    const credits = user?.credits ?? 0;
 
     return (
         <div>
@@ -93,7 +91,7 @@ export default function TherapyBookingPage() {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link href="/checkout?plan=therapy" className="px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors">
-                            Subscribe to Yoga Therapy ($120/mo)
+                            Subscribe to Yoga Therapy (₹5,000/mo)
                         </Link>
                         <Link href="/programs" className="px-6 py-3 border border-primary text-primary font-bold uppercase tracking-widest text-xs rounded hover:bg-accent transition-colors">
                             View All Plans
