@@ -15,12 +15,20 @@ interface Message {
 export default function AdminMessagesPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [showHandled, setShowHandled] = useState(false);
 
     const load = useCallback(async () => {
         try {
             const res = await fetch("/api/admin/contact");
-            if (res.ok) setMessages((await res.json()).messages || []);
+            if (res.ok) {
+                setMessages((await res.json()).messages || []);
+                setLoadError(false);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -69,7 +77,12 @@ export default function AdminMessagesPage() {
                 </label>
             </div>
 
-            {visible.length === 0 ? (
+            {loadError ? (
+                <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500">
+                    Could not load messages.
+                    <button onClick={load} className="ml-2 text-primary font-bold hover:underline">Retry</button>
+                </div>
+            ) : visible.length === 0 ? (
                 <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-400">
                     No messages.
                 </div>

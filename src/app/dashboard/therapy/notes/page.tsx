@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 interface Session {
@@ -23,14 +23,31 @@ const STATUS_STYLE: Record<string, string> = {
 export default function SessionNotesPage() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
 
-    useEffect(() => {
+    const load = useCallback(() => {
         fetch("/api/bookings")
-            .then((r) => r.json())
-            .then((d) => setSessions((d.bookings ?? []).filter((b: Session) => b.type === "THERAPY_SESSION")))
-            .catch(() => { })
+            .then((r) => {
+                if (!r.ok) throw new Error("failed");
+                return r.json();
+            })
+            .then((d) => {
+                setSessions((d.bookings ?? []).filter((b: Session) => b.type === "THERAPY_SESSION"));
+                setLoadError(false);
+            })
+            .catch(() => setLoadError(true))
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const retry = () => {
+        setLoading(true);
+        setLoadError(false);
+        load();
+    };
 
     return (
         <div>
@@ -43,6 +60,13 @@ export default function SessionNotesPage() {
 
             {loading ? (
                 <p className="text-sm text-text/50">Loading…</p>
+            ) : loadError ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    <p className="text-text/60">Couldn&apos;t load your sessions.</p>
+                    <button onClick={retry} className="text-primary font-bold hover:underline text-sm mt-2 inline-block">
+                        Try again
+                    </button>
+                </div>
             ) : sessions.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                     <p className="text-text/60">No therapy sessions yet.</p>

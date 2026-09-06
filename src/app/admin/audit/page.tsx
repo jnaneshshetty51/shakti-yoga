@@ -33,10 +33,12 @@ function AuditLogInner() {
     const [rows, setRows] = useState<Row[]>([]);
     const [cursor, setCursor] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
 
     const load = useCallback(async (after?: string | null) => {
         setLoading(true);
+        setLoadError(false);
         try {
             const url = new URL("/api/admin/audit", window.location.origin);
             if (after) url.searchParams.set("cursor", after);
@@ -45,7 +47,11 @@ function AuditLogInner() {
             if (res.ok) {
                 setRows((prev) => (after ? [...prev, ...data.logs] : data.logs));
                 setCursor(data.nextCursor);
+            } else {
+                setLoadError(true);
             }
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -71,7 +77,13 @@ function AuditLogInner() {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.length === 0 && !loading && (
+                            {rows.length === 0 && !loading && loadError && (
+                                <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                                    Could not load the audit log.
+                                    <button onClick={() => load()} className="ml-2 text-primary font-medium hover:underline">Retry</button>
+                                </td></tr>
+                            )}
+                            {rows.length === 0 && !loading && !loadError && (
                                 <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No entries yet.</td></tr>
                             )}
                             {rows.map((r) => (

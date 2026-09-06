@@ -29,6 +29,8 @@ export default function DashboardPage() {
     const [nextClass, setNextClass] = useState<ClassView | null>(null);
     const [access, setAccess] = useState<ClassAccessInfo | null>(null);
     const [joining, setJoining] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
     const userId = user?.id;
 
@@ -38,6 +40,7 @@ export default function DashboardPage() {
 
         (async () => {
             try {
+                setLoadError(false);
                 const [communityRes, classesRes] = await Promise.all([
                     fetch("/api/community"),
                     fetch("/api/classes"),
@@ -50,14 +53,17 @@ export default function DashboardPage() {
                     const data: ClassesResponse = await classesRes.json();
                     setNextClass(data.today[0] ?? data.upcoming[0] ?? null);
                     setAccess(data.access ?? null);
+                } else if (!cancelled && !classesRes.ok) {
+                    setLoadError(true);
                 }
             } catch (error) {
                 console.error("Dashboard load error:", error);
+                if (!cancelled) setLoadError(true);
             }
         })();
 
         return () => { cancelled = true; };
-    }, [userId]);
+    }, [userId, reloadKey]);
 
     if (isLoading) return <div className="p-20 text-center text-text/50">Loading your dashboard…</div>;
     if (!user) {
@@ -101,6 +107,18 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {loadError && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8 flex items-center justify-between gap-4 text-sm">
+                    <span className="text-amber-800">We couldn&apos;t load your class schedule just now.</span>
+                    <button
+                        onClick={() => setReloadKey((k) => k + 1)}
+                        className="text-amber-900 font-bold uppercase tracking-widest text-xs hover:underline whitespace-nowrap"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
             {group && (
                 <div className="bg-green-50 border border-green-100 rounded-lg p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
