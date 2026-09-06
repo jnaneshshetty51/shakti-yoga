@@ -8,10 +8,15 @@ function formatDate(d: Date) {
 }
 
 export default async function BlogPage() {
-    const posts = await prisma.blogPost.findMany({
-        where: { status: "PUBLISHED" },
-        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    });
+    let posts: Awaited<ReturnType<typeof prisma.blogPost.findMany>> = [];
+    try {
+        posts = await prisma.blogPost.findMany({
+            where: { status: "PUBLISHED" },
+            orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+        });
+    } catch {
+        // DB unavailable at build/revalidate — render the empty state; ISR retries.
+    }
 
     return (
         <main className="min-h-screen bg-white">

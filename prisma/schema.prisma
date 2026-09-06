@@ -224,6 +224,10 @@ model ClassAttendance {
   @@unique([userId, classInstanceId])
 }
 
+// NOTE: migration 20260906190000 adds a PARTIAL unique index
+//   UNIQUE (teacherId, date) WHERE status IN ('PENDING','CONFIRMED')
+// Prisma can't express this in-schema, so `migrate dev` will report it as
+// drift — keep the index, don't let a reset drop it.
 model Booking {
   id          String        @id @default(cuid())
   userId      String

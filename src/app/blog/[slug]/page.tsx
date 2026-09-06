@@ -6,22 +6,33 @@ import type { Metadata } from "next";
 // Rendered once then served from cache, refreshed at most every 5 min.
 export const revalidate = 300;
 
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
-    const posts = await prisma.blogPost.findMany({
-        where: { status: "PUBLISHED" },
-        select: { slug: true },
-    });
-    return posts.map((p) => ({ slug: p.slug }));
+    try {
+        const posts = await prisma.blogPost.findMany({
+            where: { status: "PUBLISHED" },
+            select: { slug: true },
+        });
+        return posts.map((p) => ({ slug: p.slug }));
+    } catch {
+        // DB unavailable at build — fall back to fully on-demand ISR.
+        return [];
+    }
 }
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
     const { slug } = await props.params;
-    const post = await prisma.blogPost.findUnique({ where: { slug } });
-    if (!post || post.status !== "PUBLISHED") return {};
-    return {
-        title: post.metaTitle ?? `${post.title} | Shakti Yoga`,
-        description: post.metaDescription ?? post.excerpt ?? post.content.slice(0, 155),
-    };
+    try {
+        const post = await prisma.blogPost.findUnique({ where: { slug } });
+        if (!post || post.status !== "PUBLISHED") return {};
+        return {
+            title: post.metaTitle ?? `${post.title} | Shakti Yoga`,
+            description: post.metaDescription ?? post.excerpt ?? post.content.slice(0, 155),
+        };
+    } catch {
+        return {};
+    }
 }
 
 export default async function BlogPostPage(props: { params: Promise<{ slug: string }> }) {

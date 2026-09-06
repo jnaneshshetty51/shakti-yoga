@@ -13,6 +13,8 @@ export type Booking = {
     time: string;
     status: 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
     teacher: string;
+    meetingLink?: string;
+    notes?: string;
 };
 
 const STATUS_OPTIONS = [
@@ -69,7 +71,7 @@ export default function AdminBookingsPage() {
         const res = await fetch('/api/admin/bookings', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editing?.id, status: values.status, notes: values.notes }),
+            body: JSON.stringify({ id: editing?.id, status: values.status, notes: values.notes, meetingLink: values.meetingLink }),
         });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -123,9 +125,10 @@ export default function AdminBookingsPage() {
                     onSubmit={submitEdit}
                     fields={[
                         { name: "status", label: "Status", type: "select", required: true, options: STATUS_OPTIONS },
+                        { name: "meetingLink", label: "Google Meet link", type: "text" },
                         { name: "notes", label: "Session Notes", type: "textarea" },
                     ]}
-                    initial={{ status: editing.status.toUpperCase() }}
+                    initial={{ status: editing.status.toUpperCase(), meetingLink: editing.meetingLink ?? "", notes: editing.notes ?? "" }}
                 />
             )}
         </div>

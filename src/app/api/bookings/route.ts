@@ -1,166 +1,181 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth';
 import { sendEmail, emailLayout } from '@/lib/email';
-import { readJson, str, bool, optStr, ValidationError, handleValidationError } from '@/lib/validation';
-import { parseTimeSlot } from '@/lib/class-schedule';
+import { readJson, str, optStr, ValidationError, handleValidationError } from '@/lib/validation';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { recordEvent } from '@/lib/analytics';
+import { bookingInstant, availableSlots } from '@/lib/booking';
+import { Prisma } from '@prisma/client';
 
 export async function GET() {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const payload = await verifyToken(token);
-        if (!payload) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-        }
-
         const bookings = await prisma.booking.findMany({
-            where: { userId: payload.id },
-            include: {
-                teacher: {
-                    select: { name: true }
-                }
-            },
-            orderBy: { date: 'desc' }
+            where: { userId: session.id },
+            include: { teacher: { select: { name: true } } },
+            orderBy: { date: 'desc' },
         });
-
-        return NextResponse.json({ bookings });
+        return NextResponse.json({
+            bookings: bookings.map((b) => ({
+                id: b.id,
+                type: b.type,
+                status: b.status,
+                date: b.date.toISOString(),
+                teacher: b.teacher.name,
+                notes: b.notes,
+                hasMeetingLink: Boolean(b.meetingLink),
+            })),
+        });
     } catch (error) {
-        console.error('Bookings API error:', error);
+        console.error('Bookings GET error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { allowed, retryAfterSeconds } = rateLimit(`booking:${getClientIp(request)}`, 15, 60 * 60 * 1000);
+    if (!allowed) {
+        return NextResponse.json(
+            { error: 'Too many booking attempts. Please try again later.' },
+            { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+        );
+    }
+
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
+        const user = await prisma.user.findUnique({ where: { id: session.id } });
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // Everyday members join the group class directly — they don't book.
+        // Booking is for 1:1 therapy (members) and the one trial consultation.
+        if (user.role === 'MEMBER_EVERYDAY') {
+            return NextResponse.json(
+                { error: 'Your plan is the daily group class — just tap Join on your dashboard, no booking needed.' },
+                { status: 400 },
+            );
         }
-
-        const payload = await verifyToken(token);
-        if (!payload) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-        }
-
-        // Get user to check role and existing bookings
-        const user = await prisma.user.findUnique({
-            where: { id: payload.id },
-            include: {
-                bookings: true
-            }
-        });
-
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
-
-        // Check paywall role
-        if (user.role === 'VISITOR') {
-            return NextResponse.json({
-                error: 'Subscription required',
-                message: 'You need an active subscription or free trial to book classes. Please choose a plan to continue.'
-            }, { status: 403 });
-        }
-
-        // Check trial limit - trial users can only book 1 class
-        if (user.role === 'TRIAL' && user.bookings.length >= 1) {
-            return NextResponse.json({
-                error: 'Trial limit reached',
-                message: 'Trial users can only book 1 class. Please upgrade to continue.'
-            }, { status: 403 });
+        if (user.role !== 'MEMBER_THERAPY' && user.role !== 'TRIAL') {
+            return NextResponse.json(
+                { error: 'An active membership or trial is required to book a session.', paywall: true },
+                { status: 403 },
+            );
         }
 
         const body = await readJson(request);
-        // Frontends send a slot like "08:00 AM - 08:45 AM" (or just "06:00 AM").
-        const slot = str(body.slot, { label: 'slot', min: 3, max: 40 });
-        let slotHour: number;
-        let slotMinute: number;
-        try {
-            ({ hour: slotHour, minute: slotMinute } = parseTimeSlot(slot.split(/\s*[-–]\s*/)[0]));
-        } catch {
-            throw new ValidationError('slot must be a time like "06:00 AM" or "06:00 AM - 06:45 AM".');
-        }
-        const recurring = body.recurring === undefined ? false : bool(body.recurring, 'recurring');
+        const dateStr = str(body.date, { label: 'date', pattern: /^\d{4}-\d{2}-\d{2}$/ });
+        const slot = str(body.slot, { label: 'slot', min: 5, max: 40 });
         const notes = optStr(body.notes, { label: 'notes', max: 1000 });
 
-        // Get a teacher (for now, use the first teacher we find)
-        const teacher = await prisma.user.findFirst({
-            where: { role: 'TEACHER' }
-        });
-
-        if (!teacher) {
-            return NextResponse.json({
-                error: 'No teacher available',
-                message: 'We could not find an available teacher for this slot. Please try again later or contact support.'
-            }, { status: 404 });
+        let when: Date;
+        try {
+            when = bookingInstant(dateStr, slot);
+        } catch {
+            throw new ValidationError('Pick a valid date and time slot.');
+        }
+        if (when.getTime() < Date.now()) {
+            throw new ValidationError('That time has already passed. Pick a later slot.');
         }
 
-        // Create booking for tomorrow at the selected time.
-        const bookingDate = new Date();
-        bookingDate.setDate(bookingDate.getDate() + 1);
-        bookingDate.setHours(slotHour, slotMinute, 0, 0);
+        const isTherapy = user.role === 'MEMBER_THERAPY';
 
-        const isTherapySession = user.role === 'MEMBER_THERAPY';
-
-        // 1:1 therapy sessions cost a credit.
-        if (isTherapySession && user.credits <= 0) {
-            return NextResponse.json({
-                error: 'No session credits',
-                message: 'You have no 1:1 session credits left this cycle. Renew your Yoga Therapy plan or contact us to add sessions.'
-            }, { status: 403 });
-        }
-
-        // Create the booking and debit a credit atomically for therapy sessions.
-        const booking = await prisma.$transaction(async (tx) => {
-            if (isTherapySession) {
-                const debit = await tx.user.updateMany({
-                    where: { id: user.id, credits: { gt: 0 } },
-                    data: { credits: { decrement: 1 } },
-                });
-                if (debit.count === 0) {
-                    throw new Error('CREDIT_RACE');
-                }
-            }
-            return tx.booking.create({
-                data: {
-                    userId: user.id,
-                    teacherId: teacher.id,
-                    type: isTherapySession ? 'THERAPY_SESSION' : 'CONSULTATION',
-                    status: 'CONFIRMED',
-                    date: bookingDate,
-                    notes: notes ?? (recurring ? 'Recurring booking requested' : null),
-                }
+        // Trial users get a single consultation.
+        if (!isTherapy) {
+            const existing = await prisma.booking.count({
+                where: { userId: user.id, status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] } },
             });
+            if (existing >= 1) {
+                return NextResponse.json(
+                    { error: 'Your trial includes one consultation. Subscribe to Yoga Therapy for ongoing 1:1 sessions.' },
+                    { status: 403 },
+                );
+            }
+        }
+
+        // Resolve the teacher whose availability covers this slot (fall back to any teacher).
+        const teachers = await prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true } });
+        if (teachers.length === 0) {
+            return NextResponse.json({ error: 'No teacher is available right now. Please contact us.' }, { status: 503 });
+        }
+        let teacherId = teachers[0].id;
+        let slotOk = false;
+        for (const t of teachers) {
+            const open = await availableSlots(t.id, dateStr);
+            if (open.some((s) => s.startsWith(slot.split(/\s*[-–]\s*/)[0]))) {
+                teacherId = t.id;
+                slotOk = true;
+                break;
+            }
+        }
+        // If no availability rules exist yet, allow the booking (soft launch) but
+        // still block a slot that's already taken (the unique index does that).
+        const anyRules = await prisma.teacherAvailability.count({ where: { active: true } });
+        if (anyRules > 0 && !slotOk) {
+            return NextResponse.json({ error: 'That slot is no longer available. Please pick another.' }, { status: 409 });
+        }
+
+        if (isTherapy && user.credits <= 0) {
+            return NextResponse.json(
+                { error: 'You have no 1:1 session credits left. Renew your Yoga Therapy plan to add more.' },
+                { status: 403 },
+            );
+        }
+
+        let booking;
+        try {
+            booking = await prisma.$transaction(async (tx) => {
+                if (isTherapy) {
+                    const debit = await tx.user.updateMany({
+                        where: { id: user.id, credits: { gt: 0 } },
+                        data: { credits: { decrement: 1 } },
+                    });
+                    if (debit.count === 0) throw new ValidationError('You have no session credits left.');
+                }
+                return tx.booking.create({
+                    data: {
+                        userId: user.id,
+                        teacherId,
+                        type: isTherapy ? 'THERAPY_SESSION' : 'CONSULTATION',
+                        status: 'CONFIRMED',
+                        date: when,
+                        notes: notes ?? null,
+                    },
+                });
+            });
+        } catch (e) {
+            if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+                return NextResponse.json({ error: 'That slot was just taken. Please pick another.' }, { status: 409 });
+            }
+            throw e;
+        }
+
+        recordEvent('BOOKING', {
+            userId: user.id,
+            metadata: { type: booking.type, date: when.toISOString() },
         });
 
-        const when = bookingDate.toLocaleString('en-IN', {
+        const whenLabel = when.toLocaleString('en-IN', {
             weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
+            timeZone: 'Asia/Kolkata',
         });
         sendEmail({
             to: user.email,
-            subject: `Booking confirmed — ${when}`,
+            subject: `Session confirmed — ${whenLabel} IST`,
             html: emailLayout(
                 `<p>Hi ${user.name.split(' ')[0] || 'there'},</p>
-                 <p>Your ${isTherapySession ? '1:1 therapy session' : 'class'} is confirmed for <strong>${when} IST</strong> with ${teacher.name}.</p>
-                 ${isTherapySession ? `<p>Session credits remaining: <strong>${user.credits - 1}</strong>.</p>` : ''}
-                 <p>See you on the mat. 🧘</p>`,
+                 <p>Your ${isTherapy ? '1:1 therapy session' : 'consultation'} is confirmed for <strong>${whenLabel} IST</strong>.</p>
+                 <p>The Google Meet link will appear on your dashboard shortly before the session. ${isTherapy ? `Credits remaining: <strong>${user.credits - 1}</strong>.` : ''}</p>`,
             ),
         }).catch(() => { });
 
         return NextResponse.json({
             success: true,
-            booking,
-            creditsRemaining: isTherapySession ? user.credits - 1 : user.credits,
-            message: 'Booking confirmed!'
+            booking: { id: booking.id, date: booking.date.toISOString(), status: booking.status },
+            creditsRemaining: isTherapy ? user.credits - 1 : user.credits,
         });
     } catch (error) {
         if (error instanceof ValidationError) return handleValidationError(error);
