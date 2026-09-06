@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { Sparkline } from "./Sparkline";
 
 interface StatCardProps {
   title: string;
@@ -11,6 +12,8 @@ interface StatCardProps {
   trend?: "up" | "down" | "stable";
   prefix?: string;
   suffix?: string;
+  /** Optional mini trend line, oldest → newest. */
+  spark?: number[];
 }
 
 export function StatCard({ 
@@ -21,7 +24,8 @@ export function StatCard({
   icon, 
   trend,
   prefix = "",
-  suffix = ""
+  suffix = "",
+  spark,
 }: StatCardProps) {
   const changeColors = {
     positive: "text-green-600 bg-green-50",
@@ -48,7 +52,7 @@ export function StatCard({
         )}
       </div>
       
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-3xl font-bold text-gray-900">
             {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
@@ -60,6 +64,9 @@ export function StatCard({
             </div>
           )}
         </div>
+        {spark && spark.length > 1 && (
+          <Sparkline points={spark} className="shrink-0 opacity-80" />
+        )}
       </div>
     </div>
   );

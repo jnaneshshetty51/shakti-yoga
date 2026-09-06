@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireSuperAdmin } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { isRazorpayConfigured } from '@/lib/razorpay';
@@ -14,7 +14,7 @@ const DEFAULTS: Record<string, string> = {
 };
 
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireSuperAdmin())) return forbidden();
 
     const rows = await prisma.setting.findMany();
     const settings = { ...DEFAULTS };
@@ -29,7 +29,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireSuperAdmin();
     if (!admin) return forbidden();
 
     try {

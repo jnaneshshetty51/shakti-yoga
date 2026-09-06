@@ -10,6 +10,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const { user } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    const isSuper = user?.tier === "super";
+    const tierLabel = user?.tier === "staff" ? "Staff Admin" : "Super Admin";
+
     const navItems = [
         { name: "Dashboard", href: "/admin", icon: "📊" },
         { name: "Analytics", href: "/admin/analytics", icon: "📈" },
@@ -25,9 +28,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: "Community", href: "/admin/community", icon: "💬" },
         { name: "Content", href: "/admin/content", icon: "📝" },
         { name: "Messages", href: "/admin/messages", icon: "📨" },
-        { name: "Audit Log", href: "/admin/audit", icon: "🗂️" },
-        { name: "Settings", href: "/admin/settings", icon: "⚙️" },
-    ];
+        { name: "Audit Log", href: "/admin/audit", icon: "🗂️", superOnly: true },
+        { name: "Settings", href: "/admin/settings", icon: "⚙️", superOnly: true },
+    ].filter((item) => !item.superOnly || isSuper);
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -92,7 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                         <div className="overflow-hidden">
                             <div className="text-sm font-bold text-gray-800 truncate">{user?.name || 'Admin'}</div>
-                            <div className="text-xs text-gray-500 truncate">Super Admin</div>
+                            <div className="text-xs text-gray-500 truncate">{tierLabel}</div>
                         </div>
                     </div>
                 </div>
@@ -150,7 +153,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                         <div className="overflow-hidden">
                             <div className="text-sm font-bold text-gray-800 truncate">{user?.name || 'Admin'}</div>
-                            <div className="text-xs text-gray-500 truncate">Super Admin</div>
+                            <div className="text-xs text-gray-500 truncate">{tierLabel}</div>
                         </div>
                     </div>
                 </div>

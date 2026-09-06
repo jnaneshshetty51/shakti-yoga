@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StatCard } from "@/components/admin/StatCard";
+import { TrendChart } from "@/components/admin/TrendChart";
+import { CHART_PRIMARY, CHART_SECONDARY } from "@/components/admin/Sparkline";
 
 /* ---------- types ---------- */
+
+type Series = { label: string; value: number }[];
 
 interface Dashboard {
     generatedAt: string;
@@ -15,8 +19,13 @@ interface Dashboard {
         therapyMembers: number;
         trialUsers: number;
         mrr: number;
-        newMembers30d: number;
-        newMembersGrowthPct: number | null;
+        newMembers: number;
+        newMembersDelta: number | null;
+        lapsed: number;
+        lapsedDelta: number | null;
+        paused: number;
+        renewalRevenue7d: number;
+        renewalRevenue30d: number;
     };
     attention: {
         pendingBookings: number;
@@ -25,24 +34,31 @@ interface Dashboard {
         expiringSoon: number;
         failedPayments7d: number;
         therapyOutOfCredits: number;
+        contentDrafts: number;
+        bookingsNoLink: number;
+        dormantMembers: number;
     };
+    trends: { signups: Series; revenue: Series; attendance: Series };
+    trialFunnel: {
+        requested: number; scheduled: number; attended: number;
+        converted: number; noShow: number; conversionRate: number;
+    } | null;
+    teacherLoad: { id: string; name: string; batches: number; upcomingSessions: number; hasAvailability: boolean }[];
     upcomingSessions: {
         id: string; member: string; teacher: string; type: string;
         status: string; at: string; hasLink: boolean;
     }[];
-    upcomingClasses: {
-        id: string; name: string; teacher: string; at: string; attendanceCount: number;
-    }[];
+    upcomingClasses: { id: string; name: string; teacher: string; at: string; attendanceCount: number }[];
     activity: { id: string; kind: string; message: string; at: string }[];
-    recentSignups: {
-        id: string; name: string; email: string; role: string; plan: string | null; at: string;
-    }[];
+    recentSignups: { id: string; name: string; email: string; role: string; plan: string | null; at: string }[];
 }
 
 /* ---------- helpers ---------- */
 
 const inr = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0);
+const inrShort = (n: number) =>
+    n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}k` : `₹${n}`;
 
 function timeAgo(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
@@ -70,30 +86,33 @@ function whenLabel(iso: string): string {
 }
 
 const DOT: Record<string, string> = {
-    signup: "bg-green-500",
-    payment: "bg-emerald-500",
-    booking: "bg-blue-500",
-    class: "bg-teal-500",
-    trial: "bg-purple-500",
-    alert: "bg-red-500",
-    admin: "bg-gray-400",
-    other: "bg-gray-300",
+    signup: "bg-green-500", payment: "bg-emerald-500", booking: "bg-blue-500",
+    class: "bg-teal-500", trial: "bg-purple-500", alert: "bg-red-500",
+    admin: "bg-gray-400", other: "bg-gray-300",
 };
+
+function deltaChip(delta: number | null, opts: { goodWhenNegative?: boolean } = {}) {
+    if (delta === null || delta === 0) return undefined;
+    return { change: `${delta > 0 ? "+" : ""}${delta}% vs prev 30d`, negative: opts.goodWhenNegative ? delta > 0 : delta < 0 };
+}
 
 /* ---------- attention config ---------- */
 
 type AttentionKey = keyof Dashboard["attention"];
 const ATTENTION: { key: AttentionKey; label: (n: number) => string; href: string }[] = [
     { key: "pendingBookings", label: (n) => `${n} booking${n === 1 ? "" : "s"} awaiting confirmation`, href: "/admin/bookings" },
+    { key: "bookingsNoLink", label: (n) => `${n} upcoming session${n === 1 ? "" : "s"} with no Meet link`, href: "/admin/bookings" },
     { key: "unhandledMessages", label: (n) => `${n} unread contact message${n === 1 ? "" : "s"}`, href: "/admin/messages" },
     { key: "newLeads", label: (n) => `${n} new lead${n === 1 ? "" : "s"} to follow up`, href: "/admin/leads" },
     { key: "expiringSoon", label: (n) => `${n} subscription${n === 1 ? "" : "s"} expiring within 7 days`, href: "/admin/subscriptions" },
     { key: "failedPayments7d", label: (n) => `${n} failed payment${n === 1 ? "" : "s"} in the last week`, href: "/admin/subscriptions" },
     { key: "therapyOutOfCredits", label: (n) => `${n} therapy member${n === 1 ? "" : "s"} with no session credits`, href: "/admin/members" },
+    { key: "dormantMembers", label: (n) => `${n} active member${n === 1 ? "" : "s"} not seen in 30+ days`, href: "/admin/members" },
+    { key: "contentDrafts", label: (n) => `${n} content draft${n === 1 ? "" : "s"} awaiting review`, href: "/admin/content" },
 ];
 
 const QUICK_ACTIONS = [
-    { href: "/admin/users", icon: "👤", label: "Users" },
+    { href: "/admin/analytics", icon: "📈", label: "Analytics" },
     { href: "/admin/members", icon: "🪷", label: "Members" },
     { href: "/admin/classes", icon: "🧘‍♀️", label: "Classes" },
     { href: "/admin/bookings", icon: "📅", label: "Bookings" },
@@ -106,18 +125,24 @@ const QUICK_ACTIONS = [
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
     return <div className={`bg-white rounded-lg shadow-sm border border-gray-100 ${className}`}>{children}</div>;
 }
-
 function SkeletonBlock({ className = "" }: { className?: string }) {
     return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
 }
 
 /* ---------- page ---------- */
 
+const TREND_TABS = [
+    { key: "signups" as const, label: "Signups", color: CHART_PRIMARY, fmt: (v: number) => String(Math.round(v)) },
+    { key: "revenue" as const, label: "Revenue", color: CHART_SECONDARY, fmt: inrShort },
+    { key: "attendance" as const, label: "Class attendance", color: "#0d9488", fmt: (v: number) => String(Math.round(v)) },
+];
+
 export default function AdminDashboardPage() {
     const [data, setData] = useState<Dashboard | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [trendTab, setTrendTab] = useState<"signups" | "revenue" | "attendance">("signups");
     const [, forceTick] = useState(0);
     const abortRef = useRef<AbortController | null>(null);
 
@@ -133,8 +158,7 @@ export default function AdminDashboardPage() {
                 return;
             }
             if (!res.ok) throw new Error(`Request failed (${res.status})`);
-            const json = (await res.json()) as Dashboard;
-            setData(json);
+            setData((await res.json()) as Dashboard);
             setError(null);
         } catch (e) {
             if ((e as Error).name === "AbortError") return;
@@ -150,7 +174,7 @@ export default function AdminDashboardPage() {
         load("initial");
         const poll = setInterval(() => load("refresh"), 60_000);
         const onFocus = () => load("refresh");
-        const clock = setInterval(() => forceTick((n) => n + 1), 30_000); // keep "updated Xs ago" fresh
+        const clock = setInterval(() => forceTick((n) => n + 1), 30_000);
         window.addEventListener("focus", onFocus);
         return () => {
             clearInterval(poll);
@@ -160,7 +184,6 @@ export default function AdminDashboardPage() {
         };
     }, [load]);
 
-    /* ----- full error state (no data at all) ----- */
     if (error && !data) {
         return (
             <div>
@@ -179,7 +202,6 @@ export default function AdminDashboardPage() {
         );
     }
 
-    /* ----- initial skeleton ----- */
     if (loading && !data) {
         return (
             <div>
@@ -187,7 +209,7 @@ export default function AdminDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-28" />)}
                 </div>
-                <SkeletonBlock className="h-24 mb-8" />
+                <SkeletonBlock className="h-64 mb-8" />
                 <div className="grid lg:grid-cols-3 gap-8">
                     <SkeletonBlock className="h-80 lg:col-span-2" />
                     <SkeletonBlock className="h-80" />
@@ -198,9 +220,12 @@ export default function AdminDashboardPage() {
 
     if (!data) return null;
 
-    const { stats, attention } = data;
+    const { stats, attention, trends } = data;
     const attentionItems = ATTENTION.filter((a) => attention[a.key] > 0);
-    const growth = stats.newMembersGrowthPct;
+    const newChip = deltaChip(stats.newMembersDelta);
+    const activeSeries = trends[trendTab].map((p) => p.value);
+    const tab = TREND_TABS.find((t) => t.key === trendTab)!;
+    const funnel = data.trialFunnel;
 
     return (
         <div>
@@ -225,22 +250,64 @@ export default function AdminDashboardPage() {
             )}
 
             {/* stat cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <StatCard
                     title="Active Members"
                     value={stats.activeMembers}
-                    change={growth === null ? undefined : `${growth > 0 ? "+" : ""}${growth}% vs prev 30d`}
-                    changeType={growth !== null && growth < 0 ? "negative" : "positive"}
-                    trend={growth === null ? undefined : growth > 0 ? "up" : growth < 0 ? "down" : "stable"}
+                    change={`${stats.everydayMembers} everyday · ${stats.therapyMembers} therapy`}
+                    changeType="neutral"
                 />
-                <StatCard title="Monthly Revenue" value={inr(stats.mrr)} />
-                <StatCard title="Active Trials" value={stats.trialUsers} />
+                <StatCard title="Monthly Revenue" value={inr(stats.mrr)} spark={trends.revenue.map((p) => p.value)} />
                 <StatCard
-                    title="Pending Bookings"
-                    value={attention.pendingBookings}
-                    changeType={attention.pendingBookings > 0 ? "negative" : "neutral"}
+                    title="New Members (30d)"
+                    value={stats.newMembers}
+                    change={newChip?.change}
+                    changeType={newChip?.negative ? "negative" : "positive"}
+                    trend={newChip ? (newChip.negative ? "down" : "up") : undefined}
+                    spark={trends.signups.map((p) => p.value)}
                 />
+                <StatCard title="Active Trials" value={stats.trialUsers} />
             </div>
+
+            {/* secondary stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8 text-sm">
+                {[
+                    { label: "Lapsed (30d)", value: String(stats.lapsed) },
+                    { label: "Paused", value: String(stats.paused) },
+                    { label: "Renewals due (7d)", value: inr(stats.renewalRevenue7d) },
+                    { label: "Renewals due (30d)", value: inr(stats.renewalRevenue30d) },
+                ].map((s) => (
+                    <div key={s.label} className="bg-white rounded-lg border border-gray-100 px-4 py-3">
+                        <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</div>
+                        <div className="text-lg font-bold text-gray-800 mt-0.5">{s.value}</div>
+                    </div>
+                ))}
+            </div>
+
+            {/* trend chart */}
+            <Card className="p-6 mb-8">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h3 className="font-bold text-gray-800">Last 30 days</h3>
+                    <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                        {TREND_TABS.map((t) => (
+                            <button
+                                key={t.key}
+                                onClick={() => setTrendTab(t.key)}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${trendTab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"}`}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                {activeSeries.some((v) => v > 0) ? (
+                    <TrendChart series={trends[trendTab]} kind={trendTab === "revenue" ? "bar" : "area"} color={tab.color} format={tab.fmt} />
+                ) : (
+                    <div className="h-40 flex items-center justify-center text-sm text-gray-400">
+                        No {tab.label.toLowerCase()} recorded in the last 30 days.
+                    </div>
+                )}
+            </Card>
 
             {/* needs attention */}
             <Card className="p-6 mb-8">
@@ -267,13 +334,79 @@ export default function AdminDashboardPage() {
             <div className="grid lg:grid-cols-3 gap-8">
                 {/* left column */}
                 <div className="lg:col-span-2 space-y-8">
+                    {/* trial funnel */}
+                    {funnel && funnel.requested > 0 && (
+                        <Card className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-800">Trial Funnel (30 days)</h3>
+                                <Link href="/admin/leads" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">Leads</Link>
+                            </div>
+                            <div className="flex items-stretch gap-2">
+                                {[
+                                    { label: "Requested", v: funnel.requested },
+                                    { label: "Scheduled", v: funnel.scheduled },
+                                    { label: "Attended", v: funnel.attended },
+                                    { label: "Converted", v: funnel.converted },
+                                ].map((s, i) => (
+                                    <div key={s.label} className="flex-1 text-center">
+                                        <div
+                                            className="rounded-lg py-3 text-white font-bold text-lg"
+                                            style={{ background: CHART_PRIMARY, opacity: 1 - i * 0.18 }}
+                                        >
+                                            {s.v}
+                                        </div>
+                                        <div className="text-[11px] text-gray-500 mt-1 uppercase tracking-wider">{s.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500 mt-3">
+                                <span>{funnel.noShow} no-show{funnel.noShow === 1 ? "" : "s"}</span>
+                                <span className="font-bold text-gray-700">{funnel.conversionRate}% conversion</span>
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* teacher load */}
+                    {data.teacherLoad.length > 0 && (
+                        <Card className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-800">Teacher Load</h3>
+                                <Link href="/admin/availability" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">Availability</Link>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="text-xs text-gray-400 uppercase tracking-wider">
+                                        <tr>
+                                            <th className="text-left pb-2">Teacher</th>
+                                            <th className="text-right pb-2">Batches</th>
+                                            <th className="text-right pb-2">Sessions (7d)</th>
+                                            <th className="text-right pb-2">Availability</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {data.teacherLoad.map((t) => (
+                                            <tr key={t.id}>
+                                                <td className="py-2 font-medium text-gray-800">{t.name}</td>
+                                                <td className="py-2 text-right text-gray-600">{t.batches}</td>
+                                                <td className="py-2 text-right text-gray-600">{t.upcomingSessions}</td>
+                                                <td className="py-2 text-right">
+                                                    {t.hasAvailability
+                                                        ? <span className="text-green-600">✓</span>
+                                                        : <span className="text-orange-500 font-medium">none set</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+
                     {/* upcoming */}
                     <Card className="p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-gray-800">Next 48 Hours</h3>
-                            <Link href="/admin/schedule" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">
-                                Schedule
-                            </Link>
+                            <Link href="/admin/schedule" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">Schedule</Link>
                         </div>
                         {data.upcomingSessions.length === 0 && data.upcomingClasses.length === 0 ? (
                             <p className="text-sm text-gray-400 italic">Nothing scheduled.</p>
@@ -312,9 +445,7 @@ export default function AdminDashboardPage() {
                     <Card className="p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-gray-800">Recent Signups</h3>
-                            <Link href="/admin/users" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">
-                                All users
-                            </Link>
+                            <Link href="/admin/users" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">All users</Link>
                         </div>
                         {data.recentSignups.length === 0 ? (
                             <p className="text-sm text-gray-400 italic">No signups in the last 30 days.</p>
@@ -330,9 +461,7 @@ export default function AdminDashboardPage() {
                                             <p className="text-xs text-gray-500 truncate">{u.email}</p>
                                         </div>
                                         {u.plan && (
-                                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize whitespace-nowrap">
-                                                {u.plan}
-                                            </span>
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize whitespace-nowrap">{u.plan}</span>
                                         )}
                                         <span className="text-xs text-gray-400 whitespace-nowrap">{timeAgo(u.at)}</span>
                                     </div>
@@ -346,11 +475,7 @@ export default function AdminDashboardPage() {
                         <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                             {QUICK_ACTIONS.map((q) => (
-                                <Link
-                                    key={q.href}
-                                    href={q.href}
-                                    className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 text-center transition-colors"
-                                >
+                                <Link key={q.href} href={q.href} className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 text-center transition-colors">
                                     <div className="text-xl mb-1">{q.icon}</div>
                                     <div className="text-xs font-bold text-gray-600">{q.label}</div>
                                 </Link>
@@ -363,9 +488,7 @@ export default function AdminDashboardPage() {
                 <Card className="p-6 self-start">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-gray-800">Recent Activity</h3>
-                        <Link href="/admin/audit" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">
-                            Audit log
-                        </Link>
+                        <Link href="/admin/audit" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">Audit log</Link>
                     </div>
                     {data.activity.length === 0 ? (
                         <p className="text-sm text-gray-400 italic">No recent activity.</p>

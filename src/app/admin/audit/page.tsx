@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Fragment } from "react";
+import { SuperAdminGuard } from "@/components/admin/SuperAdminGuard";
 
 interface Row {
     id: string;
@@ -21,6 +22,14 @@ function fmt(iso: string) {
 }
 
 export default function AuditLogPage() {
+    return (
+        <SuperAdminGuard>
+            <AuditLogInner />
+        </SuperAdminGuard>
+    );
+}
+
+function AuditLogInner() {
     const [rows, setRows] = useState<Row[]>([]);
     const [cursor, setCursor] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);

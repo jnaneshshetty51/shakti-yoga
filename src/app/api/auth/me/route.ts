@@ -10,6 +10,7 @@ import {
 } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { syncSubscriptionState } from '@/lib/subscription';
+import { adminTier } from '@/lib/permissions';
 
 export async function GET() {
     try {
@@ -59,6 +60,7 @@ export async function GET() {
 
         const effectiveRole = await syncSubscriptionState(user.id, user.role);
         const mappedRole = mapDatabaseRole(effectiveRole);
+        const { tokenVersion: _tv, ...safeUser } = user;
 
         // Keep the cookie's claims in sync with reality so middleware and the
         // client agree (e.g. after a lazy subscription expiry or a name change).
@@ -72,7 +74,9 @@ export async function GET() {
             await setSessionCookie(fresh, remaining);
         }
 
-        return NextResponse.json({ user: { ...user, role: mappedRole } });
+        return NextResponse.json({
+            user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole) },
+        });
     } catch (error) {
         console.error('Me API error:', error);
         return NextResponse.json({ user: null });

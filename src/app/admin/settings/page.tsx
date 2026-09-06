@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SuperAdminGuard } from "@/components/admin/SuperAdminGuard";
 
 interface Settings {
     platformName: string;
@@ -14,6 +15,14 @@ interface Integrations {
 }
 
 export default function AdminSettingsPage() {
+    return (
+        <SuperAdminGuard>
+            <SettingsInner />
+        </SuperAdminGuard>
+    );
+}
+
+function SettingsInner() {
     const [settings, setSettings] = useState<Settings>({ platformName: "", supportEmail: "", defaultTimezone: "IST" });
     const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, minio: false });
     const [loading, setLoading] = useState(true);

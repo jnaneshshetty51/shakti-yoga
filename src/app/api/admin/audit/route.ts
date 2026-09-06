@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireSuperAdmin } from '@/lib/admin-auth';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 export async function GET(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireSuperAdmin())) return forbidden();
     try {
         const url = new URL(request.url);
         const take = Math.min(200, Math.max(1, Number(url.searchParams.get('limit')) || 100));

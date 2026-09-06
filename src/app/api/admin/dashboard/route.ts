@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { Prisma, type Role } from '@prisma/client';
+import {
+    DAY,
+    MEMBER_ROLES,
+    liveSubWhere,
+    headlineStats,
+    signupSeries,
+    revenueSeries,
+    attendanceSeries,
+    trialFunnel,
+} from '@/lib/metrics';
 
 export const dynamic = 'force-dynamic';
-
-const DAY = 86_400_000;
 
 const EVENT_LABEL: Record<string, string> = {
     SIGNUP: 'New signup',
@@ -42,36 +49,28 @@ function val<T>(r: PromiseSettledResult<T>, fallback: T): T {
 }
 
 async function loadCounts(now: Date) {
-    const liveSub: Prisma.SubscriptionWhereInput = {
-        status: { in: ['ACTIVE', 'TRIAL'] },
-        renewalDate: { gt: now },
-    };
-    const memberRoles: Role[] = ['MEMBER_EVERYDAY', 'MEMBER_THERAPY'];
+    const live = liveSubWhere(now);
     const ago30 = new Date(now.getTime() - 30 * DAY);
-    const ago60 = new Date(now.getTime() - 60 * DAY);
     const ago7 = new Date(now.getTime() - 7 * DAY);
     const in7 = new Date(now.getTime() + 7 * DAY);
+    const in30 = new Date(now.getTime() + 30 * DAY);
 
     const [
-        everydayMembers,
-        therapyMembers,
-        trialUsers,
-        activeSubs,
-        newMembers30d,
-        newMembersPrev30d,
+        headline,
         pendingBookings,
         unhandledMessages,
         newLeads,
         expiringSoon,
         failedPayments7d,
         therapyOutOfCredits,
-    ] = await prisma.$transaction([
-        prisma.user.count({ where: { role: 'MEMBER_EVERYDAY', subscription: liveSub } }),
-        prisma.user.count({ where: { role: 'MEMBER_THERAPY', subscription: liveSub } }),
-        prisma.user.count({ where: { role: 'TRIAL' } }),
-        prisma.subscription.findMany({ where: { status: 'ACTIVE' }, select: { amount: true } }),
-        prisma.user.count({ where: { role: { in: memberRoles }, createdAt: { gte: ago30 } } }),
-        prisma.user.count({ where: { role: { in: memberRoles }, createdAt: { gte: ago60, lt: ago30 } } }),
+        storyDrafts,
+        blogDrafts,
+        bookingsNoLink,
+        dormantMembers,
+        renew7,
+        renew30,
+    ] = await Promise.all([
+        headlineStats(now),
         prisma.booking.count({ where: { status: 'PENDING' } }),
         prisma.contactMessage.count({ where: { handled: false } }),
         prisma.lead.count({ where: { status: 'NEW' } }),
@@ -80,23 +79,42 @@ async function loadCounts(now: Date) {
         }),
         prisma.payment.count({ where: { status: 'FAILED', createdAt: { gte: ago7 } } }),
         prisma.user.count({ where: { role: 'MEMBER_THERAPY', credits: 0 } }),
+        prisma.story.count({ where: { status: 'DRAFT' } }),
+        prisma.blogPost.count({ where: { status: 'DRAFT' } }),
+        prisma.booking.count({
+            where: { status: { in: ['PENDING', 'CONFIRMED'] }, date: { gt: now }, meetingLink: null },
+        }),
+        prisma.user.count({
+            where: {
+                role: { in: MEMBER_ROLES },
+                subscription: live,
+                OR: [{ lastLogin: null }, { lastLogin: { lt: ago30 } }],
+            },
+        }),
+        prisma.subscription.findMany({
+            where: { status: 'ACTIVE', renewalDate: { gt: now, lt: in7 } },
+            select: { amount: true },
+        }),
+        prisma.subscription.findMany({
+            where: { status: 'ACTIVE', renewalDate: { gt: now, lt: in30 } },
+            select: { amount: true },
+        }),
     ]);
-
-    const mrr = Math.round(activeSubs.reduce((s, x) => s + x.amount, 0));
-    const growthPct =
-        newMembersPrev30d > 0
-            ? Math.round(((newMembers30d - newMembersPrev30d) / newMembersPrev30d) * 1000) / 10
-            : null;
 
     return {
         stats: {
-            activeMembers: everydayMembers + therapyMembers,
-            everydayMembers,
-            therapyMembers,
-            trialUsers,
-            mrr,
-            newMembers30d,
-            newMembersGrowthPct: growthPct,
+            activeMembers: headline.activeMembers,
+            everydayMembers: headline.everydayMembers,
+            therapyMembers: headline.therapyMembers,
+            trialUsers: headline.trialUsers,
+            mrr: headline.mrr,
+            newMembers: headline.newMembers,
+            newMembersDelta: headline.newMembersDelta,
+            lapsed: headline.lapsed,
+            lapsedDelta: headline.lapsedDelta,
+            paused: headline.paused,
+            renewalRevenue7d: Math.round(renew7.reduce((s, x) => s + x.amount, 0)),
+            renewalRevenue30d: Math.round(renew30.reduce((s, x) => s + x.amount, 0)),
         },
         attention: {
             pendingBookings,
@@ -105,8 +123,49 @@ async function loadCounts(now: Date) {
             expiringSoon,
             failedPayments7d,
             therapyOutOfCredits,
+            contentDrafts: storyDrafts + blogDrafts,
+            bookingsNoLink,
+            dormantMembers,
         },
     };
+}
+
+async function loadTrends(now: Date) {
+    const [signups, revenue, attendance] = await Promise.all([
+        signupSeries('30d', now),
+        revenueSeries('30d', now),
+        attendanceSeries('30d', now),
+    ]);
+    return { signups, revenue, attendance };
+}
+
+async function loadTeacherLoad(now: Date) {
+    const in7 = new Date(now.getTime() + 7 * DAY);
+    const teachers = await prisma.user.findMany({
+        where: { role: 'TEACHER' },
+        select: {
+            id: true,
+            name: true,
+            _count: {
+                select: {
+                    classesTaught: { where: { active: true } },
+                    sessionsTaught: {
+                        where: { date: { gte: now, lt: in7 }, status: { in: ['PENDING', 'CONFIRMED'] } },
+                    },
+                    availability: { where: { active: true } },
+                },
+            },
+        },
+    });
+    return teachers
+        .map((t) => ({
+            id: t.id,
+            name: t.name,
+            batches: t._count.classesTaught,
+            upcomingSessions: t._count.sessionsTaught,
+            hasAvailability: t._count.availability > 0,
+        }))
+        .sort((a, b) => b.upcomingSessions - a.upcomingSessions);
 }
 
 async function loadUpcomingSessions(now: Date, horizon: Date) {
@@ -173,9 +232,7 @@ async function loadActivity(): Promise<ActivityItem[]> {
         at: a.createdAt.toISOString(),
     }));
 
-    return [...eventItems, ...auditItems]
-        .sort((x, y) => y.at.localeCompare(x.at))
-        .slice(0, 12);
+    return [...eventItems, ...auditItems].sort((x, y) => y.at.localeCompare(x.at)).slice(0, 12);
 }
 
 async function loadSignups(now: Date) {
@@ -214,34 +271,41 @@ export async function GET() {
     const now = new Date();
     const horizon = new Date(now.getTime() + 2 * DAY);
 
-    const [countsR, sessionsR, classesR, activityR, signupsR] = await Promise.allSettled([
+    const results = await Promise.allSettled([
         loadCounts(now),
+        loadTrends(now),
+        loadTrialFunnelSection(now),
+        loadTeacherLoad(now),
         loadUpcomingSessions(now, horizon),
         loadUpcomingClasses(now, horizon),
         loadActivity(),
         loadSignups(now),
     ]);
+    const [countsR, trendsR, funnelR, teachersR, sessionsR, classesR, activityR, signupsR] = results;
 
     const counts = val(countsR, {
         stats: {
-            activeMembers: 0, everydayMembers: 0, therapyMembers: 0, trialUsers: 0,
-            mrr: 0, newMembers30d: 0, newMembersGrowthPct: null as number | null,
+            activeMembers: 0, everydayMembers: 0, therapyMembers: 0, trialUsers: 0, mrr: 0,
+            newMembers: 0, newMembersDelta: null as number | null,
+            lapsed: 0, lapsedDelta: null as number | null, paused: 0,
+            renewalRevenue7d: 0, renewalRevenue30d: 0,
         },
         attention: {
-            pendingBookings: 0, unhandledMessages: 0, newLeads: 0,
-            expiringSoon: 0, failedPayments7d: 0, therapyOutOfCredits: 0,
+            pendingBookings: 0, unhandledMessages: 0, newLeads: 0, expiringSoon: 0,
+            failedPayments7d: 0, therapyOutOfCredits: 0, contentDrafts: 0,
+            bookingsNoLink: 0, dormantMembers: 0,
         },
     });
-
-    const partial =
-        [countsR, sessionsR, classesR, activityR, signupsR].some((r) => r.status === 'rejected');
 
     return NextResponse.json(
         {
             generatedAt: now.toISOString(),
-            partial,
+            partial: results.some((r) => r.status === 'rejected'),
             stats: counts.stats,
             attention: counts.attention,
+            trends: val(trendsR, { signups: [], revenue: [], attendance: [] }),
+            trialFunnel: val(funnelR, null),
+            teacherLoad: val(teachersR, []),
             upcomingSessions: val(sessionsR, []),
             upcomingClasses: val(classesR, []),
             activity: val(activityR, []),
@@ -249,4 +313,8 @@ export async function GET() {
         },
         { headers: { 'Cache-Control': 'no-store' } },
     );
+}
+
+async function loadTrialFunnelSection(now: Date) {
+    return trialFunnel('30d', now);
 }

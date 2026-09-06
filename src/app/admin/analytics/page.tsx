@@ -1,301 +1,250 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { PageHeader } from "@/components/admin";
-import { StatCard } from "@/components/admin";
-import { FaUsers, FaDollarSign, FaCalendarCheck, FaUserPlus } from "react-icons/fa";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { StatCard } from "@/components/admin/StatCard";
+import { TrendChart } from "@/components/admin/TrendChart";
+import { CHART_PRIMARY, CHART_SECONDARY } from "@/components/admin/Sparkline";
 
-interface AnalyticsData {
-  totalMembers: number;
-  activeMembers: number;
-  trialUsers: number;
-  mrr: number;
-  mrrGrowth: number;
-  newMembersThisMonth: number;
-  newMembersGrowth: number;
-  classAttendanceRate: number;
-  attendanceChange: number;
-  conversionRate: number;
-  conversionChange: number;
-  revenueByMonth: { month: string; revenue: number }[];
-  membersByPlan: { plan: string; count: number }[];
-  membersByCountry: { country: string; count: number }[];
-  topPerformingContent: { title: string; views: number }[];
+type Series = { label: string; value: number }[];
+
+interface Analytics {
+    range: string;
+    generatedAt: string;
+    activeMembers: number;
+    everydayMembers: number;
+    therapyMembers: number;
+    trialUsers: number;
+    mrr: number;
+    newMembers: number;
+    newMembersDelta: number | null;
+    revenueCollected: number;
+    revenueDelta: number | null;
+    conversionRate: number;
+    classFill: { rate: number; avgAttendees: number; classes: number; eligible: number };
+    revenueSeries: Series;
+    signupSeries: Series;
+    trialFunnel: {
+        requested: number; scheduled: number; attended: number;
+        converted: number; noShow: number; conversionRate: number;
+    };
+    membersByPlan: { plan: string; count: number }[];
+    membersByCountry: { country: string; count: number }[];
 }
 
-interface ApiError {
-  error: string;
-  details?: string;
+const RANGES = [
+    { value: "7d", label: "Last 7 days" },
+    { value: "30d", label: "Last 30 days" },
+    { value: "90d", label: "Last 90 days" },
+    { value: "12m", label: "Last 12 months" },
+];
+
+const inr = (n: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0);
+const inrShort = (n: number) =>
+    n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}k` : `₹${Math.round(n)}`;
+
+function chip(delta: number | null): { change?: string; changeType: "positive" | "negative" | "neutral"; trend?: "up" | "down" } {
+    if (delta === null) return { change: "no prior data", changeType: "neutral" };
+    if (delta === 0) return { change: "no change", changeType: "neutral" };
+    return {
+        change: `${delta > 0 ? "+" : ""}${delta}% vs prev period`,
+        changeType: delta > 0 ? "positive" : "negative",
+        trend: delta > 0 ? "up" : "down",
+    };
+}
+
+function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900">{title}</h3>
+                {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+            </div>
+            <div className="p-6">{children}</div>
+        </div>
+    );
+}
+
+function HBars({ rows, total }: { rows: { label: string; count: number }[]; total: number }) {
+    const max = Math.max(1, ...rows.map((r) => r.count));
+    return (
+        <div className="space-y-3">
+            {rows.length === 0 && <p className="text-gray-400 text-sm">No data yet.</p>}
+            {rows.map((r) => (
+                <div key={r.label} className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-700 w-24 truncate">{r.label}</span>
+                    <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${(r.count / max) * 100}%`, background: CHART_PRIMARY }} />
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 w-16 text-right tabular-nums">
+                        {r.count}{total > 0 && <span className="text-gray-400 text-xs"> · {Math.round((r.count / total) * 100)}%</span>}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export default function AnalyticsPage() {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState("30d");
-  const rangeLabels: Record<string, string> = { "7d": "in the last 7 days", "30d": "in the last 30 days", "90d": "in the last 90 days", "12m": "in the last 12 months" };
-  const rangeLabel = rangeLabels[dateRange] ?? "in this period";
-  const [error, setError] = useState<string | null>(null);
+    const [data, setData] = useState<Analytics | null>(null);
+    const [range, setRange] = useState("30d");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
 
-  const fetchAnalytics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/admin/analytics?range=${dateRange}`);
-      if (response.ok) {
-        const result = await response.json();
-        setData(result);
-      } else {
-        const errorData: ApiError = await response.json();
-        setError(errorData.error || 'Failed to fetch analytics');
-        setData(null);
-      }
-    } catch (_err) {
-      setError('Network error - unable to connect to analytics API');
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [dateRange]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
-
-  const maxRevenue = data?.revenueByMonth?.reduce((max, item) => Math.max(max, item.revenue), 0) || 1;
-
-  return (
-    <div>
-      <PageHeader
-        title="Analytics"
-        subtitle="Monitor your business performance and growth metrics"
-        actions={
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-            <option value="12m">Last 12 months</option>
-          </select>
+    const load = useCallback(async () => {
+        abortRef.current?.abort();
+        const ac = new AbortController();
+        abortRef.current = ac;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/admin/analytics?range=${range}`, { signal: ac.signal, cache: "no-store" });
+            if (!res.ok) throw new Error(`Request failed (${res.status})`);
+            setData((await res.json()) as Analytics);
+            setError(null);
+        } catch (e) {
+            if ((e as Error).name === "AbortError") return;
+            setError("Could not load analytics.");
+        } finally {
+            setLoading(false);
         }
-      />
+    }, [range]);
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 font-medium">Error loading analytics</p>
-          <p className="text-red-600 text-sm">{error}</p>
-          <button
-            onClick={fetchAnalytics}
-            className="mt-2 px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
-      )}
+    useEffect(() => {
+        load();
+        return () => abortRef.current?.abort();
+    }, [load]);
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="Monthly Revenue"
-          value={`$${data?.mrr?.toLocaleString() || 0}`}
-          change={`${(data?.mrrGrowth ?? 0) >= 0 ? '+' : ''}${data?.mrrGrowth ?? 0}%`}
-          changeType={(data?.mrrGrowth ?? 0) >= 0 ? "positive" : "negative"}
-          trend={(data?.mrrGrowth ?? 0) >= 0 ? "up" : "down"}
-          icon={<FaDollarSign className="w-5 h-5" />}
-        />
-        <StatCard
-          title="Active Members"
-          value={data?.activeMembers || 0}
-          change={`+${data?.newMembersThisMonth || 0} ${rangeLabel}`}
-          changeType="positive"
-          trend="up"
-          icon={<FaUsers className="w-5 h-5" />}
-        />
-        <StatCard
-          title="Trial Users"
-          value={data?.trialUsers || 0}
-          change={`${data?.trialUsers || 0} in trial period`}
-          changeType="neutral"
-          icon={<FaUserPlus className="w-5 h-5" />}
-        />
-        <StatCard
-          title="Class Attendance"
-          value={`${data?.classAttendanceRate || 0}%`}
-          change={`${data?.attendanceChange ?? 0}%`}
-          changeType={(data?.attendanceChange ?? 0) >= 0 ? "positive" : "negative"}
-          trend={(data?.attendanceChange ?? 0) >= 0 ? "up" : "down"}
-          icon={<FaCalendarCheck className="w-5 h-5" />}
-        />
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-8 mb-8">
-        {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">Revenue Overview</h3>
-            <p className="text-sm text-gray-500">Monthly recurring revenue trend</p>
-          </div>
-          <div className="p-6">
-            {loading ? (
-              <div className="animate-pulse h-48 bg-gray-100 rounded" />
-            ) : error || !data ? (
-              <div className="h-48 flex items-center justify-center text-gray-400">
-                {error ? 'Unable to load revenue data' : 'No data available'}
-              </div>
-            ) : (
-              <div className="flex items-end justify-between gap-2 h-48">
-                {data.revenueByMonth && data.revenueByMonth.length > 0 ? (
-                  data.revenueByMonth.map((item, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full bg-primary/10 rounded-t-lg relative group">
-                        <div
-                          className="absolute inset-0 bg-gradient-to-t from-primary/30 to-primary/10 rounded-t-lg transition-all group-hover:from-primary/40 group-hover:to-primary/20"
-                          style={{ height: `${(item.revenue / maxRevenue) * 100}%` }}
-                        />
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          ${item.revenue.toLocaleString()}
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-500">{item.month}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="w-full flex items-center justify-center text-gray-400 h-48">
-                    No revenue data yet
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Members by Plan */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">Members by Plan</h3>
-            <p className="text-sm text-gray-500">Distribution across plans</p>
-          </div>
-          <div className="p-6">
-            {loading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-12 bg-gray-100 rounded" />
-                <div className="h-12 bg-gray-100 rounded" />
-              </div>
-            ) : error || !data ? (
-              <div className="text-gray-400 text-center py-8">
-                {error ? 'Unable to load data' : 'No data available'}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {data.membersByPlan && data.membersByPlan.length > 0 ? data.membersByPlan.map((item, index) => {
-                  const percentage = ((item.count / (data.activeMembers || 1)) * 100).toFixed(1);
-                  const colors = ["bg-primary", "bg-secondary", "bg-orange-500", "bg-teal-500"];
-                  return (
-                    <div key={index}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium text-gray-700">{item.plan}</span>
-                        <span className="text-gray-500">{item.count} ({percentage}%)</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${colors[index % colors.length]} rounded-full transition-all`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-gray-400 text-center py-4">No plan data yet</div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Top Performing Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">Top Performing Content</h3>
-            <p className="text-sm text-gray-500">Most viewed blog posts and pages</p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {loading ? (
-              <div className="p-6 animate-pulse space-y-4">
-                <div className="h-12 bg-gray-100 rounded" />
-                <div className="h-12 bg-gray-100 rounded" />
-                <div className="h-12 bg-gray-100 rounded" />
-              </div>
-            ) : error || !data ? (
-              <div className="p-6 text-center text-gray-400">
-                {error ? 'Unable to load content data' : 'No data available'}
-              </div>
-            ) : data.topPerformingContent && data.topPerformingContent.length > 0 ? (
-              data.topPerformingContent.map((content, index) => (
-                <div key={index} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <span className="text-2xl font-bold text-gray-300">{(index + 1).toString().padStart(2, '0')}</span>
-                    <span className="font-medium text-gray-700">{content.title}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-medium text-primary">{content.views.toLocaleString()}</span>
-                    <span className="text-xs text-gray-500 ml-1">views</span>
-                  </div>
+    return (
+        <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+                <div>
+                    <h1 className="font-serif text-3xl font-bold text-gray-900">Analytics</h1>
+                    <p className="text-gray-500 mt-1">Business performance and growth</p>
                 </div>
-              ))
-            ) : (
-              <div className="p-6 text-center text-gray-400">No content data yet</div>
-            )}
-          </div>
-        </div>
+                <select
+                    value={range}
+                    onChange={(e) => setRange(e.target.value)}
+                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                    {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+            </div>
 
-        {/* Members by Country */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">Members by Location</h3>
-            <p className="text-sm text-gray-500">Geographic distribution of members</p>
-          </div>
-          <div className="p-6">
-            {loading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-6 bg-gray-100 rounded" />
-                <div className="h-6 bg-gray-100 rounded" />
-                <div className="h-6 bg-gray-100 rounded" />
-                <div className="h-6 bg-gray-100 rounded" />
-                <div className="h-6 bg-gray-100 rounded" />
-              </div>
-            ) : error || !data ? (
-              <div className="text-center text-gray-400 py-8">
-                {error ? 'Unable to load location data' : 'No data available'}
-              </div>
-            ) : data.membersByCountry && data.membersByCountry.length > 0 ? (
-              <div className="space-y-3">
-                {data.membersByCountry.map((item, index) => {
-                  const maxCount = data.membersByCountry[0]?.count || 1;
-                  return (
-                    <div key={index} className="flex items-center gap-4">
-                      <span className="text-sm font-medium text-gray-700 w-20">{item.country}</span>
-                      <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
-                          style={{ width: `${(item.count / maxCount) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 w-10 text-right">{item.count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center text-gray-400 py-4">No location data yet</div>
+            {error && (
+                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-800 font-medium mb-2">{error}</p>
+                    <button onClick={load} className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700">Retry</button>
+                </div>
             )}
-          </div>
+
+            {loading && !data ? (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {Array.from({ length: 4 }).map((_, i) => <div key={i} className="animate-pulse h-28 bg-gray-200 rounded-xl" />)}
+                </div>
+            ) : data ? (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <StatCard title="Monthly Revenue" value={inr(data.mrr)} />
+                        <StatCard
+                            title="Revenue Collected"
+                            value={inr(data.revenueCollected)}
+                            {...chip(data.revenueDelta)}
+                            spark={data.revenueSeries.map((p) => p.value)}
+                        />
+                        <StatCard
+                            title="New Members"
+                            value={data.newMembers}
+                            {...chip(data.newMembersDelta)}
+                            spark={data.signupSeries.map((p) => p.value)}
+                        />
+                        <StatCard
+                            title="Active Members"
+                            value={data.activeMembers}
+                            change={`${data.everydayMembers} everyday · ${data.therapyMembers} therapy`}
+                            changeType="neutral"
+                        />
+                    </div>
+
+                    <div className="grid lg:grid-cols-3 gap-8 mb-8">
+                        <div className="lg:col-span-2">
+                            <Card title="Revenue" subtitle="Collected payments over the selected range">
+                                {data.revenueSeries.some((p) => p.value > 0) ? (
+                                    <TrendChart series={data.revenueSeries} kind="bar" color={CHART_SECONDARY} format={inrShort} />
+                                ) : (
+                                    <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+                                        No payments recorded in this range.
+                                    </div>
+                                )}
+                            </Card>
+                        </div>
+                        <Card title="Members by Plan" subtitle="Active subscriptions">
+                            <HBars
+                                rows={data.membersByPlan.map((p) => ({ label: p.plan, count: p.count }))}
+                                total={data.membersByPlan.reduce((s, p) => s + p.count, 0)}
+                            />
+                        </Card>
+                    </div>
+
+                    <div className="grid lg:grid-cols-3 gap-8 mb-8">
+                        <div className="lg:col-span-2">
+                            <Card title="Signups" subtitle="New accounts over the selected range">
+                                {data.signupSeries.some((p) => p.value > 0) ? (
+                                    <TrendChart series={data.signupSeries} kind="area" color={CHART_PRIMARY} />
+                                ) : (
+                                    <div className="h-48 flex items-center justify-center text-gray-400 text-sm">No signups in this range.</div>
+                                )}
+                            </Card>
+                        </div>
+                        <Card title="Members by Location" subtitle="Top countries">
+                            <HBars
+                                rows={data.membersByCountry.map((c) => ({ label: c.country, count: c.count }))}
+                                total={data.membersByCountry.reduce((s, c) => s + c.count, 0)}
+                            />
+                        </Card>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-8">
+                        <Card title="Trial Funnel" subtitle="Trial requests → conversions in this range">
+                            <div className="flex items-stretch gap-2 mb-3">
+                                {[
+                                    { label: "Requested", v: data.trialFunnel.requested },
+                                    { label: "Scheduled", v: data.trialFunnel.scheduled },
+                                    { label: "Attended", v: data.trialFunnel.attended },
+                                    { label: "Converted", v: data.trialFunnel.converted },
+                                ].map((s, i) => (
+                                    <div key={s.label} className="flex-1 text-center">
+                                        <div className="rounded-lg py-3 text-white font-bold text-lg" style={{ background: CHART_PRIMARY, opacity: 1 - i * 0.18 }}>
+                                            {s.v}
+                                        </div>
+                                        <div className="text-[11px] text-gray-500 mt-1 uppercase tracking-wider">{s.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between text-sm text-gray-500">
+                                <span>{data.trialFunnel.noShow} no-shows</span>
+                                <span className="font-bold text-gray-700">{data.trialFunnel.conversionRate}% conversion</span>
+                            </div>
+                        </Card>
+
+                        <Card title="Class Attendance" subtitle="Group classes in this range">
+                            <div className="grid grid-cols-2 gap-4">
+                                {[
+                                    { label: "Avg attendees / class", value: data.classFill.avgAttendees },
+                                    { label: "Classes held", value: data.classFill.classes },
+                                    { label: "Fill rate vs eligible", value: `${data.classFill.rate}%` },
+                                    { label: "Eligible members", value: data.classFill.eligible },
+                                ].map((s) => (
+                                    <div key={s.label}>
+                                        <div className="text-2xl font-bold text-gray-900">{s.value}</div>
+                                        <div className="text-xs text-gray-500 uppercase tracking-wider">{s.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+                </>
+            ) : null}
         </div>
-      </div>
-    </div>
-  );
+    );
 }

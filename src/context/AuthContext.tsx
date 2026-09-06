@@ -16,6 +16,8 @@ interface User {
     timezone?: string;
     avatarUrl?: string | null;
     credits: number;
+    /** Admin tier — only set when role === 'admin'. */
+    tier?: 'super' | 'staff' | null;
 }
 
 export interface RegisterInput {
@@ -39,6 +41,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Where a role lands after login when there's no explicit ?from= target. */
+export function roleHome(role: UserRole): string {
+    if (role === 'admin') return '/admin';
+    if (role === 'teacher') return '/teacher';
+    return '/dashboard';
+}
+
 function normalizeUser(raw: Record<string, unknown>): User {
     return {
         id: String(raw.id),
@@ -50,6 +59,7 @@ function normalizeUser(raw: Record<string, unknown>): User {
         timezone: raw.timezone as string | undefined,
         avatarUrl: (raw.avatarUrl as string | null | undefined) ?? null,
         credits: typeof raw.credits === 'number' ? raw.credits : 0,
+        tier: raw.tier === 'super' || raw.tier === 'staff' ? raw.tier : null,
     };
 }
 
@@ -92,9 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(loggedIn);
 
         // Honour ?from= / ?redirect= (same-origin paths only), else role home.
-        const dest = redirectTargetFromLocation()
-            ?? (loggedIn.role === 'admin' ? '/admin' : '/dashboard');
-        router.push(dest);
+        router.push(redirectTargetFromLocation() ?? roleHome(loggedIn.role));
     };
 
     const register = async (input: RegisterInput) => {
