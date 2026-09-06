@@ -1,6 +1,14 @@
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Everyday Yoga — Live Group Classes",
+    description: "Five live yoga classes a week over Google Meet, across time zones. Community, consistency and a daily practice that sticks.",
+    alternates: { canonical: "/everyday-yoga" },
+};
+
 export default function ClassesPage() {
     const schedule = [
         { time: "6:00 AM - 7:00 AM IST", type: "Vinyasa Flow", level: "Intermediate" },

@@ -1,6 +1,14 @@
 import PageHeader from "@/components/PageHeader";
 import ContactForm from "./ContactForm";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Contact",
+    description: "Questions about classes, therapy or your membership? Reach the Shakti Yoga team.",
+    alternates: { canonical: "/contact" },
+};
+
 export default function ContactPage() {
     return (
         <main>

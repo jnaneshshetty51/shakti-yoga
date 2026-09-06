@@ -1,6 +1,14 @@
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Programs & Pricing",
+    description: "Everyday Yoga group classes (₹2,000/mo) and 1:1 Yoga Therapy (₹5,000/mo). Start with a 7-day free trial.",
+    alternates: { canonical: "/programs" },
+};
+
 export default function ProgramsPage() {
     return (
         <main>

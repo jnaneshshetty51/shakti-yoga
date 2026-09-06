@@ -2,6 +2,14 @@ import PageHeader from "@/components/PageHeader";
 import YogaTherapy from "@/components/YogaTherapy";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "1:1 Yoga Therapy",
+    description: "Personalised one-on-one yoga therapy for chronic pain, anxiety, hormonal balance and recovery — with a real health assessment and a plan built for you.",
+    alternates: { canonical: "/yoga-therapy" },
+};
+
 export default function TherapyPage() {
     return (
         <main>

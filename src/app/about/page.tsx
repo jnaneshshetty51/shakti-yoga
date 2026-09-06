@@ -2,6 +2,14 @@ import PageHeader from "@/components/PageHeader";
 import WhyUs from "@/components/WhyUs";
 import Image from "next/image";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "About",
+    description: "The story, teachers and philosophy behind Shakti Yoga — authentic practice from India for a global community.",
+    alternates: { canonical: "/about" },
+};
+
 export default function AboutPage() {
     return (
         <main>

@@ -1,7 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 300;
+
+export const metadata: Metadata = {
+    title: "The Shakti Journal",
+    description: "Articles on yoga, mindfulness, therapeutic practice and finding balance in a busy life.",
+    alternates: { canonical: "/blog" },
+};
 
 function formatDate(d: Date) {
     return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);

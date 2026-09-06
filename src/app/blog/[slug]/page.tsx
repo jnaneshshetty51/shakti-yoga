@@ -26,9 +26,19 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
     try {
         const post = await prisma.blogPost.findUnique({ where: { slug } });
         if (!post || post.status !== "PUBLISHED") return {};
+        const description = post.metaDescription ?? post.excerpt ?? post.content.slice(0, 155);
         return {
-            title: post.metaTitle ?? `${post.title} | Shakti Yoga`,
-            description: post.metaDescription ?? post.excerpt ?? post.content.slice(0, 155),
+            title: post.metaTitle ?? post.title,
+            description,
+            alternates: { canonical: `/blog/${slug}` },
+            openGraph: {
+                type: "article",
+                title: post.metaTitle ?? post.title,
+                description,
+                url: `/blog/${slug}`,
+                publishedTime: (post.publishedAt ?? post.createdAt).toISOString(),
+                ...(post.imageUrl || post.featuredImage ? { images: [(post.imageUrl ?? post.featuredImage) as string] } : {}),
+            },
         };
     } catch {
         return {};

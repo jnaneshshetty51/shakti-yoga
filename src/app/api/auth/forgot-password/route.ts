@@ -3,6 +3,7 @@ import { randomBytes, createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { SITE_URL } from '@/lib/site';
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -46,8 +47,7 @@ export async function POST(request: Request) {
                 },
             });
 
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-            const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+            const resetUrl = `${SITE_URL}/reset-password?token=${rawToken}`;
 
             sendEmail({
                 to: user.email,

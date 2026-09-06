@@ -3,6 +3,7 @@ import { Playfair_Display, Lato } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -18,8 +19,29 @@ const lato = Lato({
 });
 
 export const metadata: Metadata = {
-  title: "Shakti Yoga | Find Your Inner Power",
-  description: "Minimalistic and earthy yoga studio in India.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} | Online Yoga & 1:1 Yoga Therapy`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: ["online yoga", "yoga therapy", "yoga for NRIs", "live yoga classes India", "1:1 yoga therapy", "everyday yoga"],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} | Online Yoga & 1:1 Yoga Therapy`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} | Online Yoga & 1:1 Yoga Therapy`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
