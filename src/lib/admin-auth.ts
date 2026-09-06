@@ -41,3 +41,12 @@ export async function requireStaff(): Promise<SessionPayload | null> {
     if (!payload || (payload.role !== 'admin' && payload.role !== 'teacher')) return null;
     return payload;
 }
+
+/**
+ * Teacher endpoints. Admins pass too (so they can preview a teacher's view),
+ * but every query in a teacher route must still scope to `session.id` — never a
+ * teacherId from the request.
+ */
+export async function requireTeacher(): Promise<SessionPayload | null> {
+    return requireStaff();
+}

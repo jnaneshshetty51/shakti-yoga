@@ -11,6 +11,7 @@ import {
 } from '@/lib/auth';
 import { syncSubscriptionState } from '@/lib/subscription';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { adminTier } from '@/lib/permissions';
 
 export async function POST(request: Request) {
     try {
@@ -61,10 +62,10 @@ export async function POST(request: Request) {
         );
         await setSessionCookie(token, maxAge);
 
-        const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
+        const { passwordHash: _passwordHash, tokenVersion: _tv, ...safeUser } = user;
 
         return NextResponse.json({
-            user: { ...userWithoutPassword, role: mappedRole },
+            user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole) },
             message: 'Logged in successfully',
         });
     } catch (error) {
