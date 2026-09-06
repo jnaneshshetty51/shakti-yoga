@@ -74,7 +74,7 @@ export default function Footer() {
                 <div className="flex flex-wrap justify-center gap-4 sm:gap-6 uppercase tracking-wider">
                     <Link href="/terms" className="hover:text-secondary transition-colors py-1">Terms</Link>
                     <Link href="/privacy" className="hover:text-secondary transition-colors py-1">Privacy</Link>
-                    <Link href="#" className="hover:text-secondary transition-colors py-1">Refunds</Link>
+                    <Link href="/refund-policy" className="hover:text-secondary transition-colors py-1">Refunds</Link>
                     <Link href="/disclaimer" className="hover:text-secondary transition-colors py-1">Disclaimer</Link>
                 </div>
 
