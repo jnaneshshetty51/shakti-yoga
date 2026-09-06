@@ -187,7 +187,15 @@ export default function BillingPage() {
                                             {p.status}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-text/50 font-mono text-xs">{p.providerPaymentId || "—"}</td>
+                                    <td className="p-4 text-text/50 font-mono text-xs">
+                                        {p.status === "PAID" ? (
+                                            <Link href={`/dashboard/billing/invoice/${p.id}`} className="text-primary font-bold not-italic hover:underline">
+                                                Invoice
+                                            </Link>
+                                        ) : (
+                                            p.providerPaymentId || "—"
+                                        )}
+                                    </td>
                                 </tr>
                             ))
                         )}

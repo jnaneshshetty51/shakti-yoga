@@ -9,120 +9,116 @@ interface Stats {
     mrr: number;
     pendingBookings: number;
 }
+interface Activity {
+    id: string;
+    type: string;
+    message: string;
+    timestamp: string;
+}
+
+const DOT: Record<string, string> = {
+    signup: "bg-green-500",
+    payment: "bg-yellow-500",
+    booking: "bg-blue-500",
+    trial: "bg-secondary",
+    lead: "bg-purple-500",
+};
+
+function inr(n: number) {
+    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0);
+}
 
 export default function AdminDashboardPage() {
-    const [stats, setStats] = useState<Stats>({
-        activeMembers: 0,
-        trialUsers: 0,
-        mrr: 0,
-        pendingBookings: 0,
-    });
+    const [stats, setStats] = useState<Stats>({ activeMembers: 0, trialUsers: 0, mrr: 0, pendingBookings: 0 });
+    const [activity, setActivity] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        async function fetchStats() {
+        (async () => {
             try {
-                const response = await fetch('/api/admin/stats');
-                if (response.ok) {
-                    const data = await response.json();
-                    setStats(data);
-                }
-            } catch (error) {
-                console.error('Failed to fetch stats:', error);
+                const [s, d] = await Promise.all([
+                    fetch("/api/admin/stats").then((r) => (r.ok ? r.json() : null)),
+                    fetch("/api/admin/dashboard").then((r) => (r.ok ? r.json() : null)),
+                ]);
+                if (s) setStats(s);
+                if (d?.recentActivity) setActivity(d.recentActivity);
+            } catch (e) {
+                console.error("Admin dashboard load error:", e);
             } finally {
                 setLoading(false);
             }
-        }
-        fetchStats();
+        })();
     }, []);
 
     if (loading) {
         return (
             <div>
                 <h1 className="font-serif text-3xl text-gray-800 mb-8">Dashboard Overview</h1>
-                <div className="text-gray-500">Loading...</div>
+                <div className="text-gray-500">Loading…</div>
             </div>
         );
     }
+
+    const cards = [
+        { label: "Active Members", value: stats.activeMembers, className: "text-primary" },
+        { label: "Monthly Revenue", value: inr(stats.mrr), className: "text-gray-800" },
+        { label: "Active Trials", value: stats.trialUsers, className: "text-secondary" },
+        { label: "Pending Bookings", value: stats.pendingBookings, className: "text-orange-500" },
+    ];
 
     return (
         <div>
             <h1 className="font-serif text-3xl text-gray-800 mb-8">Dashboard Overview</h1>
 
-            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Active Members</div>
-                    <div className="text-3xl font-bold text-primary">{stats.activeMembers}</div>
-                    <div className="text-xs text-green-600 mt-2">↑ 12% vs last month</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Monthly Revenue</div>
-                    <div className="text-3xl font-bold text-gray-800">${stats.mrr.toFixed(2)}</div>
-                    <div className="text-xs text-green-600 mt-2">↑ 5% vs last month</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Active Trials</div>
-                    <div className="text-3xl font-bold text-secondary">{stats.trialUsers}</div>
-                    <div className="text-xs text-gray-500 mt-2">3 expiring soon</div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Pending Bookings</div>
-                    <div className="text-3xl font-bold text-orange-500">{stats.pendingBookings}</div>
-                    <div className="text-xs text-gray-500 mt-2">Action required</div>
-                </div>
+                {cards.map((c) => (
+                    <div key={c.label} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{c.label}</div>
+                        <div className={`text-3xl font-bold ${c.className}`}>{c.value}</div>
+                    </div>
+                ))}
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
-                {/* Quick Actions */}
                 <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
                     <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Link href="/admin/users" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
                             <div className="text-2xl mb-2">👤</div>
-                            <div className="text-sm font-bold text-gray-600">Add User</div>
+                            <div className="text-sm font-bold text-gray-600">Users</div>
                         </Link>
                         <Link href="/admin/classes" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
                             <div className="text-2xl mb-2">🧘‍♀️</div>
-                            <div className="text-sm font-bold text-gray-600">Create Class</div>
+                            <div className="text-sm font-bold text-gray-600">Classes</div>
                         </Link>
                         <Link href="/admin/content" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
                             <div className="text-2xl mb-2">📝</div>
-                            <div className="text-sm font-bold text-gray-600">Write Blog</div>
+                            <div className="text-sm font-bold text-gray-600">Content</div>
                         </Link>
-                        <Link href="/admin/community" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
-                            <div className="text-2xl mb-2">💬</div>
-                            <div className="text-sm font-bold text-gray-600">Update Group</div>
+                        <Link href="/admin/availability" className="p-4 border border-gray-100 rounded hover:bg-gray-50 text-center transition-colors">
+                            <div className="text-2xl mb-2">🕐</div>
+                            <div className="text-sm font-bold text-gray-600">Availability</div>
                         </Link>
                     </div>
                 </div>
 
-                {/* Recent Activity Feed (Mock) */}
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
                     <h3 className="font-bold text-gray-800 mb-4">Recent Activity</h3>
-                    <div className="space-y-4">
-                        <div className="flex gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 rounded-full bg-green-500 shrink-0"></div>
-                            <div>
-                                <span className="font-bold text-gray-700">New Signup</span>
-                                <p className="text-gray-500 text-xs">Mike Ross started a trial.</p>
-                            </div>
+                    {activity.length === 0 ? (
+                        <p className="text-sm text-gray-400 italic">No recent activity.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {activity.slice(0, 8).map((a) => (
+                                <div key={a.id} className="flex gap-3 text-sm">
+                                    <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${DOT[a.type] || "bg-gray-400"}`} />
+                                    <div>
+                                        <p className="text-gray-700">{a.message}</p>
+                                        <p className="text-gray-400 text-xs">{a.timestamp}</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        <div className="flex gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 rounded-full bg-blue-500 shrink-0"></div>
-                            <div>
-                                <span className="font-bold text-gray-700">Booking Confirmed</span>
-                                <p className="text-gray-500 text-xs">Sarah Jones booked Therapy.</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 rounded-full bg-yellow-500 shrink-0"></div>
-                            <div>
-                                <span className="font-bold text-gray-700">Payment Received</span>
-                                <p className="text-gray-500 text-xs">$59.00 from Jnanesh Shetty.</p>
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -2,29 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 
-// Fallback data for when database is unavailable
-const FALLBACK_RECENT_ACTIVITY = [
-    { id: '1', type: 'signup', message: 'Sarah Johnson started a free trial', timestamp: '2 hours ago' },
-    { id: '2', type: 'payment', message: 'Payment of ₹7,200 received from Mike Ross', timestamp: '4 hours ago' },
-    { id: '3', type: 'booking', message: 'John Doe booked a therapy session for tomorrow', timestamp: '5 hours ago' },
-    { id: '4', type: 'trial', message: 'Emma Wilson completed 3 trial classes', timestamp: '1 day ago' },
-    { id: '5', type: 'booking', message: 'Robert Chen booked consultation call', timestamp: '1 day ago' },
-];
-
-const FALLBACK_UPCOMING_BOOKINGS = [
-    { id: '1', memberName: 'Priya Sharma', type: 'Therapy Session', date: 'Today', time: '10:00 AM IST' },
-    { id: '2', memberName: 'Anita Patel', type: 'Consultation', date: 'Today', time: '11:30 AM IST' },
-    { id: '3', memberName: 'John Doe', type: 'Therapy Session', date: 'Tomorrow', time: '09:00 AM IST' },
-    { id: '4', memberName: 'Sarah Wilson', type: 'Therapy Session', date: 'Tomorrow', time: '02:00 PM IST' },
-];
-
-const FALLBACK_TOP_MEMBERS = [
-    { id: '1', name: 'Priya Sharma', email: 'priya@email.com', plan: 'Yoga Therapy', lastActive: 'Today' },
-    { id: '2', name: 'Mike Ross', email: 'mike@email.com', plan: 'Everyday Yoga', lastActive: 'Today' },
-    { id: '3', name: 'Emma Wilson', email: 'emma@email.com', plan: 'Everyday Yoga', lastActive: 'Yesterday' },
-    { id: '4', name: 'Robert Chen', email: 'robert@email.com', plan: 'Yoga Therapy', lastActive: '2 days ago' },
-];
-
 export async function GET() {
     if (!(await requireAdmin())) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -119,17 +96,13 @@ export async function GET() {
         }));
 
         return NextResponse.json({
-            recentActivity: recentActivity.length > 0 ? recentActivity : FALLBACK_RECENT_ACTIVITY,
-            upcomingBookings: formattedBookings.length > 0 ? formattedBookings : FALLBACK_UPCOMING_BOOKINGS,
-            topMembers: formattedMembers.length > 0 ? formattedMembers : FALLBACK_TOP_MEMBERS
+            recentActivity,
+            upcomingBookings: formattedBookings,
+            topMembers: formattedMembers,
         });
     } catch (error) {
         console.error('Error fetching admin dashboard data:', error);
-        return NextResponse.json({
-            recentActivity: FALLBACK_RECENT_ACTIVITY,
-            upcomingBookings: FALLBACK_UPCOMING_BOOKINGS,
-            topMembers: FALLBACK_TOP_MEMBERS
-        });
+        return NextResponse.json({ recentActivity: [], upcomingBookings: [], topMembers: [] });
     }
 }
 
