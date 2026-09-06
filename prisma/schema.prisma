@@ -75,19 +75,6 @@ enum LeadStatus {
   LOST
 }
 
-enum ProgramLevel {
-  BEGINNER
-  INTERMEDIATE
-  ADVANCED
-  ALL_LEVELS
-}
-
-enum ProgramStatus {
-  ACTIVE
-  DRAFT
-  ARCHIVED
-}
-
 // Models
 
 model User {
@@ -347,23 +334,6 @@ model LeadActivity {
   performedBy String?
 
   createdAt DateTime @default(now())
-}
-
-model Program {
-  id            String        @id @default(cuid())
-  title         String
-  description   String
-  duration      String // e.g., "4 Weeks"
-  level         ProgramLevel  @default(ALL_LEVELS)
-  status        ProgramStatus @default(DRAFT)
-  price         Float         @default(0)
-  thumbnail     String? // URL to image
-  enrolledCount Int           @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
 }
 
 model FAQ {

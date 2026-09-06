@@ -24,9 +24,10 @@ const commandItems: CommandItem[] = [
   { id: "classes", name: "Classes", description: "Manage yoga classes", icon: <FaCalendar />, href: "/admin/classes", category: "Content" },
   { id: "content", name: "Blog Posts", description: "Manage blog content", icon: <FaEdit />, href: "/admin/content", category: "Content" },
   { id: "community", name: "Community", description: "Manage community posts", icon: <FaComments />, href: "/admin/community", category: "Content" },
-  { id: "settings", name: "Settings", description: "Application settings", icon: <FaCog />, href: "/admin/settings", category: "Settings" },
   { id: "schedule", name: "Schedule", description: "Manage class schedule", icon: <FaCalendar />, href: "/admin/schedule", category: "Content" },
-  { id: "stories", name: "Stories", description: "Manage member stories", icon: <FaBook />, href: "/admin/stories", category: "Content" },
+  { id: "stories", name: "Stories & Testimonials", description: "Manage member stories", icon: <FaBook />, href: "/admin/content", category: "Content" },
+  { id: "members", name: "Members", description: "Active members by track", icon: <FaUsers />, href: "/admin/members", category: "CRM" },
+  { id: "settings", name: "Settings", description: "Application settings", icon: <FaCog />, href: "/admin/settings", category: "Settings" },
 ];
 
 interface CommandPaletteProps {

@@ -12,11 +12,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const navItems = [
         { name: "Dashboard", href: "/admin", icon: "📊" },
+        { name: "Analytics", href: "/admin/analytics", icon: "📈" },
         { name: "Users", href: "/admin/users", icon: "👥" },
         { name: "Members", href: "/admin/members", icon: "🪷" },
+        { name: "Leads", href: "/admin/leads", icon: "🎯" },
         { name: "Staff", href: "/admin/staff", icon: "🧑‍🏫" },
         { name: "Subscriptions", href: "/admin/subscriptions", icon: "💳" },
         { name: "Classes", href: "/admin/classes", icon: "🧘‍♀️" },
+        { name: "Schedule", href: "/admin/schedule", icon: "🗓️" },
         { name: "Bookings", href: "/admin/bookings", icon: "📅" },
         { name: "Availability", href: "/admin/availability", icon: "🕐" },
         { name: "Community", href: "/admin/community", icon: "💬" },
