@@ -1,12 +1,25 @@
-import { cookies } from 'next/headers';
-import { verifyToken, type SessionPayload } from '@/lib/auth';
+import { readSessionToken, verifyToken, type SessionPayload } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 async function session(): Promise<SessionPayload | null> {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
+    const token = await readSessionToken();
     if (!token) return null;
-    return verifyToken(token);
+    const payload = await verifyToken(token);
+    if (!payload) return null;
+
+    // Enforce session revocation (password reset / "log out everywhere") for
+    // privileged routes — middleware can't do this DB check on the edge, and
+    // these endpoints are the ones worth the extra query. A token that predates
+    // the `tv` claim (undefined) is allowed through, same as elsewhere.
+    if (typeof payload.tv === 'number') {
+        const user = await prisma.user.findUnique({
+            where: { id: payload.id },
+            select: { tokenVersion: true },
+        });
+        if (!user || user.tokenVersion !== payload.tv) return null;
+    }
+
+    return payload;
 }
 
 /**

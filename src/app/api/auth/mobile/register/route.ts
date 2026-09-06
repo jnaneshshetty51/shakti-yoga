@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
+import {
+    hashPassword,
+    signToken,
+    mapDatabaseRole,
+    sessionClaims,
+    SESSION_MAX_AGE_REMEMBER,
+} from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { SITE_URL } from '@/lib/site';
+import { adminTier } from '@/lib/permissions';
 
 const TIMEZONES = ['IST', 'PST', 'EST', 'CST', 'MST', 'GMT', 'CET', 'AEDT', 'AEST', 'NZDT'] as const;
 
+/**
+ * Native-app signup. Mirrors POST /api/auth/register but returns the session
+ * JWT in the body instead of setting a cookie.
+ */
 export async function POST(request: Request) {
     try {
         const ip = getClientIp(request);
@@ -28,16 +39,12 @@ export async function POST(request: Request) {
         const country = optStr(body.country, { label: 'Country', max: 100 });
         const phoneRaw = optStr(body.phone, { label: 'Phone', max: 40 });
         const tzRaw = optStr(body.timezone, { label: 'Timezone', max: 60 });
-        // tolerate labels like "IST (GMT+5:30)" from the signup form's <select>
         const tzKey = tzRaw?.trim().split(/[\s(]/)[0].toUpperCase();
         const timezone = (TIMEZONES as readonly string[]).includes(tzKey ?? '') ? tzKey! : 'IST';
 
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
-            return NextResponse.json(
-                { error: 'An account with this email already exists' },
-                { status: 409 }
-            );
+            return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
         }
 
         const passwordHash = await hashPassword(password);
@@ -51,16 +58,14 @@ export async function POST(request: Request) {
                 country: country ?? null,
                 timezone,
                 phone: phoneRaw ?? null,
-                role: 'VISITOR', // Default role for new signups
+                role: 'VISITOR',
             },
         });
 
         const mappedRole = mapDatabaseRole(user.role);
+        const token = await signToken(sessionClaims(user), SESSION_MAX_AGE_REMEMBER);
 
-        const token = await signToken(sessionClaims(user));
-
-        await setSessionCookie(token);
-        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null } });
+        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null, source: 'mobile' } });
         sendEmail({
             to: user.email,
             subject: 'Welcome to Shakti Yoga',
@@ -71,21 +76,19 @@ export async function POST(request: Request) {
             ),
         }).catch(() => { });
 
-        const { passwordHash: _, tokenVersion: _tv, ...userWithoutPassword } = user;
+        const { passwordHash: _p, tokenVersion: _tv, ...safeUser } = user;
 
         return NextResponse.json({
-            user: { ...userWithoutPassword, role: mappedRole },
-            message: 'Account created successfully',
+            token,
+            expiresInSeconds: SESSION_MAX_AGE_REMEMBER,
+            user: { ...safeUser, role: mappedRole, tier: adminTier(user.role) },
         }, { status: 201 });
     } catch (error) {
         try {
             return handleValidationError(error);
         } catch {
-            console.error('Registration error:', error);
-            return NextResponse.json(
-                { error: 'Internal server error' },
-                { status: 500 }
-            );
+            console.error('Mobile registration error:', error);
+            return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
         }
     }
 }

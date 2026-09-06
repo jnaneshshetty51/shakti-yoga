@@ -7,7 +7,10 @@ export async function middleware(request: NextRequest) {
     const needsAdmin = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
     const needsTeacher = pathname.startsWith('/teacher') || pathname.startsWith('/api/teacher');
 
-    const token = request.cookies.get('token')?.value;
+    // Native app sends `Authorization: Bearer <jwt>`; the web app uses the cookie.
+    const authHeader = request.headers.get('authorization');
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    const token = bearer || request.cookies.get('token')?.value;
     const payload = token ? await verifyToken(token) : null;
 
     // Not signed in — bounce to /login (or 401 for API calls).

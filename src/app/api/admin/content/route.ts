@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import { requireAdmin } from '@/lib/admin-auth';
 import { toStorageKey, mediaSrc } from '@/lib/storage';
 import { Role, ContentStatus } from '@prisma/client';
@@ -20,17 +18,8 @@ function slugify(s: string) {
 
 export async function GET() {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const payload = await verifyToken(token);
-        if (!payload || payload.role !== 'admin') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const payload = await requireAdmin();
+        if (!payload) return forbidden();
 
         const [stories, blogPosts, groups] = await Promise.all([
             prisma.story.findMany({

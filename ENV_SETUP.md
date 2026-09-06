@@ -17,7 +17,7 @@ nano .env
 | --- | --- | --- |
 | `JWT_SECRET` | **Yes** | Signs session tokens. App throws on startup if unset. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `NEXTAUTH_SECRET` / `NEXTAUTH_URL` | Yes | NextAuth config. |
-| `DAILY_API_KEY` | For live classes | Daily.co API key. Blank = live-class create/join returns an error. |
+| `CRON_SECRET` | No | Shared secret for the `/api/cron/ensure-instances` HTTP trigger. Only needed if you materialise class occurrences over HTTP instead of the `scripts/ensure-instances.ts` cron job. |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For paid checkout | Razorpay API keys (dashboard.razorpay.com → Settings → API Keys). Blank = paid plans return 503; free trial still works. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | For paid checkout | Browser copy of the key id, used by Razorpay Checkout. Set to the same value as `RAZORPAY_KEY_ID`. |
 | `RESEND_API_KEY` | For email | Resend API key. Unset = contact/booking/payment emails are logged to the console, not sent. |
@@ -50,33 +50,18 @@ DATABASE_URL="postgresql://shaktiyoga:MySecurePass123@localhost:5432/shaktiyoga?
 ---
 
 ### 2. MINIO_ENDPOINT
-**What it is:** MinIO storage server URL
+**What it is:** The address the Next.js server uses to talk S3 to MinIO. This is a
+server-to-server call on the same box — it should stay on loopback and never be
+exposed publicly. The browser never sees this; media is served through the
+`/api/media/[...key]` proxy.
 
-**Where to find:**
-- Default: `http://localhost:9000` (for local testing)
-- For production: Your VPS IP address
+**What to set:**
+- Local dev: `http://localhost:9000`
+- Production (MinIO in Docker on the same host): the loopback-mapped port, e.g.
+  `http://127.0.0.1:9002` on the current VPS. Check the actual published port in
+  the deployment's `docker-compose.yml`.
 
-**How to get your VPS IP:**
-```bash
-# On your VPS, run:
-curl ifconfig.me
-# or
-hostname -I
-```
-
-**What to change:**
-- Replace `localhost` with your VPS IP address
-- Keep port `9000` (MinIO API port)
-
-**Example:**
-```env
-MINIO_ENDPOINT="http://123.45.67.89:9000"
-```
-
-**After SSL setup:** You can use your domain:
-```env
-MINIO_ENDPOINT="https://your-domain.com:9000"
-```
+Do **not** point this at a public IP or open the MinIO port in the firewall.
 
 ---
 

@@ -5,19 +5,22 @@ import {
     signToken,
     mapDatabaseRole,
     sessionClaims,
-    setSessionCookie,
-    SESSION_MAX_AGE,
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/auth';
 import { syncSubscriptionState } from '@/lib/subscription';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { adminTier } from '@/lib/permissions';
 
-// A real bcrypt hash (cost 10) of a random string — used to spend the same time
-// hashing when the email doesn't match an account, so login can't be used to
-// enumerate registered emails by timing.
+// Same dummy hash the web login uses — keeps response time constant whether or
+// not the email maps to an account (no timing-based email enumeration).
 const DUMMY_HASH = '$2b$10$0S48M5ziT7bDXCqOziuTZ.Ep36snEw6Fhzj37duUF1DMLmiD0nYWy';
 
+/**
+ * Native-app login. Same credential check as POST /api/auth/login, but the
+ * session JWT comes back in the response body (the app stores it in the device
+ * keychain and sends it as `Authorization: Bearer`) — no cookie is set.
+ * Tokens are long-lived (30 days); the app re-authenticates when one expires.
+ */
 export async function POST(request: Request) {
     try {
         const ip = getClientIp(request);
@@ -32,53 +35,36 @@ export async function POST(request: Request) {
         const body = await request.json().catch(() => null);
         const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
         const password = typeof body?.password === 'string' ? body.password : '';
-        const remember = body?.remember === true;
 
         if (!email || !password) {
-            return NextResponse.json(
-                { error: 'Email and password are required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
         }
 
         const user = await prisma.user.findUnique({ where: { email } });
-
-        // Always run a bcrypt comparison so the response time doesn't reveal
-        // whether the email maps to a real account. DUMMY_HASH is a valid bcrypt
-        // hash of a random string that nothing can match.
-        const hashToCheck = user?.passwordHash ?? DUMMY_HASH;
-        const isValid = await verifyPassword(password, hashToCheck);
+        const isValid = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
 
         if (!user || !user.passwordHash || !isValid) {
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLogin: new Date() },
-        });
+        await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
 
         const effectiveRole = await syncSubscriptionState(user.id, user.role);
         const mappedRole = mapDatabaseRole(effectiveRole);
-
-        const maxAge = remember ? SESSION_MAX_AGE_REMEMBER : SESSION_MAX_AGE;
         const token = await signToken(
             sessionClaims({ ...user, role: effectiveRole }),
-            maxAge,
+            SESSION_MAX_AGE_REMEMBER,
         );
-        await setSessionCookie(token, maxAge);
 
-        const { passwordHash: _passwordHash, tokenVersion: _tv, ...safeUser } = user;
+        const { passwordHash: _p, tokenVersion: _tv, ...safeUser } = user;
 
         return NextResponse.json({
+            token,
+            expiresInSeconds: SESSION_MAX_AGE_REMEMBER,
             user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole) },
-            message: 'Logged in successfully',
         });
     } catch (error) {
-        console.error('Login error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        console.error('Mobile login error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

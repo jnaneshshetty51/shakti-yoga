@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
     signToken,
     verifyToken,
@@ -40,9 +40,24 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     return await bcrypt.compare(password, hash);
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
+/**
+ * The session token for the current request, from either transport:
+ *   - `Authorization: Bearer <jwt>`  (native mobile app)
+ *   - the `token` cookie             (web app)
+ * Bearer wins when both are present.
+ */
+export async function readSessionToken(): Promise<string | null> {
+    const authHeader = (await headers()).get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+        const bearer = authHeader.slice(7).trim();
+        if (bearer) return bearer;
+    }
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
+    return cookieStore.get('token')?.value ?? null;
+}
+
+export async function getSession(): Promise<SessionPayload | null> {
+    const token = await readSessionToken();
     if (!token) return null;
     return await verifyToken(token);
 }

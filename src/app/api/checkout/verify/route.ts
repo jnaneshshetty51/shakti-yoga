@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { PLANS, formatPrice } from '@/lib/pricing';
 import { verifyPaymentSignature, verifySubscriptionSignature, fetchPayment } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
@@ -67,14 +66,9 @@ async function confirmAndActivate(params: {
 
 export async function POST(request: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        if (!token) {
-            return NextResponse.json({ error: 'Please log in first.' }, { status: 401 });
-        }
-        const payload = await verifyToken(token);
+        const payload = await getSession();
         if (!payload) {
-            return NextResponse.json({ error: 'Invalid or expired session.' }, { status: 401 });
+            return NextResponse.json({ error: 'Please log in first.' }, { status: 401 });
         }
 
         const body = await request.json().catch(() => ({}));

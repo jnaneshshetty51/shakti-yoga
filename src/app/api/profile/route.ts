@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth';
 import { readJson, str, optStr, ValidationError, handleValidationError } from '@/lib/validation';
 
 async function getUserId(): Promise<string | null> {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return null;
-    const payload = await verifyToken(token);
+    const payload = await getSession();
     return payload?.id ?? null;
 }
 
