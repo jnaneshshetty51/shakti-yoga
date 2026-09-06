@@ -80,14 +80,35 @@ cleanup_swap() { [ -n "$SWAPFILE" ] && { swapoff "$SWAPFILE" 2>/dev/null || true
 trap 'cleanup_swap' EXIT
 
 echo -e "${GREEN}▶ npm ci${NC}";          npm ci --no-audit --no-fund
+
+# prisma CLI only auto-loads .env, not .env.local — export .env.local so
+# `prisma generate` / `migrate deploy` (and any child process) see DATABASE_URL.
+echo -e "${GREEN}▶ load .env.local${NC}"
+set -a; . ./.env.local; set +a
+[ -n "${DATABASE_URL:-}" ] || { echo -e "${RED}DATABASE_URL not set after sourcing .env.local${NC}"; exit 1; }
+
 echo -e "${GREEN}▶ prisma generate${NC}"; npx prisma generate
 
-DB_URL="$(grep -E '^DATABASE_URL=' .env.local | head -1 | cut -d= -f2- | tr -d '"'"'"'')"
-if command -v pg_dump >/dev/null && [[ "$DB_URL" == postgres*://* ]]; then
-    echo -e "${GREEN}▶ pg_dump → db-backup-${STAMP}.sql.gz${NC}"
-    pg_dump "$DB_URL" 2>/dev/null | gzip > "db-backup-${STAMP}.sql.gz" || echo -e "${YELLOW}  (dump failed, continuing)${NC}"
+DB_URL="$DATABASE_URL"
+PG_RE='^postgres(ql)?://([^:]+):([^@]+)@([^:/]+):?([0-9]*)/([^?]+)'
+if [[ "$DB_URL" =~ $PG_RE ]]; then
+    PGU="${BASH_REMATCH[2]}"; PGP="${BASH_REMATCH[3]}"
+    PGH="${BASH_REMATCH[4]}"; PGPORT="${BASH_REMATCH[5]:-5432}"; PGDB="${BASH_REMATCH[6]}"
+    DUMP="db-backup-${STAMP}.sql.gz"
+    if command -v pg_dump >/dev/null; then
+        echo -e "${GREEN}▶ pg_dump ($PGH:$PGPORT/$PGDB) → ${DUMP}${NC}"
+        PGPASSWORD="$PGP" pg_dump -h "$PGH" -p "$PGPORT" -U "$PGU" "$PGDB" | gzip > "$DUMP" \
+            || echo -e "${YELLOW}  (dump failed, continuing)${NC}"
+    elif docker ps --format '{{.Names}}' | grep -qx shakti_postgres; then
+        echo -e "${GREEN}▶ pg_dump via docker exec shakti_postgres → ${DUMP}${NC}"
+        docker exec -e PGPASSWORD="$PGP" shakti_postgres pg_dump -U "$PGU" "$PGDB" | gzip > "$DUMP" \
+            || echo -e "${YELLOW}  (dump failed, continuing)${NC}"
+    else
+        echo -e "${YELLOW}▶ no pg_dump binary and no shakti_postgres container — skipping DB snapshot${NC}"
+    fi
+    [ -s "${DUMP:-/nonexistent}" ] && echo -e "${GREEN}  backup: $(du -h "$DUMP" | cut -f1)${NC}"
 else
-    echo -e "${YELLOW}▶ no pg_dump/postgres URL — skipping DB snapshot${NC}"
+    echo -e "${YELLOW}▶ DATABASE_URL not a postgres URL — skipping DB snapshot${NC}"
 fi
 
 echo -e "${GREEN}▶ prisma migrate deploy${NC}"; npx prisma migrate deploy
