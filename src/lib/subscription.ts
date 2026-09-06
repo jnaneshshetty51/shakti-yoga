@@ -93,7 +93,7 @@ export async function activatePlan(
     cookieStore.set('token', newToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         maxAge: 60 * 60 * 24,
         path: '/',
     });

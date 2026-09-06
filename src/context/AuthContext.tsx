@@ -17,9 +17,20 @@ interface User {
     credits: number;
 }
 
+export interface RegisterInput {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    country?: string;
+    timezone?: string;
+    phone?: string;
+}
+
 interface AuthContextType {
     user: User | null;
     login: (email: string, password: string) => Promise<void>;
+    register: (input: RegisterInput) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     isLoading: boolean;
@@ -90,6 +101,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const register = async (input: RegisterInput) => {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Sign up failed');
+        }
+
+        setUser(normalizeUser(data.user));
+        router.push('/onboarding');
+    };
+
     const logout = async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
@@ -101,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, refreshUser: checkAuth, isLoading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, refreshUser: checkAuth, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

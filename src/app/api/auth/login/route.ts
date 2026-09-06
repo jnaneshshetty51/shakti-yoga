@@ -17,9 +17,9 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { email, password } = body;
+        const { email, password } = body ?? {};
 
-        if (!email || !password) {
+        if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
             return NextResponse.json(
                 { error: 'Email and password are required' },
                 { status: 400 }
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         }
 
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: email.trim().toLowerCase() },
         });
 
         if (!user || !user.passwordHash) {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         cookieStore.set('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24, // 1 day
             path: '/',
         });
