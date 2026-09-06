@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Lato } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ChromeGate from "@/components/ChromeGate";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 
 const playfair = Playfair_Display({
@@ -62,9 +62,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${playfair.variable} ${lato.variable} antialiased`}>
         <Providers>
-          <Navbar />
-          {children}
-          <Footer />
+          <ChromeGate footer={<Footer />}>
+            {children}
+          </ChromeGate>
         </Providers>
       </body>
     </html>

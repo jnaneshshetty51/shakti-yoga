@@ -8,8 +8,8 @@
 import { prisma } from '../src/lib/prisma';
 import { sendEmail, emailLayout, isEmailConfigured } from '../src/lib/email';
 import { istParts, ensureInstances } from '../src/lib/class-schedule';
+import { eligibleEverydayMembers } from '../src/lib/class-access';
 import { SITE_URL } from '../src/lib/site';
-import { SubscriptionStatus } from '@prisma/client';
 
 async function main() {
     if (!isEmailConfigured()) {
@@ -50,17 +50,7 @@ async function main() {
         })
         .join('');
 
-    // Eligible members: everyday members + trial users with a live subscription.
-    const members = await prisma.user.findMany({
-        where: {
-            role: { in: ['MEMBER_EVERYDAY', 'TRIAL'] },
-            subscription: {
-                status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] },
-                renewalDate: { gt: now },
-            },
-        },
-        select: { email: true, name: true },
-    });
+    const members = await eligibleEverydayMembers();
 
     console.log(`[class-reminders] ${new Date().toISOString()} — ${todays.length} class(es), ${members.length} recipient(s)`);
 

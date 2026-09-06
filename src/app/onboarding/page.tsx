@@ -25,12 +25,25 @@ export default function OnboardingPage() {
     const handleNext = () => {
         if (step < 3) {
             setStep(step + 1);
-        } else {
-            // Determine recommendation
-            const recommendTherapy = formData.hasMedicalIssues || formData.interest === "therapy" || formData.goals.includes("Therapy/Healing");
-            const plan = recommendTherapy ? "therapy" : "everyday";
-            router.push(`/onboarding/recommendation?plan=${plan}`);
+            return;
         }
+        const recommendTherapy =
+            formData.hasMedicalIssues || formData.interest === "therapy" || formData.goals.includes("Therapy/Healing");
+        const plan = recommendTherapy ? "therapy" : "everyday";
+
+        // Persist what they told us so the teacher sees it (fire-and-forget).
+        fetch("/api/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                goals: formData.goals.join(", ") || undefined,
+                medicalHistory: formData.hasMedicalIssues
+                    ? (formData.medicalDetails.trim() || "Has medical conditions (details not provided)")
+                    : undefined,
+            }),
+        }).catch(() => { });
+
+        router.push(`/onboarding/recommendation?plan=${plan}`);
     };
 
     return (
