@@ -111,49 +111,75 @@ function cap(v: unknown, max: number): string {
 async function upsertContent(type: ContentType, body: Record<string, unknown>, isCreate: boolean) {
     const id = body.id as string | undefined;
 
-    // Only accept an image URL we produced (the content-image upload endpoint).
-    const imageUrl = typeof body.imageUrl === 'string' && body.imageUrl.includes('/shakti-yoga-assets/')
-        ? body.imageUrl
-        : (body.imageUrl === '' ? null : undefined);
+    const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+    // Only accept an image URL we produced (the content-image upload endpoint), or '' to clear.
+    const imageUrl = has('imageUrl')
+        ? (typeof body.imageUrl === 'string' && body.imageUrl.includes('/shakti-yoga-assets/')
+            ? body.imageUrl
+            : (body.imageUrl === '' ? null : undefined))
+        : undefined;
 
     if (type === 'story') {
-        const data = {
-            authorName: cap(body.authorName || body.name || 'Anonymous', 120),
-            location: cap(body.location, 120) || null,
-            planType: cap(body.planType, 60) || null,
-            quote: cap(body.quote, 600),
-            content: cap(body.content, 5000) || null,
-            rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
-            status: toContentStatus(body.status ?? 'PUBLISHED'),
-            ...(imageUrl !== undefined ? { imageUrl } : {}),
-        };
-        return isCreate
-            ? prisma.story.create({ data })
-            : prisma.story.update({ where: { id }, data });
+        if (isCreate) {
+            return prisma.story.create({
+                data: {
+                    authorName: cap(body.authorName || body.name || 'Anonymous', 120),
+                    location: cap(body.location, 120) || null,
+                    planType: cap(body.planType, 60) || null,
+                    quote: cap(body.quote, 600),
+                    content: cap(body.content, 5000) || null,
+                    rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
+                    status: toContentStatus(body.status ?? 'PUBLISHED'),
+                    ...(imageUrl !== undefined ? { imageUrl } : {}),
+                },
+            });
+        }
+        const data: Record<string, unknown> = {};
+        if (has('authorName') || has('name')) data.authorName = cap(body.authorName || body.name || 'Anonymous', 120);
+        if (has('location')) data.location = cap(body.location, 120) || null;
+        if (has('planType')) data.planType = cap(body.planType, 60) || null;
+        if (has('quote')) data.quote = cap(body.quote, 600);
+        if (has('content')) data.content = cap(body.content, 5000) || null;
+        if (has('rating')) data.rating = Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5)));
+        if (has('status')) data.status = toContentStatus(body.status);
+        if (imageUrl !== undefined) data.imageUrl = imageUrl;
+        return prisma.story.update({ where: { id }, data });
     }
 
     if (type === 'blog') {
-        const title = cap(body.title || 'Untitled', 200);
-        const status = toContentStatus(body.status);
-        const data: Record<string, unknown> = {
-            title,
-            slug: cap(body.slug, 200) || slugify(title),
-            excerpt: cap(body.excerpt, 500) || null,
-            content: cap(body.content, 100_000),
-            category: cap(body.category || 'General', 80),
-            author: cap(body.author || 'Shakti Yoga', 120),
-            status,
-            ...(imageUrl !== undefined ? { imageUrl } : {}),
-        };
         if (isCreate) {
-            data.publishedAt = status === 'PUBLISHED' ? new Date() : null;
-            return prisma.blogPost.create({ data: data as never });
+            const title = cap(body.title || 'Untitled', 200);
+            const status = toContentStatus(body.status);
+            return prisma.blogPost.create({
+                data: {
+                    title,
+                    slug: cap(body.slug, 200) || slugify(title),
+                    excerpt: cap(body.excerpt, 500) || null,
+                    content: cap(body.content, 100_000),
+                    category: cap(body.category || 'General', 80),
+                    author: cap(body.author || 'Shakti Yoga', 120),
+                    status,
+                    publishedAt: status === 'PUBLISHED' ? new Date() : null,
+                    ...(imageUrl !== undefined ? { imageUrl } : {}),
+                },
+            });
         }
-        // On edit, only stamp publishedAt when it first goes live; don't bump it on every save.
-        const current = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true, status: true } });
-        if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
-        if (status !== 'PUBLISHED') data.publishedAt = null;
-        return prisma.blogPost.update({ where: { id }, data: data as never });
+        const data: Record<string, unknown> = {};
+        if (has('title')) data.title = cap(body.title || 'Untitled', 200);
+        if (has('slug') && cap(body.slug, 200)) data.slug = slugify(cap(body.slug, 200));
+        if (has('excerpt')) data.excerpt = cap(body.excerpt, 500) || null;
+        if (has('content')) data.content = cap(body.content, 100_000);
+        if (has('category')) data.category = cap(body.category || 'General', 80);
+        if (has('author')) data.author = cap(body.author || 'Shakti Yoga', 120);
+        if (imageUrl !== undefined) data.imageUrl = imageUrl;
+        if (has('status')) {
+            const status = toContentStatus(body.status);
+            data.status = status;
+            const current = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true } });
+            if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
+            if (status !== 'PUBLISHED') data.publishedAt = null;
+        }
+        return prisma.blogPost.update({ where: { id }, data });
     }
 
     // whatsapp
