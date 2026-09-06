@@ -19,6 +19,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: "Community", href: "/admin/community", icon: "💬" },
         { name: "Content", href: "/admin/content", icon: "📝" },
         { name: "Messages", href: "/admin/messages", icon: "📨" },
+        { name: "Audit Log", href: "/admin/audit", icon: "🗂️" },
         { name: "Settings", href: "/admin/settings", icon: "⚙️" },
     ];
 

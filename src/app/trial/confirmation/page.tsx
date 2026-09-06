@@ -8,9 +8,9 @@ export default function TrialConfirmationPage() {
                     ✓
                 </div>
 
-                <h1 className="font-serif text-3xl text-primary mb-4">Trial Class Booked!</h1>
+                <h1 className="font-serif text-3xl text-primary mb-4">Your Trial Is Active</h1>
                 <p className="text-text/70 mb-8">
-                    We've reserved your spot. A confirmation email with the Zoom link has been sent to your inbox.
+                    You have full access to every Everyday Yoga class for the next 7 days. Your dashboard shows today&apos;s class and the schedule.
                 </p>
 
                 <div className="bg-gray-50 p-6 rounded-lg border border-gray-100 mb-8 text-left">
@@ -18,15 +18,15 @@ export default function TrialConfirmationPage() {
                     <ul className="space-y-3 text-sm text-gray-600">
                         <li className="flex items-start gap-3">
                             <span className="text-secondary font-bold">1.</span>
-                            <span>Check your email for the class link.</span>
+                            <span>Open your dashboard a few minutes before class and tap <strong>Join Google Meet</strong>.</span>
                         </li>
                         <li className="flex items-start gap-3">
                             <span className="text-secondary font-bold">2.</span>
-                            <span>Join our <a href="#" className="text-primary underline">WhatsApp Community</a> for updates.</span>
+                            <span>Join your batch&apos;s WhatsApp group for daily reminders.</span>
                         </li>
                         <li className="flex items-start gap-3">
                             <span className="text-secondary font-bold">3.</span>
-                            <span>Log in to your dashboard 5 mins before class.</span>
+                            <span>We&apos;ll email you before the trial ends — nothing is charged automatically.</span>
                         </li>
                     </ul>
                 </div>

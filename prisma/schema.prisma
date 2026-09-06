@@ -101,6 +101,7 @@ model User {
   timezone     String    @default("IST")
   avatarUrl    String?
   credits      Int       @default(0) // 1:1 therapy session credits
+  trialStartedAt DateTime? // set once, the first time the user activates a free trial
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLogin    DateTime?
@@ -115,6 +116,7 @@ model User {
   // For Teachers
   classesTaught  ClassBatch[]
   sessionsTaught Booking[]    @relation("TeacherBookings")
+  availability   TeacherAvailability[] @relation("TeacherAvailability")
 
   // For Students
   classAttendance ClassAttendance[]
@@ -416,6 +418,39 @@ model RevenueRecord {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String // e.g. "user.role.change", "subscription.update", "class.cancel"
+  entity     String // "User", "Subscription", "ClassInstance", ...
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@index([actorId])
+}
+
+model TeacherAvailability {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     User     @relation("TeacherAvailability", fields: [teacherId], references: [id], onDelete: Cascade)
+  // Either a recurring weekday rule (dayOfWeek set, date null) or a one-off (date set).
+  dayOfWeek   String? // "Mon".."Sun"
+  date        DateTime? // specific day (UTC midnight IST)
+  startTime   String // "09:00" 24h IST
+  endTime     String // "17:00" 24h IST
+  slotMinutes Int      @default(45)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([teacherId])
 }
 
 model PasswordResetToken {

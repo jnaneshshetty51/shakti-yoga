@@ -6,6 +6,7 @@ import { PLANS, formatPrice } from '@/lib/pricing';
 import { verifyPaymentSignature, verifySubscriptionSignature, fetchPayment } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
 import { sendEmail, emailLayout } from '@/lib/email';
+import { recordEvent, recordRevenue } from '@/lib/analytics';
 import type { PlanType, Payment } from '@prisma/client';
 
 function planConfigForDbType(planType: PlanType) {
@@ -40,6 +41,15 @@ async function confirmAndActivate(params: {
 
     const plan = planConfigForDbType(paymentRecord.planType);
     const { user, mappedRole } = await activatePlan(userId, plan, { recurring, subscriptionId });
+
+    recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.dbPlanType, recurring } });
+    recordRevenue({
+        userId,
+        amount: paymentRecord.amount,
+        currency: paymentRecord.currency,
+        planType: paymentRecord.planType,
+        providerId: razorpayPaymentId,
+    });
 
     sendEmail({
         to: user.email,

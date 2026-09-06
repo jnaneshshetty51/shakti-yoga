@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
+import { recordAudit } from '@/lib/audit';
+import { getClientIp } from '@/lib/rate-limit';
 import { PlanType } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -123,11 +125,21 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.id) return NextResponse.json({ error: 'Missing class id' }, { status: 400 });
+        const before = await prisma.classBatch.findUnique({
+            where: { id: body.id },
+            select: { name: true, meetingLink: true, timeSlot: true, teacherId: true, active: true },
+        });
         const batch = await prisma.classBatch.update({ where: { id: body.id }, data: toData(body) });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'class.batch.update', entity: 'ClassBatch', entityId: body.id,
+            before, after: { name: batch.name, meetingLink: batch.meetingLink, timeSlot: batch.timeSlot, teacherId: batch.teacherId, active: batch.active },
+        });
         return NextResponse.json({ batch: { id: batch.id } });
     } catch (error) {
         console.error('Admin classes PATCH error:', error);
@@ -136,14 +148,20 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing class id' }, { status: 400 });
+        const before = await prisma.classBatch.findUnique({ where: { id }, select: { name: true, timeSlot: true } });
         await prisma.$transaction([
             prisma.classInstance.deleteMany({ where: { batchId: id } }),
             prisma.classBatch.delete({ where: { id } }),
         ]);
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'class.batch.delete', entity: 'ClassBatch', entityId: id, before,
+        });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin classes DELETE error:', error);

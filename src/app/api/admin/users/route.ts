@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { recordAudit } from '@/lib/audit';
+import { getClientIp } from '@/lib/rate-limit';
 import { Role } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -79,6 +81,17 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
         }
 
+        // A staff admin must not be able to grant an admin tier.
+        if (role !== undefined && (role === 'SUPER_ADMIN' || role === 'STAFF_ADMIN')) {
+            return NextResponse.json({ error: 'Admin roles can only be granted by a super admin from the console.' }, { status: 403 });
+        }
+
+        const before = await prisma.user.findUnique({
+            where: { id },
+            select: { name: true, role: true, credits: true, phone: true, country: true },
+        });
+        if (!before) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
         const data: Record<string, unknown> = {};
         if (name !== undefined) data.name = String(name).trim();
         if (role !== undefined) data.role = role as Role;
@@ -87,6 +100,13 @@ export async function PATCH(request: Request) {
         if (country !== undefined) data.country = country || null;
 
         const user = await prisma.user.update({ where: { id }, data });
+
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'user.update', entity: 'User', entityId: id,
+            before, after: { name: user.name, role: user.role, credits: user.credits, phone: user.phone, country: user.country },
+        });
+
         return NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });
     } catch (error) {
         console.error('Admin users PATCH error:', error);
@@ -105,6 +125,11 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
         }
 
+        const target = await prisma.user.findUnique({
+            where: { id }, select: { email: true, name: true, role: true },
+        });
+        if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
         // Clear dependent rows that have no cascade, then delete.
         await prisma.$transaction([
             prisma.subscription.deleteMany({ where: { userId: id } }),
@@ -114,6 +139,11 @@ export async function DELETE(request: Request) {
             prisma.story.deleteMany({ where: { userId: id } }),
             prisma.user.delete({ where: { id } }),
         ]);
+
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'user.delete', entity: 'User', entityId: id, before: target,
+        });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin users DELETE error:', error);

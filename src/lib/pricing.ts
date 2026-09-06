@@ -12,6 +12,8 @@ export interface PlanConfig {
     currency: string;
     /** Human-readable billing period, e.g. "month" or "7 days". */
     period: string;
+    /** How many days of access one activation grants (renewal/expiry window). */
+    renewalDays: number;
     features: string[];
     role: Role;
     dbPlanType: PlanType;
@@ -28,6 +30,7 @@ export const PLANS = {
         amount: 2000,
         currency: CURRENCY,
         period: 'month',
+        renewalDays: 30,
         features: ['5 Live Classes/week', 'Community Access', 'Flexible Timings'],
         role: 'MEMBER_EVERYDAY',
         dbPlanType: 'EVERYDAY_YOGA',
@@ -39,6 +42,7 @@ export const PLANS = {
         amount: 5000,
         currency: CURRENCY,
         period: 'month',
+        renewalDays: 30,
         features: ['4 Personal 1:1 Sessions', 'Health Assessment', 'Custom Plan'],
         role: 'MEMBER_THERAPY',
         dbPlanType: 'YOGA_THERAPY',
@@ -50,6 +54,7 @@ export const PLANS = {
         amount: 0,
         currency: CURRENCY,
         period: '7 days',
+        renewalDays: 7,
         features: ['1 Live Class', '15-min Consult', 'Community Access'],
         role: 'TRIAL',
         dbPlanType: 'TRIAL',

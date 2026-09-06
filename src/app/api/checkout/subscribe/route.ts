@@ -11,6 +11,7 @@ import {
 } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
 import { readJson, oneOf, ValidationError, handleValidationError } from '@/lib/validation';
+import { recordEvent } from '@/lib/analytics';
 
 /** Reuse a Razorpay plan per (planKey, amount, currency); create + cache on first use. */
 async function getOrCreatePlanId(planKey: string, plan: PlanConfig): Promise<string> {
@@ -50,7 +51,20 @@ export async function POST(request: Request) {
 
         // Free trial: no payment, activate immediately (non-recurring).
         if (plan.amount === 0) {
+            if (plan.dbPlanType === 'TRIAL' && user.trialStartedAt) {
+                return NextResponse.json(
+                    { error: 'You have already used your free trial. Choose a plan to continue.' },
+                    { status: 409 },
+                );
+            }
+            if (plan.dbPlanType === 'TRIAL' && (user.role === 'MEMBER_EVERYDAY' || user.role === 'MEMBER_THERAPY')) {
+                return NextResponse.json(
+                    { error: 'You already have an active membership.' },
+                    { status: 409 },
+                );
+            }
             const { mappedRole } = await activatePlan(user.id, plan);
+            recordEvent('TRIAL_START', { userId: user.id });
             return NextResponse.json({
                 free: true,
                 user: { id: user.id, name: user.name, email: user.email, role: mappedRole },

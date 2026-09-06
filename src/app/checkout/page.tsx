@@ -24,10 +24,10 @@ function CheckoutContent() {
                     <h1 className="font-serif text-3xl text-primary mb-4">Create Account</h1>
                     <p className="text-text/70 mb-8">Please log in or sign up to complete your subscription.</p>
                     <div className="space-y-4">
-                        <Link href={`/signup?redirect=/checkout?plan=${planType}`} className="block w-full py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors">
+                        <Link href={`/signup?from=${encodeURIComponent(`/checkout?plan=${planType}`)}`} className="block w-full py-3 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors">
                             Create Account
                         </Link>
-                        <Link href={`/login?redirect=/checkout?plan=${planType}`} className="block w-full py-3 border border-primary text-primary font-bold uppercase tracking-widest rounded hover:bg-primary/5 transition-colors">
+                        <Link href={`/login?from=${encodeURIComponent(`/checkout?plan=${planType}`)}`} className="block w-full py-3 border border-primary text-primary font-bold uppercase tracking-widest rounded hover:bg-primary/5 transition-colors">
                             Log In
                         </Link>
                     </div>

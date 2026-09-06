@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { redirectTargetFromLocation } from '@/lib/nav';
 
 export type UserRole = 'visitor' | 'member_everyday' | 'member_therapy' | 'trial' | 'admin' | 'teacher';
 
@@ -37,12 +38,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-/** Accept only same-origin absolute paths like "/dashboard/x" — never "//evil.com" or "https://…". */
-function safeInternalPath(value: string | null | undefined): string | null {
-    if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
-    return value;
-}
 
 function normalizeUser(raw: Record<string, unknown>): User {
     return {
@@ -96,9 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const loggedIn = normalizeUser(data.user);
         setUser(loggedIn);
 
-        // Honour ?from= set by the middleware, but only same-origin app paths.
-        let dest = safeInternalPath(new URLSearchParams(window.location.search).get('from'));
-        if (!dest) dest = loggedIn.role === 'admin' ? '/admin' : '/dashboard';
+        // Honour ?from= / ?redirect= (same-origin paths only), else role home.
+        const dest = redirectTargetFromLocation()
+            ?? (loggedIn.role === 'admin' ? '/admin' : '/dashboard');
         router.push(dest);
     };
 
@@ -116,7 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(normalizeUser(data.user));
-        router.push('/onboarding');
+        // A user who signed up mid-funnel (trial / checkout) returns there;
+        // otherwise the personalization step.
+        router.push(redirectTargetFromLocation() ?? '/onboarding');
     };
 
     const logout = async () => {

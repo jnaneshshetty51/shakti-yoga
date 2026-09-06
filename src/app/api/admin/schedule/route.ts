@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { recordAudit } from '@/lib/audit';
+import { getClientIp } from '@/lib/rate-limit';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -135,16 +137,26 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
     try {
         const { id, status, attendanceCount, recordingUrl, meetingLink } = await request.json().catch(() => ({}));
         if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });
+        const before = await prisma.classInstance.findUnique({
+            where: { id }, select: { status: true, meetingLink: true, attendanceCount: true },
+        });
         const data: Record<string, unknown> = {};
         if (status !== undefined) data.status = status;
         if (attendanceCount !== undefined) data.attendanceCount = Math.max(0, Math.trunc(Number(attendanceCount) || 0));
         if (recordingUrl !== undefined) data.recordingUrl = recordingUrl || null;
         if (meetingLink !== undefined) data.meetingLink = meetingLink?.trim() || null;
         const instance = await prisma.classInstance.update({ where: { id }, data });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: status === 'Cancelled' ? 'class.instance.cancel' : 'class.instance.update',
+            entity: 'ClassInstance', entityId: id,
+            before, after: { status: instance.status, meetingLink: instance.meetingLink, attendanceCount: instance.attendanceCount },
+        });
         return NextResponse.json({ instance: { id: instance.id, status: instance.status } });
     } catch (error) {
         console.error('Admin schedule PATCH error:', error);

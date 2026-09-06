@@ -41,7 +41,7 @@ function RecommendationContent() {
                     </p>
 
                     <Link
-                        href={isTherapy ? "/contact?type=therapy" : "/dashboard"}
+                        href={isTherapy ? "/yoga-therapy/start" : "/trial"}
                         className="block w-full py-4 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors shadow-md"
                     >
                         {isTherapy ? "Book Consultation" : "Start Free Trial"}

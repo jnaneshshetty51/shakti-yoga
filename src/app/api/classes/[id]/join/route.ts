@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { canJoinGroupClass } from '@/lib/class-access';
 import { isJoinable, resolveMeetingLink } from '@/lib/class-schedule';
+import { recordEvent } from '@/lib/analytics';
 
 export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
     const { id } = await props.params;
@@ -65,6 +66,7 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
                     where: { id: instance.id },
                     data: { attendanceCount: { increment: 1 } },
                 });
+                recordEvent('CLASS_JOIN', { userId: session.id, metadata: { instanceId: instance.id } });
             }
         }
 

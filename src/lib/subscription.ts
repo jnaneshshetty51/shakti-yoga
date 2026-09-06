@@ -18,7 +18,12 @@ export async function syncSubscriptionState(userId: string, currentRole: Role): 
     if (!sub) return currentRole;
 
     const pastDue = sub.renewalDate.getTime() < Date.now();
-    const shouldExpire = sub.status === SubscriptionStatus.CANCELLED && pastDue;
+    // A cancelled sub or a lapsed free trial both drop to VISITOR once the
+    // paid-through / trial date passes. EXPIRED means we already did this.
+    const shouldExpire = pastDue && (
+        sub.status === SubscriptionStatus.CANCELLED ||
+        sub.status === SubscriptionStatus.TRIAL
+    );
     const alreadyExpiredButStillPaid = sub.status === SubscriptionStatus.EXPIRED;
 
     if (!shouldExpire && !alreadyExpiredButStillPaid) {
@@ -41,8 +46,8 @@ export async function syncSubscriptionState(userId: string, currentRole: Role): 
 
 /**
  * Activate a plan for a user: set their role, grant therapy credits, upsert the
- * subscription with a fresh 30-day renewal date, and re-issue the session cookie
- * so the new role/permissions take effect immediately.
+ * subscription with a fresh renewal date (plan.renewalDays out), and re-issue the
+ * session cookie so the new role/permissions take effect immediately.
  */
 export async function activatePlan(
     userId: string,
@@ -51,15 +56,18 @@ export async function activatePlan(
 ) {
     const renewalDate = opts.renewalDate ?? (() => {
         const d = new Date();
-        d.setDate(d.getDate() + 30);
+        d.setDate(d.getDate() + (plan.renewalDays || 30));
         return d;
     })();
+
+    const isTrial = plan.dbPlanType === 'TRIAL';
 
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
             role: plan.role,
             ...(plan.credits > 0 ? { credits: { increment: plan.credits } } : {}),
+            ...(isTrial ? { trialStartedAt: new Date() } : {}),
         },
     });
 

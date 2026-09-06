@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, signToken, mapDatabaseRole, setSessionCookie } from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
+import { recordEvent } from '@/lib/analytics';
 
 const TIMEZONES = ['IST', 'PST', 'EST', 'CST', 'MST', 'GMT', 'CET', 'AEDT', 'AEST', 'NZDT'] as const;
 
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
         });
 
         await setSessionCookie(token);
+        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null } });
 
         const { passwordHash: _, ...userWithoutPassword } = user;
 

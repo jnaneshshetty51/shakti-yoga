@@ -3,9 +3,20 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { requireAdmin } from '@/lib/admin-auth';
-import { SubscriptionStatus, PlanType } from '@prisma/client';
+import { recordAudit } from '@/lib/audit';
+import { getClientIp } from '@/lib/rate-limit';
+import { PLANS } from '@/lib/pricing';
+import { SubscriptionStatus, PlanType, Role } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+/** The user role that should follow from a subscription's plan + status. */
+function roleForSubscription(planType: PlanType, status: SubscriptionStatus): Role {
+    const active = status === 'ACTIVE' || status === 'TRIAL' || status === 'PAUSED';
+    if (!active) return Role.VISITOR;
+    const plan = Object.values(PLANS).find(p => p.dbPlanType === planType);
+    return (plan?.role as Role) ?? Role.VISITOR;
+}
 
 export async function GET() {
     try {
@@ -57,7 +68,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
     try {
         const { id, status, planType, renewalDate } = await request.json().catch(() => ({}));
         if (!id) return NextResponse.json({ error: 'Missing subscription id' }, { status: 400 });
@@ -69,12 +81,32 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
         }
 
+        const before = await prisma.subscription.findUnique({ where: { id } });
+        if (!before) return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+
         const data: Record<string, unknown> = {};
         if (status) data.status = status as SubscriptionStatus;
         if (planType) data.planType = planType as PlanType;
         if (renewalDate) data.renewalDate = new Date(renewalDate);
 
-        const sub = await prisma.subscription.update({ where: { id }, data });
+        const nextStatus = (data.status as SubscriptionStatus) ?? before.status;
+        const nextPlan = (data.planType as PlanType) ?? before.planType;
+        const nextRole = roleForSubscription(nextPlan, nextStatus);
+
+        // Keep User.role in step with the subscription — a manual edit to ACTIVE
+        // must actually grant access, and to CANCELLED/EXPIRED must revoke it.
+        const [sub] = await prisma.$transaction([
+            prisma.subscription.update({ where: { id }, data }),
+            prisma.user.update({ where: { id: before.userId }, data: { role: nextRole } }),
+        ]);
+
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'subscription.update', entity: 'Subscription', entityId: id,
+            before: { status: before.status, planType: before.planType, renewalDate: before.renewalDate },
+            after: { status: sub.status, planType: sub.planType, renewalDate: sub.renewalDate, userRole: nextRole },
+        });
+
         return NextResponse.json({ subscription: { id: sub.id, status: sub.status } });
     } catch (error) {
         console.error('Admin subscriptions PATCH error:', error);

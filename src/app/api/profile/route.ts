@@ -60,22 +60,29 @@ export async function PATCH(request: Request) {
         if (body.country !== undefined) userData.country = optStr(body.country, { label: 'country', max: 80 }) ?? null;
         if (body.timezone !== undefined) userData.timezone = optStr(body.timezone, { label: 'timezone', max: 64 }) ?? 'IST';
 
-        const profileData = {
-            goals: optStr(body.goals, { label: 'goals', max: 500 }) ?? null,
-            medicalHistory: optStr(body.medicalHistory, { label: 'medicalHistory', max: 2000 }) ?? null,
-            communicationPref: optStr(body.communicationPref, { label: 'communicationPref', max: 100 }) ?? null,
-        };
+        // Only touch profile fields the caller actually sent — a PATCH of just
+        // `goals` must not wipe medicalHistory / communicationPref.
+        const profilePatch: Record<string, string | null> = {};
+        if (body.goals !== undefined) profilePatch.goals = optStr(body.goals, { label: 'goals', max: 500 }) ?? null;
+        if (body.medicalHistory !== undefined) profilePatch.medicalHistory = optStr(body.medicalHistory, { label: 'medicalHistory', max: 2000 }) ?? null;
+        if (body.communicationPref !== undefined) profilePatch.communicationPref = optStr(body.communicationPref, { label: 'communicationPref', max: 100 }) ?? null;
+
+        const hasProfilePatch = Object.keys(profilePatch).length > 0;
 
         const user = await prisma.user.update({
             where: { id: userId },
             data: {
                 ...userData,
-                profile: {
-                    upsert: {
-                        create: profileData,
-                        update: profileData,
-                    },
-                },
+                ...(hasProfilePatch
+                    ? {
+                        profile: {
+                            upsert: {
+                                create: profilePatch,
+                                update: profilePatch,
+                            },
+                        },
+                    }
+                    : {}),
             },
             select: {
                 name: true,
