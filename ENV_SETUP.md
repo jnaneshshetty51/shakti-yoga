@@ -23,8 +23,7 @@ nano .env
 | `RESEND_API_KEY` | For email | Resend API key. Unset = contact/booking/payment emails are logged to the console, not sent. |
 | `EMAIL_FROM` | For email | Verified sender, e.g. `Shakti Yoga <hello@shaktiyoga.in>`. Defaults to Resend's sandbox address. |
 | `ADMIN_EMAIL` | For email | Address that receives contact-form enquiries. |
-| `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. |
-| `NEXT_PUBLIC_SEED_PASSWORD` | No | Same value, for the dev-only Quick Login buttons on `/login`. |
+| `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. Not read client-side - the dev-only Quick Login buttons on `/login` always use the fixed default `Password123!`, so they only work if you left `SEED_PASSWORD` unset. |
 | `ALLOW_PROD_SEED` | No | Must be `"true"` to run `npm run db:seed` with `NODE_ENV=production`. |
 
 ## 🔑 Environment Variables Explained

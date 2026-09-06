@@ -9,8 +9,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    // TODO: actually filter the queries below by this range instead of always returning all-time data.
-    const _range = searchParams.get('range') || '30d';
+    const range = searchParams.get('range') || '30d';
+    const rangeDays: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '12m': 365 };
+    const days = rangeDays[range] ?? 30;
+    const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Query real data from database
     const [
@@ -42,25 +44,20 @@ export async function GET(request: Request) {
     // Calculate MRR
     const mrr = subscriptions.reduce((sum, sub) => sum + sub.amount, 0);
 
-    // Get new members this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    // New members within the selected range, vs. the equivalent prior period.
+    const priorRangeStart = new Date(rangeStart.getTime() - days * 24 * 60 * 60 * 1000);
 
     const newMembersThisMonth = await prisma.user.count({
       where: {
         role: { in: ['MEMBER_EVERYDAY', 'MEMBER_THERAPY'] },
-        createdAt: { gte: startOfMonth }
+        createdAt: { gte: rangeStart }
       }
     });
 
-    // Get last month for growth calculation
-    const lastMonthStart = new Date(startOfMonth);
-    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
     const lastMonthNewMembers = await prisma.user.count({
       where: {
         role: { in: ['MEMBER_EVERYDAY', 'MEMBER_THERAPY'] },
-        createdAt: { gte: lastMonthStart, lt: startOfMonth }
+        createdAt: { gte: priorRangeStart, lt: rangeStart }
       }
     });
 
@@ -68,12 +65,11 @@ export async function GET(request: Request) {
       ? ((newMembersThisMonth - lastMonthNewMembers) / lastMonthNewMembers) * 100
       : 0;
 
-    // Get revenue by month (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    // Revenue by month, scoped to the selected range (1-12 months of buckets).
+    const monthsToShow = Math.min(12, Math.max(1, Math.ceil(days / 30)));
     const revenueRecords = await prisma.revenueRecord.findMany({
       where: {
-        createdAt: { gte: sixMonthsAgo },
+        createdAt: { gte: rangeStart },
         status: 'SUCCESS'
       },
       orderBy: { createdAt: 'asc' }
@@ -83,12 +79,12 @@ export async function GET(request: Request) {
     const revenueByMonth: { month: string; revenue: number }[] = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < monthsToShow; i++) {
       const monthDate = new Date();
-      monthDate.setMonth(monthDate.getMonth() - (5 - i));
+      monthDate.setMonth(monthDate.getMonth() - (monthsToShow - 1 - i));
       const monthKey = monthNames[monthDate.getMonth()];
       const monthRevenue = revenueRecords
-        .filter(r => r.createdAt.getMonth() === monthDate.getMonth())
+        .filter(r => r.createdAt.getMonth() === monthDate.getMonth() && r.createdAt.getFullYear() === monthDate.getFullYear())
         .reduce((sum, r) => sum + r.amount, 0);
       revenueByMonth.push({ month: monthKey, revenue: monthRevenue });
     }
@@ -115,17 +111,19 @@ export async function GET(request: Request) {
     // Calculate class attendance rate
     const recentClasses = await prisma.classInstance.findMany({
       where: {
-        date: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+        date: { gte: rangeStart }
       }
     });
     const totalAttendance = recentClasses.reduce((sum, c) => sum + c.attendanceCount, 0);
     const avgAttendance = recentClasses.length > 0 ? totalAttendance / recentClasses.length : 0;
     const classAttendanceRate = Math.min(100, Math.round((avgAttendance / 20) * 100)) || 0;
 
-    // Top performing content (blog posts with view tracking - simplified)
+    // Top performing content. View counts require AnalyticsEvent instrumentation
+    // on the blog pages, which doesn't exist yet - report 0 rather than inventing
+    // numbers that would mislead whoever is reading this dashboard.
     const topPerformingContent = blogPosts.map((post) => ({
       title: post.title,
-      views: Math.floor(Math.random() * 1000) + 500 // Placeholder - would need AnalyticsEvent tracking
+      views: 0
     })).slice(0, 3);
 
     return NextResponse.json({
@@ -150,6 +148,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Admin analytics API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch analytics', details: String(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });
   }
 }

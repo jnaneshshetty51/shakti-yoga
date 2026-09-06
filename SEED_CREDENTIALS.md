@@ -12,8 +12,10 @@ All seeded users share a single password, resolved in this order:
    of the seed run — copy it from the console output.
 
 For a predictable local login, add `SEED_PASSWORD=...` to your `.env` /
-`.env.local`. Set `NEXT_PUBLIC_SEED_PASSWORD` to the same value if you want the
-dev-only "Quick Login" buttons on `/login` to work.
+`.env.local`. Note the dev-only "Quick Login" buttons on `/login` always
+assume the fixed default `Password123!` and won't match a custom
+`SEED_PASSWORD` - intentional, since making them match would require
+shipping the real value to the browser via a `NEXT_PUBLIC_*` var.
 
 ## Production safety
 

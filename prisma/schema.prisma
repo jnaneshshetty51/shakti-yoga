@@ -129,6 +129,8 @@ model User {
 
   // For Staff/Admins managing leads
   assignedLeads Lead[]
+
+  passwordResetTokens PasswordResetToken[]
 }
 
 model UserProfile {
@@ -443,4 +445,17 @@ model RevenueRecord {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }

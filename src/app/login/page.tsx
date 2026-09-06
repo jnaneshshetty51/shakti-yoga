@@ -28,8 +28,11 @@ export default function LoginPage() {
 
     const handleQuickLogin = async (role: 'admin' | 'member_everyday' | 'member_therapy' | 'trial') => {
         let quickEmail = "";
-        // Matches SEED_PASSWORD used by prisma/seed.ts (dev only).
-        const quickPassword = process.env.NEXT_PUBLIC_SEED_PASSWORD || "Password123!";
+        // Only matches the seed script's default password when SEED_PASSWORD
+        // isn't overridden. Deliberately not read from a NEXT_PUBLIC_* env var -
+        // that would ship whatever the real seed password is to every visitor's
+        // browser, dev build or not.
+        const quickPassword = "Password123!";
 
         switch (role) {
             case 'admin':
@@ -108,7 +111,7 @@ export default function LoginPage() {
                             <input type="checkbox" className="mr-2 text-primary focus:ring-primary h-4 w-4" />
                             <span className="text-text/70">Remember me</span>
                         </label>
-                        <a href="#" className="text-primary hover:text-secondary transition-colors text-xs sm:text-sm">Forgot password?</a>
+                        <Link href="/forgot-password" className="text-primary hover:text-secondary transition-colors text-xs sm:text-sm">Forgot password?</Link>
                     </div>
 
                     <button

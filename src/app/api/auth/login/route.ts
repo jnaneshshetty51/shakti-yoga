@@ -3,9 +3,19 @@ import { prisma } from '@/lib/prisma';
 import { verifyPassword, signToken, mapDatabaseRole } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { syncSubscriptionState } from '@/lib/subscription';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
     try {
+        const ip = getClientIp(request);
+        const { allowed, retryAfterSeconds } = rateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+        if (!allowed) {
+            return NextResponse.json(
+                { error: 'Too many login attempts. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+            );
+        }
+
         const body = await request.json();
         const { email, password } = body;
 

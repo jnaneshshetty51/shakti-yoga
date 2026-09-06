@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, signToken, mapDatabaseRole } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
     try {
+        const ip = getClientIp(request);
+        const { allowed, retryAfterSeconds } = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
+        if (!allowed) {
+            return NextResponse.json(
+                { error: 'Too many signup attempts. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+            );
+        }
+
         const body = await request.json();
         const { email, password, firstName, lastName, country, timezone, phone } = body;
 

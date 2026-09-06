@@ -32,6 +32,8 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("30d");
+  const rangeLabels: Record<string, string> = { "7d": "in the last 7 days", "30d": "in the last 30 days", "90d": "in the last 90 days", "12m": "in the last 12 months" };
+  const rangeLabel = rangeLabels[dateRange] ?? "in this period";
   const [error, setError] = useState<string | null>(null);
 
   const fetchAnalytics = useCallback(async () => {
@@ -107,7 +109,7 @@ export default function AnalyticsPage() {
         <StatCard
           title="Active Members"
           value={data?.activeMembers || 0}
-          change={`+${data?.newMembersThisMonth || 0} this month`}
+          change={`+${data?.newMembersThisMonth || 0} ${rangeLabel}`}
           changeType="positive"
           trend="up"
           icon={<FaUsers className="w-5 h-5" />}
