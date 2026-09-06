@@ -71,32 +71,3 @@ export function StatCard({
     </div>
   );
 }
-
-interface SectionCardProps {
-  title: string;
-  subtitle?: string;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}
-
-export function SectionCard({ 
-  title, 
-  subtitle, 
-  action, 
-  children,
-  className = ""
-}: SectionCardProps) {
-  return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${className}`}>
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-gray-900 text-lg">{title}</h3>
-          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
-        </div>
-        {action && <div>{action}</div>}
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-}

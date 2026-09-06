@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useToast } from "@/components/admin/Toast";
 
 interface Dash {
     generatedAt: string;
@@ -34,6 +35,7 @@ function when(iso: string) {
 }
 
 export default function TeacherTodayPage() {
+    const { showToast } = useToast();
     const [data, setData] = useState<Dash | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -78,9 +80,10 @@ export default function TeacherTodayPage() {
         });
         if (!res.ok) {
             const d = await res.json().catch(() => ({}));
-            alert(d.error || "Could not update the link");
+            showToast("error", d.error || "Could not update the link");
             return;
         }
+        showToast("success", url ? "Meet link saved" : "Meet link cleared");
         load();
     };
 

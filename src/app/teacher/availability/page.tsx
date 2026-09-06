@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/admin/Toast";
 
 type Rule = {
     id: string; dayOfWeek: string | null; date: string | null;
@@ -10,6 +11,7 @@ type Rule = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function TeacherAvailabilityPage() {
+    const { showToast } = useToast();
     const [rules, setRules] = useState<Rule[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -39,9 +41,10 @@ export default function TeacherAvailabilityPage() {
             });
             if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
-                alert(d.error || "Could not add");
+                showToast("error", d.error || "Could not add");
                 return;
             }
+            showToast("success", "Availability added");
             load();
         } finally {
             setSaving(false);

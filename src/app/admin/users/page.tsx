@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
+import { useToast } from "@/components/admin/Toast";
 
 const ROLE_OPTIONS = [
     { label: "Super Admin", value: "SUPER_ADMIN" },
@@ -30,6 +31,7 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<User | null>(null);
+    const { showToast } = useToast();
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -101,15 +103,18 @@ export default function AdminUsersPage() {
         const res = await fetch(`/api/admin/users?id=${user.id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            alert(data.error || 'Could not delete user');
+            showToast('error', data.error || 'Could not delete user');
             return;
         }
+        showToast('success', `${user.name} deleted`);
         fetchUsers();
     };
 
     const handleBulkDelete = async (ids: string[]) => {
         if (!confirm(`Delete ${ids.length} users?`)) return;
-        await Promise.all(ids.map(id => fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' })));
+        const results = await Promise.all(ids.map(id => fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' })));
+        const failed = results.filter(r => !r.ok).length;
+        showToast(failed ? 'warning' : 'success', failed ? `${failed} of ${ids.length} could not be deleted` : `${ids.length} users deleted`);
         fetchUsers();
     };
 

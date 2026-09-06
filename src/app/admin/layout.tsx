@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import { CommandPalette, useCommandPalette } from "@/components/admin/CommandPalette";
+import { ToastProvider } from "@/components/admin/Toast";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -35,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     ].filter((item) => !item.superOnly || isSuper);
 
     return (
+        <ToastProvider>
         <div className="min-h-screen bg-gray-50 flex">
             {/* Mobile/Tablet Hamburger Button */}
             <button
@@ -175,5 +177,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} />
         </div>
+        </ToastProvider>
     );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import DTable from "@/components/admin/DTable";
+import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
 
 export type Lead = {
@@ -22,6 +23,7 @@ export type Lead = {
 };
 
 function LeadsDashboard() {
+    const { showToast } = useToast();
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -101,9 +103,10 @@ function LeadsDashboard() {
             
             setIsModalOpen(false);
             setEditingLeadId(null);
+            showToast('success', `Lead ${isEditMode ? 'updated' : 'created'}`);
             fetchLeads();
         } catch (err) {
-            alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            showToast('error', err instanceof Error ? err.message : 'Something went wrong');
         } finally {
             setIsSubmitting(false);
         }
@@ -145,9 +148,10 @@ function LeadsDashboard() {
             try {
                 const res = await fetch(`/api/admin/leads/${lead.id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error('Failed to delete lead');
+                showToast('success', `Lead "${lead.name}" deleted`);
                 fetchLeads();
             } catch (err) {
-                alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                showToast('error', err instanceof Error ? err.message : 'Something went wrong');
             }
         }
     };

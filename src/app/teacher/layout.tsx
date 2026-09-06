@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { ToastProvider } from "@/components/admin/Toast";
 
 const NAV = [
     { name: "Today", href: "/teacher", icon: "📅" },
@@ -61,6 +62,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     );
 
     return (
+        <ToastProvider>
         <div className="min-h-screen bg-gray-50 flex">
             <button
                 className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md border border-gray-200"
@@ -100,5 +102,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
             <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-16 lg:pt-8">{children}</main>
         </div>
+        </ToastProvider>
     );
 }

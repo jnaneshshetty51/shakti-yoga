@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/admin/Toast";
 
 type Session = {
     id: string; member: string; email: string; type: string;
@@ -23,6 +24,7 @@ function when(iso: string) {
 }
 
 function Row({ s, onSaved }: { s: Session; onSaved: () => void }) {
+    const { showToast } = useToast();
     const [notes, setNotes] = useState(s.notes);
     const [saving, setSaving] = useState(false);
     const past = new Date(s.at).getTime() < Date.now();
@@ -37,9 +39,10 @@ function Row({ s, onSaved }: { s: Session; onSaved: () => void }) {
             });
             if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
-                alert(d.error || "Could not save");
+                showToast("error", d.error || "Could not save");
                 return;
             }
+            showToast("success", "Session updated");
             onSaved();
         } finally {
             setSaving(false);
