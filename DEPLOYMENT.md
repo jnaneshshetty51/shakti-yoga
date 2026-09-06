@@ -170,6 +170,24 @@ pm2 status
 pm2 logs shakti-yoga
 ```
 
+### 4.3 Schedule the class-instance cron
+
+The daily class page reads materialised `ClassInstance` rows. A cron job keeps the
+next two weeks populated from the active batch schedule even with no site traffic:
+
+```bash
+crontab -e
+# add (adjust the path to match ecosystem.config.js `cwd`):
+*/30 * * * * cd /root/shaktiyoga/app && node_modules/.bin/tsx scripts/ensure-instances.ts >> /var/log/shakti-cron.log 2>&1
+```
+
+Alternatively, set `CRON_SECRET` in the env file and hit the HTTP trigger from an
+external scheduler:
+
+```bash
+curl -H "x-cron-secret: $CRON_SECRET" http://localhost:3001/api/cron/ensure-instances
+```
+
 ## Step 5: Configure Nginx
 
 ### 5.1 Copy Nginx configuration

@@ -3,20 +3,13 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import type { ClassView, ClassesResponse } from "@/types/class";
 
 interface CommunityGroup {
     id: string;
     name: string;
     whatsappLink: string;
     pinnedMessage: string;
-}
-
-interface LiveClass {
-    id: string;
-    title: string;
-    scheduledAt: string;
-    status: string;
-    teacher: { name: string };
 }
 
 function formatWhen(iso: string) {
@@ -26,13 +19,15 @@ function formatWhen(iso: string) {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
+        timeZone: "Asia/Kolkata",
     });
 }
 
 export default function DashboardPage() {
     const { user, isLoading } = useAuth();
     const [group, setGroup] = useState<CommunityGroup | null>(null);
-    const [nextClass, setNextClass] = useState<LiveClass | null>(null);
+    const [nextClass, setNextClass] = useState<ClassView | null>(null);
+    const [joining, setJoining] = useState(false);
 
     const userId = user?.id;
 
@@ -42,20 +37,17 @@ export default function DashboardPage() {
 
         (async () => {
             try {
-                const [communityRes, liveRes] = await Promise.all([
+                const [communityRes, classesRes] = await Promise.all([
                     fetch("/api/community"),
-                    fetch("/api/live-classes"),
+                    fetch("/api/classes"),
                 ]);
                 if (!cancelled && communityRes.ok) {
                     const data = await communityRes.json();
                     setGroup(data.groups?.[0] ?? null);
                 }
-                if (!cancelled && liveRes.ok) {
-                    const data = await liveRes.json();
-                    const upcoming: LiveClass[] = (data.liveClasses ?? [])
-                        .slice()
-                        .sort((a: LiveClass, b: LiveClass) => +new Date(a.scheduledAt) - +new Date(b.scheduledAt));
-                    setNextClass(upcoming[0] ?? null);
+                if (!cancelled && classesRes.ok) {
+                    const data: ClassesResponse = await classesRes.json();
+                    setNextClass(data.today[0] ?? data.upcoming[0] ?? null);
                 }
             } catch (error) {
                 console.error("Dashboard load error:", error);
@@ -68,7 +60,23 @@ export default function DashboardPage() {
     if (isLoading) return <div className="p-20 text-center">Loading dashboard...</div>;
     if (!user) return <div className="p-20 text-center">Please log in.</div>;
 
-    const isLiveNow = nextClass?.status === "LIVE";
+    const handleJoin = async () => {
+        if (!nextClass) return;
+        setJoining(true);
+        try {
+            const res = await fetch(`/api/classes/${nextClass.id}/join`, { method: "POST" });
+            const data = await res.json();
+            if (res.ok && data.meetingLink) {
+                window.open(data.meetingLink, "_blank", "noopener,noreferrer");
+            } else {
+                alert(data.error || "Could not join the class.");
+            }
+        } catch {
+            alert("Could not join the class. Please try again.");
+        } finally {
+            setJoining(false);
+        }
+    };
 
     return (
         <div>
@@ -118,35 +126,38 @@ export default function DashboardPage() {
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 relative overflow-hidden">
                         {nextClass ? (
                             <>
-                                {isLiveNow && (
-                                    <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl uppercase tracking-widest">
-                                        Live now
+                                {nextClass.joinable && (
+                                    <div className="absolute top-0 right-0 bg-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl uppercase tracking-widest">
+                                        Open now
                                     </div>
                                 )}
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="font-serif text-xl text-gray-800 mb-1">{nextClass.title}</h3>
+                                        <h3 className="font-serif text-xl text-gray-800 mb-1">{nextClass.batchName}</h3>
                                         <p className="text-sm text-text/70">
-                                            {formatWhen(nextClass.scheduledAt)} · {nextClass.teacher?.name}
+                                            {formatWhen(nextClass.startsAt)} IST · {nextClass.teacher}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex gap-4">
-                                    <Link
-                                        href={`/live/${nextClass.id}`}
-                                        className={`flex-1 py-3 text-center bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors shadow-md ${isLiveNow ? 'animate-pulse' : ''}`}
+                                    <button
+                                        onClick={handleJoin}
+                                        disabled={!nextClass.joinable || joining}
+                                        className={`flex-1 py-3 text-center font-bold uppercase tracking-widest rounded transition-colors shadow-md ${nextClass.joinable
+                                            ? 'bg-primary text-white hover:bg-secondary'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                                     >
-                                        {isLiveNow ? 'Join Live Class' : 'Class Room'}
-                                    </Link>
-                                    <Link href="/live" className="px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors">
+                                        {joining ? 'Opening…' : nextClass.joinable ? 'Join Google Meet' : 'Opens near start time'}
+                                    </button>
+                                    <Link href="/dashboard/classes" className="px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors">
                                         Full Schedule
                                     </Link>
                                 </div>
                             </>
                         ) : (
                             <div className="py-4">
-                                <h3 className="font-serif text-xl text-gray-800 mb-1">No upcoming live classes</h3>
-                                <p className="text-sm text-text/70 mb-4">Check the schedule or book a class.</p>
+                                <h3 className="font-serif text-xl text-gray-800 mb-1">No class scheduled</h3>
+                                <p className="text-sm text-text/70 mb-4">Your next class will appear here.</p>
                                 <Link href="/dashboard/classes" className="inline-block px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors">
                                     View Schedule
                                 </Link>
@@ -169,7 +180,7 @@ export default function DashboardPage() {
                             ) : (
                                 <Link href="/dashboard/classes" className="p-4 bg-gray-50 rounded hover:bg-primary/5 transition-colors text-center group">
                                     <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📅</div>
-                                    <div className="font-bold text-gray-700">Book Class</div>
+                                    <div className="font-bold text-gray-700">Today&apos;s Class</div>
                                 </Link>
                             )}
                         </div>

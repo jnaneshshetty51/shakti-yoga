@@ -25,6 +25,7 @@ export async function GET() {
             name: batch.name,
             time: `${batch.timeSlot} IST`,
             timeSlot: batch.timeSlot,
+            durationMin: batch.durationMin,
             days: batch.daysOfWeek,
             daysOfWeek: batch.daysOfWeek.join(','),
             planType: batch.planType,
@@ -44,6 +45,7 @@ export async function GET() {
 interface BatchInput {
     name?: string;
     timeSlot?: string;
+    durationMin?: number | string;
     daysOfWeek?: string;
     planType?: string;
     teacherId?: string;
@@ -51,10 +53,25 @@ interface BatchInput {
     active?: boolean | string;
 }
 
+// Group classes are Everyday Yoga only — Yoga Therapy is strictly 1:1 (Booking).
+function assertGroupPlan(planType: string) {
+    if (planType === 'YOGA_THERAPY') {
+        throw new Error('Group classes are Everyday Yoga only. Therapy sessions are booked 1:1.');
+    }
+    if (!(planType in PlanType)) throw new Error('Invalid plan type');
+}
+
+function parseDuration(v: number | string): number {
+    const n = Math.trunc(Number(v));
+    if (!Number.isFinite(n) || n < 15 || n > 240) throw new Error('Duration must be 15–240 minutes');
+    return n;
+}
+
 function toData(body: BatchInput) {
     const data: Record<string, unknown> = {};
     if (body.name !== undefined) data.name = String(body.name).trim();
     if (body.timeSlot !== undefined) data.timeSlot = String(body.timeSlot).trim();
+    if (body.durationMin !== undefined) data.durationMin = parseDuration(body.durationMin);
     if (body.daysOfWeek !== undefined) {
         data.daysOfWeek = String(body.daysOfWeek)
             .split(',')
@@ -62,7 +79,7 @@ function toData(body: BatchInput) {
             .filter(Boolean);
     }
     if (body.planType !== undefined) {
-        if (!(body.planType in PlanType)) throw new Error('Invalid plan type');
+        assertGroupPlan(body.planType);
         data.planType = body.planType;
     }
     if (body.teacherId !== undefined) data.teacherId = body.teacherId;
@@ -78,13 +95,16 @@ export async function POST(request: Request) {
         if (!body.name || !body.timeSlot || !body.planType || !body.teacherId) {
             return NextResponse.json({ error: 'Name, time, plan and teacher are required' }, { status: 400 });
         }
-        if (!(body.planType in PlanType)) {
-            return NextResponse.json({ error: 'Invalid plan type' }, { status: 400 });
+        try {
+            assertGroupPlan(body.planType);
+        } catch (e) {
+            return NextResponse.json({ error: e instanceof Error ? e.message : 'Invalid plan type' }, { status: 400 });
         }
         const batch = await prisma.classBatch.create({
             data: {
                 name: String(body.name).trim(),
                 timeSlot: String(body.timeSlot).trim(),
+                durationMin: body.durationMin === undefined ? 60 : parseDuration(body.durationMin),
                 planType: body.planType,
                 teacherId: body.teacherId,
                 meetingLink: body.meetingLink || null,

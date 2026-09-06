@@ -1,14 +1,13 @@
 # Shakti Yoga Kendra 🧘‍♂️
 
-Shakti Yoga Kendra is a comprehensive digital platform designed for yoga practitioners, teachers, and administrators. Built with a modern tech stack, it provides a seamless experience for booking classes, managing consultations, and participating in live sessions.
+Shakti Yoga Kendra is a comprehensive digital platform designed for yoga practitioners, teachers, and administrators. Built with a modern tech stack, it provides a seamless experience for subscriptions, class scheduling, consultations, and joining the daily class on Google Meet.
 
 ## ✨ Features
 
 - **Class Management**: Browse and book yoga classes with ease.
 - **Therapy & Consultations**: Integrated booking system for specialized therapy and consultation sessions.
-- **Live Sessions**: Real-time video interaction powered by **Daily.co**.
+- **Daily Class**: Eligible members join the day's Everyday Yoga class on **Google Meet**; the server gates the link by membership, eligibility and time window.
 - **User Dashboard**: Personalized dashboards for students and instructors.
-- **Real-time Updates**: Instant notifications and updates using **Socket.io**.
 - **Secure Authentication**: Robust authentication system with **Bcryptjs** and **Jose**.
 - **Dynamic Media**: Media storage and management via **AWS S3**.
 - **Admin Panel**: Comprehensive tools for administrators to manage users, bookings, and content.
@@ -17,8 +16,7 @@ Shakti Yoga Kendra is a comprehensive digital platform designed for yoga practit
 
 - **Frontend**: [Next.js 15](https://nextjs.org/) (App Router), React 19, Tailwind CSS
 - **Backend**: Next.js API Routes, [Prisma ORM](https://www.prisma.io/)
-- **Real-time**: [Socket.io](https://socket.io/)
-- **Video Conferencing**: [Daily.co](https://www.daily.co/)
+- **Video**: [Google Meet](https://meet.google.com/) (external; admin-provided links per class)
 - **Storage**: [AWS S3](https://aws.amazon.com/s3/)
 - **Database**: PostgreSQL (via Prisma)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
@@ -47,7 +45,7 @@ Shakti Yoga Kendra is a comprehensive digital platform designed for yoga practit
 
 3. Set up your environment variables:
    - Copy `.env.example` to `.env` (if provided) or create a new `.env` file.
-   - Fill in your database URL, AWS credentials, Daily.co API key, etc.
+   - Fill in your database URL, AWS credentials, Razorpay keys, etc.
 
 4. Initialize the database:
    ```bash

@@ -9,6 +9,7 @@ export type ClassBatch = {
     name: string;
     time: string;
     timeSlot: string;
+    durationMin: number;
     days: string[];
     daysOfWeek: string;
     planType: string;
@@ -20,9 +21,9 @@ export type ClassBatch = {
 
 type Teacher = { id: string; name: string };
 
+// Yoga Therapy is strictly 1:1 (Booking), so it is not a group-class plan.
 const PLAN_OPTIONS = [
     { label: "Everyday Yoga", value: "EVERYDAY_YOGA" },
-    { label: "Yoga Therapy", value: "YOGA_THERAPY" },
     { label: "Trial", value: "TRIAL" },
 ];
 
@@ -78,14 +79,15 @@ export default function AdminClassesPage() {
 
     const fields: FieldDef[] = [
         { name: "name", label: "Batch Name", required: true },
-        { name: "timeSlot", label: "Time Slot", required: true, placeholder: "06:00 AM" },
+        { name: "timeSlot", label: "Time Slot (IST)", required: true, placeholder: "06:00 AM" },
+        { name: "durationMin", label: "Duration (minutes)", type: "number", placeholder: "60" },
         { name: "daysOfWeek", label: "Days (comma separated)", required: true, placeholder: "Mon,Wed,Fri" },
         { name: "planType", label: "Plan", type: "select", required: true, options: PLAN_OPTIONS },
         {
             name: "teacherId", label: "Teacher", type: "select", required: true,
             options: teachers.map(t => ({ label: t.name, value: t.id })),
         },
-        { name: "meetingLink", label: "Meeting Link" },
+        { name: "meetingLink", label: "Default Google Meet Link", placeholder: "https://meet.google.com/…" },
         { name: "active", label: "Active", type: "checkbox" },
     ];
 
@@ -147,7 +149,7 @@ export default function AdminClassesPage() {
                     title="New Class Batch"
                     submitLabel="Create"
                     fields={fields}
-                    initial={{ active: true }}
+                    initial={{ active: true, durationMin: 60 }}
                     onCancel={() => setCreating(false)}
                     onSubmit={(v) => save(v)}
                 />
@@ -160,6 +162,7 @@ export default function AdminClassesPage() {
                     initial={{
                         name: editing.name,
                         timeSlot: editing.timeSlot,
+                        durationMin: editing.durationMin,
                         daysOfWeek: editing.daysOfWeek,
                         planType: editing.planType,
                         teacherId: editing.teacherId,

@@ -20,7 +20,6 @@ export async function GET() {
 
     const integrations = {
         razorpay: isRazorpayConfigured(),
-        daily: Boolean(process.env.DAILY_API_KEY),
         minio: Boolean(process.env.MINIO_ENDPOINT && process.env.MINIO_ACCESS_KEY),
     };
 

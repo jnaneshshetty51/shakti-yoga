@@ -56,6 +56,8 @@ export async function GET() {
             teacher: string;
             status: string;
             attendanceCount: number;
+            meetingLink: string; // per-instance override, '' when it falls back to the batch link
+            batchMeetingLink: string;
         }
         const scheduleByDay: Record<string, ScheduleEntry[]> = {
             'Mon': [],
@@ -79,6 +81,8 @@ export async function GET() {
                     teacher: instance.batch.teacher.name,
                     status: instance.status,
                     attendanceCount: instance.attendanceCount,
+                    meetingLink: instance.meetingLink ?? '',
+                    batchMeetingLink: instance.batch.meetingLink ?? '',
                 });
             }
         });
@@ -133,12 +137,13 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
     if (!(await requireAdmin())) return forbidden();
     try {
-        const { id, status, attendanceCount, recordingUrl } = await request.json().catch(() => ({}));
+        const { id, status, attendanceCount, recordingUrl, meetingLink } = await request.json().catch(() => ({}));
         if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });
         const data: Record<string, unknown> = {};
         if (status !== undefined) data.status = status;
         if (attendanceCount !== undefined) data.attendanceCount = Math.max(0, Math.trunc(Number(attendanceCount) || 0));
         if (recordingUrl !== undefined) data.recordingUrl = recordingUrl || null;
+        if (meetingLink !== undefined) data.meetingLink = meetingLink?.trim() || null;
         const instance = await prisma.classInstance.update({ where: { id }, data });
         return NextResponse.json({ instance: { id: instance.id, status: instance.status } });
     } catch (error) {

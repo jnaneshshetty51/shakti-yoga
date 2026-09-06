@@ -10,6 +10,8 @@ type ScheduleItem = {
     teacher: string;
     status: string;
     attendanceCount: number;
+    meetingLink: string;
+    batchMeetingLink: string;
 };
 
 type Batch = { id: string; name: string; timeSlot: string; daysOfWeek: string[]; teacher: string };
@@ -64,7 +66,12 @@ export default function AdminSchedulePage() {
         const res = await fetch('/api/admin/schedule', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editing?.id, status: values.status, attendanceCount: values.attendanceCount }),
+            body: JSON.stringify({
+                id: editing?.id,
+                status: values.status,
+                attendanceCount: values.attendanceCount,
+                meetingLink: values.meetingLink,
+            }),
         });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -167,8 +174,17 @@ export default function AdminSchedulePage() {
                     fields={[
                         { name: "status", label: "Status", type: "select", required: true, options: STATUS_OPTIONS },
                         { name: "attendanceCount", label: "Attendance", type: "number" },
+                        {
+                            name: "meetingLink",
+                            label: "Google Meet link for this day (blank = use batch default)",
+                            placeholder: editing.batchMeetingLink || "https://meet.google.com/…",
+                        },
                     ]}
-                    initial={{ status: editing.status, attendanceCount: editing.attendanceCount }}
+                    initial={{
+                        status: editing.status,
+                        attendanceCount: editing.attendanceCount,
+                        meetingLink: editing.meetingLink,
+                    }}
                 />
             )}
         </div>

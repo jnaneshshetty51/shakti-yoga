@@ -10,13 +10,12 @@ interface Settings {
 
 interface Integrations {
     razorpay: boolean;
-    daily: boolean;
     minio: boolean;
 }
 
 export default function AdminSettingsPage() {
     const [settings, setSettings] = useState<Settings>({ platformName: "", supportEmail: "", defaultTimezone: "IST" });
-    const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, daily: false, minio: false });
+    const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, minio: false });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
@@ -128,7 +127,6 @@ export default function AdminSettingsPage() {
                     <div className="pt-6 border-t border-gray-100">
                         <h3 className="font-bold text-gray-800 mb-4">Integrations</h3>
                         {integrationRow("Razorpay Payments", integrations.razorpay, "set RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET")}
-                        {integrationRow("Daily.co Live Video", integrations.daily, "set DAILY_API_KEY")}
                         {integrationRow("MinIO Storage", integrations.minio, "set MINIO_ENDPOINT / MINIO_ACCESS_KEY")}
                     </div>
 

@@ -52,13 +52,6 @@ enum ContentStatus {
   ARCHIVED
 }
 
-enum LiveClassStatus {
-  SCHEDULED
-  LIVE
-  ENDED
-  CANCELLED
-}
-
 enum PaymentStatus {
   CREATED
   PAID
@@ -120,12 +113,11 @@ model User {
   payments     Payment[]
 
   // For Teachers
-  classesTaught     ClassBatch[]
-  sessionsTaught    Booking[]    @relation("TeacherBookings")
-  liveClassesTaught LiveClass[]  @relation("TeacherLiveClasses")
+  classesTaught  ClassBatch[]
+  sessionsTaught Booking[]    @relation("TeacherBookings")
 
   // For Students
-  liveClassParticipation LiveClassParticipant[]
+  classAttendance ClassAttendance[]
 
   // For Staff/Admins managing leads
   assignedLeads Lead[]
@@ -195,10 +187,11 @@ model ClassBatch {
   planType    PlanType
   daysOfWeek  String[] // ["Mon", "Wed", "Fri"]
   timeSlot    String // "06:00 AM"
+  durationMin Int      @default(60) // class length, used for the join window
   teacherId   String
   teacher     User     @relation(fields: [teacherId], references: [id])
   active      Boolean  @default(true)
-  meetingLink String?
+  meetingLink String? // default Google Meet URL for every instance of this batch
 
   instances ClassInstance[]
 }
@@ -207,10 +200,26 @@ model ClassInstance {
   id              String     @id @default(cuid())
   batchId         String
   batch           ClassBatch @relation(fields: [batchId], references: [id])
-  date            DateTime
+  date            DateTime // class start, stored in UTC
   status          String // Scheduled, Completed, Cancelled
   recordingUrl    String?
+  meetingLink     String? // overrides batch.meetingLink for this one occurrence
   attendanceCount Int        @default(0)
+
+  attendees ClassAttendance[]
+
+  @@unique([batchId, date])
+}
+
+model ClassAttendance {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  classInstanceId String
+  classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+  joinedAt        DateTime      @default(now())
+
+  @@unique([userId, classInstanceId])
 }
 
 model Booking {
@@ -270,44 +279,6 @@ model WhatsAppGroup {
   role          Role // Which role this group is for
   pinnedMessage String?
   active        Boolean @default(true)
-}
-
-model LiveClass {
-  id          String  @id @default(cuid())
-  title       String
-  description String?
-  teacherId   String
-  teacher     User    @relation("TeacherLiveClasses", fields: [teacherId], references: [id])
-
-  scheduledAt DateTime
-  startedAt   DateTime?
-  endedAt     DateTime?
-
-  roomUrl String? // Daily.co room URL
-  roomId  String? // Daily.co room ID
-
-  maxParticipants Int             @default(50)
-  status          LiveClassStatus @default(SCHEDULED)
-
-  participants LiveClassParticipant[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model LiveClassParticipant {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  liveClassId String
-  liveClass   LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
-
-  joinedAt DateTime?
-  leftAt   DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@unique([userId, liveClassId])
 }
 
 model Lead {

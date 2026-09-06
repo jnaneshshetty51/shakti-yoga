@@ -251,11 +251,12 @@ async function main() {
     data: {
       name: 'Morning Hatha Yoga',
       planType: PlanType.EVERYDAY_YOGA,
-      daysOfWeek: ['Mon', 'Wed', 'Fri'],
-      timeSlot: '05:00 AM',
+      daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      timeSlot: '06:00 AM',
+      durationMin: 60,
       teacherId: teacher.id,
       active: true,
-      meetingLink: 'https://meet.google.com/morning-hatha',
+      meetingLink: 'https://meet.google.com/abc-defg-hij',
     },
   });
   console.log('✅ Created Class Batch:', morningBatch.name);
@@ -264,27 +265,17 @@ async function main() {
     data: {
       name: 'Evening Vinyasa Flow',
       planType: PlanType.EVERYDAY_YOGA,
-      daysOfWeek: ['Tue', 'Thu', 'Sat'],
+      daysOfWeek: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
       timeSlot: '06:00 PM',
+      durationMin: 60,
       teacherId: teacher.id,
       active: true,
-      meetingLink: 'https://meet.google.com/evening-vinyasa',
+      meetingLink: 'https://meet.google.com/klm-nopq-rst',
     },
   });
   console.log('✅ Created Class Batch:', eveningBatch.name);
 
-  const therapyBatch = await prisma.classBatch.create({
-    data: {
-      name: 'Therapeutic Yoga Sessions',
-      planType: PlanType.YOGA_THERAPY,
-      daysOfWeek: ['Mon', 'Wed', 'Fri'],
-      timeSlot: '10:00 AM',
-      teacherId: teacher.id,
-      active: true,
-      meetingLink: 'https://meet.google.com/therapy-yoga',
-    },
-  });
-  console.log('✅ Created Class Batch:', therapyBatch.name);
+  // Yoga Therapy is strictly 1:1 and handled through Booking — no group batch.
 
   // Create Blog Posts
   const blog1 = await prisma.blogPost.create({

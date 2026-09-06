@@ -110,7 +110,7 @@ export async function DELETE(request: Request) {
             prisma.subscription.deleteMany({ where: { userId: id } }),
             prisma.payment.deleteMany({ where: { userId: id } }),
             prisma.booking.deleteMany({ where: { OR: [{ userId: id }, { teacherId: id }] } }),
-            prisma.liveClassParticipant.deleteMany({ where: { userId: id } }),
+            prisma.classAttendance.deleteMany({ where: { userId: id } }),
             prisma.story.deleteMany({ where: { userId: id } }),
             prisma.user.delete({ where: { id } }),
         ]);
