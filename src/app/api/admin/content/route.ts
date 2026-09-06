@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { requireAdmin } from '@/lib/admin-auth';
+import { toStorageKey, mediaSrc } from '@/lib/storage';
 import { Role, ContentStatus } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -112,10 +113,10 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
     const id = body.id as string | undefined;
 
     const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
-    // Only accept an image URL we produced (the content-image upload endpoint), or '' to clear.
+    // Only accept a media path we produced (the content-image upload endpoint), or '' to clear.
     const imageUrl = has('imageUrl')
-        ? (typeof body.imageUrl === 'string' && body.imageUrl.includes('/shakti-yoga-assets/')
-            ? body.imageUrl
+        ? (typeof body.imageUrl === 'string' && toStorageKey(body.imageUrl)
+            ? mediaSrc(toStorageKey(body.imageUrl)!)
             : (body.imageUrl === '' ? null : undefined))
         : undefined;
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/rate-limit';
-import { uploadFile } from '@/lib/storage';
+import { uploadFile, mediaSrc } from '@/lib/storage';
 import { validateImageField } from '@/lib/image-upload';
 
 const PREFIX: Record<string, string> = { blog: 'blog', story: 'stories' };
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
 
     try {
         const key = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${img.ext}`;
-        const url = await uploadFile(img.file, key, { contentType: img.contentType, acl: 'public-read' });
-        return NextResponse.json({ url });
+        const storedKey = await uploadFile(img.file, key, { contentType: img.contentType });
+        return NextResponse.json({ url: mediaSrc(storedKey) });
     } catch (error) {
         console.error('Content image upload error:', error);
         return NextResponse.json({ error: 'Could not upload the image. Please try again.' }, { status: 500 });

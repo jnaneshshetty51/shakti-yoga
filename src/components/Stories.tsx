@@ -6,6 +6,7 @@ interface Testimonial {
     author: string;
     location: string;
     type: string;
+    image?: string | null;
 }
 
 // Shown only if no published stories exist in the DB yet.
@@ -44,6 +45,7 @@ async function getTestimonials(): Promise<Testimonial[]> {
             author: s.user?.name ?? s.authorName,
             location: s.location ?? '',
             type: s.planType ?? 'Shakti Yoga',
+            image: s.imageUrl,
         }));
     } catch {
         return FALLBACK;
@@ -65,16 +67,24 @@ export default async function Stories() {
                             <p className="font-sans text-text/80 italic mb-6 flex-grow text-sm sm:text-base">
                                 {story.quote}
                             </p>
-                            <div className="mt-auto">
-                                <p className="font-serif font-bold text-primary">{story.author}</p>
-                                {story.location && (
-                                    <p className="font-sans text-xs text-text/60 uppercase tracking-wider">{story.location}</p>
-                                )}
-                                {story.type && (
-                                    <span className="inline-block mt-2 px-2 py-1 bg-accent text-secondary text-[10px] font-bold uppercase tracking-widest rounded">
-                                        {story.type}
+                            <div className="mt-auto flex items-center gap-3">
+                                {story.image && (
+                                    <span className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-accent/40">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={story.image} alt="" className="w-full h-full object-cover" />
                                     </span>
                                 )}
+                                <div>
+                                    <p className="font-serif font-bold text-primary">{story.author}</p>
+                                    {story.location && (
+                                        <p className="font-sans text-xs text-text/60 uppercase tracking-wider">{story.location}</p>
+                                    )}
+                                    {story.type && (
+                                        <span className="inline-block mt-1 px-2 py-0.5 bg-accent text-secondary text-[10px] font-bold uppercase tracking-widest rounded">
+                                            {story.type}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))}

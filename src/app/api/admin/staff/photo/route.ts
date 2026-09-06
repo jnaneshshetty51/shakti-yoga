@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
-import { uploadFile, deleteFile, keyFromUrl } from '@/lib/storage';
+import { uploadFile, deleteFile, mediaSrc, toStorageKey } from '@/lib/storage';
 import { validateImageField } from '@/lib/image-upload';
 import { Role } from '@prisma/client';
 
@@ -41,12 +41,13 @@ export async function POST(request: Request) {
 
     try {
         const key = `staff/${staffId}-${Date.now()}.${img.ext}`;
-        const url = await uploadFile(img.file, key, { contentType: img.contentType, acl: 'public-read' });
+        const storedKey = await uploadFile(img.file, key, { contentType: img.contentType });
+        const src = mediaSrc(storedKey);
 
-        await prisma.user.update({ where: { id: staffId }, data: { avatarUrl: url } });
+        await prisma.user.update({ where: { id: staffId }, data: { avatarUrl: src } });
 
         if (staff.avatarUrl) {
-            const oldKey = keyFromUrl(staff.avatarUrl);
+            const oldKey = toStorageKey(staff.avatarUrl);
             if (oldKey && oldKey.startsWith('staff/')) deleteFile(oldKey).catch(() => { });
         }
 
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
             action: 'staff.photo.update', entity: 'User', entityId: staffId,
         });
 
-        return NextResponse.json({ photoUrl: url });
+        return NextResponse.json({ photoUrl: src });
     } catch (error) {
         console.error('Staff photo upload error:', error);
         return NextResponse.json({ error: 'Could not upload the photo. Please try again.' }, { status: 500 });
@@ -76,7 +77,7 @@ export async function DELETE(request: Request) {
     }
 
     if (staff.avatarUrl) {
-        const key = keyFromUrl(staff.avatarUrl);
+        const key = toStorageKey(staff.avatarUrl);
         if (key && key.startsWith('staff/')) deleteFile(key).catch(() => { });
     }
     await prisma.user.update({ where: { id: staffId }, data: { avatarUrl: null } });

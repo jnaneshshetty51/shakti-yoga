@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
-import { uploadFile, deleteFile, keyFromUrl } from '@/lib/storage';
+import { uploadFile, deleteFile, mediaSrc, toStorageKey } from '@/lib/storage';
 import { rateLimit } from '@/lib/rate-limit';
 import { readImageUpload } from '@/lib/image-upload';
 
@@ -26,21 +26,22 @@ export async function POST(request: Request) {
         if (!img.ok) return NextResponse.json({ error: img.error }, { status: img.status });
 
         const key = `avatars/${payload.id}-${Date.now()}.${img.ext}`;
-        const url = await uploadFile(img.file, key, { contentType: img.contentType, acl: 'public-read' });
+        const storedKey = await uploadFile(img.file, key, { contentType: img.contentType });
+        const src = mediaSrc(storedKey);
 
         const previous = await prisma.user.findUnique({
             where: { id: payload.id },
             select: { avatarUrl: true },
         });
 
-        await prisma.user.update({ where: { id: payload.id }, data: { avatarUrl: url } });
+        await prisma.user.update({ where: { id: payload.id }, data: { avatarUrl: src } });
 
         if (previous?.avatarUrl) {
-            const oldKey = keyFromUrl(previous.avatarUrl);
+            const oldKey = toStorageKey(previous.avatarUrl);
             if (oldKey && oldKey.startsWith('avatars/')) deleteFile(oldKey).catch(() => { });
         }
 
-        return NextResponse.json({ avatarUrl: url });
+        return NextResponse.json({ avatarUrl: src });
     } catch (error) {
         console.error('Avatar upload error:', error);
         return NextResponse.json({ error: 'Could not upload image. Please try again.' }, { status: 500 });

@@ -7,7 +7,7 @@ import { getClientIp } from '@/lib/rate-limit';
 import { hashPassword } from '@/lib/auth';
 import { readJson, str, optStr, email as parseEmail, ValidationError, handleValidationError } from '@/lib/validation';
 import { sendEmail, emailLayout } from '@/lib/email';
-import { deleteFile, keyFromUrl } from '@/lib/storage';
+import { deleteFile, toStorageKey } from '@/lib/storage';
 import { SITE_URL } from '@/lib/site';
 import { Role } from '@prisma/client';
 
@@ -276,7 +276,7 @@ export async function DELETE(request: Request) {
         ]);
 
         if (target.avatarUrl) {
-            const key = keyFromUrl(target.avatarUrl);
+            const key = toStorageKey(target.avatarUrl);
             if (key && key.startsWith('staff/')) deleteFile(key).catch(() => { });
         }
 

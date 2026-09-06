@@ -81,12 +81,20 @@ export default function StoriesPage() {
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {filteredStories.map((story) => (
                                 <div key={story.id} className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div>
-                                            <h3 className="font-serif text-xl text-gray-800">{story.name}</h3>
-                                            <p className="text-xs text-gray-500 uppercase tracking-widest">{story.location}</p>
+                                    <div className="flex justify-between items-start mb-6 gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-11 h-11 rounded-full bg-accent/30 overflow-hidden shrink-0 flex items-center justify-center text-secondary font-serif text-lg">
+                                                {story.imageUrl
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    ? <img src={story.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                    : story.name.charAt(0)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h3 className="font-serif text-xl text-gray-800 truncate">{story.name}</h3>
+                                                <p className="text-xs text-gray-500 uppercase tracking-widest truncate">{story.location}</p>
+                                            </div>
                                         </div>
-                                        <span className="px-2 py-1 bg-accent/20 text-secondary text-[10px] font-bold uppercase tracking-widest rounded">
+                                        <span className="px-2 py-1 bg-accent/20 text-secondary text-[10px] font-bold uppercase tracking-widest rounded shrink-0">
                                             {story.plan}
                                         </span>
                                     </div>

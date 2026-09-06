@@ -1,39 +1,36 @@
 import {
     S3Client,
     PutObjectCommand,
+    GetObjectCommand,
     DeleteObjectCommand,
     HeadBucketCommand,
     CreateBucketCommand,
-    PutBucketPolicyCommand,
 } from "@aws-sdk/client-s3";
-import { SITE_URL } from "@/lib/site";
+import { Readable } from "node:stream";
 
 // Internal endpoint the server talks S3 to (localhost inside the box).
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "http://localhost:9000";
 
-// Initialize S3 Client for MinIO
 const s3Client = new S3Client({
-    region: "us-east-1", // MinIO default region
+    region: "us-east-1",
     endpoint: MINIO_ENDPOINT,
     credentials: {
         accessKeyId: process.env.MINIO_ACCESS_KEY || "minioadmin",
         secretAccessKey: process.env.MINIO_SECRET_KEY || "minioadmin",
     },
-    forcePathStyle: true, // Required for MinIO
+    forcePathStyle: true, // MinIO
 });
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || "shakti-yoga-assets";
 
-// Prefixes whose objects are meant to be publicly readable (served via nginx /minio/).
-const PUBLIC_PREFIXES = ["avatars/", "staff/", "blog/", "stories/"];
+/** Object-key prefixes the app is allowed to read/write. */
+export const MEDIA_PREFIXES = ["avatars", "staff", "blog", "stories"] as const;
+const KEY_RE = new RegExp(`^(${MEDIA_PREFIXES.join("|")})/[A-Za-z0-9][A-Za-z0-9._-]{0,200}$`);
 
 let bucketReady: Promise<void> | null = null;
 
-/**
- * Create the bucket on first use and grant anonymous read on the public prefixes.
- * MinIO's per-object ACLs are unreliable, so a bucket policy is the source of truth.
- * Cached — runs at most once per process (retries if it threw).
- */
+/** Create the bucket on first use. Objects stay private — reads go through
+ *  presigned URLs from /api/media. Cached per process. */
 async function ensureBucket(): Promise<void> {
     if (bucketReady) return bucketReady;
     bucketReady = (async () => {
@@ -43,49 +40,17 @@ async function ensureBucket(): Promise<void> {
             try {
                 await s3Client.send(new CreateBucketCommand({ Bucket: BUCKET_NAME }));
             } catch (err) {
-                // Someone else may have created it between Head and Create.
                 const name = (err as { name?: string })?.name;
                 if (name !== "BucketAlreadyOwnedByYou" && name !== "BucketAlreadyExists") throw err;
             }
         }
-        const policy = {
-            Version: "2012-10-17",
-            Statement: [
-                {
-                    Effect: "Allow",
-                    Principal: { AWS: ["*"] },
-                    Action: ["s3:GetObject"],
-                    Resource: PUBLIC_PREFIXES.map((p) => `arn:aws:s3:::${BUCKET_NAME}/${p}*`),
-                },
-            ],
-        };
-        await s3Client.send(
-            new PutBucketPolicyCommand({ Bucket: BUCKET_NAME, Policy: JSON.stringify(policy) }),
-        ).catch((e) => console.error("[storage] could not set bucket policy:", e));
     })().catch((e) => {
-        bucketReady = null; // allow a retry next call
+        bucketReady = null;
         throw e;
     });
     return bucketReady;
 }
 
-/**
- * Public, browser-reachable base for stored objects. In prod nginx proxies
- * `/minio/` -> the MinIO container, so a stored key is served at
- * `${SITE_URL}/minio/${bucket}/${key}` over HTTPS. `MEDIA_PUBLIC_BASE` overrides.
- */
-const PUBLIC_BASE = (
-    process.env.MEDIA_PUBLIC_BASE?.replace(/\/+$/, "") ||
-    (MINIO_ENDPOINT.includes("localhost") || MINIO_ENDPOINT.includes("127.0.0.1")
-        ? `${SITE_URL}/minio`
-        : MINIO_ENDPOINT)
-);
-
-function publicUrl(key: string): string {
-    return `${PUBLIC_BASE}/${BUCKET_NAME}/${key}`;
-}
-
-/** Content types we are willing to store and serve. Anything else is rejected. */
 const ALLOWED_CONTENT_TYPES = new Set([
     "image/jpeg",
     "image/png",
@@ -95,33 +60,58 @@ const ALLOWED_CONTENT_TYPES = new Set([
 ]);
 
 /**
- * Normalise an object key so a caller can never write outside its intended
- * prefix (path traversal, absolute paths, sneaky unicode, overlong keys).
+ * Validate + normalise a value into a storage object key. Accepts:
+ *   - a bare key           "staff/abc.jpg"
+ *   - an /api/media path    "/api/media/staff/abc.jpg"
+ *   - a legacy full URL     ".../shakti-yoga-assets/staff/abc.jpg?..."
+ * Returns the key, or null if it isn't one of ours / is malformed.
  */
-export function sanitizeKey(key: string): string {
-    const cleaned = key
-        .replace(/\\/g, "/")
-        .replace(/\.\.+/g, ".")        // collapse ".." segments
-        .replace(/^\/+/, "")           // no leading slash
-        .replace(/\/{2,}/g, "/")       // collapse repeated slashes
-        .replace(/[^a-zA-Z0-9._/-]/g, "_"); // whitelist charset
+export function toStorageKey(value: string | null | undefined): string | null {
+    if (!value) return null;
+    let key = value.trim();
+    const media = key.indexOf("/api/media/");
+    if (media !== -1) key = key.slice(media + "/api/media/".length);
+    const bucket = key.indexOf(`/${BUCKET_NAME}/`);
+    if (bucket !== -1) key = key.slice(bucket + BUCKET_NAME.length + 2);
+    key = key.split("?")[0].replace(/^\/+/, "");
+    return KEY_RE.test(key) ? key : null;
+}
 
-    if (!cleaned || cleaned.length > 512 || cleaned.startsWith("/") || cleaned.includes("..")) {
-        throw new Error("Invalid storage key");
-    }
-    return cleaned;
+/** The value we store in the DB and put in <img src>. */
+export function mediaSrc(key: string): string {
+    return `/api/media/${key}`;
+}
+
+/** Fetch an object's stream + metadata (SigV4-signed request to MinIO). */
+export async function getObjectStream(key: string): Promise<{
+    body: ReadableStream | null;
+    contentType?: string;
+    contentLength?: number;
+}> {
+    const res = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+    const node = res.Body as Readable | undefined;
+    return {
+        // In the Node runtime the SDK gives a Node Readable; convert to a web stream.
+        body: node ? (Readable.toWeb(node) as unknown as ReadableStream) : null,
+        contentType: res.ContentType,
+        contentLength: typeof res.ContentLength === "number" ? res.ContentLength : undefined,
+    };
 }
 
 interface UploadOpts {
-    /** Explicit content type — validated against the allow-list. */
     contentType: string;
-    /** Object ACL. Defaults to private; pass "public-read" for assets meant to be linkable. */
-    acl?: "private" | "public-read";
 }
 
-export async function uploadFile(file: File | Blob, path: string, opts: UploadOpts): Promise<string> {
-    const key = sanitizeKey(path);
-
+/**
+ * Store a file under `prefix/` with a random name. Returns the object KEY
+ * (wrap with mediaSrc() for an <img src>).
+ */
+export async function uploadFile(
+    file: File | Blob,
+    key: string,
+    opts: UploadOpts,
+): Promise<string> {
+    if (!KEY_RE.test(key)) throw new Error(`Refusing to write key outside an allowed prefix: ${key}`);
     if (!ALLOWED_CONTENT_TYPES.has(opts.contentType)) {
         throw new Error(`Unsupported content type: ${opts.contentType}`);
     }
@@ -129,46 +119,32 @@ export async function uploadFile(file: File | Blob, path: string, opts: UploadOp
     try {
         await ensureBucket();
         const buffer = Buffer.from(await file.arrayBuffer());
-
         await s3Client.send(
             new PutObjectCommand({
                 Bucket: BUCKET_NAME,
                 Key: key,
                 Body: buffer,
                 ContentType: opts.contentType,
-                // Stop the browser from ever MIME-sniffing a stored object into a script/html.
                 ContentDisposition: "inline",
                 CacheControl: "public, max-age=31536000, immutable",
-                ACL: opts.acl ?? "private",
             }),
         );
-
-        return publicUrl(key);
+        return key;
     } catch (error) {
         console.error("Error uploading file to MinIO:", error);
         throw new Error("Failed to upload file");
     }
 }
 
-export async function deleteFile(path: string): Promise<void> {
-    const key = sanitizeKey(path);
+export async function deleteFile(keyOrUrl: string): Promise<void> {
+    const key = toStorageKey(keyOrUrl);
+    if (!key) return;
     try {
         await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
     } catch (error) {
         console.error("Error deleting file from MinIO:", error);
-        throw new Error("Failed to delete file");
     }
 }
 
-/** Derive the storage key from any URL we've ever returned (for deletes). */
-export function keyFromUrl(url: string): string | null {
-    const marker = `/${BUCKET_NAME}/`;
-    const i = url.indexOf(marker);
-    if (i === -1) return null;
-    const key = url.slice(i + marker.length).split("?")[0];
-    return key || null;
-}
-
-export function getFileUrl(path: string): string {
-    return publicUrl(sanitizeKey(path));
-}
+/** @deprecated use toStorageKey */
+export const keyFromUrl = toStorageKey;
