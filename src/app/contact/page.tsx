@@ -24,7 +24,7 @@ export default function ContactPage() {
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg text-text mb-2">Phone / WhatsApp</h3>
-                                <p>+91 7204050478</p>
+                                <p>+91 7760222478</p>
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg text-text mb-2">Office Hours</h3>

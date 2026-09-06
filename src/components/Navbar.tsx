@@ -88,7 +88,7 @@ export default function Navbar() {
 
                 <div className="mt-auto pt-8">
                     <a
-                        href="https://wa.me/917204050478"
+                        href="https://wa.me/917760222478"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 w-full py-4 bg-green-600 text-white font-bold uppercase tracking-widest rounded hover:bg-green-700 transition-colors shadow-md"

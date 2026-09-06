@@ -22,7 +22,7 @@ export default function Footer() {
                         <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Instagram"><FaInstagram /></a>
                         <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="YouTube"><FaYoutube /></a>
                         <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Facebook"><FaFacebook /></a>
-                        <a href="https://wa.me/917204050478" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="WhatsApp"><FaWhatsapp /></a>
+                        <a href="https://wa.me/917760222478" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="WhatsApp"><FaWhatsapp /></a>
                     </div>
                 </div>
 
@@ -68,7 +68,7 @@ export default function Footer() {
 
                     <div className="text-sm space-y-2 opacity-80 font-sans">
                         <p><strong className="text-white">Email:</strong> <a href="mailto:contactus@shaktiyoga.in" className="hover:text-secondary">contactus@shaktiyoga.in</a></p>
-                        <p><strong className="text-white">Phone:</strong> <a href="tel:+917204050478" className="hover:text-secondary">+91 7204050478</a></p>
+                        <p><strong className="text-white">Phone:</strong> <a href="tel:+917760222478" className="hover:text-secondary">+91 7760222478</a></p>
                         <p className="text-xs opacity-60 mt-2">We respond between 9 AM – 9 PM IST</p>
                     </div>
                 </div>

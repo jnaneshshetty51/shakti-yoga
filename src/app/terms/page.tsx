@@ -105,7 +105,7 @@ export default function TermsPage() {
                         </p>
                         <ul className="list-none space-y-2">
                             <li><strong>Email:</strong> contactus@shaktiyoga.in</li>
-                            <li><strong>Phone:</strong> +91 7204050478</li>
+                            <li><strong>Phone:</strong> +91 7760222478</li>
                             <li><strong>Address:</strong> LIG 77, Hudco 4th Main Rd, near Netaji Nandanavana Park, Doddangudde, Udupi, Karnataka 576102</li>
                         </ul>
                     </section>
