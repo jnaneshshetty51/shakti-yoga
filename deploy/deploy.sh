@@ -76,7 +76,7 @@ if [ "${AVAIL_MB:-9999}" -lt 1400 ] && [ "${SWAP_MB:-0}" -lt 512 ]; then
     fallocate -l 2G "$SWAPFILE" 2>/dev/null || dd if=/dev/zero of="$SWAPFILE" bs=1M count=2048
     chmod 600 "$SWAPFILE"; mkswap "$SWAPFILE" >/dev/null; swapon "$SWAPFILE"
 fi
-cleanup_swap() { [ -n "$SWAPFILE" ] && { swapoff "$SWAPFILE" 2>/dev/null || true; rm -f "$SWAPFILE"; }; }
+cleanup_swap() { [ -n "$SWAPFILE" ] && { swapoff "$SWAPFILE" 2>/dev/null || true; rm -f "$SWAPFILE"; }; return 0; }
 trap 'cleanup_swap' EXIT
 
 echo -e "${GREEN}▶ npm ci${NC}";          npm ci --no-audit --no-fund
