@@ -70,8 +70,8 @@ export async function GET() {
             id: booking.id,
             memberName: booking.user?.name || 'Unknown',
             type: booking.type.replace('_', ' '),
-            date: booking.date.toDateString() === new Date().toDateString() ? 'Today' : 'Tomorrow',
-            time: booking.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + ' IST'
+            date: new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(booking.date),
+            time: booking.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) + ' IST'
         }));
 
         // Fetch top members (most active users with subscriptions)

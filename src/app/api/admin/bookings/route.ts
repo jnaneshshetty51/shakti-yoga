@@ -140,18 +140,14 @@ export async function DELETE(request: Request) {
 }
 
 function formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
+    return new Intl.DateTimeFormat('en-IN', {
+        month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata',
     }).format(date);
 }
 
 function formatTime(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
+    return new Intl.DateTimeFormat('en-IN', {
+        hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
     }).format(date);
 }
 

@@ -74,14 +74,14 @@ export async function GET() {
         };
 
         instances.forEach(instance => {
-            const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(instance.date);
+            const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'Asia/Kolkata' }).format(instance.date);
             const dayKey = dayName as keyof typeof scheduleByDay;
 
             if (scheduleByDay[dayKey]) {
                 scheduleByDay[dayKey].push({
                     id: instance.id,
                     batchName: instance.batch.name,
-                    timeSlot: formatTimeSlot(instance.date),
+                    timeSlot: formatTimeSlot(instance.date, instance.batch.durationMin),
                     teacher: instance.batch.teacher.name,
                     status: instance.status,
                     attendanceCount: instance.attendanceCount,
@@ -198,21 +198,12 @@ export async function DELETE(request: Request) {
     }
 }
 
-function formatTimeSlot(date: Date): string {
-    const time = new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-    }).format(date);
-
-    const endDate = new Date(date);
-    endDate.setHours(endDate.getHours() + 1);
-    const endTime = new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-    }).format(endDate);
-
-    return `${time} - ${endTime} IST`;
+function formatTimeSlot(date: Date, durationMin = 60): string {
+    const fmt = (d: Date) =>
+        new Intl.DateTimeFormat('en-IN', {
+            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+        }).format(d);
+    const end = new Date(date.getTime() + durationMin * 60_000);
+    return `${fmt(date)} - ${fmt(end)} IST`;
 }
 
