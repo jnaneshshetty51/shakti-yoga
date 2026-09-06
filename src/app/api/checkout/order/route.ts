@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { getPlan } from '@/lib/pricing';
 import { createOrder, getPublicKeyId, isRazorpayConfigured } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
+import { readJson, oneOf, ValidationError, handleValidationError } from '@/lib/validation';
 
 export async function POST(request: Request) {
     try {
@@ -19,8 +20,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid or expired session.' }, { status: 401 });
         }
 
-        const body = await request.json().catch(() => ({}));
-        const plan = getPlan(body.planType);
+        const body = await readJson(request);
+        const planType = oneOf(body.planType, ['everyday', 'therapy', 'trial'] as const, 'planType');
+        const plan = getPlan(planType);
 
         const user = await prisma.user.findUnique({ where: { id: payload.id } });
         if (!user) {
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
             amountMajor: plan.amount,
             currency: plan.currency,
             receipt: `sub_${user.id.slice(0, 8)}_${Date.now()}`,
-            notes: { userId: user.id, planType: body.planType ?? 'everyday' },
+            notes: { userId: user.id, planType },
         });
 
         await prisma.payment.create({
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
             prefill: { name: user.name, email: user.email, contact: user.phone ?? '' },
         });
     } catch (error) {
+        if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Checkout order error:', error);
         return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
     }

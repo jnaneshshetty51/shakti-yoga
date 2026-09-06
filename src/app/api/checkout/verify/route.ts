@@ -68,12 +68,11 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json().catch(() => ({}));
-        const {
-            razorpay_order_id,
-            razorpay_subscription_id,
-            razorpay_payment_id,
-            razorpay_signature,
-        } = body;
+        const asStr = (v: unknown) => (typeof v === 'string' && v.length > 0 && v.length <= 256 ? v : undefined);
+        const razorpay_order_id = asStr(body.razorpay_order_id);
+        const razorpay_subscription_id = asStr(body.razorpay_subscription_id);
+        const razorpay_payment_id = asStr(body.razorpay_payment_id);
+        const razorpay_signature = asStr(body.razorpay_signature);
 
         if (!razorpay_payment_id || !razorpay_signature || (!razorpay_order_id && !razorpay_subscription_id)) {
             return NextResponse.json({ error: 'Missing payment confirmation fields.' }, { status: 400 });
@@ -118,6 +117,9 @@ export async function POST(request: Request) {
         }
 
         // --- One-time order payment ---
+        if (!razorpay_order_id) {
+            return NextResponse.json({ error: 'Missing order id.' }, { status: 400 });
+        }
         const paymentRecord = await prisma.payment.findUnique({ where: { providerOrderId: razorpay_order_id } });
         if (!paymentRecord || paymentRecord.userId !== payload.id) {
             return NextResponse.json({ error: 'Unknown order.' }, { status: 404 });

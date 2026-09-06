@@ -10,6 +10,7 @@ import {
     isRazorpayConfigured,
 } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
+import { readJson, oneOf, ValidationError, handleValidationError } from '@/lib/validation';
 
 /** Reuse a Razorpay plan per (planKey, amount, currency); create + cache on first use. */
 async function getOrCreatePlanId(planKey: string, plan: PlanConfig): Promise<string> {
@@ -38,8 +39,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid or expired session.' }, { status: 401 });
         }
 
-        const body = await request.json().catch(() => ({}));
-        const planKey = ['everyday', 'therapy', 'trial'].includes(body.planType) ? body.planType : 'everyday';
+        const body = await readJson(request);
+        const planKey = oneOf(body.planType, ['everyday', 'therapy', 'trial'] as const, 'planType');
         const plan = getPlan(planKey);
 
         const user = await prisma.user.findUnique({ where: { id: payload.id } });
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
             prefill: { name: user.name, email: user.email, contact: user.phone ?? '' },
         });
     } catch (error) {
+        if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Checkout subscribe error:', error);
         return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
     }

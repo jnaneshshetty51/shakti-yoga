@@ -100,16 +100,22 @@ export async function GET() {
     }
 }
 
+/** Coerce to a trimmed string with a hard length cap; '' -> null upstream. */
+function cap(v: unknown, max: number): string {
+    const s = typeof v === 'string' ? v : v == null ? '' : String(v);
+    return s.slice(0, max).trim();
+}
+
 async function upsertContent(type: ContentType, body: Record<string, unknown>, isCreate: boolean) {
     const id = body.id as string | undefined;
 
     if (type === 'story') {
         const data = {
-            authorName: (body.authorName as string) || (body.name as string) || 'Anonymous',
-            location: (body.location as string) || null,
-            planType: (body.planType as string) || null,
-            quote: (body.quote as string) || '',
-            content: (body.content as string) || null,
+            authorName: cap(body.authorName || body.name || 'Anonymous', 120),
+            location: cap(body.location, 120) || null,
+            planType: cap(body.planType, 60) || null,
+            quote: cap(body.quote, 600),
+            content: cap(body.content, 5000) || null,
             rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
             status: toContentStatus(body.status ?? 'PUBLISHED'),
         };
@@ -119,14 +125,14 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
     }
 
     if (type === 'blog') {
-        const title = (body.title as string) || 'Untitled';
+        const title = cap(body.title || 'Untitled', 200);
         const data = {
             title,
-            slug: (body.slug as string) || slugify(title),
-            excerpt: (body.excerpt as string) || null,
-            content: (body.content as string) || '',
-            category: (body.category as string) || 'General',
-            author: (body.author as string) || 'Shakti Yoga',
+            slug: cap(body.slug, 200) || slugify(title),
+            excerpt: cap(body.excerpt, 500) || null,
+            content: cap(body.content, 100_000),
+            category: cap(body.category || 'General', 80),
+            author: cap(body.author || 'Shakti Yoga', 120),
             status: toContentStatus(body.status),
             publishedAt: body.status === 'PUBLISHED' ? new Date() : null,
         };
@@ -136,12 +142,12 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
     }
 
     // whatsapp
-    const roleRaw = String(body.role || 'MEMBER_EVERYDAY').toUpperCase().replace(/ /g, '_');
+    const roleRaw = cap(body.role || 'MEMBER_EVERYDAY', 40).toUpperCase().replace(/ /g, '_');
     const data = {
-        name: (body.name as string) || 'Group',
-        link: (body.link as string) || (body.whatsappLink as string) || '',
+        name: cap(body.name || 'Group', 120),
+        link: cap(body.link || body.whatsappLink, 500),
         role: (roleRaw in Role ? roleRaw : 'MEMBER_EVERYDAY') as Role,
-        pinnedMessage: (body.pinnedMessage as string) || null,
+        pinnedMessage: cap(body.pinnedMessage, 2000) || null,
         active: body.active === undefined ? true : Boolean(body.active),
     };
     return isCreate

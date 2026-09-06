@@ -1,35 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { notifyAdmin, emailLayout } from '@/lib/email';
+import { readJson, str, optStr, email as emailField, ValidationError, handleValidationError } from '@/lib/validation';
 
 function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
 
-function isEmail(v: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-}
-
 export async function POST(request: Request) {
     try {
-        const body = await request.json().catch(() => ({}));
-        const name = String(body.name || '').trim();
-        const email = String(body.email || '').trim();
-        const subject = String(body.subject || '').trim();
-        const message = String(body.message || '').trim();
-
-        if (!name || !email || !message) {
-            return NextResponse.json({ error: 'Name, email and message are required.' }, { status: 400 });
-        }
-        if (!isEmail(email)) {
-            return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
-        }
-        if (message.length > 5000) {
-            return NextResponse.json({ error: 'Message is too long.' }, { status: 400 });
-        }
+        const body = await readJson(request);
+        const name = str(body.name, { label: 'name', min: 1, max: 120 });
+        const email = emailField(body.email);
+        const subject = optStr(body.subject, { label: 'subject', max: 150 });
+        const message = str(body.message, { label: 'message', min: 1, max: 5000 });
 
         await prisma.contactMessage.create({
-            data: { name, email, subject: subject || null, message },
+            data: { name, email, subject: subject ?? null, message },
         });
 
         // Fire-and-forget admin notification.
@@ -44,6 +31,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
+        if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Contact API error:', error);
         return NextResponse.json({ error: 'Could not send your message. Please try again.' }, { status: 500 });
     }
