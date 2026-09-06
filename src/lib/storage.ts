@@ -5,6 +5,7 @@ import {
     DeleteObjectCommand,
     HeadBucketCommand,
     CreateBucketCommand,
+    DeleteBucketPolicyCommand,
 } from "@aws-sdk/client-s3";
 import { Readable } from "node:stream";
 
@@ -29,8 +30,9 @@ const KEY_RE = new RegExp(`^(${MEDIA_PREFIXES.join("|")})/[A-Za-z0-9][A-Za-z0-9.
 
 let bucketReady: Promise<void> | null = null;
 
-/** Create the bucket on first use. Objects stay private — reads go through
- *  presigned URLs from /api/media. Cached per process. */
+/** Create the bucket on first use and make sure it has NO anonymous-read policy
+ *  (an earlier version set one). Objects are served only through /api/media,
+ *  which fetches them with signed SDK credentials. Cached per process. */
 async function ensureBucket(): Promise<void> {
     if (bucketReady) return bucketReady;
     bucketReady = (async () => {
@@ -44,6 +46,8 @@ async function ensureBucket(): Promise<void> {
                 if (name !== "BucketAlreadyOwnedByYou" && name !== "BucketAlreadyExists") throw err;
             }
         }
+        // Revoke any public-read bucket policy left by an older deploy.
+        await s3Client.send(new DeleteBucketPolicyCommand({ Bucket: BUCKET_NAME })).catch(() => { });
     })().catch((e) => {
         bucketReady = null;
         throw e;
