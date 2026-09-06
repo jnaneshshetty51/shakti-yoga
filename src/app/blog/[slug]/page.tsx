@@ -73,6 +73,13 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                     <div className="w-24 h-1 bg-secondary mx-auto rounded-full"></div>
                 </header>
 
+                {(post.imageUrl || post.featuredImage) && (
+                    <div className="mb-12 rounded-lg overflow-hidden aspect-[16/9] bg-gray-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={(post.imageUrl ?? post.featuredImage) as string} alt={post.title} className="w-full h-full object-cover" />
+                    </div>
+                )}
+
                 {/* Content */}
                 <div className="prose prose-lg prose-headings:font-serif prose-headings:text-primary prose-a:text-secondary mx-auto">
                     {/* 

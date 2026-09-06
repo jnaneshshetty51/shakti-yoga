@@ -67,6 +67,7 @@ export async function GET() {
             quote: story.quote,
             content: story.content || '',
             status: story.status,
+            imageUrl: story.imageUrl || '',
         }));
 
         const formattedBlogPosts = blogPosts.map(post => ({
@@ -79,6 +80,7 @@ export async function GET() {
             content: post.content,
             author: post.author,
             status: post.status,
+            imageUrl: post.imageUrl || '',
         }));
 
         const formattedGroups = groups.map(group => ({
@@ -109,6 +111,11 @@ function cap(v: unknown, max: number): string {
 async function upsertContent(type: ContentType, body: Record<string, unknown>, isCreate: boolean) {
     const id = body.id as string | undefined;
 
+    // Only accept an image URL we produced (the content-image upload endpoint).
+    const imageUrl = typeof body.imageUrl === 'string' && body.imageUrl.includes('/shakti-yoga-assets/')
+        ? body.imageUrl
+        : (body.imageUrl === '' ? null : undefined);
+
     if (type === 'story') {
         const data = {
             authorName: cap(body.authorName || body.name || 'Anonymous', 120),
@@ -118,6 +125,7 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
             content: cap(body.content, 5000) || null,
             rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
             status: toContentStatus(body.status ?? 'PUBLISHED'),
+            ...(imageUrl !== undefined ? { imageUrl } : {}),
         };
         return isCreate
             ? prisma.story.create({ data })
@@ -126,19 +134,26 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
 
     if (type === 'blog') {
         const title = cap(body.title || 'Untitled', 200);
-        const data = {
+        const status = toContentStatus(body.status);
+        const data: Record<string, unknown> = {
             title,
             slug: cap(body.slug, 200) || slugify(title),
             excerpt: cap(body.excerpt, 500) || null,
             content: cap(body.content, 100_000),
             category: cap(body.category || 'General', 80),
             author: cap(body.author || 'Shakti Yoga', 120),
-            status: toContentStatus(body.status),
-            publishedAt: body.status === 'PUBLISHED' ? new Date() : null,
+            status,
+            ...(imageUrl !== undefined ? { imageUrl } : {}),
         };
-        return isCreate
-            ? prisma.blogPost.create({ data })
-            : prisma.blogPost.update({ where: { id }, data });
+        if (isCreate) {
+            data.publishedAt = status === 'PUBLISHED' ? new Date() : null;
+            return prisma.blogPost.create({ data: data as never });
+        }
+        // On edit, only stamp publishedAt when it first goes live; don't bump it on every save.
+        const current = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true, status: true } });
+        if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
+        if (status !== 'PUBLISHED') data.publishedAt = null;
+        return prisma.blogPost.update({ where: { id }, data: data as never });
     }
 
     // whatsapp

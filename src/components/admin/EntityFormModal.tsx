@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "checkbox";
+export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "checkbox" | "image";
 
 export interface FieldDef {
     name: string;
@@ -22,6 +22,8 @@ interface Props {
     submitLabel?: string;
     onCancel: () => void;
     onSubmit: (values: EntityValues) => Promise<void>;
+    /** Required if any field has type "image". Uploads the file, returns its URL. */
+    uploadImage?: (file: File) => Promise<string>;
 }
 
 export default function EntityFormModal({
@@ -31,7 +33,9 @@ export default function EntityFormModal({
     submitLabel = "Save",
     onCancel,
     onSubmit,
+    uploadImage,
 }: Props) {
+    const [uploading, setUploading] = useState<string | null>(null);
     const [values, setValues] = useState<EntityValues>(() => {
         const seed: EntityValues = {};
         for (const f of fields) {
@@ -113,6 +117,43 @@ export default function EntityFormModal({
                                     onChange={(e) => set(f.name, e.target.checked)}
                                     className="h-4 w-4"
                                 />
+                            ) : f.type === "image" ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="w-24 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 text-xs">
+                                        {values[f.name]
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            ? <img src={String(values[f.name])} alt="" className="w-full h-full object-cover" />
+                                            : "none"}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            disabled={!uploadImage || uploading === f.name}
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                e.target.value = "";
+                                                if (!file || !uploadImage) return;
+                                                setUploading(f.name);
+                                                setError(null);
+                                                try {
+                                                    set(f.name, await uploadImage(file));
+                                                } catch (err) {
+                                                    setError(err instanceof Error ? err.message : "Upload failed");
+                                                } finally {
+                                                    setUploading(null);
+                                                }
+                                            }}
+                                            className="text-xs"
+                                        />
+                                        {uploading === f.name && <p className="text-xs text-gray-400">Uploading…</p>}
+                                        {values[f.name] && (
+                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-gray-400 hover:text-red-500">
+                                                remove
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             ) : (
                                 <input
                                     type={f.type || "text"}

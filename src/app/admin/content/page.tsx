@@ -8,11 +8,11 @@ type ContentType = "story" | "blog" | "whatsapp";
 
 type Story = {
     id: string; name: string; authorName: string; location: string; plan: string;
-    planType: string; rating: number; quote: string; content: string; status: string;
+    planType: string; rating: number; quote: string; content: string; status: string; imageUrl: string;
 };
 type BlogPost = {
     id: string; title: string; category: string; date: string; slug: string;
-    excerpt: string; content: string; author: string; status: string;
+    excerpt: string; content: string; author: string; status: string; imageUrl: string;
 };
 type WhatsAppGroup = {
     id: string; name: string; role: string; whatsappLink: string; pinnedMessage: string;
@@ -35,14 +35,17 @@ const STORY_FIELDS: FieldDef[] = [
     { name: "location", label: "Location" },
     { name: "planType", label: "Plan" },
     { name: "rating", label: "Rating (1-5)", type: "number" },
+    { name: "imageUrl", label: "Photo", type: "image" },
     { name: "quote", label: "Short Quote", type: "textarea", required: true },
     { name: "content", label: "Full Testimonial", type: "textarea" },
     { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
 ];
 const BLOG_FIELDS: FieldDef[] = [
     { name: "title", label: "Title", required: true },
+    { name: "slug", label: "URL slug", placeholder: "auto from title if blank" },
     { name: "category", label: "Category", required: true },
     { name: "author", label: "Author" },
+    { name: "imageUrl", label: "Thumbnail", type: "image" },
     { name: "excerpt", label: "Excerpt", type: "textarea" },
     { name: "content", label: "Content (Markdown)", type: "textarea", required: true },
     { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
@@ -155,7 +158,7 @@ export default function AdminContentPage() {
                     onCreate={() => setModal({ mode: "create" })}
                     actions={(s: Story) => rowActions(s.id, {
                         authorName: s.authorName, location: s.location, planType: s.planType,
-                        rating: s.rating, quote: s.quote, content: s.content, status: s.status,
+                        rating: s.rating, quote: s.quote, content: s.content, status: s.status, imageUrl: s.imageUrl,
                     })}
                 />
             )}
@@ -173,7 +176,8 @@ export default function AdminContentPage() {
                     onCreate={() => setModal({ mode: "create" })}
                     actions={(p: BlogPost) => rowActions(p.id, {
                         title: p.title, category: p.category, author: p.author,
-                        excerpt: p.excerpt, content: p.content, status: p.status,
+                        excerpt: p.excerpt, content: p.content, status: p.status, imageUrl: p.imageUrl,
+                        slug: p.slug,
                     })}
                 />
             )}
@@ -202,6 +206,15 @@ export default function AdminContentPage() {
                     initial={modal.initial}
                     onCancel={() => setModal(null)}
                     onSubmit={save}
+                    uploadImage={async (file) => {
+                        const fd = new FormData();
+                        fd.append("kind", activeTab === "story" ? "story" : "blog");
+                        fd.append("file", file);
+                        const res = await fetch("/api/admin/content/image", { method: "POST", body: fd });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Upload failed");
+                        return data.url as string;
+                    }}
                 />
             )}
         </div>
