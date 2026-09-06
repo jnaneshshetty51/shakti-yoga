@@ -128,8 +128,10 @@ echo -e "${GREEN}▶ clean .next${NC}";             rm -rf .next
 echo -e "${GREEN}▶ next build${NC}";              NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 echo -e "${GREEN}▶ pm2 reload ${APP_NAME}${NC}"
+# Reload from the ecosystem file (not by name) so config changes — memory
+# limits, node args, exec mode — are actually picked up.
 if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-    pm2 reload "$APP_NAME" --update-env
+    pm2 reload ecosystem.config.js --update-env
 else
     pm2 start ecosystem.config.js
 fi
@@ -155,6 +157,13 @@ if [ "$ok" = 1 ] && { [ "$dyn" != "200" ] || [ "$api" != "200" ]; }; then
 fi
 
 if [ "$ok" = 1 ]; then
+    # Warm the common routes so the first real visitor after a deploy doesn't
+    # eat the cold-start latency (which can spike past nginx's proxy timeout).
+    echo -e "${GREEN}▶ warmup${NC}"
+    for r in / /about /programs /everyday-yoga /yoga-therapy /blog /stories /trial /login /signup /contact /disclaimer /privacy /terms /refund-policy; do
+        curl -s -o /dev/null "http://localhost:${PORT}${r}" || true
+    done
+
     echo -e "${GREEN}✅ Deployed $(git rev-parse --short HEAD) — / , /login , /api/health → 200${NC}"
     echo -e "${YELLOW}   Check the live site: homepage, /checkout (Razorpay), a page with images (MinIO/CSP).${NC}"
     echo -e "${YELLOW}   Rollback if needed: git reset --hard ${PREV_REF:0:9} && ./deploy/deploy.sh${NC}"
