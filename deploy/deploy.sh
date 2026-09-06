@@ -66,14 +66,17 @@ fi
 # from here a failed step rolls back to the version we came in on
 ROLLBACK_REF="$PREV_REF"
 
-# --- build headroom: `next build` needs ~1.5 GB; add temp swap if low -------------
+# --- build headroom: `next build` peaks ~1.5-2 GB and the box has no swap.
+# `available` overstates usable memory here (reclaim contention during build has
+# OOM-killed it), so also look at genuinely-free pages and be generous.
 AVAIL_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $7}' || echo 9999)
+FREE_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $4}' || echo 9999)
 SWAP_MB=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}' || echo 0)
 SWAPFILE=""
-if [ "${AVAIL_MB:-9999}" -lt 1400 ] && [ "${SWAP_MB:-0}" -lt 512 ]; then
+if { [ "${AVAIL_MB:-9999}" -lt 2600 ] || [ "${FREE_MB:-9999}" -lt 1800 ]; } && [ "${SWAP_MB:-0}" -lt 512 ]; then
     SWAPFILE="/swapfile.deploy.${STAMP}"
-    echo -e "${YELLOW}▶ low memory (${AVAIL_MB}MB free, ${SWAP_MB}MB swap) — adding 2G temp swap${NC}"
-    fallocate -l 2G "$SWAPFILE" 2>/dev/null || dd if=/dev/zero of="$SWAPFILE" bs=1M count=2048
+    echo -e "${YELLOW}▶ low memory (${AVAIL_MB}MB avail, ${FREE_MB}MB free, ${SWAP_MB}MB swap) — adding 3G temp swap${NC}"
+    fallocate -l 3G "$SWAPFILE" 2>/dev/null || dd if=/dev/zero of="$SWAPFILE" bs=1M count=3072
     chmod 600 "$SWAPFILE"; mkswap "$SWAPFILE" >/dev/null; swapon "$SWAPFILE"
 fi
 cleanup_swap() { [ -n "$SWAPFILE" ] && { swapoff "$SWAPFILE" 2>/dev/null || true; rm -f "$SWAPFILE"; }; return 0; }
