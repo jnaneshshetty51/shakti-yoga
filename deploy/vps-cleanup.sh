@@ -94,17 +94,24 @@ BEGIN;
 CREATE TEMP TABLE _junk AS
   SELECT id FROM "User"
   WHERE email LIKE '%@example.com' OR email = 'asha.rao+1788672762@gmail.com';
-DELETE FROM "ClassAttendance"    WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "Booking"            WHERE "userId" IN (SELECT id FROM _junk) OR "teacherId" IN (SELECT id FROM _junk);
-DELETE FROM "PasswordResetToken" WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "AnalyticsEvent"     WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "RevenueRecord"      WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "Payment"            WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "Subscription"       WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "Story"              WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "UserProfile"        WHERE "userId" IN (SELECT id FROM _junk);
-DELETE FROM "User"               WHERE id IN (SELECT id FROM _junk);
+-- child rows without a cascade
+DELETE FROM "ClassAttendance"     WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "ClassInstance"       WHERE "batchId" IN (SELECT id FROM "ClassBatch" WHERE "teacherId" IN (SELECT id FROM _junk));
+DELETE FROM "ClassBatch"          WHERE "teacherId" IN (SELECT id FROM _junk);
+DELETE FROM "Booking"             WHERE "userId" IN (SELECT id FROM _junk) OR "teacherId" IN (SELECT id FROM _junk);
+DELETE FROM "TeacherAvailability" WHERE "teacherId" IN (SELECT id FROM _junk);
+DELETE FROM "StaffProfile"        WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "PasswordResetToken"  WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "AnalyticsEvent"      WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "RevenueRecord"       WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "Payment"             WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "Subscription"        WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "Story"               WHERE "userId" IN (SELECT id FROM _junk);
+DELETE FROM "UserProfile"         WHERE "userId" IN (SELECT id FROM _junk);
+UPDATE "Lead" SET "assignedToId" = NULL WHERE "assignedToId" IN (SELECT id FROM _junk);
+DELETE FROM "User"                WHERE id IN (SELECT id FROM _junk);
 COMMIT;
+SELECT count(*) AS remaining_example_accounts FROM "User" WHERE email LIKE '%@example.com';
 SQL
     echo "  done"
 else

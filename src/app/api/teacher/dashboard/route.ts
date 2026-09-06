@@ -33,6 +33,7 @@ export async function GET() {
                 where: { batch: { teacherId }, date: { gte: since3h, lt: in7 }, status: { not: 'Cancelled' } },
                 include: { batch: { select: { name: true, durationMin: true, meetingLink: true } } },
                 orderBy: { date: 'asc' },
+                take: 30,
             }),
             prisma.booking.findMany({
                 where: { teacherId, date: { gte: now, lt: in7 }, status: { in: ['PENDING', 'CONFIRMED'] } },
