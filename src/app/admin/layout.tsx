@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
+import { CommandPalette, useCommandPalette } from "@/components/admin/CommandPalette";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const cmd = useCommandPalette();
 
     const isSuper = user?.tier === "super";
     const tierLabel = user?.tier === "staff" ? "Staff Admin" : "Super Admin";
@@ -62,6 +64,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         Shakti<span className="text-secondary">.</span>
                     </Link>
                     <div className="mt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">Admin Panel</div>
+                    <button
+                        onClick={() => cmd.setIsOpen(true)}
+                        className="mt-3 w-full flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-400 hover:border-primary/30 hover:text-gray-600 transition-colors"
+                    >
+                        <span>Quick search…</span>
+                        <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">⌘K</kbd>
+                    </button>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -163,6 +172,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-16 lg:pt-8">
                 {children}
             </main>
+
+            <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} />
         </div>
     );
 }

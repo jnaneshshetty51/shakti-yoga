@@ -15,19 +15,22 @@ interface CommandItem {
 }
 
 const commandItems: CommandItem[] = [
-  { id: "dashboard", name: "Dashboard", description: "View dashboard overview", icon: <FaHome />, href: "/admin", category: "Main" },
-  { id: "analytics", name: "Analytics", description: "View analytics and reports", icon: <FaChartBar />, href: "/admin/analytics", category: "Main" },
-  { id: "users", name: "Users & Members", description: "Manage users and members", icon: <FaUsers />, href: "/admin/users", category: "CRM" },
-  { id: "leads", name: "Leads", description: "Manage leads and inquiries", icon: <FaUserCheck />, href: "/admin/leads", category: "CRM" },
-  { id: "subscriptions", name: "Subscriptions", description: "Manage subscriptions", icon: <FaCreditCard />, href: "/admin/subscriptions", category: "CRM" },
-  { id: "bookings", name: "Bookings", description: "Manage class bookings", icon: <FaCalendar />, href: "/admin/bookings", category: "CRM" },
-  { id: "classes", name: "Classes", description: "Manage yoga classes", icon: <FaCalendar />, href: "/admin/classes", category: "Content" },
-  { id: "content", name: "Blog Posts", description: "Manage blog content", icon: <FaEdit />, href: "/admin/content", category: "Content" },
-  { id: "community", name: "Community", description: "Manage community posts", icon: <FaComments />, href: "/admin/community", category: "Content" },
-  { id: "schedule", name: "Schedule", description: "Manage class schedule", icon: <FaCalendar />, href: "/admin/schedule", category: "Content" },
-  { id: "stories", name: "Stories & Testimonials", description: "Manage member stories", icon: <FaBook />, href: "/admin/content", category: "Content" },
-  { id: "members", name: "Members", description: "Active members by track", icon: <FaUsers />, href: "/admin/members", category: "CRM" },
-  { id: "settings", name: "Settings", description: "Application settings", icon: <FaCog />, href: "/admin/settings", category: "Settings" },
+  { id: "dashboard", name: "Dashboard", description: "Overview & attention items", icon: <FaHome />, href: "/admin", category: "Main" },
+  { id: "analytics", name: "Analytics", description: "Trends, revenue, funnel", icon: <FaChartBar />, href: "/admin/analytics", category: "Main" },
+  { id: "users", name: "Users", description: "All accounts", icon: <FaUsers />, href: "/admin/users", category: "People" },
+  { id: "members", name: "Members", description: "Active members by track", icon: <FaUsers />, href: "/admin/members", category: "People" },
+  { id: "leads", name: "Leads", description: "Prospects & trial requests", icon: <FaUserCheck />, href: "/admin/leads", category: "People" },
+  { id: "staff", name: "Staff", description: "Teachers & admins", icon: <FaUsers />, href: "/admin/staff", category: "People" },
+  { id: "subscriptions", name: "Subscriptions", description: "Plans & billing state", icon: <FaCreditCard />, href: "/admin/subscriptions", category: "Revenue" },
+  { id: "bookings", name: "Bookings", description: "1:1 session bookings", icon: <FaCalendar />, href: "/admin/bookings", category: "Classes" },
+  { id: "classes", name: "Classes", description: "Group class batches", icon: <FaCalendar />, href: "/admin/classes", category: "Classes" },
+  { id: "schedule", name: "Schedule", description: "Class instances & Meet links", icon: <FaCalendar />, href: "/admin/schedule", category: "Classes" },
+  { id: "availability", name: "Availability", description: "Teacher availability windows", icon: <FaCalendar />, href: "/admin/availability", category: "Classes" },
+  { id: "content", name: "Content", description: "Blog posts & stories", icon: <FaEdit />, href: "/admin/content", category: "Content" },
+  { id: "community", name: "Community", description: "WhatsApp groups", icon: <FaComments />, href: "/admin/community", category: "Content" },
+  { id: "messages", name: "Messages", description: "Contact form submissions", icon: <FaComments />, href: "/admin/messages", category: "Content" },
+  { id: "audit", name: "Audit Log", description: "Privileged actions (super only)", icon: <FaBook />, href: "/admin/audit", category: "Settings" },
+  { id: "settings", name: "Settings", description: "Platform settings (super only)", icon: <FaCog />, href: "/admin/settings", category: "Settings" },
 ];
 
 interface CommandPaletteProps {
