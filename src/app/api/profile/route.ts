@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { readJson, str, optStr, ValidationError, handleValidationError } from '@/lib/validation';
 
 async function getUserId(): Promise<string | null> {
     const cookieStore = await cookies();
@@ -51,23 +52,18 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json().catch(() => ({}));
-        const { name, phone, country, timezone, goals, medicalHistory, communicationPref } = body;
-
-        if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
-            return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
-        }
+        const body = await readJson(request);
 
         const userData: Record<string, string | null> = {};
-        if (name !== undefined) userData.name = name.trim();
-        if (phone !== undefined) userData.phone = phone || null;
-        if (country !== undefined) userData.country = country || null;
-        if (timezone !== undefined) userData.timezone = timezone || 'IST';
+        if (body.name !== undefined) userData.name = str(body.name, { label: 'name', min: 1, max: 120 });
+        if (body.phone !== undefined) userData.phone = optStr(body.phone, { label: 'phone', max: 32 }) ?? null;
+        if (body.country !== undefined) userData.country = optStr(body.country, { label: 'country', max: 80 }) ?? null;
+        if (body.timezone !== undefined) userData.timezone = optStr(body.timezone, { label: 'timezone', max: 64 }) ?? 'IST';
 
         const profileData = {
-            goals: goals ?? null,
-            medicalHistory: medicalHistory ?? null,
-            communicationPref: communicationPref ?? null,
+            goals: optStr(body.goals, { label: 'goals', max: 500 }) ?? null,
+            medicalHistory: optStr(body.medicalHistory, { label: 'medicalHistory', max: 2000 }) ?? null,
+            communicationPref: optStr(body.communicationPref, { label: 'communicationPref', max: 100 }) ?? null,
         };
 
         const user = await prisma.user.update({
@@ -96,6 +92,7 @@ export async function PATCH(request: Request) {
 
         return NextResponse.json({ profile: user });
     } catch (error) {
+        if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Profile PATCH error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

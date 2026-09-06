@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { sendEmail, emailLayout } from '@/lib/email';
+import { readJson, timeOfDay, bool, optStr, ValidationError, handleValidationError } from '@/lib/validation';
 
 export async function GET() {
     try {
@@ -77,8 +78,10 @@ export async function POST(request: Request) {
             }, { status: 403 });
         }
 
-        const body = await request.json();
-        const { slot, recurring } = body;
+        const body = await readJson(request);
+        const slot = timeOfDay(body.slot, 'slot');
+        const recurring = body.recurring === undefined ? false : bool(body.recurring, 'recurring');
+        const notes = optStr(body.notes, { label: 'notes', max: 1000 });
 
         // Get a teacher (for now, use the first teacher we find)
         const teacher = await prisma.user.findFirst({
@@ -94,9 +97,10 @@ export async function POST(request: Request) {
 
         // Parse slot time and create booking date
         // For now, create booking for tomorrow at the selected time
+        const [slotHour, slotMinute] = slot.split(':').map(Number);
         const bookingDate = new Date();
         bookingDate.setDate(bookingDate.getDate() + 1);
-        bookingDate.setHours(parseInt(slot.split(':')[0]), parseInt(slot.split(':')[1]), 0, 0);
+        bookingDate.setHours(slotHour, slotMinute, 0, 0);
 
         const isTherapySession = user.role === 'MEMBER_THERAPY';
 
@@ -126,7 +130,7 @@ export async function POST(request: Request) {
                     type: isTherapySession ? 'THERAPY_SESSION' : 'CONSULTATION',
                     status: 'CONFIRMED',
                     date: bookingDate,
-                    notes: recurring ? 'Recurring booking requested' : null
+                    notes: notes ?? (recurring ? 'Recurring booking requested' : null),
                 }
             });
         });
@@ -152,6 +156,7 @@ export async function POST(request: Request) {
             message: 'Booking confirmed!'
         });
     } catch (error) {
+        if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Create booking error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

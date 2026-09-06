@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-shaktiyoga}
     ports:
-      - "5432:5432"
+      - "5544:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -30,8 +30,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     ports:
-      - "9000:9000"  # MinIO API
-      - "9001:9001"  # MinIO Console
+      - "9100:9000"  # MinIO API
+      - "9101:9001"  # MinIO Console
     volumes:
       - minio_data:/data
     networks:

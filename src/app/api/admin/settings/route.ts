@@ -33,14 +33,16 @@ export async function PUT(request: Request) {
     try {
         const body = await request.json().catch(() => ({}));
         const allowed = Object.keys(DEFAULTS);
-        const entries = Object.entries(body).filter(([k]) => allowed.includes(k));
+        const entries = Object.entries(body ?? {})
+            .filter(([k, v]) => allowed.includes(k) && typeof v === 'string' && v.length <= 500)
+            .map(([k, v]) => [k, (v as string).trim()] as const);
 
         await prisma.$transaction(
             entries.map(([key, value]) =>
                 prisma.setting.upsert({
                     where: { key },
-                    create: { key, value: String(value) },
-                    update: { value: String(value) },
+                    create: { key, value },
+                    update: { value },
                 }),
             ),
         );
