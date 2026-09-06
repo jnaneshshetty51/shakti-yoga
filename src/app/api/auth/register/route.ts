@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, signToken, mapDatabaseRole } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { hashPassword, signToken, mapDatabaseRole, setSessionCookie } from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 
@@ -62,14 +61,7 @@ export async function POST(request: Request) {
             name: user.name,
         });
 
-        const cookieStore = await cookies();
-        cookieStore.set('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24, // 1 day
-            path: '/',
-        });
+        await setSessionCookie(token);
 
         const { passwordHash: _, ...userWithoutPassword } = user;
 

@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { user, logout, isLoading } = useAuth();
+    const homeHref = user ? (user.role === 'admin' ? '/admin' : '/dashboard') : null;
 
     // Prevent background scrolling when mobile menu is open
     useEffect(() => {
@@ -39,12 +42,28 @@ export default function Navbar() {
 
             {/* Desktop Buttons */}
             <div className="hidden md:flex items-center gap-6">
-                <Link href="/login" className="font-sans text-sm font-bold text-text hover:text-primary transition-colors uppercase tracking-widest">
-                    Login
-                </Link>
-                <Link href="/trial" className="px-6 py-2 bg-secondary text-white font-sans text-sm font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors shadow-md">
-                    Free Trial Class
-                </Link>
+                {isLoading ? null : user ? (
+                    <>
+                        <Link href={homeHref!} className="font-sans text-sm font-bold text-text hover:text-primary transition-colors uppercase tracking-widest">
+                            {user.role === 'admin' ? 'Admin' : 'Dashboard'}
+                        </Link>
+                        <button
+                            onClick={() => logout()}
+                            className="font-sans text-sm font-bold text-text hover:text-primary transition-colors uppercase tracking-widest"
+                        >
+                            Logout
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <Link href="/login" className="font-sans text-sm font-bold text-text hover:text-primary transition-colors uppercase tracking-widest">
+                            Login
+                        </Link>
+                        <Link href="/trial" className="px-6 py-2 bg-secondary text-white font-sans text-sm font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors shadow-md">
+                            Free Trial Class
+                        </Link>
+                    </>
+                )}
             </div>
 
             {/* Mobile Hamburger Button */}
@@ -81,9 +100,23 @@ export default function Navbar() {
                     <Link href="/blog" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Blog
                     </Link>
-                    <Link href="/login" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
-                        Login
-                    </Link>
+                    {isLoading ? null : user ? (
+                        <>
+                            <Link href={homeHref!} onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                                {user.role === 'admin' ? 'Admin' : 'Dashboard'}
+                            </Link>
+                            <button
+                                onClick={() => { setIsMenuOpen(false); logout(); }}
+                                className="text-xl font-serif text-text hover:text-primary transition-colors py-2 text-left"
+                            >
+                                Logout
+                            </button>
+                        </>
+                    ) : (
+                        <Link href="/login" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                            Login
+                        </Link>
+                    )}
                 </div>
 
                 <div className="mt-auto pt-8">

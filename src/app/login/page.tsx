@@ -8,6 +8,7 @@ export default function LoginPage() {
     const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [remember, setRemember] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -18,10 +19,9 @@ export default function LoginPage() {
         setError("");
         setLoading(true);
         try {
-            await login(email, password);
+            await login(email, password, remember);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed");
-        } finally {
             setLoading(false);
         }
     };
@@ -59,7 +59,6 @@ export default function LoginPage() {
             await login(quickEmail, quickPassword);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Login failed");
-        } finally {
             setLoading(false);
         }
     };
@@ -108,7 +107,12 @@ export default function LoginPage() {
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
                         <label className="flex items-center cursor-pointer">
-                            <input type="checkbox" className="mr-2 text-primary focus:ring-primary h-4 w-4" />
+                            <input
+                                type="checkbox"
+                                checked={remember}
+                                onChange={(e) => setRemember(e.target.checked)}
+                                className="mr-2 text-primary focus:ring-primary h-4 w-4"
+                            />
                             <span className="text-text/70">Remember me</span>
                         </label>
                         <Link href="/forgot-password" className="text-primary hover:text-secondary transition-colors text-xs sm:text-sm">Forgot password?</Link>

@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { signToken, mapDatabaseRole } from '@/lib/auth';
+import { signToken, mapDatabaseRole, setSessionCookie } from '@/lib/auth';
 import type { PlanConfig } from '@/lib/pricing';
 import { Role, SubscriptionStatus } from '@prisma/client';
 
@@ -89,14 +88,7 @@ export async function activatePlan(
         name: user.name,
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set('token', newToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24,
-        path: '/',
-    });
+    await setSessionCookie(newToken);
 
     return { user, mappedRole };
 }

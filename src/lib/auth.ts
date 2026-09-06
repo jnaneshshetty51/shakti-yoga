@@ -1,18 +1,15 @@
-import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
-
-export interface SessionPayload extends JWTPayload {
-    id: string;
-    email: string;
-    role: string;
-    name: string;
-}
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
+import {
+    signToken,
+    verifyToken,
+    type SessionPayload,
+    SESSION_MAX_AGE,
+    SESSION_MAX_AGE_REMEMBER,
+} from '@/lib/jwt';
 
-if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET environment variable is required');
-}
-const key = new TextEncoder().encode(process.env.JWT_SECRET);
+export { signToken, verifyToken, SESSION_MAX_AGE, SESSION_MAX_AGE_REMEMBER };
+export type { SessionPayload };
 
 export async function hashPassword(password: string): Promise<string> {
     return await bcrypt.hash(password, 10);
@@ -22,28 +19,28 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     return await bcrypt.compare(password, hash);
 }
 
-export async function signToken(payload: SessionPayload): Promise<string> {
-    return await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime('24h')
-        .sign(key);
-}
-
-export async function verifyToken(token: string): Promise<SessionPayload | null> {
-    try {
-        const { payload } = await jwtVerify(token, key);
-        return payload as SessionPayload;
-    } catch (_error) {
-        return null;
-    }
-}
-
-export async function getSession() {
+export async function getSession(): Promise<SessionPayload | null> {
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     if (!token) return null;
     return await verifyToken(token);
+}
+
+/** Issue the session cookie. Single source of truth for the cookie's options. */
+export async function setSessionCookie(token: string, maxAgeSeconds: number = SESSION_MAX_AGE) {
+    const cookieStore = await cookies();
+    cookieStore.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: maxAgeSeconds,
+        path: '/',
+    });
+}
+
+export async function clearSessionCookie() {
+    const cookieStore = await cookies();
+    cookieStore.delete('token');
 }
 
 export function mapDatabaseRole(dbRole: string): string {

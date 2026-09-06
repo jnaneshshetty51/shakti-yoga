@@ -29,7 +29,7 @@ export interface RegisterInput {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, remember?: boolean) => Promise<void>;
     register: (input: RegisterInput) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -37,6 +37,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/** Accept only same-origin absolute paths like "/dashboard/x" — never "//evil.com" or "https://…". */
+function safeInternalPath(value: string | null | undefined): string | null {
+    if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
+    return value;
+}
 
 function normalizeUser(raw: Record<string, unknown>): User {
     return {
@@ -74,31 +80,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth();
     }, [checkAuth]);
 
-    const login = async (email: string, password: string) => {
-        try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
+    const login = async (email: string, password: string, remember = false) => {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, remember }),
+        });
 
-            const data = await res.json();
+        const data = await res.json();
 
-            if (!res.ok) {
-                throw new Error(data.error || 'Login failed');
-            }
-
-            setUser(normalizeUser(data.user));
-
-            if (data.user.role === 'admin' || data.user.role === 'SUPER_ADMIN' || data.user.role === 'STAFF_ADMIN') {
-                router.push('/admin');
-            } else {
-                router.push('/dashboard');
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            throw error;
+        if (!res.ok) {
+            throw new Error(data.error || 'Login failed');
         }
+
+        const loggedIn = normalizeUser(data.user);
+        setUser(loggedIn);
+
+        // Honour ?from= set by the middleware, but only same-origin app paths.
+        let dest = safeInternalPath(new URLSearchParams(window.location.search).get('from'));
+        if (!dest) dest = loggedIn.role === 'admin' ? '/admin' : '/dashboard';
+        router.push(dest);
     };
 
     const register = async (input: RegisterInput) => {
@@ -121,10 +122,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
-            setUser(null);
-            router.push('/login');
         } catch (error) {
             console.error('Logout error:', error);
+        } finally {
+            setUser(null);
+            router.push('/login');
+            router.refresh();
         }
     };
 
