@@ -6,11 +6,14 @@ export default function Hero() {
         <section className="relative min-h-[85vh] py-16 sm:py-20 w-full flex items-center justify-center text-center text-white overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full -z-10">
                 <Image
-                    src="/hero.png"
+                    src="/hero.webp"
                     alt="Peaceful yoga studio"
                     fill
                     className="object-cover"
+                    sizes="100vw"
+                    quality={70}
                     priority
+                    fetchPriority="high"
                 />
                 <div className="absolute top-0 left-0 w-full h-full bg-black/40"></div>
             </div>

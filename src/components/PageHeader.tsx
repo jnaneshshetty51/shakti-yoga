@@ -16,6 +16,8 @@ export default function PageHeader({ title, subtitle, image }: PageHeaderProps) 
                         alt={title}
                         fill
                         className="object-cover"
+                        sizes="100vw"
+                        quality={45}
                     />
                 </div>
             )}

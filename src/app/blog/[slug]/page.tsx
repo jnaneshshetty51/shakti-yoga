@@ -1,8 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+// Rendered once then served from cache, refreshed at most every 5 min.
+export const revalidate = 300;
+
+export async function generateStaticParams() {
+    const posts = await prisma.blogPost.findMany({
+        where: { status: "PUBLISHED" },
+        select: { slug: true },
+    });
+    return posts.map((p) => ({ slug: p.slug }));
+}
+
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+    const { slug } = await props.params;
+    const post = await prisma.blogPost.findUnique({ where: { slug } });
+    if (!post || post.status !== "PUBLISHED") return {};
+    return {
+        title: post.metaTitle ?? `${post.title} | Shakti Yoga`,
+        description: post.metaDescription ?? post.excerpt ?? post.content.slice(0, 155),
+    };
+}
 
 export default async function BlogPostPage(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;

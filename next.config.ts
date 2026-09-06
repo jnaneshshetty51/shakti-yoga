@@ -41,9 +41,20 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
+  compress: true,
   // Pin the workspace root so Next doesn't guess it from a parent lockfile.
   turbopack: {
     root: __dirname,
+  },
+  images: {
+    // Serve AVIF first (≈30% smaller than WebP), fall back to WebP.
+    formats: ["image/avif", "image/webp"],
+    // Optimized variants are content-hashed and immutable — cache them hard.
+    minimumCacheTTL: 2678400, // 31 days
+    // Our source art is ≤1200px; generating 2048/3840 variants just wastes
+    // CPU and bloats every srcSet. 1920 covers retina laptops.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   async headers() {
     return [
