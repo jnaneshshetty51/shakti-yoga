@@ -112,6 +112,11 @@ else
 fi
 
 echo -e "${GREEN}▶ prisma migrate deploy${NC}"; npx prisma migrate deploy
+
+# Stamp the deployed commit so /api/version and the admin footer can show it.
+printf '{"commit":"%s","branch":"%s","deployedAt":"%s"}\n' \
+    "$(git rev-parse HEAD)" "$BRANCH" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
+
 echo -e "${GREEN}▶ next build${NC}";            NODE_OPTIONS="--max-old-space-size=1536" npm run build
 
 echo -e "${GREEN}▶ pm2 reload ${APP_NAME}${NC}"

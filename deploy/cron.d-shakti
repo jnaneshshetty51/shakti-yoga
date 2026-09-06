@@ -1,0 +1,13 @@
+# Shakti Yoga scheduled jobs — install as /etc/cron.d/shakti  (mode 644, owned by root)
+#   cp deploy/cron.d-shakti /etc/cron.d/shakti && chmod 644 /etc/cron.d/shakti && systemctl restart cron
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Materialise upcoming class instances every 30 min
+*/30 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/ensure-instances.ts >> /var/log/shakti-cron.log 2>&1
+
+# Daily class reminder email — 00:30 UTC = 06:00 IST
+30 0 * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/send-class-reminders.ts >> /var/log/shakti-cron.log 2>&1
+
+# Nightly backup — 03:00 server time
+0 3 * * * root /root/shaktiyoga/app/deploy/backup.sh >> /var/log/shakti-backup.log 2>&1

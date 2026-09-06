@@ -4,6 +4,8 @@ import { hashPassword, signToken, mapDatabaseRole, setSessionCookie } from '@/li
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
+import { sendEmail, emailLayout } from '@/lib/email';
+import { SITE_URL } from '@/lib/site';
 
 const TIMEZONES = ['IST', 'PST', 'EST', 'CST', 'MST', 'GMT', 'CET', 'AEDT', 'AEST', 'NZDT'] as const;
 
@@ -64,6 +66,15 @@ export async function POST(request: Request) {
 
         await setSessionCookie(token);
         recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null } });
+        sendEmail({
+            to: user.email,
+            subject: 'Welcome to Shakti Yoga',
+            html: emailLayout(
+                `<p>Namaste ${firstName},</p>
+                 <p>Your account is ready. Start with a <a href="${SITE_URL}/trial" style="color:#4A6741;font-weight:bold">7-day free trial</a> — full access to every live Everyday Yoga class, no card required.</p>
+                 <p>Questions any time: just reply to this email.</p>`,
+            ),
+        }).catch(() => { });
 
         const { passwordHash: _, ...userWithoutPassword } = user;
 
