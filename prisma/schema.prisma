@@ -109,6 +109,7 @@ model User {
 
   // Relations
   profile      UserProfile?
+  staffProfile StaffProfile?
   subscription Subscription?
   bookings     Booking[]
   stories      Story[]
@@ -135,6 +136,22 @@ model UserProfile {
   goals             String?
   medicalHistory    String?
   communicationPref String? // Email, WhatsApp, Phone
+}
+
+/// Public-facing profile for teachers / staff — the person's bio, title, photo
+/// (photo lives on User.avatarUrl), specialties, and where they show on the site.
+model StaffProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String? // "Senior Yoga Therapist"
+  bio             String? // longer description
+  specialties     String[] // ["Prenatal", "Back pain", "Pranayama"]
+  yearsExperience Int?
+  displayOrder    Int      @default(0)
+  publicVisible   Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Subscription {
