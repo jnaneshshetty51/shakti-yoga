@@ -120,7 +120,12 @@ echo -e "${GREEN}▶ prisma migrate deploy${NC}"; npx prisma migrate deploy
 printf '{"commit":"%s","branch":"%s","deployedAt":"%s"}\n' \
     "$(git rev-parse HEAD)" "$BRANCH" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
 
-echo -e "${GREEN}▶ next build${NC}";            NODE_OPTIONS="--max-old-space-size=1536" npm run build
+# Always build from a clean .next — an interrupted/OOM-killed build on this
+# low-RAM box can leave a half-written .next that `next build` will happily
+# reuse, producing a server that 500s every dynamic route (missing
+# clientReferenceManifest) while the cached "/" still answers 200.
+echo -e "${GREEN}▶ clean .next${NC}";             rm -rf .next
+echo -e "${GREEN}▶ next build${NC}";              NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 echo -e "${GREEN}▶ pm2 reload ${APP_NAME}${NC}"
 if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
@@ -140,8 +145,17 @@ for i in $(seq 1 15); do
     sleep 2
 done
 
+# "/" is static and can serve from cache even when the build is broken — probe a
+# server-rendered route too so a corrupt build actually fails the deploy.
+dyn=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${PORT}/login" || echo 000)
+api=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${PORT}/api/health" || echo 000)
+if [ "$ok" = 1 ] && { [ "$dyn" != "200" ] || [ "$api" != "200" ]; }; then
+    echo -e "${RED}✖ '/' is up but /login=${dyn} /api/health=${api} — build looks corrupt.${NC}"
+    ok=0
+fi
+
 if [ "$ok" = 1 ]; then
-    echo -e "${GREEN}✅ Deployed $(git rev-parse --short HEAD) — http://localhost:${PORT}/ → 200${NC}"
+    echo -e "${GREEN}✅ Deployed $(git rev-parse --short HEAD) — / , /login , /api/health → 200${NC}"
     echo -e "${YELLOW}   Check the live site: homepage, /checkout (Razorpay), a page with images (MinIO/CSP).${NC}"
     echo -e "${YELLOW}   Rollback if needed: git reset --hard ${PREV_REF:0:9} && ./deploy/deploy.sh${NC}"
 else
