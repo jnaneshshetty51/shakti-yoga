@@ -48,7 +48,12 @@ export async function readImageUpload(request: Request, field = 'file'): Promise
     } catch {
         return { ok: false, status: 400, error: 'Invalid form data' };
     }
-    const file = form.get(field);
+    return validateImageField(form.get(field));
+}
+
+/** Validate an already-extracted form field as an image (body read only once). */
+export async function validateImageField(value: FormDataEntryValue | null): Promise<Validated | Invalid> {
+    const file = value;
     if (!(file instanceof File)) {
         return { ok: false, status: 400, error: 'No image uploaded' };
     }

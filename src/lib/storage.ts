@@ -1,4 +1,11 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+    S3Client,
+    PutObjectCommand,
+    DeleteObjectCommand,
+    HeadBucketCommand,
+    CreateBucketCommand,
+    PutBucketPolicyCommand,
+} from "@aws-sdk/client-s3";
 import { SITE_URL } from "@/lib/site";
 
 // Internal endpoint the server talks S3 to (localhost inside the box).
@@ -16,6 +23,51 @@ const s3Client = new S3Client({
 });
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || "shakti-yoga-assets";
+
+// Prefixes whose objects are meant to be publicly readable (served via nginx /minio/).
+const PUBLIC_PREFIXES = ["avatars/", "staff/", "blog/", "stories/"];
+
+let bucketReady: Promise<void> | null = null;
+
+/**
+ * Create the bucket on first use and grant anonymous read on the public prefixes.
+ * MinIO's per-object ACLs are unreliable, so a bucket policy is the source of truth.
+ * Cached — runs at most once per process (retries if it threw).
+ */
+async function ensureBucket(): Promise<void> {
+    if (bucketReady) return bucketReady;
+    bucketReady = (async () => {
+        try {
+            await s3Client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
+        } catch {
+            try {
+                await s3Client.send(new CreateBucketCommand({ Bucket: BUCKET_NAME }));
+            } catch (err) {
+                // Someone else may have created it between Head and Create.
+                const name = (err as { name?: string })?.name;
+                if (name !== "BucketAlreadyOwnedByYou" && name !== "BucketAlreadyExists") throw err;
+            }
+        }
+        const policy = {
+            Version: "2012-10-17",
+            Statement: [
+                {
+                    Effect: "Allow",
+                    Principal: { AWS: ["*"] },
+                    Action: ["s3:GetObject"],
+                    Resource: PUBLIC_PREFIXES.map((p) => `arn:aws:s3:::${BUCKET_NAME}/${p}*`),
+                },
+            ],
+        };
+        await s3Client.send(
+            new PutBucketPolicyCommand({ Bucket: BUCKET_NAME, Policy: JSON.stringify(policy) }),
+        ).catch((e) => console.error("[storage] could not set bucket policy:", e));
+    })().catch((e) => {
+        bucketReady = null; // allow a retry next call
+        throw e;
+    });
+    return bucketReady;
+}
 
 /**
  * Public, browser-reachable base for stored objects. In prod nginx proxies
@@ -75,6 +127,7 @@ export async function uploadFile(file: File | Blob, path: string, opts: UploadOp
     }
 
     try {
+        await ensureBucket();
         const buffer = Buffer.from(await file.arrayBuffer());
 
         await s3Client.send(

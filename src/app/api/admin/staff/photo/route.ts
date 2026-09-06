@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { uploadFile, deleteFile, keyFromUrl } from '@/lib/storage';
-import { readImageUpload } from '@/lib/image-upload';
+import { validateImageField } from '@/lib/image-upload';
 import { Role } from '@prisma/client';
 
 const STAFF_ROLES: Role[] = [Role.TEACHER, Role.STAFF_ADMIN, Role.SUPER_ADMIN];
@@ -22,16 +22,16 @@ export async function POST(request: Request) {
         );
     }
 
-    let staffId: string;
+    let form: FormData;
     try {
-        const form = await request.clone().formData();
-        staffId = String(form.get('staffId') ?? '');
+        form = await request.formData();
     } catch {
         return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
     }
+    const staffId = String(form.get('staffId') ?? '');
     if (!staffId) return NextResponse.json({ error: 'staffId is required' }, { status: 400 });
 
-    const img = await readImageUpload(request);
+    const img = await validateImageField(form.get('file'));
     if (!img.ok) return NextResponse.json({ error: img.error }, { status: img.status });
 
     const staff = await prisma.user.findUnique({ where: { id: staffId }, select: { role: true, avatarUrl: true, name: true } });
