@@ -11,3 +11,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Nightly backup — 03:00 server time
 0 3 * * * root /root/shaktiyoga/app/deploy/backup.sh >> /var/log/shakti-backup.log 2>&1
+
+# Host + app health check every 15 min (alerts admin on transition)
+*/15 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/host-check.ts >> /var/log/shakti-cron.log 2>&1

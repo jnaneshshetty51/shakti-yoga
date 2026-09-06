@@ -1,9 +1,13 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { SITE_URL } from "@/lib/site";
+
+// Internal endpoint the server talks S3 to (localhost inside the box).
+const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "http://localhost:9000";
 
 // Initialize S3 Client for MinIO
 const s3Client = new S3Client({
     region: "us-east-1", // MinIO default region
-    endpoint: process.env.MINIO_ENDPOINT || "http://localhost:9000",
+    endpoint: MINIO_ENDPOINT,
     credentials: {
         accessKeyId: process.env.MINIO_ACCESS_KEY || "minioadmin",
         secretAccessKey: process.env.MINIO_SECRET_KEY || "minioadmin",
@@ -12,6 +16,22 @@ const s3Client = new S3Client({
 });
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || "shakti-yoga-assets";
+
+/**
+ * Public, browser-reachable base for stored objects. In prod nginx proxies
+ * `/minio/` -> the MinIO container, so a stored key is served at
+ * `${SITE_URL}/minio/${bucket}/${key}` over HTTPS. `MEDIA_PUBLIC_BASE` overrides.
+ */
+const PUBLIC_BASE = (
+    process.env.MEDIA_PUBLIC_BASE?.replace(/\/+$/, "") ||
+    (MINIO_ENDPOINT.includes("localhost") || MINIO_ENDPOINT.includes("127.0.0.1")
+        ? `${SITE_URL}/minio`
+        : MINIO_ENDPOINT)
+);
+
+function publicUrl(key: string): string {
+    return `${PUBLIC_BASE}/${BUCKET_NAME}/${key}`;
+}
 
 /** Content types we are willing to store and serve. Anything else is rejected. */
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -70,7 +90,7 @@ export async function uploadFile(file: File | Blob, path: string, opts: UploadOp
             }),
         );
 
-        return `${process.env.MINIO_ENDPOINT}/${BUCKET_NAME}/${key}`;
+        return publicUrl(key);
     } catch (error) {
         console.error("Error uploading file to MinIO:", error);
         throw new Error("Failed to upload file");
@@ -87,12 +107,15 @@ export async function deleteFile(path: string): Promise<void> {
     }
 }
 
-/** Derive the storage key from a public URL we previously returned (for deletes). */
+/** Derive the storage key from any URL we've ever returned (for deletes). */
 export function keyFromUrl(url: string): string | null {
-    const prefix = `${process.env.MINIO_ENDPOINT}/${BUCKET_NAME}/`;
-    return url.startsWith(prefix) ? url.slice(prefix.length) : null;
+    const marker = `/${BUCKET_NAME}/`;
+    const i = url.indexOf(marker);
+    if (i === -1) return null;
+    const key = url.slice(i + marker.length).split("?")[0];
+    return key || null;
 }
 
 export function getFileUrl(path: string): string {
-    return `${process.env.MINIO_ENDPOINT}/${BUCKET_NAME}/${sanitizeKey(path)}`;
+    return publicUrl(sanitizeKey(path));
 }

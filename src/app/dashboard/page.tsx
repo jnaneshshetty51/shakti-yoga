@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import type { ClassView, ClassesResponse } from "@/types/class";
+import type { ClassView, ClassesResponse, ClassAccessInfo } from "@/types/class";
 
 interface CommunityGroup {
     id: string;
@@ -27,6 +27,7 @@ export default function DashboardPage() {
     const { user, isLoading } = useAuth();
     const [group, setGroup] = useState<CommunityGroup | null>(null);
     const [nextClass, setNextClass] = useState<ClassView | null>(null);
+    const [access, setAccess] = useState<ClassAccessInfo | null>(null);
     const [joining, setJoining] = useState(false);
 
     const userId = user?.id;
@@ -48,6 +49,7 @@ export default function DashboardPage() {
                 if (!cancelled && classesRes.ok) {
                     const data: ClassesResponse = await classesRes.json();
                     setNextClass(data.today[0] ?? data.upcoming[0] ?? null);
+                    setAccess(data.access ?? null);
                 }
             } catch (error) {
                 console.error("Dashboard load error:", error);
@@ -57,8 +59,15 @@ export default function DashboardPage() {
         return () => { cancelled = true; };
     }, [userId]);
 
-    if (isLoading) return <div className="p-20 text-center">Loading dashboard...</div>;
-    if (!user) return <div className="p-20 text-center">Please log in.</div>;
+    if (isLoading) return <div className="p-20 text-center text-text/50">Loading your dashboard…</div>;
+    if (!user) {
+        return (
+            <div className="p-20 text-center">
+                <p className="text-text/60 mb-4">Your session has ended.</p>
+                <Link href="/login?from=/dashboard" className="text-primary font-bold hover:underline">Log in again</Link>
+            </div>
+        );
+    }
 
     const handleJoin = async () => {
         if (!nextClass) return;
@@ -124,7 +133,28 @@ export default function DashboardPage() {
             <div className="grid md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 grid gap-6">
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 relative overflow-hidden">
-                        {nextClass ? (
+                        {access && !access.ok ? (
+                            <div className="py-4">
+                                <h3 className="font-serif text-xl text-gray-800 mb-1">
+                                    {access.paywall ? 'Your access has lapsed' : 'Your plan is 1:1 therapy'}
+                                </h3>
+                                <p className="text-sm text-text/70 mb-4">{access.reason}</p>
+                                {access.paywall ? (
+                                    <div className="flex flex-wrap gap-3">
+                                        <Link href="/checkout?plan=everyday" className="inline-block px-6 py-3 bg-primary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-secondary transition-colors">
+                                            Renew Everyday Yoga
+                                        </Link>
+                                        <Link href="/programs" className="inline-block px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest text-xs rounded hover:bg-gray-50 transition-colors">
+                                            View Plans
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <Link href="/dashboard/therapy/book" className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors">
+                                        Book a Session
+                                    </Link>
+                                )}
+                            </div>
+                        ) : nextClass ? (
                             <>
                                 {nextClass.joinable && (
                                     <div className="absolute top-0 right-0 bg-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl uppercase tracking-widest">

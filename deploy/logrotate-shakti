@@ -1,0 +1,14 @@
+# Shakti Yoga log rotation — install as /etc/logrotate.d/shakti (mode 644, root)
+#   cp deploy/logrotate-shakti /etc/logrotate.d/shakti && chmod 644 /etc/logrotate.d/shakti
+# copytruncate: PM2 and cron append to open file descriptors.
+
+/root/.pm2/logs/*.log /var/log/shakti-cron.log /var/log/shakti-backup.log {
+    weekly
+    rotate 4
+    size 50M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

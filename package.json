@@ -13,6 +13,7 @@
     "db:seed": "prisma db seed",
     "classes:ensure": "tsx scripts/ensure-instances.ts",
     "classes:remind": "tsx scripts/send-class-reminders.ts",
+    "host:check": "tsx scripts/host-check.ts",
     "db:setup": "bash scripts/setup-db.sh",
     "db:studio": "prisma studio"
   },
