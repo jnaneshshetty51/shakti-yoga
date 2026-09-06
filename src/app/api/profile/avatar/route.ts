@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { uploadFile, deleteFile, keyFromUrl } from '@/lib/storage';
+import { rateLimit } from '@/lib/rate-limit';
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = new Map<string, string>([
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
         const payload = await verifyToken(token);
         if (!payload) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const { allowed, retryAfterSeconds } = rateLimit(`avatar:${payload.id}`, 10, 60 * 60 * 1000);
+        if (!allowed) {
+            return NextResponse.json(
+                { error: 'Too many uploads. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+            );
         }
 
         let form: FormData;

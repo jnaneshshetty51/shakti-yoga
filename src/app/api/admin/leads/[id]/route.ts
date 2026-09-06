@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
+import { LeadStatus } from '@prisma/client';
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -29,12 +30,16 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         const { name, email, phone, country, status, notes, assignedToId } = body;
 
         const updateData: Record<string, unknown> = {};
-        if (name) updateData.name = name;
-        if (email) updateData.email = email;
-        if (phone !== undefined) updateData.phone = phone;
-        if (country !== undefined) updateData.country = country;
-        if (status) updateData.status = status.toUpperCase();
-        if (notes !== undefined) updateData.notes = notes;
+        if (name) updateData.name = String(name).slice(0, 200);
+        if (email) updateData.email = String(email).slice(0, 200);
+        if (phone !== undefined) updateData.phone = phone || null;
+        if (country !== undefined) updateData.country = country || null;
+        if (status) {
+            const s = String(status).toUpperCase();
+            if (!(s in LeadStatus)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+            updateData.status = s;
+        }
+        if (notes !== undefined) updateData.notes = notes || null;
         if (assignedToId !== undefined) {
             updateData.assignedToId = assignedToId === '' ? null : assignedToId;
         }

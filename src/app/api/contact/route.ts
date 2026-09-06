@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { notifyAdmin, emailLayout } from '@/lib/email';
 import { readJson, str, optStr, email as emailField, ValidationError, handleValidationError } from '@/lib/validation';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -9,6 +10,14 @@ function escapeHtml(s: string) {
 
 export async function POST(request: Request) {
     try {
+        const { allowed, retryAfterSeconds } = rateLimit(`contact:${getClientIp(request)}`, 5, 60 * 60 * 1000);
+        if (!allowed) {
+            return NextResponse.json(
+                { error: 'Too many messages. Please try again later.' },
+                { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+            );
+        }
+
         const body = await readJson(request);
         const name = str(body.name, { label: 'name', min: 1, max: 120 });
         const email = emailField(body.email);
