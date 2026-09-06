@@ -55,7 +55,7 @@ export default function TherapyStartPage() {
                             href="/checkout?plan=therapy"
                             className="block w-full py-3 bg-secondary text-white font-bold uppercase tracking-widest text-center rounded hover:bg-primary transition-colors shadow-md"
                         >
-                            Subscribe ($120/mo)
+                            Subscribe (₹5,000/mo)
                         </Link>
                     </div>
                 </div>

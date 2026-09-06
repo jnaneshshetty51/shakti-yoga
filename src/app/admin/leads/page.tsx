@@ -69,7 +69,10 @@ function LeadsDashboard() {
             const response = await fetch('/api/admin/users');
             if (response.ok) {
                 const data = await response.json();
-                const staff = (data.users || []).filter((u: { role: string }) => u.role === 'SUPER_ADMIN' || u.role === 'STAFF_ADMIN');
+                const staff = (data.users || []).filter((u: { role: string }) => {
+                    const r = String(u.role).toUpperCase();
+                    return r === 'SUPER_ADMIN' || r === 'STAFF_ADMIN' || r === 'TEACHER';
+                });
                 setStaffList(staff);
             }
         } catch (error) {

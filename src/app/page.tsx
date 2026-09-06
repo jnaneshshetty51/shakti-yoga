@@ -1,5 +1,9 @@
 import Hero from "@/components/Hero";
 import TargetAudience from "@/components/TargetAudience";
+
+// Testimonials come from the DB; refresh the cached page hourly.
+export const revalidate = 3600;
+
 import Programs from "@/components/Programs";
 import HowItWorks from "@/components/HowItWorks";
 import FreeTrial from "@/components/FreeTrial";

@@ -30,7 +30,7 @@ function RecommendationContent() {
                     </p>
 
                     <div className="text-5xl font-serif text-primary mb-6">
-                        {isTherapy ? "$120" : "$59"}<span className="text-lg text-text/50 font-sans">/month</span>
+                        {isTherapy ? "₹5,000" : "₹2,000"}<span className="text-lg text-text/50 font-sans">/month</span>
                     </div>
 
                     <p className="font-sans text-text/80 mb-8 leading-relaxed">
