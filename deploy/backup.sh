@@ -35,11 +35,17 @@ else
     echo "DATABASE_URL not a postgres URL — skipping pg dump"; exit 1
 fi
 
-# --- MinIO -----------------------------------------------------------------
+# --- MinIO ---------------------------------------------------------------
+# The MinIO image is minimal (no tar), so archive the Docker volume from the host.
 MC_OUT="$BACKUP_DIR/daily/minio-${STAMP}.tar.gz"
 if docker ps --format '{{.Names}}' | grep -qx "$MINIO_CONTAINER"; then
-    echo "$(date -Is) minio data -> $MC_OUT"
-    docker exec "$MINIO_CONTAINER" tar -C /data -cf - . 2>/dev/null | gzip > "$MC_OUT" || echo "  (minio archive failed, continuing)"
+    MINIO_VOL="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "$MINIO_CONTAINER" 2>/dev/null || true)"
+    if [ -n "$MINIO_VOL" ] && [ -d "$MINIO_VOL" ]; then
+        echo "$(date -Is) minio volume $MINIO_VOL -> $MC_OUT"
+        tar -C "$MINIO_VOL" -czf "$MC_OUT" . || echo "  (minio archive failed, continuing)"
+    else
+        echo "  (couldn't resolve the MinIO /data volume — skipping object backup)"
+    fi
 fi
 
 # --- Weekly promotion + retention ----------------------------------------
