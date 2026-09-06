@@ -3,8 +3,9 @@ import type { NextConfig } from "next";
 /**
  * Content-Security-Policy.
  * - Razorpay Checkout: script from checkout.razorpay.com, iframe + XHR to api.razorpay.com.
- * - Daily.co live video: iframe + websocket to *.daily.co.
  * - MinIO images: any https host (and http on localhost for dev).
+ * Google Meet links open as a top-level navigation in a new tab, so they need no
+ * CSP allowance here.
  * 'unsafe-inline' on script-src is required by Next.js's inline bootstrap until
  * nonce-based CSP is wired up; frame-ancestors 'none' still blocks clickjacking.
  */
@@ -16,8 +17,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https:${isDev ? " http://localhost:*" : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self' https://api.razorpay.com https://*.razorpay.com https://*.daily.co wss://*.daily.co${isDev ? " http://localhost:* ws://localhost:*" : ""}`,
-  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.daily.co",
+  `connect-src 'self' https://api.razorpay.com https://*.razorpay.com${isDev ? " http://localhost:* ws://localhost:*" : ""}`,
+  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -32,10 +33,8 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-DNS-Prefetch-Control", value: "off" },
-  // camera/mic/display-capture use "*" because Daily.co live-video iframes are
-  // served from a per-account *.daily.co origin that can't be enumerated here;
-  // the browser still gates each on a user permission prompt.
-  { key: "Permissions-Policy", value: "camera=*, microphone=*, display-capture=*, geolocation=(), payment=*, browsing-topics=()" },
+  // No in-app camera/mic/video (classes run on Google Meet, opened in a new tab).
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), display-capture=(), geolocation=(), payment=*, browsing-topics=()" },
   ...(isDev ? [] : [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]),
 ];
 

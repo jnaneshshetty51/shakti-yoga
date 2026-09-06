@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { sendEmail, emailLayout } from '@/lib/email';
-import { readJson, timeOfDay, bool, optStr, ValidationError, handleValidationError } from '@/lib/validation';
+import { readJson, str, bool, optStr, ValidationError, handleValidationError } from '@/lib/validation';
+import { parseTimeSlot } from '@/lib/class-schedule';
 
 export async function GET() {
     try {
@@ -79,7 +80,15 @@ export async function POST(request: Request) {
         }
 
         const body = await readJson(request);
-        const slot = timeOfDay(body.slot, 'slot');
+        // Frontends send a slot like "08:00 AM - 08:45 AM" (or just "06:00 AM").
+        const slot = str(body.slot, { label: 'slot', min: 3, max: 40 });
+        let slotHour: number;
+        let slotMinute: number;
+        try {
+            ({ hour: slotHour, minute: slotMinute } = parseTimeSlot(slot.split(/\s*[-–]\s*/)[0]));
+        } catch {
+            throw new ValidationError('slot must be a time like "06:00 AM" or "06:00 AM - 06:45 AM".');
+        }
         const recurring = body.recurring === undefined ? false : bool(body.recurring, 'recurring');
         const notes = optStr(body.notes, { label: 'notes', max: 1000 });
 
@@ -95,9 +104,7 @@ export async function POST(request: Request) {
             }, { status: 404 });
         }
 
-        // Parse slot time and create booking date
-        // For now, create booking for tomorrow at the selected time
-        const [slotHour, slotMinute] = slot.split(':').map(Number);
+        // Create booking for tomorrow at the selected time.
         const bookingDate = new Date();
         bookingDate.setDate(bookingDate.getDate() + 1);
         bookingDate.setHours(slotHour, slotMinute, 0, 0);
