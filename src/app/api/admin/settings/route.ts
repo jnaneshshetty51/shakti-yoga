@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
+import { recordAudit } from '@/lib/audit';
+import { getClientIp } from '@/lib/rate-limit';
 import { isRazorpayConfigured } from '@/lib/razorpay';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -27,7 +29,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
 
     try {
         const body = await request.json().catch(() => ({}));
@@ -45,6 +48,12 @@ export async function PUT(request: Request) {
                 }),
             ),
         );
+
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'settings.update', entity: 'Setting',
+            after: Object.fromEntries(entries),
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

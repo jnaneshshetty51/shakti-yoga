@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 export type CommunityGroup = {
@@ -9,156 +9,158 @@ export type CommunityGroup = {
     role: string;
     whatsappLink: string;
     pinnedMessage: string;
+    active: boolean;
+};
+
+const ROLE_LABEL: Record<string, string> = {
+    MEMBER_EVERYDAY: "Everyday members",
+    MEMBER_THERAPY: "Therapy members",
+    TRIAL: "Trial users",
+    TEACHER: "Teachers",
 };
 
 export default function AdminCommunityPage() {
     const [groups, setGroups] = useState<CommunityGroup[]>([]);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<{ link: string; message: string }>({ link: "", message: "" });
+    const [roles, setRoles] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ name: "", link: "", message: "", role: "", active: true });
+    const [creating, setCreating] = useState(false);
+    const [newForm, setNewForm] = useState({ name: "", link: "", message: "", role: "MEMBER_EVERYDAY" });
+    const [err, setErr] = useState("");
 
-    useEffect(() => {
-        async function fetchGroups() {
-            try {
-                const response = await fetch('/api/admin/community');
-                if (response.ok) {
-                    const data = await response.json();
-                    setGroups(data.groups || []);
-                }
-            } catch (error) {
-                console.error('Failed to fetch community groups:', error);
-            } finally {
-                setLoading(false);
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/admin/community");
+            const data = await res.json();
+            if (res.ok) {
+                setGroups(data.groups || []);
+                setRoles(data.roles || Object.keys(ROLE_LABEL));
             }
+        } finally {
+            setLoading(false);
         }
-        fetchGroups();
     }, []);
 
-    const handleEdit = (group: CommunityGroup) => {
-        setEditingId(group.id);
-        setEditForm({ link: group.whatsappLink, message: group.pinnedMessage });
+    useEffect(() => { load(); }, [load]);
+
+    const startEdit = (g: CommunityGroup) => {
+        setEditingId(g.id);
+        setEditForm({ name: g.name, link: g.whatsappLink, message: g.pinnedMessage, role: g.role, active: g.active });
     };
 
-    const handleSave = async (id: string) => {
-        try {
-            const response = await fetch('/api/admin/community', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id,
-                    whatsappLink: editForm.link,
-                    pinnedMessage: editForm.message,
-                }),
-            });
-
-            if (response.ok) {
-                setGroups(prev => prev.map(g => g.id === id ? { ...g, whatsappLink: editForm.link, pinnedMessage: editForm.message } : g));
-                setEditingId(null);
-            } else {
-                alert('Failed to update group');
-            }
-        } catch (error) {
-            console.error('Failed to update group:', error);
-            alert('Failed to update group');
-        }
+    const save = async (id: string) => {
+        setErr("");
+        const res = await fetch("/api/admin/community", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                id, name: editForm.name, whatsappLink: editForm.link,
+                pinnedMessage: editForm.message, role: editForm.role, active: editForm.active,
+            }),
+        });
+        if (!res.ok) { setErr((await res.json()).error || "Save failed"); return; }
+        setEditingId(null);
+        load();
     };
 
-    if (loading) {
-        return (
-            <div className="p-8">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="font-serif text-3xl text-primary">Community Management</h1>
-                    <Link href="/admin" className="text-sm font-bold text-text/50 hover:text-primary uppercase tracking-widest">
-                        ← Back to Dashboard
-                    </Link>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    const create = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErr("");
+        const res = await fetch("/api/admin/community", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...newForm, whatsappLink: newForm.link, pinnedMessage: newForm.message }),
+        });
+        if (!res.ok) { setErr((await res.json()).error || "Could not create"); return; }
+        setNewForm({ name: "", link: "", message: "", role: "MEMBER_EVERYDAY" });
+        setCreating(false);
+        load();
+    };
+
+    const remove = async (g: CommunityGroup) => {
+        if (!confirm(`Delete the "${g.name}" group? Members mapped to this role will see no group until you add another.`)) return;
+        await fetch(`/api/admin/community?id=${g.id}`, { method: "DELETE" });
+        load();
+    };
 
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="font-serif text-3xl text-primary">Community Management</h1>
-                <Link href="/admin" className="text-sm font-bold text-text/50 hover:text-primary uppercase tracking-widest">
-                    ← Back to Dashboard
-                </Link>
+        <div className="p-4 sm:p-8 max-w-4xl">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="font-serif text-2xl sm:text-3xl text-primary">Community Groups</h1>
+                    <p className="text-sm text-gray-500">WhatsApp groups shown on each member&apos;s dashboard by their plan.</p>
+                </div>
+                <button onClick={() => setCreating((c) => !c)} className="px-4 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary">
+                    {creating ? "Cancel" : "New group"}
+                </button>
             </div>
 
-            <div className="grid gap-6">
-                {groups.map((group) => (
-                    <div key={group.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h2 className="font-bold text-xl text-gray-800">{group.name}</h2>
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-100 px-2 py-1 rounded">
-                                    Role: {group.role}
-                                </span>
-                            </div>
-                            {editingId !== group.id && (
-                                <button
-                                    onClick={() => handleEdit(group)}
-                                    className="text-sm font-bold text-secondary hover:text-primary uppercase tracking-widest"
-                                >
-                                    Edit
-                                </button>
+            {err && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">{err}</div>}
+
+            {creating && (
+                <form onSubmit={create} className="bg-white border border-gray-200 rounded-lg p-5 mb-6 grid gap-3 sm:grid-cols-2">
+                    <input required placeholder="Group name" value={newForm.name} onChange={(e) => setNewForm({ ...newForm, name: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" />
+                    <select value={newForm.role} onChange={(e) => setNewForm({ ...newForm, role: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm">
+                        {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
+                    </select>
+                    <input required placeholder="https://chat.whatsapp.com/…" value={newForm.link} onChange={(e) => setNewForm({ ...newForm, link: e.target.value })} className="sm:col-span-2 p-2.5 border border-gray-200 rounded text-sm" />
+                    <textarea placeholder="Pinned message (optional)" value={newForm.message} onChange={(e) => setNewForm({ ...newForm, message: e.target.value })} className="sm:col-span-2 p-2.5 border border-gray-200 rounded text-sm h-20" />
+                    <button className="sm:col-span-2 sm:w-auto px-6 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary">Create group</button>
+                </form>
+            )}
+
+            {loading ? (
+                <p className="text-gray-500">Loading…</p>
+            ) : groups.length === 0 ? (
+                <p className="text-gray-400 italic">No groups yet. Create one so members have somewhere to get class links.</p>
+            ) : (
+                <div className="grid gap-4">
+                    {groups.map((g) => (
+                        <div key={g.id} className={`bg-white p-5 rounded-lg shadow-sm border ${g.active ? "border-gray-200" : "border-gray-200 opacity-60"}`}>
+                            {editingId === g.id ? (
+                                <div className="space-y-3">
+                                    <div className="grid sm:grid-cols-2 gap-3">
+                                        <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" placeholder="Name" />
+                                        <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm">
+                                            {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
+                                        </select>
+                                    </div>
+                                    <input value={editForm.link} onChange={(e) => setEditForm({ ...editForm, link: e.target.value })} className="w-full p-2.5 border border-gray-200 rounded text-sm" placeholder="WhatsApp link" />
+                                    <textarea value={editForm.message} onChange={(e) => setEditForm({ ...editForm, message: e.target.value })} className="w-full p-2.5 border border-gray-200 rounded text-sm h-20" placeholder="Pinned message" />
+                                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                                        <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })} /> Active
+                                    </label>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => save(g.id)} className="px-5 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary">Save</button>
+                                        <button onClick={() => setEditingId(null)} className="px-5 py-2 border border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-widest rounded hover:bg-gray-50">Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h2 className="font-bold text-lg text-gray-800">{g.name}{!g.active && <span className="ml-2 text-xs text-gray-400 font-normal">(inactive)</span>}</h2>
+                                            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-100 px-2 py-0.5 rounded">{ROLE_LABEL[g.role] || g.role}</span>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => startEdit(g)} className="text-xs font-bold text-secondary hover:text-primary uppercase tracking-widest">Edit</button>
+                                            <button onClick={() => remove(g)} className="text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">Delete</button>
+                                        </div>
+                                    </div>
+                                    <a href={g.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{g.whatsappLink}</a>
+                                    {g.pinnedMessage && (
+                                        <div className="mt-3 bg-accent/10 p-3 rounded border border-accent/20 text-sm text-gray-700">{g.pinnedMessage}</div>
+                                    )}
+                                </>
                             )}
                         </div>
+                    ))}
+                </div>
+            )}
 
-                        {editingId === group.id ? (
-                            <div className="space-y-4 animate-in fade-in">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">WhatsApp Link</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.link}
-                                        onChange={(e) => setEditForm({ ...editForm, link: e.target.value })}
-                                        className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Pinned Message</label>
-                                    <textarea
-                                        value={editForm.message}
-                                        onChange={(e) => setEditForm({ ...editForm, message: e.target.value })}
-                                        className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary h-24"
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => handleSave(group.id)}
-                                        className="px-6 py-2 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors text-sm"
-                                    >
-                                        Save Changes
-                                    </button>
-                                    <button
-                                        onClick={() => setEditingId(null)}
-                                        className="px-6 py-2 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors text-sm"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <span className="font-bold">Link:</span>
-                                    <a href={group.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-primary underline truncate max-w-md block">
-                                        {group.whatsappLink}
-                                    </a>
-                                </div>
-                                <div className="bg-accent/10 p-4 rounded border border-accent/20">
-                                    <span className="block text-xs font-bold text-accent uppercase tracking-widest mb-1">Pinned Message</span>
-                                    <p className="text-sm text-gray-700">{group.pinnedMessage}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
+            <Link href="/admin" className="inline-block mt-8 text-sm font-bold text-text/50 hover:text-primary uppercase tracking-widest">← Dashboard</Link>
         </div>
     );
 }
