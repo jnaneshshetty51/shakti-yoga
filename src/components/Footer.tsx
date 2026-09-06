@@ -1,8 +1,7 @@
-"use client";
-
 import Link from 'next/link';
 import { FaInstagram, FaYoutube, FaFacebook, FaWhatsapp, FaCreditCard, FaLock } from 'react-icons/fa';
 import { SiRazorpay } from 'react-icons/si';
+import NewsletterSignup from './NewsletterSignup';
 
 export default function Footer() {
     return (
@@ -54,16 +53,7 @@ export default function Footer() {
                     <div>
                         <h3 className="font-serif text-lg mb-3 sm:mb-4 text-secondary">Stay Connected</h3>
                         <p className="text-xs opacity-70 mb-4">Get weekly yoga tips and short routines in your inbox.</p>
-                        <form className="flex flex-col sm:flex-row gap-2" onSubmit={(e) => e.preventDefault()}>
-                            <input
-                                type="email"
-                                placeholder="Your email address"
-                                className="bg-white/10 border border-white/20 rounded px-4 py-2.5 text-sm w-full focus:outline-none focus:border-secondary placeholder:text-white/40"
-                            />
-                            <button type="submit" className="px-5 py-2.5 bg-secondary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-white hover:text-primary transition-colors whitespace-nowrap">
-                                Join
-                            </button>
-                        </form>
+                        <NewsletterSignup />
                     </div>
 
                     <div className="text-sm space-y-2 opacity-80 font-sans">
