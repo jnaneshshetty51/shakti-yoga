@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await context.params;
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const admin = await requireAdmin();
+        if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         await prisma.story.delete({
             where: { id }
@@ -32,17 +22,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await context.params;
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const payload = await verifyToken(token);
-        if (!payload || (payload.role !== 'admin' && payload.role !== 'SUPER_ADMIN')) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const admin = await requireAdmin();
+        if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const body = await request.json();
         const { title, content, status } = body;

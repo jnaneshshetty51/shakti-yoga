@@ -102,6 +102,7 @@ model User {
   avatarUrl    String?
   credits      Int       @default(0) // 1:1 therapy session credits
   trialStartedAt DateTime? // set once, the first time the user activates a free trial
+  tokenVersion Int       @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLogin    DateTime?

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, signToken, mapDatabaseRole, setSessionCookie } from '@/lib/auth';
+import { hashPassword, signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
@@ -57,12 +57,7 @@ export async function POST(request: Request) {
 
         const mappedRole = mapDatabaseRole(user.role);
 
-        const token = await signToken({
-            id: user.id,
-            email: user.email,
-            role: mappedRole,
-            name: user.name,
-        });
+        const token = await signToken(sessionClaims(user));
 
         await setSessionCookie(token);
         recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null } });

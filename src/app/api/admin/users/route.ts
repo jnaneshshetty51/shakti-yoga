@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireAdmin, requireSuperAdmin } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { Role } from '@prisma/client';
@@ -81,16 +81,22 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
         }
 
-        // A staff admin must not be able to grant an admin tier.
-        if (role !== undefined && (role === 'SUPER_ADMIN' || role === 'STAFF_ADMIN')) {
-            return NextResponse.json({ error: 'Admin roles can only be granted by a super admin from the console.' }, { status: 403 });
-        }
-
         const before = await prisma.user.findUnique({
             where: { id },
             select: { name: true, role: true, credits: true, phone: true, country: true },
         });
         if (!before) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        // Granting OR removing an admin tier is a super-admin-only action.
+        const ADMIN_ROLES = ['SUPER_ADMIN', 'STAFF_ADMIN'];
+        const touchesAdmin =
+            role !== undefined && (ADMIN_ROLES.includes(role) || ADMIN_ROLES.includes(before.role));
+        if (touchesAdmin && !(await requireSuperAdmin())) {
+            return NextResponse.json(
+                { error: 'Only a super admin can change admin roles.' },
+                { status: 403 },
+            );
+        }
 
         const data: Record<string, unknown> = {};
         if (name !== undefined) data.name = String(name).trim();

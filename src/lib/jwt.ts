@@ -7,6 +7,10 @@ export interface SessionPayload extends JWTPayload {
     email: string;
     role: string;
     name: string;
+    /** User.tokenVersion at sign time — a mismatch means the session was revoked. */
+    tv?: number;
+    /** Admin tier for role === 'admin': 'super' | 'staff'. Absent for everyone else. */
+    tier?: 'super' | 'staff';
 }
 
 if (!process.env.JWT_SECRET) {

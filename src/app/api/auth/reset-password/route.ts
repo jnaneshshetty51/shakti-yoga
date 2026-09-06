@@ -35,8 +35,17 @@ export async function POST(request: Request) {
 
         const passwordHash = await hashPassword(password);
         await prisma.$transaction([
-            prisma.user.update({ where: { id: resetToken.userId }, data: { passwordHash } }),
+            // Bump tokenVersion so every existing session for this user is invalidated.
+            prisma.user.update({
+                where: { id: resetToken.userId },
+                data: { passwordHash, tokenVersion: { increment: 1 } },
+            }),
             prisma.passwordResetToken.update({ where: { id: resetToken.id }, data: { usedAt: new Date() } }),
+            // Any other outstanding reset tokens for this user are now moot.
+            prisma.passwordResetToken.updateMany({
+                where: { userId: resetToken.userId, usedAt: null, id: { not: resetToken.id } },
+                data: { usedAt: new Date() },
+            }),
         ]);
 
         return NextResponse.json({ message: 'Password updated. You can now log in.' });

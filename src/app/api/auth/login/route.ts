@@ -4,6 +4,7 @@ import {
     verifyPassword,
     signToken,
     mapDatabaseRole,
+    sessionClaims,
     setSessionCookie,
     SESSION_MAX_AGE,
     SESSION_MAX_AGE_REMEMBER,
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
 
         const maxAge = remember ? SESSION_MAX_AGE_REMEMBER : SESSION_MAX_AGE;
         const token = await signToken(
-            { id: user.id, email: user.email, role: mappedRole, name: user.name },
+            sessionClaims({ ...user, role: effectiveRole }),
             maxAge,
         );
         await setSessionCookie(token, maxAge);

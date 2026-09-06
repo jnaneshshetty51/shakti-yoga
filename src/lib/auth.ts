@@ -7,9 +7,30 @@ import {
     SESSION_MAX_AGE,
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/jwt';
+import { adminTier } from '@/lib/permissions';
+import type { Role } from '@prisma/client';
 
 export { signToken, verifyToken, SESSION_MAX_AGE, SESSION_MAX_AGE_REMEMBER };
 export type { SessionPayload };
+
+/** Build the JWT claims for a user row (DB role -> mapped role + tier + tokenVersion). */
+export function sessionClaims(user: {
+    id: string;
+    email: string;
+    name: string;
+    role: Role | string;
+    tokenVersion?: number | null;
+}): SessionPayload {
+    const tier = adminTier(user.role);
+    return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: mapDatabaseRole(user.role),
+        tv: user.tokenVersion ?? 0,
+        ...(tier ? { tier } : {}),
+    };
+}
 
 export async function hashPassword(password: string): Promise<string> {
     return await bcrypt.hash(password, 10);
