@@ -1,5 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { PrismaClient, Role, PlanType, SubscriptionStatus } from '@prisma/client';
+import {
+  PrismaClient, Role, PlanType, SubscriptionStatus,
+  ContentType, ContentCategory, PracticeLevel, ChallengeGoal,
+} from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 // Create Prisma client for seeding (standalone script)
@@ -72,6 +75,17 @@ async function main() {
     await prisma.userProfile.deleteMany({
       where: { user: { email: { in: seedEmails } } },
     });
+    // Content-platform tables — children cascade from these parents.
+    await prisma.content.deleteMany({}).catch(() => {});
+    await prisma.practice.deleteMany({}).catch(() => {});
+    await prisma.challenge.deleteMany({}).catch(() => {});
+    await prisma.communityPost.deleteMany({}).catch(() => {});
+    await prisma.userAchievement.deleteMany({
+      where: { user: { email: { in: seedEmails } } },
+    }).catch(() => {});
+
+    // Class instances (and their attendance, which cascades) reference batches.
+    await prisma.classInstance.deleteMany({}).catch(() => {});
     await prisma.classBatch.deleteMany({});
     await prisma.blogPost.deleteMany({});
     await prisma.story.deleteMany({});
@@ -400,6 +414,119 @@ async function main() {
     },
   });
   console.log('✅ Created WhatsApp Group:', whatsapp3.name);
+
+  // ---- Content platform: Practices, Content feed, Challenge, Community ---------
+
+  const now = new Date();
+
+  const practiceMorning = await prisma.practice.create({
+    data: {
+      title: 'Morning Wake-Up Flow',
+      slug: 'morning-wake-up-flow',
+      description: 'A gentle 10-minute sequence to shake off sleep and set an easy, steady tone for the day.',
+      steps: '1. **Seated breath** — 5 slow rounds, lengthen the exhale.\n2. **Cat–Cow** — 8 rounds with the breath.\n3. **Downward Dog** — pedal the heels, 5 breaths.\n4. **Low lunge** — both sides, 5 breaths each.\n5. **Forward fold** — soft knees, let the head hang.\n6. **Mountain pose** — arrive, 3 full breaths.',
+      category: ContentCategory.MOBILITY,
+      level: PracticeLevel.ALL_LEVELS,
+      durationMin: 10,
+      status: 'PUBLISHED',
+      publishedAt: now,
+    },
+  });
+  const practiceSleep = await prisma.practice.create({
+    data: {
+      title: 'Wind-Down for Sleep',
+      slug: 'wind-down-for-sleep',
+      description: 'Five quiet shapes and a long breath to help the nervous system downshift before bed.',
+      steps: '1. **Legs up the wall** — 3 minutes.\n2. **Reclined twist** — both sides, slow.\n3. **Supported child’s pose** — a bolster or pillow under the chest.\n4. **Happy baby** — gently rock side to side.\n5. **Savasana** — 4-count in, 6-count out, 10 rounds.',
+      category: ContentCategory.SLEEP,
+      level: PracticeLevel.BEGINNER,
+      durationMin: 12,
+      status: 'PUBLISHED',
+      publishedAt: now,
+    },
+  });
+  const practiceBreath = await prisma.practice.create({
+    data: {
+      title: 'Box Breathing Reset',
+      slug: 'box-breathing-reset',
+      description: 'A 5-minute breathing practice to steady yourself before a class, a meeting, or sleep.',
+      steps: '1. Sit tall, soften the shoulders.\n2. Inhale for 4.\n3. Hold for 4.\n4. Exhale for 4.\n5. Hold for 4.\n6. Repeat for 5 minutes — drop the count if it strains.',
+      category: ContentCategory.BREATHING,
+      level: PracticeLevel.ALL_LEVELS,
+      durationMin: 5,
+      status: 'PUBLISHED',
+      publishedAt: now,
+    },
+  });
+  console.log('✅ Created 3 Practices');
+
+  await prisma.content.createMany({
+    data: [
+      {
+        type: ContentType.REEL, status: 'PUBLISHED', category: ContentCategory.BREATHING,
+        title: '3-minute breath to calm the mind', caption: 'Try this before your evening class.',
+        instagramUrl: 'https://www.instagram.com/reel/CexampleReel1/',
+        author: 'Shakti Yoga', pinned: true, publishedAt: now,
+        ctaType: 'open_practice', ctaLabel: 'Do the full practice', relatedPracticeId: practiceBreath.id,
+      },
+      {
+        type: ContentType.REEL, status: 'PUBLISHED', category: ContentCategory.MOBILITY,
+        title: 'Release tight hips in 60 seconds', caption: 'Save this for after sitting all day.',
+        instagramUrl: 'https://www.instagram.com/reel/CexampleReel2/',
+        author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 86_400_000),
+        ctaType: 'view_classes', ctaLabel: 'See the class schedule',
+      },
+      {
+        type: ContentType.POST, status: 'PUBLISHED', category: ContentCategory.WELLNESS,
+        title: '5 things to do before your morning class',
+        body: '1. Drink a glass of water.\n2. Skip the heavy breakfast — practice light.\n3. Roll out your mat the night before.\n4. Silence your phone.\n5. Take three slow breaths before you press *Join*.',
+        author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 2 * 86_400_000),
+        ctaType: 'open_blog', ctaLabel: 'Read: benefits of morning yoga', relatedBlogId: blog1.id,
+      },
+      {
+        type: ContentType.ANNOUNCEMENT, status: 'PUBLISHED', category: ContentCategory.STUDIO,
+        title: 'New: guided practices in the app',
+        body: 'You can now do short guided practices on your own mat between classes — find them under Explore → Practices. Start with the Morning Wake-Up Flow.',
+        author: 'Shakti Yoga', pinned: true, publishedAt: now,
+      },
+    ],
+  });
+  console.log('✅ Created 4 Content items (2 reels, 1 post, 1 announcement)');
+
+  const challenge = await prisma.challenge.create({
+    data: {
+      title: '30 days on the mat',
+      description: 'Attend 20 classes in the next 30 days. Small and steady — no leaderboard, just you showing up.',
+      goalType: ChallengeGoal.CLASSES,
+      goalTarget: 20,
+      startDate: new Date(now.getTime() - 3 * 86_400_000),
+      endDate: new Date(now.getTime() + 27 * 86_400_000),
+      status: 'PUBLISHED',
+    },
+  });
+  await prisma.challengeParticipant.create({
+    data: { challengeId: challenge.id, userId: memberEveryday.id },
+  });
+  console.log('✅ Created Challenge:', challenge.title);
+
+  await prisma.communityPost.createMany({
+    data: [
+      { userId: memberEveryday.id, body: 'Two weeks in and I finally touched my toes in forward fold 🙌 slow progress but progress.', likeCount: 0 },
+      { userId: memberTherapy.id, body: 'The wind-down practice before bed has genuinely helped my sleep. Grateful for this community.', likeCount: 0 },
+      { userId: teacher.id, body: 'Reminder: it is completely fine to rest in child’s pose whenever you need to during class. That is practice too.', likeCount: 0 },
+    ],
+  });
+  console.log('✅ Created 3 Community posts');
+
+  // Pre-award a couple of badges so the member app has something to show.
+  await prisma.userAchievement.createMany({
+    data: [
+      { userId: memberEveryday.id, key: 'first_class' },
+      { userId: memberEveryday.id, key: 'first_save' },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('✅ Awarded starter badges to member.everyday');
 
   console.log('\n🎉 Seed completed successfully!');
   console.log('\n📋 User Credentials:');
