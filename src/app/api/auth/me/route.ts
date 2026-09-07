@@ -7,6 +7,7 @@ import {
     sessionClaims,
     setSessionCookie,
     clearSessionCookie,
+    SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { syncSubscriptionState } from '@/lib/subscription';
@@ -63,15 +64,24 @@ export async function GET() {
 
         // Keep the session claims in sync with reality so middleware and the
         // client agree (e.g. after a lazy subscription expiry or a name change).
+        // Also proactively re-mint when the token is close to expiry, so an
+        // actively-used native session never hard-logs-out at the 30-day mark.
+        const secondsLeft = typeof payload.exp === 'number'
+            ? payload.exp - Math.floor(Date.now() / 1000)
+            : null;
+        const claimsDrifted =
+            mappedRole !== payload.role || user.name !== payload.name || user.email !== payload.email;
+        const nearExpiry = secondsLeft !== null && secondsLeft < 7 * 24 * 60 * 60;
+
         let freshToken: string | undefined;
-        if (mappedRole !== payload.role || user.name !== payload.name || user.email !== payload.email) {
-            // Preserve the remaining lifetime of the current session (don't shorten
-            // a "remember me" session on an incidental refresh).
-            const remaining = typeof payload.exp === 'number'
-                ? Math.max(60, payload.exp - Math.floor(Date.now() / 1000))
-                : undefined;
-            freshToken = await signToken(sessionClaims({ ...user, role: effectiveRole }), remaining);
-            await setSessionCookie(freshToken, remaining);
+        if (claimsDrifted || nearExpiry) {
+            // On near-expiry, roll the session forward a full window. On a plain
+            // drift, preserve whatever lifetime is left.
+            const ttl = nearExpiry || secondsLeft === null
+                ? SESSION_MAX_AGE_REMEMBER
+                : Math.max(60, secondsLeft);
+            freshToken = await signToken(sessionClaims({ ...user, role: effectiveRole }), ttl);
+            await setSessionCookie(freshToken, ttl);
         }
 
         return NextResponse.json({

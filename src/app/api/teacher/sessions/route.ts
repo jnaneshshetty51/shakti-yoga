@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireTeacher } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
+import { sendPush } from '@/lib/push';
 import { BookingStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,7 @@ export async function PATCH(request: Request) {
         const id = typeof body.id === 'string' ? body.id : null;
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-        const booking = await prisma.booking.findUnique({ where: { id }, select: { teacherId: true, status: true } });
+        const booking = await prisma.booking.findUnique({ where: { id }, select: { teacherId: true, status: true, userId: true } });
         if (!booking || booking.teacherId !== session.id) {
             return NextResponse.json({ error: 'Not found' }, { status: 404 });
         }
@@ -69,6 +70,16 @@ export async function PATCH(request: Request) {
         }
 
         const updated = await prisma.booking.update({ where: { id }, data });
+
+        if (data.notes) {
+            sendPush(booking.userId, {
+                title: 'Your teacher added session notes',
+                body: 'Open the app to read the notes from your 1:1 session.',
+                url: '/dashboard/therapy/notes',
+                channelId: 'sessions',
+            }).catch(() => {});
+        }
+
         await recordAudit({
             actorId: session.id, actorEmail: session.email, ip: getClientIp(request),
             action: 'booking.teacher.update', entity: 'Booking', entityId: id,

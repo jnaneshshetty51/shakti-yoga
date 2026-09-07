@@ -1,8 +1,11 @@
 "use client";
 
+import { useChartSize } from "./useChartSize";
+
 interface SparklineProps {
     /** Raw values, oldest → newest. */
     points: number[];
+    /** Fallback width before the container is measured. */
     width?: number;
     height?: number;
     className?: string;
@@ -17,52 +20,57 @@ export const CHART_PRIMARY = "#4A6741";
 export const CHART_SECONDARY = "#C68E5D";
 
 /**
- * Tiny dependency-free trend line (inline SVG). No axes, no interactivity —
- * meant to sit in a StatCard footer. Renders nothing useful for < 2 points.
+ * Tiny dependency-free trend line (inline SVG). Renders at the measured
+ * container width so the geometry never distorts. No axes, no interactivity.
  */
 export function Sparkline({
     points,
-    width = 96,
-    height = 24,
+    width = 120,
+    height = 32,
     className = "",
     stroke = CHART_PRIMARY,
     fill = true,
 }: SparklineProps) {
+    const { ref, width: measured } = useChartSize(width);
+    const w = Math.max(measured, 24);
+
     if (!points || points.length < 2) {
-        return <div className={className} style={{ width, height }} aria-hidden />;
+        return <div ref={ref} className={className} style={{ height }} aria-hidden />;
     }
 
+    const pad = 3;
     const max = Math.max(...points);
     const min = Math.min(...points);
     const span = max - min || 1;
-    const stepX = width / (points.length - 1);
-    const y = (v: number) => height - 2 - ((v - min) / span) * (height - 4);
+    const stepX = (w - pad * 2) / (points.length - 1);
+    const x = (i: number) => pad + i * stepX;
+    const y = (v: number) => height - pad - ((v - min) / span) * (height - pad * 2);
 
-    const line = points.map((v, i) => `${i === 0 ? "M" : "L"}${(i * stepX).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
-    const area = `${line} L${width},${height} L0,${height} Z`;
+    const line = points.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
+    const area = `${line} L${x(points.length - 1).toFixed(2)},${height} L${x(0).toFixed(2)},${height} Z`;
     const last = points[points.length - 1];
 
     return (
-        <svg
-            width={width}
-            height={height}
-            viewBox={`0 0 ${width} ${height}`}
-            className={className}
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={`Trend, latest value ${last}`}
-        >
-            {fill && <path d={area} fill={stroke} opacity={0.12} />}
-            <path
-                d={line}
-                fill="none"
-                stroke={stroke}
-                strokeWidth={1.5}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-            />
-            <circle cx={width} cy={y(last)} r={2} fill={stroke} />
-        </svg>
+        <div ref={ref} className={className}>
+            <svg
+                width={w}
+                height={height}
+                viewBox={`0 0 ${w} ${height}`}
+                role="img"
+                aria-label={`Trend, latest value ${last}`}
+                className="block"
+            >
+                {fill && <path d={area} fill={stroke} opacity={0.1} />}
+                <path
+                    d={line}
+                    fill="none"
+                    stroke={stroke}
+                    strokeWidth={1.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                />
+                <circle cx={x(points.length - 1)} cy={y(last)} r={2.5} fill={stroke} stroke="rgb(var(--surface))" strokeWidth={1.5} />
+            </svg>
+        </div>
     );
 }

@@ -25,7 +25,7 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.MINIO_BUCKET || "shakti-yoga-assets";
 
 /** Object-key prefixes the app is allowed to read/write. */
-export const MEDIA_PREFIXES = ["avatars", "staff", "blog", "stories"] as const;
+export const MEDIA_PREFIXES = ["avatars", "staff", "blog", "stories", "content", "practices", "challenges", "community"] as const;
 const KEY_RE = new RegExp(`^(${MEDIA_PREFIXES.join("|")})/[A-Za-z0-9][A-Za-z0-9._-]{0,200}$`);
 
 let bucketReady: Promise<void> | null = null;

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireTeacher } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
+import { sendPush } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,12 +38,21 @@ export async function POST(request: Request) {
         } else {
             const booking = await prisma.booking.findUnique({
                 where: { id },
-                select: { id: true, teacherId: true },
+                select: { id: true, teacherId: true, userId: true },
             });
             if (!booking || booking.teacherId !== session.id) {
                 return NextResponse.json({ error: 'Not found' }, { status: 404 });
             }
             await prisma.booking.update({ where: { id }, data: { meetingLink: value } });
+
+            if (value) {
+                sendPush(booking.userId, {
+                    title: 'Your session link is ready',
+                    body: 'Tap to open your 1:1 session details.',
+                    url: '/dashboard/therapy/book',
+                    channelId: 'sessions',
+                }).catch(() => {});
+            }
         }
 
         await recordAudit({

@@ -4,7 +4,10 @@ import { rateLimit } from '@/lib/rate-limit';
 import { uploadFile, mediaSrc } from '@/lib/storage';
 import { validateImageField } from '@/lib/image-upload';
 
-const PREFIX: Record<string, string> = { blog: 'blog', story: 'stories' };
+const PREFIX: Record<string, string> = {
+    blog: 'blog', story: 'stories', content: 'content',
+    practice: 'practices', challenge: 'challenges', community: 'community',
+};
 
 /** Admin image upload for blog thumbnails / story photos (multipart: kind + file). */
 export async function POST(request: Request) {

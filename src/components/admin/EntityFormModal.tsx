@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "checkbox" | "image";
+export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image";
 
 export interface FieldDef {
     name: string;

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Lato } from "next/font/google";
+import { Playfair_Display, Lato, Inter } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
 import ChromeGate from "@/components/ChromeGate";
@@ -15,6 +15,13 @@ const lato = Lato({
   weight: ["300", "400", "700"],
   subsets: ["latin"],
   variable: "--font-lato",
+  display: "swap",
+});
+
+// UI sans for the admin / member / teacher app shells (see globals.css [data-app-shell]).
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -60,7 +67,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${playfair.variable} ${lato.variable} antialiased`}>
+      <body className={`${playfair.variable} ${lato.variable} ${inter.variable} antialiased`}>
         <Providers>
           <ChromeGate footer={<Footer />}>
             {children}

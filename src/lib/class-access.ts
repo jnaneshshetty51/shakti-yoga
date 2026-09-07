@@ -63,7 +63,7 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
  * Everyone currently entitled to the daily group class: everyday members and
  * trial users with a live subscription. Used for class reminders / cancellations.
  */
-export async function eligibleEverydayMembers(): Promise<{ email: string; name: string }[]> {
+export async function eligibleEverydayMembers(): Promise<{ id: string; email: string; name: string }[]> {
     return prisma.user.findMany({
         where: {
             role: { in: [Role.MEMBER_EVERYDAY, Role.TRIAL] },
@@ -72,6 +72,6 @@ export async function eligibleEverydayMembers(): Promise<{ email: string; name: 
                 renewalDate: { gt: new Date() },
             },
         },
-        select: { email: true, name: true },
+        select: { id: true, email: true, name: true },
     });
 }

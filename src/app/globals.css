@@ -5,6 +5,50 @@
 :root {
   --font-heading: 'Playfair Display', serif;
   --font-body: 'Lato', sans-serif;
+
+  /* ------------------------------------------------------------------ *
+   *  App-shell design tokens (admin / member / teacher dashboards).
+   *  Declared globally (harmless values); only *applied* under
+   *  [data-app-shell] so the marketing site is untouched.
+   *  Dark mode is a future drop-in: redefine these under
+   *  [data-app-shell][data-theme="dark"].
+   * ------------------------------------------------------------------ */
+
+  /* radii */
+  --r-control: 8px;
+  --r-card: 14px;
+
+  /* elevation */
+  --elev-raised: 0 1px 2px rgba(28, 33, 24, 0.05), 0 2px 7px rgba(28, 33, 24, 0.06);
+  --elev-overlay: 0 12px 36px rgba(28, 33, 24, 0.14), 0 3px 10px rgba(28, 33, 24, 0.07);
+
+  /* Semantic colours as "R G B" channel triples so Tailwind can apply the
+     opacity modifier (bg-brand/10, ring-brand/40, …). Consume raw in CSS/SVG
+     with rgb(var(--token)). */
+  --surface: 255 255 255;
+  --surface-sunken: 243 241 235;
+  --surface-hover: 238 236 229;
+  --border: 223 218 205;
+  --border-strong: 206 200 185;
+  --ink: 34 39 31;
+  --ink-muted: 106 111 102;
+  --ink-subtle: 154 158 147;
+  --brand: 74 103 65;
+  --brand-strong: 60 86 53;
+  --ok: 63 143 91;
+  --warn: 176 125 43;
+  --danger: 196 72 59;
+  --info: 48 96 168;
+
+  /* chart palette — raw hex, SVG-only (never with a Tailwind opacity modifier).
+     Categorical validated: node scripts/validate_palette.js
+     "#0F7B54,#D9722B,#3060A8,#9B4A6B" --mode light  → all 6 checks PASS */
+  --chart-ink: #4a6741;
+  --chart-grid: #e7e3d7;
+  --cat-1: #0f7b54;
+  --cat-2: #d9722b;
+  --cat-3: #3060a8;
+  --cat-4: #9b4a6b;
 }
 
 @layer base {
@@ -31,6 +75,18 @@
   }
 }
 
+/* App-shell: crisp UI sans + sunken page ground, scoped so marketing is untouched. */
+[data-app-shell] {
+  background: rgb(var(--surface-sunken));
+  color: rgb(var(--ink));
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+[data-app-shell] :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+}
+
 @layer utilities {
   @keyframes toast-slide-in {
     from { opacity: 0; transform: translateY(8px); }
@@ -44,14 +100,40 @@
     from { opacity: 0; transform: translateY(12px) scale(0.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes shimmer {
+    from { background-position: -160% 0; }
+    to { background-position: 160% 0; }
+  }
 
   .animate-slide-in { animation: toast-slide-in 0.18s ease-out; }
   .animate-fade-in { animation: overlay-fade-in 0.15s ease-out; }
   .animate-slide-up { animation: panel-slide-up 0.18s ease-out; }
+  .animate-card-in { animation: card-in 0.18s ease-out both; }
+
+  /* tabular figures for metric values, table numerics, axis ticks */
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  .skeleton {
+    background-color: rgb(var(--surface-hover));
+    background-image: linear-gradient(
+      90deg,
+      rgb(var(--surface-hover)) 0%,
+      color-mix(in srgb, rgb(var(--surface-hover)) 45%, #fff) 50%,
+      rgb(var(--surface-hover)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .animate-slide-in,
     .animate-fade-in,
-    .animate-slide-up { animation: none; }
+    .animate-slide-up,
+    .animate-card-in,
+    .skeleton { animation: none; }
   }
 }

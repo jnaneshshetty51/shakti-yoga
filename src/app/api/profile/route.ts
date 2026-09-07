@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { readJson, str, optStr, ValidationError, handleValidationError } from '@/lib/validation';
+import { deleteAccount } from '@/lib/account';
 
 async function getUserId(): Promise<string | null> {
     const payload = await getSession();
@@ -98,5 +99,20 @@ export async function PATCH(request: Request) {
         if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Profile PATCH error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+/** Permanently close the caller's account (App Store / Play requirement). */
+export async function DELETE() {
+    try {
+        const userId = await getUserId();
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        await deleteAccount(userId);
+        return NextResponse.json({ ok: true });
+    } catch (error) {
+        console.error('Profile DELETE error:', error);
+        return NextResponse.json({ error: 'Could not delete your account. Please contact support.' }, { status: 500 });
     }
 }

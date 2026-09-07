@@ -1,11 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { toStorageKey, mediaSrc } from '@/lib/storage';
-import { Role, ContentStatus } from '@prisma/client';
+import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
+import { Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
+import { isCtaType, toContentCategory, serializeContent } from '@/lib/content';
+import { notifyContentPublished } from '@/lib/content-notify';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-type ContentType = 'story' | 'blog' | 'whatsapp';
+type ContentType = 'story' | 'blog' | 'whatsapp' | 'content';
+
+const INSTAGRAM_RE = /^https:\/\/(www\.)?instagram\.com\/(reel|p|tv)\/[A-Za-z0-9_-]+\/?/i;
+
+function toSubtype(v: unknown): ContentSubtype {
+    const s = String(v || '').toUpperCase();
+    return s in ContentSubtype ? (s as ContentSubtype) : ContentSubtype.POST;
+}
+
+/** Comma / newline separated -> trimmed, de-duped, capped list. */
+function toTags(v: unknown): string[] {
+    if (Array.isArray(v)) v = v.join(',');
+    return [...new Set(String(v || '').split(/[,\n]/).map((t) => t.trim().replace(/^#/, '')).filter(Boolean))].slice(0, 10);
+}
 
 function toContentStatus(v: unknown): ContentStatus {
     const s = String(v || '').toUpperCase();
@@ -21,7 +36,7 @@ export async function GET() {
         const payload = await requireAdmin();
         if (!payload) return forbidden();
 
-        const [stories, blogPosts, groups] = await Promise.all([
+        const [stories, blogPosts, groups, contentRows, classBatches] = await Promise.all([
             prisma.story.findMany({
                 include: {
                     user: {
@@ -43,6 +58,14 @@ export async function GET() {
                 where: {
                     active: true,
                 },
+            }),
+            prisma.content.findMany({
+                orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
+            }),
+            prisma.classBatch.findMany({
+                where: { active: true },
+                select: { id: true, name: true },
+                orderBy: { name: 'asc' },
             }),
         ]);
 
@@ -71,6 +94,9 @@ export async function GET() {
             author: post.author,
             status: post.status,
             imageUrl: post.imageUrl || '',
+            ctaType: post.ctaType || 'none',
+            ctaLabel: post.ctaLabel || '',
+            relatedClassBatchId: post.relatedClassBatchId || '',
         }));
 
         const formattedGroups = groups.map(group => ({
@@ -81,10 +107,43 @@ export async function GET() {
             pinnedMessage: group.pinnedMessage || '',
         }));
 
+        const content = contentRows.map((row) => {
+            const item = serializeContent(row);
+            return {
+                ...item,
+                id: row.id,
+                contentType: row.type,
+                status: row.status,
+                category: row.category,
+                title: row.title,
+                body: row.body || '',
+                caption: row.caption || '',
+                instagramUrl: row.instagramUrl || '',
+                imageUrl: row.imageUrl || '',
+                ctaType: row.ctaType || 'none',
+                ctaLabel: row.ctaLabel || '',
+                relatedBlogId: row.relatedBlogId || '',
+                author: row.author,
+                tags: row.tags.join(', '),
+                pinned: row.pinned,
+                notifyOnPublish: row.notifyOnPublish,
+                publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+                scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
+            };
+        });
+
         return NextResponse.json({
             stories: formattedStories,
             blogPosts: formattedBlogPosts,
             groups: formattedGroups,
+            content,
+            blogOptions: blogPosts.map((b) => ({ label: b.title, value: b.id })),
+            classBatchOptions: classBatches.map((b) => ({ label: b.name, value: b.id })),
+            counts: {
+                drafts: contentRows.filter((r) => r.status === 'DRAFT').length,
+                published: contentRows.filter((r) => r.status === 'PUBLISHED').length,
+                scheduled: contentRows.filter((r) => r.status !== 'PUBLISHED' && r.scheduledAt && r.scheduledAt > new Date()).length,
+            },
         });
     } catch (error) {
         console.error('Admin content API error:', error);
@@ -150,6 +209,9 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
                     author: cap(body.author || 'Shakti Yoga', 120),
                     status,
                     publishedAt: status === 'PUBLISHED' ? new Date() : null,
+                    ctaType: isCtaType(body.ctaType) && body.ctaType !== 'open_blog' ? String(body.ctaType) : null,
+                    ctaLabel: cap(body.ctaLabel, 60) || null,
+                    relatedClassBatchId: cap(body.relatedClassBatchId, 40) || null,
                     ...(imageUrl !== undefined ? { imageUrl } : {}),
                 },
             });
@@ -161,6 +223,9 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         if (has('content')) data.content = cap(body.content, 100_000);
         if (has('category')) data.category = cap(body.category || 'General', 80);
         if (has('author')) data.author = cap(body.author || 'Shakti Yoga', 120);
+        if (has('ctaType')) data.ctaType = isCtaType(body.ctaType) && body.ctaType !== 'open_blog' ? String(body.ctaType) : null;
+        if (has('ctaLabel')) data.ctaLabel = cap(body.ctaLabel, 60) || null;
+        if (has('relatedClassBatchId')) data.relatedClassBatchId = cap(body.relatedClassBatchId, 40) || null;
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
         if (has('status')) {
             const status = toContentStatus(body.status);
@@ -170,6 +235,60 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
             if (status !== 'PUBLISHED') data.publishedAt = null;
         }
         return prisma.blogPost.update({ where: { id }, data });
+    }
+
+    if (type === 'content') {
+        const subtype = toSubtype(body.contentType);
+        let status = toContentStatus(body.status);
+        const igRaw = cap(body.instagramUrl, 300);
+        if (subtype === 'REEL' && igRaw && !INSTAGRAM_RE.test(igRaw)) {
+            throw new Error('Instagram URL must look like https://www.instagram.com/reel/XXXX/');
+        }
+        const relatedBlogId = cap(body.relatedBlogId, 40) || null;
+
+        // Scheduling: a future `scheduledAt` parks the item as a DRAFT until the
+        // publish-scheduled cron promotes it.
+        const schedRaw = body.scheduledAt ? new Date(String(body.scheduledAt)) : null;
+        const scheduledAt = schedRaw && !Number.isNaN(+schedRaw) && schedRaw > new Date() ? schedRaw : null;
+        if (scheduledAt) status = 'DRAFT';
+
+        const common = {
+            type: subtype,
+            status,
+            scheduledAt,
+            category: toContentCategory(body.category),
+            title: cap(body.title || 'Untitled', 200),
+            body: cap(body.body, 20_000) || null,
+            caption: cap(body.caption, 300) || null,
+            instagramUrl: igRaw || null,
+            ctaType: isCtaType(body.ctaType) ? String(body.ctaType) : 'none',
+            ctaLabel: cap(body.ctaLabel, 60) || null,
+            relatedBlogId,
+            author: cap(body.author || 'Shakti Yoga', 120),
+            tags: toTags(body.tags),
+            pinned: body.pinned === true || body.pinned === 'true',
+            notifyOnPublish: body.notifyOnPublish === true || body.notifyOnPublish === 'true',
+        };
+
+        if (isCreate) {
+            const created = await prisma.content.create({
+                data: {
+                    ...common,
+                    publishedAt: status === 'PUBLISHED' ? new Date() : null,
+                    ...(imageUrl !== undefined ? { imageUrl } : {}),
+                },
+            });
+            if (created.status === 'PUBLISHED') void notifyContentPublished(created.id);
+            return created;
+        }
+        const current = await prisma.content.findUnique({ where: { id }, select: { publishedAt: true } });
+        const data: Record<string, unknown> = { ...common };
+        if (imageUrl !== undefined) data.imageUrl = imageUrl;
+        if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
+        if (status !== 'PUBLISHED') data.publishedAt = null;
+        const updated = await prisma.content.update({ where: { id }, data });
+        if (updated.status === 'PUBLISHED') void notifyContentPublished(updated.id);
+        return updated;
     }
 
     // whatsapp
@@ -188,7 +307,7 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
 
 function getType(request: Request): ContentType | null {
     const t = new URL(request.url).searchParams.get('type');
-    return t === 'story' || t === 'blog' || t === 'whatsapp' ? t : null;
+    return t === 'story' || t === 'blog' || t === 'whatsapp' || t === 'content' ? t : null;
 }
 
 export async function POST(request: Request) {
@@ -201,7 +320,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ id: created.id });
     } catch (error) {
         console.error('Admin content POST error:', error);
-        return NextResponse.json({ error: 'Could not create content' }, { status: 500 });
+        const message = error instanceof Error && error.message.length < 200 ? error.message : 'Could not create content';
+        return NextResponse.json({ error: message }, { status: 400 });
     }
 }
 
@@ -216,7 +336,8 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ id: updated.id });
     } catch (error) {
         console.error('Admin content PATCH error:', error);
-        return NextResponse.json({ error: 'Could not update content' }, { status: 500 });
+        const message = error instanceof Error && error.message.length < 200 ? error.message : 'Could not update content';
+        return NextResponse.json({ error: message }, { status: 400 });
     }
 }
 
@@ -229,6 +350,13 @@ export async function DELETE(request: Request) {
     try {
         if (type === 'story') await prisma.story.delete({ where: { id } });
         else if (type === 'blog') await prisma.blogPost.delete({ where: { id } });
+        else if (type === 'content') {
+            const row = await prisma.content.findUnique({ where: { id }, select: { imageUrl: true, mediaUrls: true } });
+            await prisma.content.delete({ where: { id } });
+            for (const url of [row?.imageUrl, ...(row?.mediaUrls ?? [])]) {
+                if (url) await deleteFile(url).catch(() => {});
+            }
+        }
         else await prisma.whatsAppGroup.delete({ where: { id } });
         return NextResponse.json({ success: true });
     } catch (error) {

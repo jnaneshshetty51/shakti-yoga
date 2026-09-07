@@ -10,6 +10,9 @@ import {
     revenueSeries,
     attendanceSeries,
     trialFunnel,
+    classFillRate,
+    toRange,
+    type RangeKey,
 } from '@/lib/metrics';
 
 export const dynamic = 'force-dynamic';
@@ -130,13 +133,31 @@ async function loadCounts(now: Date) {
     };
 }
 
-async function loadTrends(now: Date) {
+async function loadTrends(now: Date, range: RangeKey) {
     const [signups, revenue, attendance] = await Promise.all([
-        signupSeries('30d', now),
-        revenueSeries('30d', now),
-        attendanceSeries('30d', now),
+        signupSeries(range, now),
+        revenueSeries(range, now),
+        attendanceSeries(range, now),
     ]);
     return { signups, revenue, attendance };
+}
+
+async function loadPlanMix(now: Date) {
+    const rows = await prisma.subscription.groupBy({
+        by: ['planType'],
+        where: liveSubWhere(now),
+        _count: { _all: true },
+    });
+    const LABEL: Record<string, string> = {
+        EVERYDAY_YOGA: 'Everyday Yoga',
+        YOGA_THERAPY: 'Yoga Therapy',
+        TRIAL: 'Trial',
+    };
+    const order = ['EVERYDAY_YOGA', 'YOGA_THERAPY', 'TRIAL'];
+    return rows
+        .map((r) => ({ label: LABEL[r.planType] ?? r.planType, value: r._count._all, key: r.planType }))
+        .sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
+        .map(({ label, value }) => ({ label, value }));
 }
 
 async function loadTeacherLoad(now: Date) {
@@ -263,25 +284,28 @@ async function loadSignups(now: Date) {
     }));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     if (!(await requireAdmin())) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const range = toRange(new URL(request.url).searchParams.get('range'));
     const now = new Date();
     const horizon = new Date(now.getTime() + 2 * DAY);
 
     const results = await Promise.allSettled([
         loadCounts(now),
-        loadTrends(now),
-        loadTrialFunnelSection(now),
+        loadTrends(now, range),
+        loadTrialFunnelSection(now, range),
         loadTeacherLoad(now),
         loadUpcomingSessions(now, horizon),
         loadUpcomingClasses(now, horizon),
         loadActivity(),
         loadSignups(now),
+        classFillRate(range, now),
+        loadPlanMix(now),
     ]);
-    const [countsR, trendsR, funnelR, teachersR, sessionsR, classesR, activityR, signupsR] = results;
+    const [countsR, trendsR, funnelR, teachersR, sessionsR, classesR, activityR, signupsR, classFillR, planMixR] = results;
 
     const counts = val(countsR, {
         stats: {
@@ -300,6 +324,7 @@ export async function GET() {
     return NextResponse.json(
         {
             generatedAt: now.toISOString(),
+            range,
             partial: results.some((r) => r.status === 'rejected'),
             stats: counts.stats,
             attention: counts.attention,
@@ -310,11 +335,13 @@ export async function GET() {
             upcomingClasses: val(classesR, []),
             activity: val(activityR, []),
             recentSignups: val(signupsR, []),
+            classFill: val(classFillR, { classes: 0, eligible: 0, avgAttendees: 0, rate: 0 }),
+            planMix: val(planMixR, [] as { label: string; value: number }[]),
         },
         { headers: { 'Cache-Control': 'no-store' } },
     );
 }
 
-async function loadTrialFunnelSection(now: Date) {
-    return trialFunnel('30d', now);
+async function loadTrialFunnelSection(now: Date, range: RangeKey) {
+    return trialFunnel(range, now);
 }

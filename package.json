@@ -12,7 +12,9 @@
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
     "classes:ensure": "tsx scripts/ensure-instances.ts",
+    "content:publish-scheduled": "tsx scripts/publish-scheduled-content.ts",
     "classes:remind": "tsx scripts/send-class-reminders.ts",
+    "classes:push": "tsx scripts/send-class-push.ts",
     "host:check": "tsx scripts/host-check.ts",
     "db:setup": "bash scripts/setup-db.sh",
     "db:studio": "prisma studio"
@@ -21,6 +23,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
     "@aws-sdk/client-s3": "^3.937.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",

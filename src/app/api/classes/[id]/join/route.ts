@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { canJoinGroupClass } from '@/lib/class-access';
 import { isJoinable, resolveMeetingLink } from '@/lib/class-schedule';
 import { recordEvent } from '@/lib/analytics';
+import { checkAchievements } from '@/lib/achievements';
+import { updateChallengeProgress } from '@/lib/challenges';
 
 export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
     const { id } = await props.params;
@@ -67,6 +69,8 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
                     data: { attendanceCount: { increment: 1 } },
                 });
                 recordEvent('CLASS_JOIN', { userId: session.id, metadata: { instanceId: instance.id } });
+                void checkAchievements(session.id).catch(() => {});
+                void updateChallengeProgress(session.id).catch(() => {});
             }
         }
 

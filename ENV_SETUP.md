@@ -21,6 +21,7 @@ nano .env
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For paid checkout | Razorpay API keys (dashboard.razorpay.com → Settings → API Keys). Blank = paid plans return 503; free trial still works. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | For paid checkout | Browser copy of the key id, used by Razorpay Checkout. Set to the same value as `RAZORPAY_KEY_ID`. |
 | `RESEND_API_KEY` | For email | Resend API key. Unset = contact/booking/payment emails are logged to the console, not sent. |
+| `ANTHROPIC_API_KEY` | For the in-app yoga guide | Anthropic API key (console.anthropic.com). Unset = the assistant feature is hidden in the app (`GET /api/assistant` returns `available: false`); everything else works. Billed per use. |
 | `EMAIL_FROM` | For email | Verified sender, e.g. `Shakti Yoga <hello@shaktiyoga.in>`. Defaults to Resend's sandbox address. |
 | `ADMIN_EMAIL` | For email | Address that receives contact-form enquiries. |
 | `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. Not read client-side - the dev-only Quick Login buttons on `/login` always use the fixed default `Password123!`, so they only work if you left `SEED_PASSWORD` unset. |

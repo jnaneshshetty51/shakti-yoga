@@ -52,6 +52,38 @@ enum ContentStatus {
   ARCHIVED
 }
 
+enum ContentType {
+  REEL
+  POST
+  ANNOUNCEMENT
+}
+
+enum ContentCategory {
+  YOGA
+  BREATHING
+  MINDFULNESS
+  MOBILITY
+  SLEEP
+  STRENGTH
+  WELLNESS
+  BEGINNERS
+  PHILOSOPHY
+  STUDIO
+  COMMUNITY
+}
+
+enum PracticeLevel {
+  BEGINNER
+  INTERMEDIATE
+  ALL_LEVELS
+}
+
+enum ChallengeGoal {
+  CLASSES
+  PRACTICES
+  PRACTICE_MINUTES
+}
+
 enum PaymentStatus {
   CREATED
   PAID
@@ -114,6 +146,18 @@ model User {
   assignedLeads Lead[]
 
   passwordResetTokens PasswordResetToken[]
+
+  contentInteractions ContentInteraction[]
+  contentComments     ContentComment[]
+
+  practiceCompletions   PracticeCompletion[]
+  challengeParticipation ChallengeParticipant[]
+  achievements          UserAchievement[]
+  communityPosts        CommunityPost[]
+  communityComments     CommunityComment[]
+  communityLikes        CommunityInteraction[]
+
+  pushTokens PushToken[]
 }
 
 model UserProfile {
@@ -279,8 +323,269 @@ model BlogPost {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  // "Don't let an article be a dead end" — pair it with practice.
+  ctaType             String? // same set as Content, minus 'open_blog'
+  ctaLabel            String?
+  relatedClassBatchId String? // loose pointer to a ClassBatch (resolved at read)
+  relatedPracticeId   String?
+  relatedPractice     Practice? @relation("PracticeRelatedBlog", fields: [relatedPracticeId], references: [id], onDelete: SetNull)
+
+  relatedContent  Content[]     @relation("BlogRelatedContent")
+
   @@index([status])
   @@index([category])
+}
+
+/// Feed-native content for the member app: Instagram Reels (link + thumbnail),
+/// image/text Posts, and studio Announcements. Blogs stay in BlogPost; the app's
+/// /api/content/feed merges both into one stream. Every item can carry a CTA
+/// that routes the member back into practice (next class, therapy, an article).
+model Content {
+  id       String          @id @default(cuid())
+  type     ContentType
+  status   ContentStatus   @default(DRAFT)
+  category ContentCategory  @default(YOGA)
+
+  title   String
+  body    String? // POST / ANNOUNCEMENT copy (markdown-lite). null for REEL.
+  caption String? // REEL one-liner under the thumbnail
+
+  instagramUrl String? // https://www.instagram.com/reel/XXXX/
+  imageUrl     String? // REEL thumbnail / POST + ANNOUNCEMENT hero (as /api/media/<key>)
+  mediaUrls    String[] @default([]) // POST carousel (Phase 2)
+
+  ctaType          String? // 'join_next_class' | 'view_classes' | 'book_therapy' | 'open_blog' | 'open_practice' | 'none'
+  ctaLabel         String?
+  relatedBlogId    String?
+  relatedBlog      BlogPost? @relation("BlogRelatedContent", fields: [relatedBlogId], references: [id], onDelete: SetNull)
+  relatedPracticeId String?
+  relatedPractice   Practice? @relation("PracticeRelatedContent", fields: [relatedPracticeId], references: [id], onDelete: SetNull)
+
+  author String @default("Shakti Yoga")
+  tags   String[] @default([])
+
+  publishedAt DateTime?
+  scheduledAt DateTime? // future -> publish-scheduled cron flips it to PUBLISHED (Phase 3)
+  pinned      Boolean   @default(false)
+
+  likeCount    Int @default(0)
+  saveCount    Int @default(0)
+  viewCount    Int @default(0)
+  commentCount Int @default(0)
+
+  // Push: when true, members with the app get one notification the first time
+  // this item is published. `notifiedAt` is the idempotency claim.
+  notifyOnPublish Boolean   @default(false)
+  notifiedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  interactions ContentInteraction[]
+  comments     ContentComment[]
+
+  @@index([status, type, publishedAt])
+  @@index([status, category])
+  @@index([scheduledAt])
+}
+
+/// A member's like / save on a Content item. One row per (user, content, kind).
+model ContentInteraction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId String
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  kind      String // 'like' | 'save'
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contentId, kind])
+  @@index([userId, kind])
+  @@index([contentId, kind])
+}
+
+/// A member comment on a Content item. `hidden` is set by admin moderation;
+/// hidden comments still count against the author but never render for members.
+model ContentComment {
+  id          String   @id @default(cuid())
+  contentId   String
+  content     Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body        String
+  hidden      Boolean  @default(false)
+  reportCount Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  reports CommentReport[]
+
+  @@index([contentId, hidden, createdAt])
+  @@index([reportCount])
+}
+
+/// One member's report of a comment. Bumps ContentComment.reportCount.
+model CommentReport {
+  id        String         @id @default(cuid())
+  commentId String
+  comment   ContentComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime       @default(now())
+
+  @@unique([commentId, userId])
+}
+
+/// A guided practice — a short at-home sequence. Links out to a video (Instagram
+/// / YouTube) like a reel; the app never hosts video. `steps` is a markdown list.
+model Practice {
+  id           String        @id @default(cuid())
+  title        String
+  slug         String        @unique
+  description  String? // markdown-lite intro
+  steps        String? // markdown list of cues
+  category     ContentCategory @default(YOGA)
+  level        PracticeLevel @default(ALL_LEVELS)
+  durationMin  Int           @default(10)
+  videoUrl     String? // Instagram / YouTube link, opened externally
+  thumbnailUrl String? // /api/media/<key>
+  status       ContentStatus @default(DRAFT)
+  publishedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  completions    PracticeCompletion[]
+  relatedContent Content[]  @relation("PracticeRelatedContent")
+  relatedBlogs   BlogPost[] @relation("PracticeRelatedBlog")
+
+  @@index([status, category])
+}
+
+/// One member marking a practice done. `minutes` snapshots the duration so
+/// progress totals survive a later edit to Practice.durationMin.
+model PracticeCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  practiceId  String
+  practice    Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  minutes     Int
+  completedAt DateTime @default(now())
+
+  @@index([userId, completedAt])
+  @@index([practiceId])
+}
+
+/// A time-boxed goal members opt into ("30 classes in 30 days"). Progress is
+/// derived from attendance / practice completions inside [startDate, endDate].
+model Challenge {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  goalType    ChallengeGoal @default(CLASSES)
+  goalTarget  Int           @default(30)
+  startDate   DateTime
+  endDate     DateTime
+  imageUrl    String?
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  participants ChallengeParticipant[]
+
+  @@index([status, endDate])
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+}
+
+/// An earned badge. Definitions live in code (src/lib/achievements.ts); this
+/// table is just the award ledger. One row per (user, key).
+model UserAchievement {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key      String
+  earnedAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+/// A member-authored community post. Moderated the same way as content comments
+/// (`hidden` + `reportCount`, auto-hide at a threshold).
+model CommunityPost {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body         String
+  imageUrl     String?
+  hidden       Boolean  @default(false)
+  likeCount    Int      @default(0)
+  commentCount Int      @default(0)
+  reportCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  comments     CommunityComment[]
+  interactions CommunityInteraction[]
+  reports      CommunityReport[]
+
+  @@index([hidden, createdAt])
+  @@index([reportCount])
+}
+
+model CommunityComment {
+  id          String        @id @default(cuid())
+  postId      String
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body        String
+  hidden      Boolean       @default(false)
+  reportCount Int           @default(0)
+  createdAt   DateTime      @default(now())
+
+  reports CommunityReport[]
+
+  @@index([postId, hidden, createdAt])
+  @@index([reportCount])
+}
+
+/// A like on a community post. One row per (user, post).
+model CommunityInteraction {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+/// A report against a community post or one of its comments.
+model CommunityReport {
+  id        String            @id @default(cuid())
+  postId    String?
+  post      CommunityPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime          @default(now())
+
+  @@index([postId])
+  @@index([commentId])
 }
 
 model WhatsAppGroup {
@@ -456,4 +761,18 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// Expo push notification token for a member's device (native app).
+model PushToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String // "ios" | "android"
+  deviceName String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
 }
