@@ -10,6 +10,7 @@ import {
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
+import { redeemReferral } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { SITE_URL } from '@/lib/site';
 import { adminTier } from '@/lib/permissions';
@@ -65,7 +66,10 @@ export async function POST(request: Request) {
         const mappedRole = mapDatabaseRole(user.role);
         const token = await signToken(sessionClaims(user), SESSION_MAX_AGE_REMEMBER);
 
-        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null, source: 'mobile' } });
+        const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))
+            .catch(() => false);
+
+        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null, source: 'mobile', referred: referralApplied } });
         sendEmail({
             to: user.email,
             subject: 'Welcome to Shakti Yoga',
@@ -82,6 +86,7 @@ export async function POST(request: Request) {
             token,
             expiresInSeconds: SESSION_MAX_AGE_REMEMBER,
             user: { ...safeUser, role: mappedRole, tier: adminTier(user.role) },
+            referralApplied,
         }, { status: 201 });
     } catch (error) {
         try {

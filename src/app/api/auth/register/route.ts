@@ -4,6 +4,7 @@ import { hashPassword, signToken, mapDatabaseRole, sessionClaims, setSessionCook
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
+import { redeemReferral } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { SITE_URL } from '@/lib/site';
 
@@ -60,7 +61,9 @@ export async function POST(request: Request) {
         const token = await signToken(sessionClaims(user));
 
         await setSessionCookie(token);
-        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null } });
+        const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))
+            .catch(() => false);
+        recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null, referred: referralApplied } });
         sendEmail({
             to: user.email,
             subject: 'Welcome to Shakti Yoga',

@@ -54,13 +54,20 @@ export async function activatePlan(
     plan: PlanConfig,
     opts: { recurring?: boolean; subscriptionId?: string; renewalDate?: Date } = {},
 ) {
+    const isTrial = plan.dbPlanType === 'TRIAL';
+
+    // Referral bonus: consume any banked credit days on this activation.
+    const before = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { referralCreditDays: true },
+    });
+    const bonusDays = isTrial ? 0 : Math.min(before?.referralCreditDays ?? 0, 366);
+
     const renewalDate = opts.renewalDate ?? (() => {
         const d = new Date();
-        d.setDate(d.getDate() + (plan.renewalDays || 30));
+        d.setDate(d.getDate() + (plan.renewalDays || 30) + bonusDays);
         return d;
     })();
-
-    const isTrial = plan.dbPlanType === 'TRIAL';
 
     const user = await prisma.user.update({
         where: { id: userId },
@@ -68,6 +75,7 @@ export async function activatePlan(
             role: plan.role,
             ...(plan.credits > 0 ? { credits: { increment: plan.credits } } : {}),
             ...(isTrial ? { trialStartedAt: new Date() } : {}),
+            ...(bonusDays > 0 ? { referralCreditDays: 0 } : {}),
         },
     });
 

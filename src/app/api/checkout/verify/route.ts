@@ -6,6 +6,8 @@ import { verifyPaymentSignature, verifySubscriptionSignature, fetchPayment } fro
 import { activatePlan } from '@/lib/subscription';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
+import { posthogCapture, posthogIdentify } from '@/lib/posthog';
+import { markReferralConverted } from '@/lib/referral';
 import type { PlanType, Payment } from '@prisma/client';
 
 function planConfigForDbType(planType: PlanType) {
@@ -42,6 +44,9 @@ async function confirmAndActivate(params: {
     const { user, mappedRole } = await activatePlan(userId, plan, { recurring, subscriptionId });
 
     recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.dbPlanType, recurring } });
+    posthogCapture(userId, 'subscription_started', { plan: plan.dbPlanType, billing: 'razorpay', recurring, amount: paymentRecord.amount });
+    posthogIdentify(userId, { plan: plan.dbPlanType, role: mappedRole, subscribed_at: new Date().toISOString() });
+    if (plan.dbPlanType !== 'TRIAL') void markReferralConverted(userId).catch(() => {});
     recordRevenue({
         userId,
         amount: paymentRecord.amount,

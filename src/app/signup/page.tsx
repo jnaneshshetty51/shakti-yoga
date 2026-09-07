@@ -4,6 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
+function refFromUrl(): string {
+    if (typeof window === "undefined") return "";
+    try {
+        const code = new URLSearchParams(window.location.search).get("ref");
+        return code ? code.trim().toUpperCase().slice(0, 24) : "";
+    } catch {
+        return "";
+    }
+}
+
 const TIMEZONES = [
     { value: "IST", label: "IST (GMT+5:30)" },
     { value: "PST", label: "PST (GMT-8:00)" },
@@ -25,6 +35,7 @@ export default function SignupPage() {
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [referralCode] = useState(refFromUrl);
 
     const set = (key: keyof typeof form) => (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -49,6 +60,7 @@ export default function SignupPage() {
                 country: form.country,
                 timezone: form.timezone,
                 phone: form.phone.trim() || undefined,
+                referralCode: referralCode || undefined,
             });
             // register() redirects to /onboarding on success
         } catch (err) {
@@ -72,6 +84,12 @@ export default function SignupPage() {
                         {error}
                     </div>
                 )}
+
+                {referralCode ? (
+                    <div className="mb-5 rounded-lg bg-primary/10 border border-primary/20 px-3.5 py-2.5 text-sm text-primary">
+                        Referral code <span className="font-bold">{referralCode}</span> applied — your first month is free.
+                    </div>
+                ) : null}
 
                 <form onSubmit={handleSignup} className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

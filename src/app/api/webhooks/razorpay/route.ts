@@ -4,6 +4,7 @@ import { verifyWebhookSignature } from '@/lib/razorpay';
 import { PLANS } from '@/lib/pricing';
 import { activatePlan } from '@/lib/subscription';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
+import { markReferralConverted } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { sendPush } from '@/lib/push';
 import type { PlanType } from '@prisma/client';
@@ -125,6 +126,9 @@ export async function POST(request: Request) {
                     userId,
                     metadata: { plan: planType },
                 });
+                if (firstActivation && planType !== 'TRIAL') {
+                    void markReferralConverted(userId).catch(() => {});
+                }
                 if (!firstActivation) {
                     sendPush(userId, {
                         title: 'Membership renewed',

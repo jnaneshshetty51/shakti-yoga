@@ -122,6 +122,8 @@ model User {
   credits      Int       @default(0) // 1:1 therapy session credits
   trialStartedAt DateTime? // set once, the first time the user activates a free trial
   tokenVersion Int       @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
+  referralCode      String?  @unique // this user's own shareable code
+  referralCreditDays Int     @default(0) // bonus access days, consumed on the next plan activation
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLogin    DateTime?
@@ -157,7 +159,30 @@ model User {
   communityComments     CommunityComment[]
   communityLikes        CommunityInteraction[]
 
+  referralsSent    Referral[] @relation("ReferralsSent")
+  referralReceived Referral?  @relation("ReferralReceived")
+
   pushTokens PushToken[]
+}
+
+/// One redeemed referral. Created when someone signs up with a code; advances to
+/// `converted` on that person's first paid subscription, which is when the
+/// referrer's reward is granted. One row per referred person.
+model Referral {
+  id           String    @id @default(cuid())
+  referrerId   String
+  referrer     User      @relation("ReferralsSent", fields: [referrerId], references: [id], onDelete: Cascade)
+  code         String
+  refereeId    String    @unique
+  referee      User      @relation("ReferralReceived", fields: [refereeId], references: [id], onDelete: Cascade)
+  status       String    @default("signed_up") // signed_up | converted
+  rewardMonths Int       @default(1)
+  convertedAt  DateTime?
+  rewardedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([referrerId])
+  @@index([status])
 }
 
 model UserProfile {

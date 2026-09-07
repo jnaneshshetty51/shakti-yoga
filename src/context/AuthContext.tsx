@@ -28,6 +28,7 @@ export interface RegisterInput {
     country?: string;
     timezone?: string;
     phone?: string;
+    referralCode?: string;
 }
 
 interface AuthContextType {
