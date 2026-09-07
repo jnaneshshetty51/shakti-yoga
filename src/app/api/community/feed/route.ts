@@ -10,6 +10,7 @@ const PAGE = 20;
 export async function GET(request: Request) {
     const cursor = Math.max(0, Math.trunc(Number(new URL(request.url).searchParams.get('cursor')) || 0));
     const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
         const rows = await prisma.communityPost.findMany({

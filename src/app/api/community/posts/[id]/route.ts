@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
     const { id } = await ctx.params;
     const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const post = await prisma.communityPost.findFirst({
         where: { id, hidden: false },
