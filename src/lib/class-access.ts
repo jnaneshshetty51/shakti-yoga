@@ -19,9 +19,15 @@ function weekStart(now = new Date()): Date {
  * doesn't vary by batch — one check covers it.
  */
 
+/** Starter members see how many of their weekly live classes they've used. */
+export interface StarterUsage {
+    used: number;
+    limit: number;
+}
+
 export type ClassAccess =
-    | { ok: true }
-    | { ok: false; reason: string; paywall: boolean };
+    | { ok: true; starter?: StarterUsage }
+    | { ok: false; reason: string; paywall: boolean; starter?: StarterUsage };
 
 const STAFF_ROLES: Role[] = [Role.SUPER_ADMIN, Role.STAFF_ADMIN, Role.TEACHER];
 const VALID_SUB_STATUSES: SubscriptionStatus[] = [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL];
@@ -72,13 +78,16 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
         const usedThisWeek = await prisma.classAttendance.count({
             where: { userId, joinedAt: { gte: weekStart() } },
         });
+        const starter: StarterUsage = { used: usedThisWeek, limit: STARTER_WEEKLY_LIMIT };
         if (usedThisWeek >= STARTER_WEEKLY_LIMIT) {
             return {
                 ok: false,
                 reason: `Your Starter plan includes ${STARTER_WEEKLY_LIMIT} live classes a week. Upgrade to Everyday for unlimited classes.`,
                 paywall: true,
+                starter,
             };
         }
+        return { ok: true, starter };
     }
 
     return { ok: true };

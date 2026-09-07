@@ -17,6 +17,26 @@ export async function syncSubscriptionState(userId: string, currentRole: Role): 
     const sub = await prisma.subscription.findUnique({ where: { userId } });
     if (!sub) return currentRole;
 
+    // Family seat: if the plan owner's subscription is no longer live, the seat
+    // collapses with it — drop this member back to VISITOR immediately.
+    if (sub.familyOwnerId) {
+        const owner = await prisma.subscription.findUnique({
+            where: { userId: sub.familyOwnerId },
+            select: { status: true, renewalDate: true },
+        });
+        const ownerLive =
+            owner != null &&
+            owner.renewalDate.getTime() > Date.now() &&
+            (owner.status === SubscriptionStatus.ACTIVE || owner.status === SubscriptionStatus.CANCELLED);
+        if (!ownerLive) {
+            await prisma.$transaction([
+                prisma.subscription.update({ where: { userId }, data: { status: SubscriptionStatus.EXPIRED } }),
+                prisma.user.update({ where: { id: userId }, data: { role: Role.VISITOR } }),
+            ]);
+            return Role.VISITOR;
+        }
+    }
+
     const pastDue = sub.renewalDate.getTime() < Date.now();
     // A cancelled sub or a lapsed free trial both drop to VISITOR once the
     // paid-through / trial date passes. EXPIRED means we already did this.

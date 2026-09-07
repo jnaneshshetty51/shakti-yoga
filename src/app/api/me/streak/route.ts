@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { PLANS } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +43,18 @@ export async function GET() {
 
         const classesThisWeek = rows.filter((r) => weekStart(r.joinedAt) === thisWeek).length;
 
+        // Starter members get a weekly live-class cap — surface it for the widget.
+        const me = await prisma.user.findUnique({ where: { id: session.id }, select: { role: true } });
+        const starterLimit =
+            me?.role === 'MEMBER_STARTER' ? (PLANS.starter.weeklyClassLimit ?? 2) : null;
+
         return NextResponse.json(
-            { currentStreakWeeks: current, classesThisWeek, attendedThisWeek: classesThisWeek > 0 },
+            {
+                currentStreakWeeks: current,
+                classesThisWeek,
+                attendedThisWeek: classesThisWeek > 0,
+                starterLimit,
+            },
             { headers: { 'Cache-Control': 'no-store' } },
         );
     } catch (error) {

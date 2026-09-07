@@ -10,7 +10,20 @@ interface Settings {
     defaultTimezone: string;
     teacher_rate_class: string;
     teacher_rate_session: string;
+    flag_iapEnabled: string;
+    flag_annualDefault: string;
+    flag_showStarter: string;
+    flag_showFamily: string;
+    flag_trialPaywallDay: string;
 }
+
+const FLAG_META: { key: keyof Settings; label: string; hint: string; type: "bool" | "num" }[] = [
+    { key: "flag_iapEnabled", label: "In-app purchases", hint: "Use Apple/Google billing in the app where available (else web checkout)", type: "bool" },
+    { key: "flag_annualDefault", label: "Default to annual", hint: "Paywall opens on the annual toggle", type: "bool" },
+    { key: "flag_showStarter", label: "Show Starter tier", hint: "The ₹699 / 2-classes-a-week rung", type: "bool" },
+    { key: "flag_showFamily", label: "Show Family plan", hint: "Two-member plan", type: "bool" },
+    { key: "flag_trialPaywallDay", label: "Trial paywall day", hint: "Day of the 7-day trial the hard paywall appears", type: "num" },
+];
 
 interface Integrations {
     razorpay: boolean;
@@ -29,6 +42,8 @@ function SettingsInner() {
     const [settings, setSettings] = useState<Settings>({
         platformName: "", supportEmail: "", defaultTimezone: "IST",
         teacher_rate_class: "500", teacher_rate_session: "800",
+        flag_iapEnabled: "true", flag_annualDefault: "true", flag_showStarter: "true",
+        flag_showFamily: "true", flag_trialPaywallDay: "6",
     });
     const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, minio: false });
     const [loading, setLoading] = useState(true);
@@ -151,6 +166,38 @@ function SettingsInner() {
                                     className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
                                 />
                             </div>
+                        </div>
+
+                        <div className="pt-5 border-t border-gray-100 space-y-3">
+                            <h3 className="font-bold text-gray-800">Paywall &amp; pricing</h3>
+                            <p className="text-xs text-gray-500">Takes effect on the next app launch — no deploy needed.</p>
+                            {FLAG_META.map((f) =>
+                                f.type === "bool" ? (
+                                    <label key={f.key} className="flex items-start gap-3 py-1 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="mt-1 h-4 w-4 accent-primary"
+                                            checked={settings[f.key] === "true"}
+                                            onChange={(e) => setSettings((s) => ({ ...s, [f.key]: e.target.checked ? "true" : "false" }))}
+                                        />
+                                        <span>
+                                            <span className="text-sm font-medium text-gray-800">{f.label}</span>
+                                            <span className="block text-xs text-gray-500">{f.hint}</span>
+                                        </span>
+                                    </label>
+                                ) : (
+                                    <div key={f.key}>
+                                        <label className={labelClass}>{f.label}</label>
+                                        <input
+                                            type="number" min={0} max={7}
+                                            value={settings[f.key]}
+                                            onChange={(e) => setSettings((s) => ({ ...s, [f.key]: e.target.value }))}
+                                            className="w-28 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
+                                        <span className="ml-2 text-xs text-gray-500">{f.hint}</span>
+                                    </div>
+                                ),
+                            )}
                         </div>
 
                         <div className="pt-5 border-t border-gray-100 space-y-3">

@@ -24,6 +24,7 @@ export type AppEvent =
     | 'subscription_cancelled'
     | 'referral_sent'
     | 'referral_converted'
+    | 'family_joined'
     | 'push_opened'
     | 'content_viewed'
     | 'challenge_joined'
@@ -40,6 +41,7 @@ export const CLIENT_EVENTS = new Set<string>([
     'challenge_joined',
     'push_opened',
     'referral_sent',
+    'family_joined',
     'guide_message_sent',
     'app_opened',
 ]);

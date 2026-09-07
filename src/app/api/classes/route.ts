@@ -52,7 +52,7 @@ export async function GET() {
             (isToday ? today : upcoming).push(view);
         }
 
-        return NextResponse.json({ today, upcoming, access: { ok: true } });
+        return NextResponse.json({ today, upcoming, access });
     } catch (error) {
         console.error('Classes API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -17,3 +17,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Host + app health check every 15 min (alerts admin on transition)
 */15 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/host-check.ts >> /var/log/shakti-cron.log 2>&1
+
+# Publish scheduled content (reels / posts / blogs) every 10 min
+*/10 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/publish-scheduled-content.ts >> /var/log/shakti-cron.log 2>&1
+
+# Reconcile family seats + apply scheduled plan downgrades — hourly
+17 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/reconcile-subscriptions.ts >> /var/log/shakti-cron.log 2>&1

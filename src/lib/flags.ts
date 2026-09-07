@@ -2,33 +2,41 @@ import { prisma } from '@/lib/prisma';
 
 /**
  * Runtime feature flags / experiment config. Backed by `Setting` rows so the
- * team can flip them without a deploy (an admin screen can edit these). PostHog
- * experiments can layer on top client-side later.
+ * team can flip them from /admin/settings without a deploy.
  */
 
 export interface Flags {
     /** Show in-app purchases where the native SDK is available (else web checkout). */
     iapEnabled: boolean;
-    /** Paywall preselects the annual plan. */
+    /** Paywall preselects the annual toggle. */
     annualDefault: boolean;
-    /** Which paywall layout to render. */
-    paywallVariant: 'ladder' | 'simple';
-    /** Days into the trial before the hard paywall. */
+    /** Show the Starter tier on the paywall. */
+    showStarter: boolean;
+    /** Show the Family plan on the paywall. */
+    showFamily: boolean;
+    /** Day of the trial the app hard-gates behind the paywall. */
     trialPaywallDay: number;
 }
 
 const DEFAULTS: Flags = {
     iapEnabled: true,
     annualDefault: true,
-    paywallVariant: 'ladder',
+    showStarter: true,
+    showFamily: true,
     trialPaywallDay: 6,
 };
 
-const KEYS = ['flag_iapEnabled', 'flag_annualDefault', 'flag_paywallVariant', 'flag_trialPaywallDay'];
+export const FLAG_KEYS = [
+    'flag_iapEnabled',
+    'flag_annualDefault',
+    'flag_showStarter',
+    'flag_showFamily',
+    'flag_trialPaywallDay',
+] as const;
 
 export async function getFlags(): Promise<Flags> {
     try {
-        const rows = await prisma.setting.findMany({ where: { key: { in: KEYS } } });
+        const rows = await prisma.setting.findMany({ where: { key: { in: [...FLAG_KEYS] } } });
         const map = new Map(rows.map((r) => [r.key, r.value]));
         const bool = (k: string, d: boolean) => {
             const v = map.get(k);
@@ -37,7 +45,8 @@ export async function getFlags(): Promise<Flags> {
         return {
             iapEnabled: bool('flag_iapEnabled', DEFAULTS.iapEnabled),
             annualDefault: bool('flag_annualDefault', DEFAULTS.annualDefault),
-            paywallVariant: (map.get('flag_paywallVariant') as Flags['paywallVariant']) || DEFAULTS.paywallVariant,
+            showStarter: bool('flag_showStarter', DEFAULTS.showStarter),
+            showFamily: bool('flag_showFamily', DEFAULTS.showFamily),
             trialPaywallDay: Number(map.get('flag_trialPaywallDay')) || DEFAULTS.trialPaywallDay,
         };
     } catch {

@@ -425,7 +425,7 @@ async function main() {
 
   const now = new Date();
 
-  const practiceMorning = await prisma.practice.create({
+  await prisma.practice.create({
     data: {
       title: 'Morning Wake-Up Flow',
       slug: 'morning-wake-up-flow',
@@ -438,7 +438,7 @@ async function main() {
       publishedAt: now,
     },
   });
-  const practiceSleep = await prisma.practice.create({
+  await prisma.practice.create({
     data: {
       title: 'Wind-Down for Sleep',
       slug: 'wind-down-for-sleep',

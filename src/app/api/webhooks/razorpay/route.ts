@@ -118,15 +118,25 @@ export async function POST(request: Request) {
                     : (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d; })();
 
                 const firstActivation = !subscription;
+                // A scheduled downgrade (e.g. Everyday → Starter) takes effect on
+                // this renewal: swap in the pending plan and clear the marker.
+                const effectivePlan =
+                    subscription?.pendingPlanKey ? getPlan(subscription.pendingPlanKey) : plan;
                 // activatePlan upserts the Subscription, sets role + billingProviderId,
                 // and tops up credits — the same idempotent path /verify uses.
-                await activatePlan(userId, plan, {
+                await activatePlan(userId, effectivePlan, {
                     recurring: true,
                     subscriptionId: subEntity.id,
                     renewalDate,
                     region,
                     ...(payEntity ? { amount: payEntity.amount / 100, currency: payEntity.currency } : {}),
                 });
+                if (subscription?.pendingPlanKey) {
+                    await prisma.subscription.update({
+                        where: { id: subscription.id },
+                        data: { pendingPlanKey: null },
+                    });
+                }
 
                 recordEvent(firstActivation ? 'SUBSCRIPTION' : 'SUBSCRIPTION_RENEWED', {
                     userId,
@@ -138,7 +148,7 @@ export async function POST(request: Request) {
                 if (!firstActivation) {
                     sendPush(userId, {
                         title: 'Membership renewed',
-                        body: `Your ${plan.name} plan renewed successfully.`,
+                        body: `Your ${effectivePlan.name} plan renewed successfully.`,
                         url: '/dashboard/billing',
                         channelId: 'billing',
                     }).catch(() => {});

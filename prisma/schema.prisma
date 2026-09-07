@@ -230,6 +230,9 @@ model Subscription {
   billingProviderId String? // Razorpay sub id (sub_xxx), or RevenueCat original_transaction_id
   recurring         Boolean            @default(false)
   familyOwnerId     String? // set on the invited seat of a Family plan → points at the payer
+  familyInviteCode  String?            @unique // the owner's shareable seat code
+  pendingPlanKey    String? // a scheduled downgrade — applied at the next renewal
+  pausedAt          DateTime? // set when the member pauses; access still runs to renewalDate
 }
 
 model Setting {

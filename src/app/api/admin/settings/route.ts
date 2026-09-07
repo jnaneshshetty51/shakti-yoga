@@ -13,6 +13,12 @@ const DEFAULTS: Record<string, string> = {
     defaultTimezone: 'IST',
     teacher_rate_class: '500',
     teacher_rate_session: '800',
+    // Growth flags — see src/lib/flags.ts (values are 'true' / 'false' / a number).
+    flag_iapEnabled: 'true',
+    flag_annualDefault: 'true',
+    flag_showStarter: 'true',
+    flag_showFamily: 'true',
+    flag_trialPaywallDay: '6',
 };
 
 export async function GET() {
