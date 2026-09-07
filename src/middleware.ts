@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
+import { countryForIp } from '@/lib/geoip';
 
 const REGION_COOKIE = 'sy_region';
 const REGION_MAX_AGE = 60 * 60 * 24 * 180; // 180 days
@@ -29,12 +30,14 @@ export async function middleware(request: NextRequest) {
         region = regionFromCountry(override);
     }
     if (region !== 'IN' && region !== 'INTL') {
-        // nginx GeoIP2 sets x-geo-country; keep a couple of common fallbacks.
         const country =
-            request.headers.get('x-geo-country') ||
+            request.headers.get('x-geo-country') ||       // nginx GeoIP2, if configured
             request.headers.get('x-vercel-ip-country') ||
             request.headers.get('cf-ipcountry') ||
-            null;
+            (await countryForIp(
+                request.headers.get('x-forwarded-for') ||
+                request.headers.get('x-real-ip'),
+            ));
         region = regionFromCountry(country);
     }
 
@@ -86,6 +89,9 @@ export async function middleware(request: NextRequest) {
 
     return finish(NextResponse.next({ request: { headers: forwarded } }));
 }
+
+// Node runtime so the GeoIP lookup (maxmind + a local .mmdb) can read the file.
+export const runtime = 'nodejs';
 
 export const config = {
     // Everything except Next internals and static files (so the region cookie

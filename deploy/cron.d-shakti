@@ -23,3 +23,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Reconcile family seats + apply scheduled plan downgrades — hourly
 17 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/reconcile-subscriptions.ts >> /var/log/shakti-cron.log 2>&1
+
+# Refresh the GeoIP country DB (₹ vs $ pricing) — monthly, 04:00 on the 1st
+0 4 1 * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/refresh-geoip.ts >> /var/log/shakti-cron.log 2>&1
