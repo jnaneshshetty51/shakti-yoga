@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LuCalendarDays, LuMessageSquare, LuUsers, LuNotebookPen, LuTriangleAlert } from "react-icons/lu";
 import { useToast } from "@/components/admin/Toast";
+import { PageHeader, PageLoading, Card, Badge, EmptyState, ErrorState } from "@/components/ui";
+import { StatCard } from "@/components/admin/StatCard";
 
 interface Dash {
     generatedAt: string;
@@ -87,16 +90,8 @@ export default function TeacherTodayPage() {
         load();
     };
 
-    if (loading && !data) return <p className="text-gray-500">Loading…</p>;
-    if (error && !data) {
-        return (
-            <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-4">Today</h1>
-                <p className="text-gray-600 mb-4">{error}</p>
-                <button onClick={load} className="px-4 py-2 bg-primary text-white text-sm font-bold uppercase tracking-widest rounded">Retry</button>
-            </div>
-        );
-    }
+    if (loading && !data) return <PageLoading />;
+    if (error && !data) return <ErrorState message={error} onRetry={load} />;
     if (!data) return null;
 
     const { stats } = data;
@@ -105,37 +100,34 @@ export default function TeacherTodayPage() {
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800">Namaste, {data.teacher.name.split(" ")[0]}</h1>
-                <p className="text-gray-500">Here's what's on for you.</p>
-            </div>
+            <PageHeader
+                eyebrow="Welcome back,"
+                title={`Namaste, ${data.teacher.name.split(" ")[0]} 🙏`}
+                subtitle="Here's what's on for you today and this week."
+            />
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {[
-                    { label: "Classes today", value: stats.classesToday },
-                    { label: "Sessions this week", value: stats.sessionsThisWeek },
-                    { label: "Attendance (7d)", value: stats.attendanceThisWeek },
-                    { label: "Notes to write", value: stats.notesToWrite },
-                ].map((s) => (
-                    <div key={s.label} className="bg-white rounded-lg border border-gray-100 px-4 py-3">
-                        <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</div>
-                        <div className="text-2xl font-bold text-gray-800 mt-0.5">{s.value}</div>
-                    </div>
-                ))}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                <StatCard title="Classes today" value={stats.classesToday} icon={<LuCalendarDays />} accent="green" />
+                <StatCard title="Sessions this week" value={stats.sessionsThisWeek} icon={<LuMessageSquare />} accent="blue" />
+                <StatCard title="Attendance (7d)" value={stats.attendanceThisWeek} icon={<LuUsers />} accent="terracotta" />
+                <StatCard title="Notes to write" value={stats.notesToWrite} icon={<LuNotebookPen />} accent="amber" />
             </div>
 
             {stats.notesToWrite > 0 && (
-                <Link href="/teacher/sessions" className="block mb-8 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm text-yellow-800 hover:bg-yellow-100 transition-colors">
+                <Link
+                    href="/teacher/sessions"
+                    className="flex items-center gap-2 mb-8 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800 hover:bg-amber-100 transition-colors"
+                >
+                    <LuTriangleAlert className="shrink-0" />
                     {stats.notesToWrite} completed session{stats.notesToWrite === 1 ? "" : "s"} still need notes →
                 </Link>
             )}
 
-            <div className="grid lg:grid-cols-2 gap-8">
-                {/* classes */}
-                <section className="bg-white rounded-lg border border-gray-100 p-6">
-                    <h2 className="font-bold text-gray-800 mb-4">Group Classes</h2>
+            <div className="grid lg:grid-cols-2 gap-6">
+                <Card padded>
+                    <h2 className="font-bold text-gray-800 mb-4">Group classes</h2>
                     {data.classes.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic">No classes scheduled in the next 7 days.</p>
+                        <EmptyState icon={LuCalendarDays} title="Nothing in the next 7 days" />
                     ) : (
                         <div className="space-y-4">
                             {[...todayClasses, ...laterClasses].map((c) => (
@@ -143,7 +135,7 @@ export default function TeacherTodayPage() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-800">{c.name}</p>
                                         <p className="text-xs text-gray-500">{when(c.at)} · {c.attendanceCount} joined</p>
-                                        <button onClick={() => setLink("class", c.id, c.ownLink ? c.meetingLink : "")} className="text-xs text-primary hover:text-secondary mt-1">
+                                        <button onClick={() => setLink("class", c.id, c.ownLink ? c.meetingLink : "")} className="text-xs font-semibold text-primary hover:text-secondary mt-1">
                                             {c.ownLink ? "Change my link" : c.meetingLink ? "Override link" : "Set Meet link"}
                                         </button>
                                     </div>
@@ -152,27 +144,26 @@ export default function TeacherTodayPage() {
                                             href={c.meetingLink}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider whitespace-nowrap ${c.joinable ? "bg-primary text-white hover:bg-secondary" : "bg-gray-100 text-gray-500"}`}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${c.joinable ? "bg-primary text-white hover:bg-primary/90" : "bg-gray-100 text-gray-500"}`}
                                         >
                                             {c.joinable ? "Join now" : "Open Meet"}
                                         </a>
                                     ) : (
-                                        <span className="px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider bg-orange-50 text-orange-600 whitespace-nowrap">No link</span>
+                                        <Badge tone="amber">No link</Badge>
                                     )}
                                 </div>
                             ))}
                         </div>
                     )}
-                </section>
+                </Card>
 
-                {/* sessions */}
-                <section className="bg-white rounded-lg border border-gray-100 p-6">
+                <Card padded>
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-bold text-gray-800">1:1 Sessions (7 days)</h2>
-                        <Link href="/teacher/sessions" className="text-xs font-bold uppercase tracking-widest text-primary hover:text-secondary">All</Link>
+                        <h2 className="font-bold text-gray-800">1:1 sessions (7 days)</h2>
+                        <Link href="/teacher/sessions" className="text-xs font-semibold text-primary hover:text-secondary">All →</Link>
                     </div>
                     {data.sessions.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic">No sessions booked in the next 7 days.</p>
+                        <EmptyState icon={LuMessageSquare} title="No sessions in the next 7 days" />
                     ) : (
                         <div className="space-y-4">
                             {data.sessions.map((s) => (
@@ -180,18 +171,16 @@ export default function TeacherTodayPage() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-800 truncate">{s.member}</p>
                                         <p className="text-xs text-gray-500 capitalize">{when(s.at)} · {s.type} · {s.status.toLowerCase()}</p>
-                                        <button onClick={() => setLink("session", s.id, "")} className="text-xs text-primary hover:text-secondary mt-1">
+                                        <button onClick={() => setLink("session", s.id, "")} className="text-xs font-semibold text-primary hover:text-secondary mt-1">
                                             {s.hasLink ? "Change link" : "Set Meet link"}
                                         </button>
                                     </div>
-                                    {!s.hasLink && (
-                                        <span className="px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider bg-orange-50 text-orange-600 whitespace-nowrap">No link</span>
-                                    )}
+                                    {!s.hasLink && <Badge tone="amber">No link</Badge>}
                                 </div>
                             ))}
                         </div>
                     )}
-                </section>
+                </Card>
             </div>
         </div>
     );

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { formatPrice } from "@/lib/pricing";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
 
 export type Subscription = {
     id: string;
@@ -57,14 +58,7 @@ export default function AdminSubscriptionsPage() {
         { header: "Amount", accessor: (sub: Subscription) => formatPrice(sub.amount) },
         {
             header: "Status",
-            accessor: (sub: Subscription) => (
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${sub.status === 'Active' ? 'bg-green-100 text-green-800' :
-                    sub.status === 'Trial' ? 'bg-blue-100 text-blue-800' :
-                        'bg-red-100 text-red-800'
-                    }`}>
-                    {sub.status}
-                </span>
-            )
+            accessor: (sub: Subscription) => <StatusBadge status={sub.status} />,
         },
         { header: "Renewal Date", accessor: "renewalDate" as keyof Subscription },
     ];
@@ -89,34 +83,21 @@ export default function AdminSubscriptionsPage() {
         fetchSubscriptions();
     };
 
-    if (loading) {
-        return (
-            <div>
-                <div className="mb-8">
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Subscriptions</h1>
-                    <p className="text-gray-500">Manage member plans, billing, and renewals.</p>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Subscriptions" />;
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">Subscriptions</h1>
-                <p className="text-gray-500">Manage member plans, billing, and renewals.</p>
-            </div>
+            <PageHeader title="Subscriptions" subtitle="Manage member plans, billing, and renewals." />
 
             <DTable
                 data={subscriptions}
                 columns={columns}
                 title="Subscriptions"
                 actions={(sub) => (
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditing(sub)} className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Edit</button>
-                        <button onClick={() => handleDelete(sub)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Delete</button>
-                    </div>
+                    <TableActions>
+                        <ActionButton onClick={() => setEditing(sub)}>Edit</ActionButton>
+                        <ActionButton tone="danger" onClick={() => handleDelete(sub)}>Delete</ActionButton>
+                    </TableActions>
                 )}
             />
 

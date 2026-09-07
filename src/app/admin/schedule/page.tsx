@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
+import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button } from "@/components/admin/ui";
+import { LuCalendarClock } from "react-icons/lu";
 
 type ScheduleItem = {
     id: string;
@@ -81,14 +83,7 @@ export default function AdminSchedulePage() {
         fetchSchedule();
     };
 
-    if (loading) {
-        return (
-            <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-8">Class Schedule</h1>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Class Schedule" />;
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const allScheduleItems: ScheduleItem[] = scheduleData ? Object.values(scheduleData.schedule).flat() : [];
@@ -96,56 +91,44 @@ export default function AdminSchedulePage() {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="font-serif text-3xl text-gray-800">Class Schedule</h1>
-                <button
-                    onClick={() => setCreating(true)}
-                    className="px-4 py-2 bg-gray-900 text-white text-sm font-bold uppercase tracking-widest rounded hover:bg-gray-700 transition-colors"
-                >
-                    Add Class
-                </button>
-            </div>
+            <PageHeader title="Class Schedule" subtitle="Group-class instances for the next 7 days.">
+                <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class</Button>
+            </PageHeader>
 
-            <div className="grid md:grid-cols-7 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 mb-8">
                 {days.map((day) => (
-                    <div key={day} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 text-center font-bold text-gray-800">
-                        {day}
-                        <div className="text-xs font-normal text-gray-400 mt-1">
+                    <Card key={day} className="p-4 text-center">
+                        <div className="font-bold text-gray-800">{day}</div>
+                        <div className="text-xs text-gray-400 mt-1">
                             {(scheduleData?.schedule[day] ?? []).length} class(es)
                         </div>
-                    </div>
+                    </Card>
                 ))}
             </div>
 
             {allScheduleItems.length === 0 ? (
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-center text-gray-500">
-                    No classes scheduled for the next 7 days.
-                </div>
+                <Card><EmptyState icon={LuCalendarClock} title="Nothing scheduled" hint="No classes scheduled for the next 7 days." /></Card>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {allScheduleItems.map((item) => (
-                        <div
+                        <Card
                             key={item.id}
-                            className={`bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center ${item.status === 'Cancelled' ? 'opacity-60' : ''}`}
+                            padded
+                            className={`flex flex-wrap justify-between items-center gap-4 ${item.status === 'Cancelled' ? 'opacity-60' : ''}`}
                         >
                             <div>
-                                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">{item.timeSlot}</div>
-                                <div className="text-xl font-bold text-gray-800">{item.batchName}</div>
-                                <div className="text-sm text-gray-600">Instructor: {item.teacher}</div>
+                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{item.timeSlot}</div>
+                                <div className="text-lg font-bold text-gray-800">{item.batchName}</div>
+                                <div className="text-sm text-gray-500">Instructor: {item.teacher}</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
                                     <div className="text-2xl font-bold text-gray-800">{item.attendanceCount}</div>
-                                    <div className="text-xs text-gray-500">{item.status}</div>
+                                    <div className="mt-0.5"><StatusBadge status={item.status} /></div>
                                 </div>
-                                <button
-                                    onClick={() => setEditing(item)}
-                                    className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-                                >
-                                    Edit
-                                </button>
+                                <Button variant="secondary" size="sm" onClick={() => setEditing(item)}>Edit</Button>
                             </div>
-                        </div>
+                        </Card>
                     ))}
                 </div>
             )}

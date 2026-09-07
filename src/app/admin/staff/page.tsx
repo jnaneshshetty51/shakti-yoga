@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { LuGraduationCap } from "react-icons/lu";
+import { PageHeader, Card, EmptyState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
 
 interface Staff {
     id: string;
@@ -166,44 +167,40 @@ export default function AdminStaffPage() {
     };
 
     return (
-        <div className="p-4 sm:p-8 max-w-4xl">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="font-serif text-2xl sm:text-3xl text-primary">Staff &amp; Teachers</h1>
-                    <p className="text-sm text-gray-500">Accounts, photos and bios for teachers and admins.</p>
-                </div>
-                <button onClick={() => { setCreating((c) => !c); setErr(""); }} className="px-4 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary">
+        <div className="max-w-4xl">
+            <PageHeader title="Staff & Teachers" subtitle="Accounts, photos and bios for teachers and admins.">
+                <Button variant={creating ? "secondary" : "primary"} onClick={() => { setCreating((c) => !c); setErr(""); }}>
                     {creating ? "Cancel" : "Add staff"}
-                </button>
-            </div>
+                </Button>
+            </PageHeader>
 
-            {msg && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded text-sm">{msg}</div>}
-            {err && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">{err}</div>}
+            {msg && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{msg}</div>}
+            {err && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">{err}</div>}
 
             {creating && (
-                <form onSubmit={create} className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+                <form onSubmit={create} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-5 mb-6">
                     <div className="flex gap-4 items-start">
                         <PhotoInput
                             current={newPhotoPreview}
                             onFile={(f) => { setNewPhoto(f); setNewPhotoPreview(URL.createObjectURL(f)); }}
                         />
                         <div className="grid sm:grid-cols-2 gap-3 flex-1">
-                            <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" />
-                            <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" />
-                            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm">
+                            <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+                            <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+                            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputClass}>
                                 {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
                             </select>
-                            <input placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" />
-                            <input placeholder='Title, e.g. "Senior Yoga Therapist"' value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="sm:col-span-2 p-2.5 border border-gray-200 rounded text-sm" />
-                            <input placeholder="Specialties, comma separated" value={form.specialties} onChange={(e) => setForm({ ...form, specialties: e.target.value })} className="sm:col-span-2 p-2.5 border border-gray-200 rounded text-sm" />
-                            <input type="number" min={0} max={80} placeholder="Years of experience" value={form.yearsExperience} onChange={(e) => setForm({ ...form, yearsExperience: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" />
+                            <input placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+                            <input placeholder='Title, e.g. "Senior Yoga Therapist"' value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
+                            <input placeholder="Specialties, comma separated" value={form.specialties} onChange={(e) => setForm({ ...form, specialties: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
+                            <input type="number" min={0} max={80} placeholder="Years of experience" value={form.yearsExperience} onChange={(e) => setForm({ ...form, yearsExperience: e.target.value })} className={inputClass} />
                             <label className="flex items-center gap-2 text-sm text-gray-600">
                                 <input type="checkbox" checked={form.publicVisible} onChange={(e) => setForm({ ...form, publicVisible: e.target.checked })} /> Show on public site
                             </label>
-                            <textarea placeholder="Bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className="sm:col-span-2 p-2.5 border border-gray-200 rounded text-sm h-24" />
+                            <textarea placeholder="Bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className={`sm:col-span-2 h-24 ${inputClass}`} />
                         </div>
                     </div>
-                    <button disabled={busy} className="mt-4 px-6 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary disabled:opacity-60">
+                    <button disabled={busy} className="mt-4 px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60">
                         {busy ? "Adding…" : "Add staff member"}
                     </button>
                 </form>
@@ -212,31 +209,31 @@ export default function AdminStaffPage() {
             {loading ? (
                 <p className="text-gray-500">Loading…</p>
             ) : staff.length === 0 ? (
-                <p className="text-gray-400 italic">No staff yet.</p>
+                <Card><EmptyState icon={LuGraduationCap} title="No staff yet" hint="Add teachers and admins so they show on the public site and can be scheduled." /></Card>
             ) : (
                 <div className="grid gap-4">
                     {staff.map((s) => (
-                        <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-5">
+                        <div key={s.id} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-5">
                             {editingId === s.id ? (
                                 <div className="space-y-3">
                                     <div className="grid sm:grid-cols-2 gap-3">
-                                        <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" placeholder="Name" />
-                                        <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm">
+                                        <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={inputClass} placeholder="Name" />
+                                        <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className={inputClass}>
                                             {["TEACHER", "STAFF_ADMIN", "SUPER_ADMIN"].map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                                         </select>
-                                        <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" placeholder="Phone" />
-                                        <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" placeholder="Title" />
-                                        <input value={editForm.specialties} onChange={(e) => setEditForm({ ...editForm, specialties: e.target.value })} className="sm:col-span-2 p-2.5 border border-gray-200 rounded text-sm" placeholder="Specialties (comma separated)" />
-                                        <input type="number" min={0} max={80} value={editForm.yearsExperience} onChange={(e) => setEditForm({ ...editForm, yearsExperience: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" placeholder="Years experience" />
-                                        <input type="number" value={editForm.displayOrder} onChange={(e) => setEditForm({ ...editForm, displayOrder: e.target.value })} className="p-2.5 border border-gray-200 rounded text-sm" placeholder="Display order" />
+                                        <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className={inputClass} placeholder="Phone" />
+                                        <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className={inputClass} placeholder="Title" />
+                                        <input value={editForm.specialties} onChange={(e) => setEditForm({ ...editForm, specialties: e.target.value })} className={`sm:col-span-2 ${inputClass}`} placeholder="Specialties (comma separated)" />
+                                        <input type="number" min={0} max={80} value={editForm.yearsExperience} onChange={(e) => setEditForm({ ...editForm, yearsExperience: e.target.value })} className={inputClass} placeholder="Years experience" />
+                                        <input type="number" value={editForm.displayOrder} onChange={(e) => setEditForm({ ...editForm, displayOrder: e.target.value })} className={inputClass} placeholder="Display order" />
                                     </div>
-                                    <textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} className="w-full p-2.5 border border-gray-200 rounded text-sm h-24" placeholder="Bio" />
+                                    <textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} className={`h-24 ${inputClass}`} placeholder="Bio" />
                                     <label className="flex items-center gap-2 text-sm text-gray-600">
                                         <input type="checkbox" checked={editForm.publicVisible} onChange={(e) => setEditForm({ ...editForm, publicVisible: e.target.checked })} /> Show on public site
                                     </label>
                                     <div className="flex gap-3">
-                                        <button onClick={() => saveEdit(s.id)} className="px-5 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary">Save</button>
-                                        <button onClick={() => setEditingId(null)} className="px-5 py-2 border border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-widest rounded hover:bg-gray-50">Cancel</button>
+                                        <button onClick={() => saveEdit(s.id)} className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">Save</button>
+                                        <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
                                     </div>
                                 </div>
                             ) : (
@@ -256,19 +253,19 @@ export default function AdminStaffPage() {
                                                 <p className="text-sm text-gray-500">{s.title || ROLE_LABEL[s.role] || s.role}</p>
                                             </div>
                                             <div className="flex gap-3 shrink-0">
-                                                <button onClick={() => startEdit(s)} className="text-xs font-bold text-secondary hover:text-primary uppercase tracking-widest">Edit</button>
-                                                <button onClick={() => remove(s)} className="text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">Remove</button>
+                                                <ActionButton onClick={() => startEdit(s)}>Edit</ActionButton>
+                                                <ActionButton tone="danger" onClick={() => remove(s)}>Remove</ActionButton>
                                             </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
-                                            <span className="bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider font-bold">{ROLE_LABEL[s.role] || s.role}</span>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
+                                            <Badge tone="gray">{ROLE_LABEL[s.role] || s.role}</Badge>
                                             <span>{s.email}</span>
                                             {s.yearsExperience != null && <span>{s.yearsExperience} yrs</span>}
                                         </div>
                                         {s.specialties.length > 0 && (
                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                                 {s.specialties.map((sp) => (
-                                                    <span key={sp} className="text-[11px] bg-accent/40 text-secondary px-2 py-0.5 rounded">{sp}</span>
+                                                    <span key={sp} className="text-[11px] bg-accent/40 text-secondary px-2 py-0.5 rounded-full">{sp}</span>
                                                 ))}
                                             </div>
                                         )}
@@ -284,7 +281,6 @@ export default function AdminStaffPage() {
                 </div>
             )}
 
-            <Link href="/admin" className="inline-block mt-8 text-sm font-bold text-text/50 hover:text-primary uppercase tracking-widest">← Dashboard</Link>
         </div>
     );
 }

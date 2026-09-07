@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import {
+    LuMessageSquare, LuCalendarClock, LuArrowRight, LuExternalLink, LuTriangleAlert,
+} from "react-icons/lu";
+import { Card, Badge } from "@/components/ui";
 import type { ClassView, ClassesResponse, ClassAccessInfo } from "@/types/class";
 
 interface CommunityGroup {
@@ -65,12 +69,12 @@ export default function DashboardPage() {
         return () => { cancelled = true; };
     }, [userId, reloadKey]);
 
-    if (isLoading) return <div className="p-20 text-center text-text/50">Loading your dashboard…</div>;
+    if (isLoading) return <div className="p-20 text-center text-gray-400">Loading your dashboard…</div>;
     if (!user) {
         return (
             <div className="p-20 text-center">
-                <p className="text-text/60 mb-4">Your session has ended.</p>
-                <Link href="/login?from=/dashboard" className="text-primary font-bold hover:underline">Log in again</Link>
+                <p className="text-gray-500 mb-4">Your session has ended.</p>
+                <Link href="/login?from=/dashboard" className="text-primary font-semibold hover:underline">Log in again</Link>
             </div>
         );
     }
@@ -93,177 +97,167 @@ export default function DashboardPage() {
         }
     };
 
+    const planLabel = user.role.replace("member_", "").replace("_", " ");
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="font-serif text-3xl text-primary mb-2">Namaste, {user.name}</h1>
-                    <p className="text-text/60">Welcome to your sanctuary.</p>
+                    <p className="text-sm text-gray-400">Welcome back,</p>
+                    <h1 className="font-serif text-[26px] leading-tight text-gray-800">Namaste, {user.name} 🙏</h1>
+                    <p className="text-sm text-gray-500 mt-1">Your practice, your pace — everything in one place.</p>
                 </div>
-                <div className="text-right hidden md:block">
-                    <div className="text-sm font-bold text-text/40 uppercase tracking-widest">Current Plan</div>
-                    <div className="text-lg font-serif text-secondary capitalize">
-                        {user.role.replace('member_', '').replace('_', ' ')}
-                    </div>
-                </div>
+                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-600 shrink-0">
+                    Current plan
+                    <span className="font-serif text-secondary capitalize">{planLabel}</span>
+                </span>
             </div>
 
             {loadError && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8 flex items-center justify-between gap-4 text-sm">
-                    <span className="text-amber-800">We couldn&apos;t load your class schedule just now.</span>
-                    <button
-                        onClick={() => setReloadKey((k) => k + 1)}
-                        className="text-amber-900 font-bold uppercase tracking-widest text-xs hover:underline whitespace-nowrap"
-                    >
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center justify-between gap-4 text-sm">
+                    <span className="flex items-center gap-2 text-amber-800">
+                        <LuTriangleAlert className="shrink-0" /> We couldn&rsquo;t load your class schedule just now.
+                    </span>
+                    <button onClick={() => setReloadKey((k) => k + 1)} className="text-amber-900 font-semibold text-xs hover:underline whitespace-nowrap">
                         Retry
                     </button>
                 </div>
             )}
 
             {group && (
-                <div className="bg-green-50 border border-green-100 rounded-lg p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+                <Card padded className="mb-6 border-green-100 bg-green-50/60 flex flex-col md:flex-row md:items-center justify-between gap-5">
                     <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="text-2xl">🌿</span>
-                            <h3 className="font-bold text-lg text-green-800">{group.name}</h3>
+                        <div className="flex items-center gap-2.5 mb-1.5">
+                            <span className="text-xl">🌿</span>
+                            <h3 className="font-bold text-green-800">{group.name}</h3>
                         </div>
-                        <p className="text-sm text-green-700 mb-4">
-                            Join our WhatsApp group for daily class links, motivation, and community updates.
+                        <p className="text-sm text-green-700">
+                            Daily class links, motivation and community updates.
                         </p>
                         {group.pinnedMessage && (
-                            <div className="bg-white/60 p-3 rounded border border-green-100 text-sm text-green-800 italic">
-                                &ldquo; {group.pinnedMessage} &rdquo;
-                            </div>
+                            <p className="mt-3 bg-white/70 p-3 rounded-xl border border-green-100 text-sm text-green-800 italic">
+                                &ldquo;{group.pinnedMessage}&rdquo;
+                            </p>
                         )}
                     </div>
                     <a
                         href={group.whatsappLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-6 py-3 bg-green-600 text-white font-bold uppercase tracking-widest rounded hover:bg-green-700 transition-colors shadow-md whitespace-nowrap flex items-center gap-2"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors whitespace-nowrap self-start md:self-auto"
                     >
-                        <span>Join WhatsApp</span>
-                        <span>→</span>
+                        Join WhatsApp <LuExternalLink className="text-sm" />
                     </a>
-                </div>
+                </Card>
             )}
 
-            <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 grid gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 relative overflow-hidden">
+            <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <Card padded className="relative overflow-hidden">
                         {access && !access.ok ? (
-                            <div className="py-4">
+                            <div>
                                 <h3 className="font-serif text-xl text-gray-800 mb-1">
-                                    {access.paywall ? 'Your access has lapsed' : 'Your plan is 1:1 therapy'}
+                                    {access.paywall ? "Your access has lapsed" : "Your plan is 1:1 therapy"}
                                 </h3>
-                                <p className="text-sm text-text/70 mb-4">{access.reason}</p>
+                                <p className="text-sm text-gray-500 mb-4">{access.reason}</p>
                                 {access.paywall ? (
-                                    <div className="flex flex-wrap gap-3">
-                                        <Link href="/checkout?plan=everyday" className="inline-block px-6 py-3 bg-primary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-secondary transition-colors">
+                                    <div className="flex flex-wrap gap-2">
+                                        <Link href="/checkout?plan=everyday" className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
                                             Renew Everyday Yoga
                                         </Link>
-                                        <Link href="/programs" className="inline-block px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest text-xs rounded hover:bg-gray-50 transition-colors">
-                                            View Plans
+                                        <Link href="/programs" className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                                            View plans
                                         </Link>
                                     </div>
                                 ) : (
-                                    <Link href="/dashboard/therapy/book" className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors">
-                                        Book a Session
+                                    <Link href="/dashboard/therapy/book" className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-secondary text-white text-sm font-semibold hover:bg-primary transition-colors">
+                                        Book a session <LuArrowRight className="text-sm" />
                                     </Link>
                                 )}
                             </div>
                         ) : nextClass ? (
                             <>
                                 {nextClass.joinable && (
-                                    <div className="absolute top-0 right-0 bg-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl uppercase tracking-widest">
-                                        Open now
-                                    </div>
+                                    <span className="absolute top-4 right-4"><Badge tone="green">Open now</Badge></span>
                                 )}
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-serif text-xl text-gray-800 mb-1">{nextClass.batchName}</h3>
-                                        <p className="text-sm text-text/70">
-                                            {formatWhen(nextClass.startsAt)} IST · {nextClass.teacher}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-4">
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Your next class</p>
+                                <h3 className="font-serif text-xl text-gray-800">{nextClass.batchName}</h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {formatWhen(nextClass.startsAt)} IST · {nextClass.teacher}
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-4">
                                     <button
                                         onClick={handleJoin}
                                         disabled={!nextClass.joinable || joining}
-                                        className={`flex-1 py-3 text-center font-bold uppercase tracking-widest rounded transition-colors shadow-md ${nextClass.joinable
-                                            ? 'bg-primary text-white hover:bg-secondary'
-                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                                        className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-colors ${
+                                            nextClass.joinable ? "bg-primary text-white hover:bg-primary/90" : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        }`}
                                     >
-                                        {joining ? 'Opening…' : nextClass.joinable ? 'Join Google Meet' : 'Opens near start time'}
+                                        {joining ? "Opening…" : nextClass.joinable ? "Join Google Meet" : "Opens near start time"}
                                     </button>
-                                    <Link href="/dashboard/classes" className="px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors">
-                                        Full Schedule
+                                    <Link href="/dashboard/classes" className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                                        Full schedule
                                     </Link>
                                 </div>
                             </>
                         ) : (
-                            <div className="py-4">
+                            <div>
                                 <h3 className="font-serif text-xl text-gray-800 mb-1">No class scheduled</h3>
-                                <p className="text-sm text-text/70 mb-4">Your next class will appear here.</p>
-                                <Link href="/dashboard/classes" className="inline-block px-6 py-3 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors">
-                                    View Schedule
+                                <p className="text-sm text-gray-500 mb-4">Your next class will appear here.</p>
+                                <Link href="/dashboard/classes" className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                                    View schedule
                                 </Link>
                             </div>
                         )}
-                    </div>
+                    </Card>
 
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:border-primary/20 transition-colors">
-                        <h3 className="font-serif text-xl text-gray-800 mb-4">Quick Actions</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Link href="/dashboard/consultations" className="p-4 bg-gray-50 rounded hover:bg-primary/5 transition-colors text-center group">
-                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">💬</div>
-                                <div className="font-bold text-gray-700">Consultations</div>
-                            </Link>
-                            {user.role === 'member_therapy' ? (
-                                <Link href="/dashboard/therapy/book" className="p-4 bg-gray-50 rounded hover:bg-primary/5 transition-colors text-center group">
-                                    <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📅</div>
-                                    <div className="font-bold text-gray-700">Book Session</div>
+                    <Card padded>
+                        <h3 className="font-bold text-gray-800 mb-4">Quick actions</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {[
+                                { href: "/dashboard/therapy/book", icon: <LuCalendarClock />, label: "Book session" },
+                                { href: "/dashboard/classes", icon: <LuMessageSquare />, label: "My classes" },
+                                { href: "/dashboard/progress", icon: <LuArrowRight />, label: "My progress" },
+                            ].map((a) => (
+                                <Link
+                                    key={a.href}
+                                    href={a.href}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/[0.03] text-center transition-colors"
+                                >
+                                    <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">{a.icon}</span>
+                                    <span className="text-xs font-semibold text-gray-600">{a.label}</span>
                                 </Link>
-                            ) : (
-                                <Link href="/dashboard/classes" className="p-4 bg-gray-50 rounded hover:bg-primary/5 transition-colors text-center group">
-                                    <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📅</div>
-                                    <div className="font-bold text-gray-700">Today&apos;s Class</div>
-                                </Link>
-                            )}
+                            ))}
                         </div>
-                    </div>
+                    </Card>
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                        <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 overflow-hidden relative">
+                    <Card padded className="text-center">
+                        <div className="w-20 h-20 bg-primary/15 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center text-2xl text-primary font-serif">
                             {user.avatarUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="absolute inset-0 flex items-center justify-center text-2xl text-gray-400 font-serif">
-                                    {user.name.charAt(0)}
-                                </div>
+                                user.name.charAt(0)
                             )}
                         </div>
-                        <h3 className="font-bold text-center text-gray-800">{user.name}</h3>
-                        <p className="text-center text-xs text-gray-500 uppercase tracking-widest mb-6">{user.email}</p>
-
-                        <Link href="/dashboard/profile" className="block w-full py-2 text-center border border-gray-200 text-gray-600 text-sm font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors">
-                            Edit Profile
+                        <h3 className="font-bold text-gray-800">{user.name}</h3>
+                        <p className="text-xs text-gray-500 mb-4 truncate">{user.email}</p>
+                        <Link href="/dashboard/profile" className="block w-full py-2 text-center rounded-full border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                            Edit profile
                         </Link>
-                    </div>
+                    </Card>
 
-                    {user.role === 'member_therapy' && (
-                        <div className="bg-secondary/5 p-6 rounded-lg border border-secondary/10">
-                            <h3 className="font-bold text-secondary mb-2">Therapy Credits</h3>
-                            <div className="text-3xl font-bold text-gray-800 mb-1">{user.credits ?? 0}</div>
-                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-4">Sessions Remaining</p>
-                            <Link href="/dashboard/therapy/book" className="text-sm text-secondary font-bold hover:underline">
-                                Book Now →
+                    {user.role === "member_therapy" && (
+                        <Card padded className="bg-secondary/5 border-secondary/15">
+                            <h3 className="font-bold text-secondary mb-1">Therapy credits</h3>
+                            <div className="text-3xl font-bold text-gray-800">{user.credits ?? 0}</div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest mb-4">Sessions remaining</p>
+                            <Link href="/dashboard/therapy/book" className="text-sm font-semibold text-secondary hover:underline">
+                                Book now →
                             </Link>
-                        </div>
+                        </Card>
                     )}
                 </div>
             </div>

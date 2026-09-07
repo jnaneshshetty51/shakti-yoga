@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { SuperAdminGuard } from "@/components/admin/SuperAdminGuard";
+import { PageHeader, Card } from "@/components/admin/ui";
 
 interface Row {
     id: string;
@@ -60,20 +61,22 @@ function AuditLogInner() {
     useEffect(() => { load(); }, [load]);
 
     return (
-        <div className="p-4 sm:p-8 max-w-5xl">
-            <h1 className="font-serif text-2xl sm:text-3xl text-primary mb-1">Audit Log</h1>
-            <p className="text-sm text-gray-500 mb-6">Every privileged change — role, subscription, credits, class, Meet link, deletions.</p>
+        <div className="max-w-5xl">
+            <PageHeader
+                title="Audit Log"
+                subtitle="Every privileged change — role, subscription, credits, class, Meet link, deletions."
+            />
 
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-400">
-                                <th className="px-4 py-3 font-medium">When</th>
-                                <th className="px-4 py-3 font-medium">Actor</th>
-                                <th className="px-4 py-3 font-medium">Action</th>
-                                <th className="px-4 py-3 font-medium">Target</th>
-                                <th className="px-4 py-3 font-medium"></th>
+                            <tr className="bg-gray-50/70 text-left text-[11px] uppercase tracking-wider text-gray-400">
+                                <th className="px-4 py-3 font-semibold">When</th>
+                                <th className="px-4 py-3 font-semibold">Actor</th>
+                                <th className="px-4 py-3 font-semibold">Action</th>
+                                <th className="px-4 py-3 font-semibold">Target</th>
+                                <th className="px-4 py-3 font-semibold"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -128,13 +131,13 @@ function AuditLogInner() {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </Card>
 
             {cursor && (
                 <button
                     onClick={() => load(cursor)}
                     disabled={loading}
-                    className="mt-4 px-5 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                    className="mt-4 px-5 py-2 text-sm rounded-full border border-gray-200 bg-white font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
                 >
                     {loading ? "Loading…" : "Load more"}
                 </button>

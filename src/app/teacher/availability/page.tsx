@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/admin/Toast";
+import { PageHeader, Card, ActionButton, inputClass, labelClass } from "@/components/ui";
 
 type Rule = {
     id: string; dayOfWeek: string | null; date: string | null;
@@ -62,17 +63,16 @@ export default function TeacherAvailabilityPage() {
 
     return (
         <div>
-            <h1 className="font-serif text-3xl text-gray-800 mb-2">Availability</h1>
-            <p className="text-gray-500 mb-8">The windows when members can book a 1:1 session with you.</p>
+            <PageHeader title="Availability" subtitle="The windows when members can book a 1:1 session with you." />
 
-            <div className="bg-white rounded-lg border border-gray-100 p-6 mb-8 max-w-2xl">
+            <Card padded className="mb-8 max-w-2xl">
                 <h2 className="font-bold text-gray-800 mb-4">Add a window</h2>
-                <div className="flex gap-2 mb-4">
+                <div className="inline-flex gap-1 p-1 bg-gray-100 rounded-full mb-4">
                     {(["weekly", "date"] as const).map((m) => (
                         <button
                             key={m}
                             onClick={() => setForm((f) => ({ ...f, mode: m }))}
-                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded ${form.mode === m ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}
+                            className={`px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors ${form.mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"}`}
                         >
                             {m === "weekly" ? "Every week" : "Specific date"}
                         </button>
@@ -80,50 +80,50 @@ export default function TeacherAvailabilityPage() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                     {form.mode === "weekly" ? (
-                        <label className="text-sm">
-                            <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Weekday</span>
-                            <select value={form.dayOfWeek} onChange={(e) => setForm((f) => ({ ...f, dayOfWeek: e.target.value }))} className="w-full border border-gray-200 rounded p-2">
+                        <div>
+                            <label className={labelClass}>Weekday</label>
+                            <select value={form.dayOfWeek} onChange={(e) => setForm((f) => ({ ...f, dayOfWeek: e.target.value }))} className={inputClass}>
                                 {DAYS.map((d) => <option key={d}>{d}</option>)}
                             </select>
-                        </label>
+                        </div>
                     ) : (
-                        <label className="text-sm">
-                            <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Date</span>
-                            <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="w-full border border-gray-200 rounded p-2" />
-                        </label>
+                        <div>
+                            <label className={labelClass}>Date</label>
+                            <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className={inputClass} />
+                        </div>
                     )}
-                    <label className="text-sm">
-                        <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Slot length</span>
-                        <select value={form.slotMinutes} onChange={(e) => setForm((f) => ({ ...f, slotMinutes: Number(e.target.value) }))} className="w-full border border-gray-200 rounded p-2">
+                    <div>
+                        <label className={labelClass}>Slot length</label>
+                        <select value={form.slotMinutes} onChange={(e) => setForm((f) => ({ ...f, slotMinutes: Number(e.target.value) }))} className={inputClass}>
                             {[30, 45, 60, 90].map((n) => <option key={n} value={n}>{n} min</option>)}
                         </select>
-                    </label>
-                    <label className="text-sm">
-                        <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">From (IST, 24h)</span>
-                        <input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} className="w-full border border-gray-200 rounded p-2" />
-                    </label>
-                    <label className="text-sm">
-                        <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">To (IST, 24h)</span>
-                        <input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="w-full border border-gray-200 rounded p-2" />
-                    </label>
+                    </div>
+                    <div>
+                        <label className={labelClass}>From (IST, 24h)</label>
+                        <input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} className={inputClass} />
+                    </div>
+                    <div>
+                        <label className={labelClass}>To (IST, 24h)</label>
+                        <input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className={inputClass} />
+                    </div>
                 </div>
-                <button onClick={add} disabled={saving} className="mt-4 px-4 py-2 bg-primary text-white text-sm font-bold uppercase tracking-widest rounded hover:bg-secondary disabled:opacity-50">
+                <button onClick={add} disabled={saving} className="mt-4 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
                     {saving ? "Adding…" : "Add window"}
                 </button>
-            </div>
+            </Card>
 
             {loading ? (
                 <p className="text-gray-500">Loading…</p>
             ) : (
-                <div className="grid md:grid-cols-2 gap-8 max-w-3xl">
+                <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
                     <section>
                         <h3 className="font-bold text-gray-800 mb-3">Weekly</h3>
                         {weekly.length === 0 ? <p className="text-sm text-gray-400 italic">None set.</p> : (
                             <ul className="space-y-2">
                                 {weekly.map((r) => (
-                                    <li key={r.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-4 py-2 text-sm">
-                                        <span><b>{r.dayOfWeek}</b> {r.startTime}–{r.endTime} · {r.slotMinutes}m</span>
-                                        <button onClick={() => remove(r.id)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase">Remove</button>
+                                    <li key={r.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm">
+                                        <span className="text-gray-600"><b className="text-gray-800">{r.dayOfWeek}</b> {r.startTime}–{r.endTime} · {r.slotMinutes}m</span>
+                                        <ActionButton tone="danger" onClick={() => remove(r.id)}>Remove</ActionButton>
                                     </li>
                                 ))}
                             </ul>
@@ -134,9 +134,9 @@ export default function TeacherAvailabilityPage() {
                         {oneOff.length === 0 ? <p className="text-sm text-gray-400 italic">None set.</p> : (
                             <ul className="space-y-2">
                                 {oneOff.map((r) => (
-                                    <li key={r.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-4 py-2 text-sm">
-                                        <span><b>{r.date}</b> {r.startTime}–{r.endTime} · {r.slotMinutes}m</span>
-                                        <button onClick={() => remove(r.id)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase">Remove</button>
+                                    <li key={r.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm">
+                                        <span className="text-gray-600"><b className="text-gray-800">{r.date}</b> {r.startTime}–{r.endTime} · {r.slotMinutes}m</span>
+                                        <ActionButton tone="danger" onClick={() => remove(r.id)}>Remove</ActionButton>
                                     </li>
                                 ))}
                             </ul>

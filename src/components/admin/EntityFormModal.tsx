@@ -69,19 +69,19 @@ export default function EntityFormModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onCancel}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={onCancel}>
             <div
-                className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                     <h3 className="font-serif text-xl text-gray-800">{title}</h3>
-                    <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                    <button onClick={onCancel} className="p-1.5 -mr-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">✕</button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">{error}</div>
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
                     )}
 
                     {fields.map((f) => (
@@ -96,14 +96,14 @@ export default function EntityFormModal({
                                     onChange={(e) => set(f.name, e.target.value)}
                                     required={f.required}
                                     rows={3}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
                                 />
                             ) : f.type === "select" ? (
                                 <select
                                     value={String(values[f.name] ?? "")}
                                     onChange={(e) => set(f.name, e.target.value)}
                                     required={f.required}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
                                 >
                                     <option value="">Select…</option>
                                     {f.options?.map((o) => (
@@ -115,7 +115,7 @@ export default function EntityFormModal({
                                     type="checkbox"
                                     checked={Boolean(values[f.name])}
                                     onChange={(e) => set(f.name, e.target.checked)}
-                                    className="h-4 w-4"
+                                    className="h-4 w-4 accent-primary"
                                 />
                             ) : f.type === "image" ? (
                                 <div className="flex items-start gap-3">
@@ -161,20 +161,20 @@ export default function EntityFormModal({
                                     onChange={(e) => set(f.name, e.target.value)}
                                     required={f.required}
                                     placeholder={f.placeholder}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
                                 />
                             )}
                         </div>
                     ))}
 
-                    <div className="flex justify-end gap-3 pt-2">
-                        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={busy}
-                            className="px-5 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-60"
+                            className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                         >
                             {busy ? "Saving…" : submitLabel}
                         </button>

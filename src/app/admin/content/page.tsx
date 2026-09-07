@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
+import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
 
 type ContentType = "story" | "blog" | "whatsapp";
 
@@ -108,41 +109,28 @@ export default function AdminContentPage() {
     };
 
     const rowActions = (id: string, initial: EntityValues) => (
-        <div className="flex justify-end gap-2">
-            <button onClick={() => setModal({ mode: "edit", id, initial })} className="text-primary text-xs font-bold uppercase">Edit</button>
-            <button onClick={() => remove(id)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase">Delete</button>
-        </div>
+        <TableActions>
+            <ActionButton onClick={() => setModal({ mode: "edit", id, initial })}>Edit</ActionButton>
+            <ActionButton tone="danger" onClick={() => remove(id)}>Delete</ActionButton>
+        </TableActions>
     );
 
-    if (loading) {
-        return (
-            <div>
-                <div className="mb-8">
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Content Management</h1>
-                    <p className="text-gray-500">Manage stories, blog posts, and community links.</p>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Content Management" />;
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">Content Management</h1>
-                <p className="text-gray-500">Manage stories, blog posts, and community links.</p>
-            </div>
+            <PageHeader title="Content Management" subtitle="Manage stories, blog posts, and community links." />
 
-            <div className="flex gap-4 mb-8 border-b border-gray-200">
-                {(["story", "blog", "whatsapp"] as ContentType[]).map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === tab ? 'border-b-2 border-primary text-primary' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        {tab === "whatsapp" ? "WhatsApp" : tab}
-                    </button>
-                ))}
+            <div className="mb-6">
+                <Tabs
+                    active={activeTab}
+                    onChange={(k) => setActiveTab(k)}
+                    tabs={[
+                        { key: "story", label: "Stories", count: stories.length },
+                        { key: "blog", label: "Blog", count: blogPosts.length },
+                        { key: "whatsapp", label: "WhatsApp", count: groups.length },
+                    ]}
+                />
             </div>
 
             {activeTab === 'story' && (
@@ -152,7 +140,7 @@ export default function AdminContentPage() {
                         { header: "Author", accessor: "name", className: "font-bold" },
                         { header: "Location", accessor: "location" },
                         { header: "Rating", accessor: (s: Story) => "★".repeat(s.rating) },
-                        { header: "Status", accessor: "status" },
+                        { header: "Status", accessor: (r: { status: string }) => <StatusBadge status={r.status} /> },
                     ]}
                     title="Stories & Testimonials"
                     onCreate={() => setModal({ mode: "create" })}
@@ -170,7 +158,7 @@ export default function AdminContentPage() {
                         { header: "Title", accessor: "title", className: "font-bold" },
                         { header: "Category", accessor: "category" },
                         { header: "Date", accessor: "date" },
-                        { header: "Status", accessor: "status" },
+                        { header: "Status", accessor: (r: { status: string }) => <StatusBadge status={r.status} /> },
                     ]}
                     title="Blog Posts"
                     onCreate={() => setModal({ mode: "create" })}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton } from "@/components/admin/ui";
 
 export type ClassBatch = {
     id: string;
@@ -61,7 +62,7 @@ export default function AdminClassesPage() {
             accessor: (batch: ClassBatch) => (
                 <div className="flex gap-1 flex-wrap">
                     {batch.days.map(d => (
-                        <span key={d} className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] uppercase text-gray-600">{d}</span>
+                        <span key={d} className="px-1.5 py-0.5 bg-gray-100 rounded-md text-[10px] uppercase text-gray-500 font-medium">{d}</span>
                     ))}
                 </div>
             )
@@ -70,9 +71,7 @@ export default function AdminClassesPage() {
         {
             header: "Status",
             accessor: (batch: ClassBatch) => (
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${batch.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
-                    {batch.active ? 'Active' : 'Inactive'}
-                </span>
+                <Badge tone={batch.active ? "green" : "gray"}>{batch.active ? "Active" : "Inactive"}</Badge>
             )
         },
     ];
@@ -112,24 +111,11 @@ export default function AdminClassesPage() {
         fetchBatches();
     };
 
-    if (loading) {
-        return (
-            <div>
-                <div className="mb-8">
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Class Management</h1>
-                    <p className="text-gray-500">Manage recurring class batches and schedules.</p>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Class Management" />;
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">Class Management</h1>
-                <p className="text-gray-500">Manage recurring class batches and schedules.</p>
-            </div>
+            <PageHeader title="Class Management" subtitle="Manage recurring class batches and schedules." />
 
             <DTable
                 data={batches}
@@ -137,10 +123,10 @@ export default function AdminClassesPage() {
                 title="Class Batches"
                 onCreate={() => setCreating(true)}
                 actions={(batch) => (
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditing(batch)} className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Edit</button>
-                        <button onClick={() => handleDelete(batch)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Delete</button>
-                    </div>
+                    <TableActions>
+                        <ActionButton onClick={() => setEditing(batch)}>Edit</ActionButton>
+                        <ActionButton tone="danger" onClick={() => handleDelete(batch)}>Delete</ActionButton>
+                    </TableActions>
                 )}
             />
 

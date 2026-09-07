@@ -39,18 +39,18 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
             .finally(() => setLoading(false));
     }, [id]);
 
-    if (loading) return <div className="p-20 text-center text-text/50">Loading invoice…</div>;
+    if (loading) return <div className="p-20 text-center text-gray-400">Loading invoice…</div>;
     if (error || !invoice) {
         return (
             <div className="max-w-2xl mx-auto p-8 text-center">
-                <p className="text-text/60 mb-4">{error || "Invoice not found."}</p>
-                <Link href="/dashboard/billing" className="text-primary font-bold hover:underline">← Back to Billing</Link>
+                <p className="text-gray-500 mb-4">{error || "Invoice not found."}</p>
+                <Link href="/dashboard/billing" className="text-primary font-semibold hover:underline">← Back to billing</Link>
             </div>
         );
     }
 
     return (
-        <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-primary/10 print:shadow-none print:border-0">
+        <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 print:shadow-none print:border-0">
             <div className="flex justify-between items-start mb-8">
                 <div>
                     <h1 className="font-serif text-2xl text-primary mb-2">Shakti Yoga Kendra</h1>
@@ -105,12 +105,12 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
             <div className="flex justify-between items-center print:hidden">
                 <button
                     onClick={() => window.print()}
-                    className="px-4 py-2 bg-primary text-white text-sm font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors"
+                    className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
                 >
                     Print / Save PDF
                 </button>
                 <Link href="/dashboard/billing" className="text-sm text-gray-500 hover:text-primary transition-colors">
-                    ← Back to Billing
+                    ← Back to billing
                 </Link>
             </div>
         </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/pricing";
+import { PageHeader, PageLoading, Card, Badge, statusTone } from "@/components/ui";
 
 interface PaymentRow {
     id: string;
@@ -30,21 +31,6 @@ const PLAN_LABEL: Record<string, string> = {
     YOGA_THERAPY: "Yoga Therapy",
     TRIAL: "Free Trial",
 };
-
-function statusColor(status: string) {
-    switch (status) {
-        case "ACTIVE":
-        case "PAID":
-            return "bg-green-100 text-green-800";
-        case "TRIAL":
-            return "bg-blue-100 text-blue-800";
-        case "CANCELLED":
-        case "FAILED":
-            return "bg-red-100 text-red-700";
-        default:
-            return "bg-gray-100 text-gray-700";
-    }
-}
 
 export default function BillingPage() {
     const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -89,28 +75,26 @@ export default function BillingPage() {
         }
     };
 
-    if (loading) {
-        return <div className="p-20 text-center text-text/60">Loading billing...</div>;
-    }
+    if (loading) return <PageLoading title="Plan & Billing" />;
 
     return (
         <div>
-            <h1 className="font-serif text-3xl text-primary mb-8">Plan & Billing</h1>
+            <PageHeader title="Plan & Billing" subtitle="Your subscription, renewals and payment history." />
 
-            <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10 mb-8">
+            <Card padded className="mb-8">
                 {subscription ? (
                     <>
-                        <div className="flex justify-between items-start mb-6">
+                        <div className="flex flex-wrap justify-between items-start gap-3 mb-5">
                             <div>
-                                <h3 className="font-serif text-xl text-text mb-2">
+                                <h3 className="font-serif text-xl text-gray-800">
                                     {PLAN_LABEL[subscription.planType] || subscription.planType}
                                 </h3>
-                                <p className="text-text/70 text-sm">
+                                <p className="text-gray-500 text-sm mt-0.5">
                                     {subscription.amount > 0
                                         ? `${formatPrice(subscription.amount, subscription.currency)} / month`
                                         : "No charge"}
                                 </p>
-                                <p className="text-text/50 text-xs mt-1">
+                                <p className="text-gray-400 text-xs mt-1">
                                     {subscription.status === "CANCELLED"
                                         ? "Access until"
                                         : subscription.recurring
@@ -119,89 +103,87 @@ export default function BillingPage() {
                                     {new Date(subscription.renewalDate).toLocaleDateString()}
                                 </p>
                             </div>
-                            <span className={`px-3 py-1 text-xs font-bold uppercase tracking-widest rounded ${statusColor(subscription.status)}`}>
-                                {subscription.status}
-                            </span>
+                            <Badge tone={statusTone(subscription.status)}>{subscription.status}</Badge>
                         </div>
 
                         {credits > 0 && (
-                            <p className="text-sm text-text/70 mb-6">1:1 session credits remaining: <strong>{credits}</strong></p>
+                            <p className="text-sm text-gray-500 mb-5">
+                                1:1 session credits remaining: <strong className="text-gray-800">{credits}</strong>
+                            </p>
                         )}
 
-                        <div className="flex gap-4">
+                        <div className="flex flex-wrap gap-2">
                             <Link
                                 href="/programs"
-                                className="px-4 py-2 bg-secondary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors"
+                                className="px-5 py-2.5 rounded-full bg-secondary text-white text-sm font-semibold hover:bg-primary transition-colors"
                             >
-                                Change Plan
+                                Change plan
                             </Link>
                             {subscription.status !== "CANCELLED" && subscription.amount > 0 && (
                                 <button
                                     onClick={handleCancel}
                                     disabled={cancelling}
-                                    className="px-4 py-2 border border-red-200 text-red-500 text-xs font-bold uppercase tracking-widest rounded hover:bg-red-50 transition-colors disabled:opacity-60"
+                                    className="px-5 py-2.5 rounded-full border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-60"
                                 >
-                                    {cancelling ? "Cancelling..." : "Cancel Subscription"}
+                                    {cancelling ? "Cancelling…" : "Cancel subscription"}
                                 </button>
                             )}
                         </div>
                     </>
                 ) : (
                     <div className="text-center py-6">
-                        <p className="text-text/70 mb-4">You don&apos;t have an active plan.</p>
+                        <p className="text-gray-500 mb-4">You don&rsquo;t have an active plan.</p>
                         <Link
                             href="/programs"
-                            className="inline-block px-6 py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors"
+                            className="inline-flex px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
                         >
-                            View Plans
+                            View plans
                         </Link>
                     </div>
                 )}
-            </div>
+            </Card>
 
-            <h3 className="font-serif text-xl text-primary mb-4">Payment History</h3>
-            <div className="bg-white rounded-lg shadow-sm border border-primary/10 overflow-hidden">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-accent/30 text-text/70 font-bold uppercase tracking-wider">
-                        <tr>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Plan</th>
-                            <th className="p-4">Amount</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4">Reference</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {payments.length === 0 ? (
+            <h3 className="font-bold text-gray-800 mb-3">Payment history</h3>
+            <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50/70 text-gray-400 text-[11px] font-semibold uppercase tracking-wider">
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-gray-400">No payments yet.</td>
+                                <th className="px-4 py-3">Date</th>
+                                <th className="px-4 py-3">Plan</th>
+                                <th className="px-4 py-3">Amount</th>
+                                <th className="px-4 py-3">Status</th>
+                                <th className="px-4 py-3">Reference</th>
                             </tr>
-                        ) : (
-                            payments.map((p) => (
-                                <tr key={p.id}>
-                                    <td className="p-4">{new Date(p.createdAt).toLocaleDateString()}</td>
-                                    <td className="p-4">{PLAN_LABEL[p.planType] || p.planType}</td>
-                                    <td className="p-4">{formatPrice(p.amount, p.currency)}</td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded ${statusColor(p.status)}`}>
-                                            {p.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-text/50 font-mono text-xs">
-                                        {p.status === "PAID" ? (
-                                            <Link href={`/dashboard/billing/invoice/${p.id}`} className="text-primary font-bold not-italic hover:underline">
-                                                Invoice
-                                            </Link>
-                                        ) : (
-                                            p.providerPaymentId || "—"
-                                        )}
-                                    </td>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {payments.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400">No payments yet.</td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            ) : (
+                                payments.map((p) => (
+                                    <tr key={p.id} className="text-gray-600">
+                                        <td className="px-4 py-3">{new Date(p.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-4 py-3">{PLAN_LABEL[p.planType] || p.planType}</td>
+                                        <td className="px-4 py-3">{formatPrice(p.amount, p.currency)}</td>
+                                        <td className="px-4 py-3"><Badge tone={statusTone(p.status)}>{p.status}</Badge></td>
+                                        <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                                            {p.status === "PAID" ? (
+                                                <Link href={`/dashboard/billing/invoice/${p.id}`} className="text-primary font-semibold not-italic hover:underline font-sans">
+                                                    Invoice
+                                                </Link>
+                                            ) : (
+                                                p.providerPaymentId || "—"
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
         </div>
     );
 }

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { PageHeader, Card, Badge, statusTone } from "@/components/ui";
+import { LuLock } from "react-icons/lu";
 
 interface Session {
     id: string;
@@ -33,7 +35,6 @@ export default function TherapyBookingPage() {
     const [busy, setBusy] = useState<string | null>(null);
     const [msg, setMsg] = useState("");
 
-    // booking form
     const dates = Array.from({ length: 10 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() + i);
@@ -123,39 +124,36 @@ export default function TherapyBookingPage() {
 
     return (
         <div className="max-w-4xl">
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard" className="text-sm font-bold text-text/50 hover:text-primary uppercase tracking-widest">← Back</Link>
-                    <h1 className="font-serif text-2xl sm:text-3xl text-primary">Therapy Sessions</h1>
-                </div>
-                <div className="bg-secondary/10 px-4 py-2 rounded-full text-secondary font-bold text-sm">{credits} credit{credits === 1 ? "" : "s"}</div>
-            </div>
+            <PageHeader title="Therapy Sessions" subtitle="Book, join and manage your 1:1 sessions.">
+                <Badge tone="amber">{credits} credit{credits === 1 ? "" : "s"}</Badge>
+                <Link href="/dashboard/therapy/notes" className="text-xs font-semibold text-primary hover:text-secondary">Session notes →</Link>
+            </PageHeader>
 
-            {msg && <div className="mb-6 p-3 bg-accent/40 border border-primary/10 text-sm text-text rounded">{msg}</div>}
+            {msg && <div className="mb-6 p-3 bg-accent/40 border border-primary/10 text-sm text-text rounded-xl">{msg}</div>}
 
             {credits === 0 && upcoming.length === 0 ? (
-                <div className="bg-white border border-primary/10 p-8 rounded-lg shadow-sm text-center max-w-lg mx-auto">
-                    <div className="text-5xl mb-4">🔒</div>
-                    <h3 className="font-serif text-2xl text-primary mb-2">No session credits</h3>
-                    <p className="text-sm text-gray-600 mb-6">Subscribe to Yoga Therapy to get monthly 1:1 sessions.</p>
-                    <Link href="/checkout?plan=therapy" className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors">
-                        Subscribe (₹5,000/mo)
+                <Card padded className="text-center max-w-lg mx-auto py-10">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-2xl mx-auto mb-3"><LuLock /></div>
+                    <h3 className="font-serif text-xl text-gray-800 mb-2">No session credits</h3>
+                    <p className="text-sm text-gray-500 mb-6">Subscribe to Yoga Therapy to get monthly 1:1 sessions.</p>
+                    <Link href="/checkout?plan=therapy" className="inline-flex px-6 py-2.5 rounded-full bg-secondary text-white text-sm font-semibold hover:bg-primary transition-colors">
+                        Subscribe — ₹5,000/mo
                     </Link>
-                </div>
+                </Card>
             ) : (
                 <>
-                    {/* Book */}
                     {credits > 0 && (
-                        <section className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 mb-8">
-                            <h2 className="font-bold text-sm text-text/60 uppercase tracking-widest mb-4">Book a session</h2>
+                        <Card padded className="mb-8">
+                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Book a session</h2>
                             <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
                                 {dates.map((d) => {
                                     const k = istDateKey(d);
+                                    const on = pickDate === k;
                                     return (
                                         <button
                                             key={k}
                                             onClick={() => setPickDate(k)}
-                                            className={`min-w-[64px] p-3 rounded border flex flex-col items-center transition-all ${pickDate === k ? "bg-primary text-white border-primary" : "border-gray-200 hover:border-primary/50 bg-gray-50 text-text/80"}`}
+                                            className={`min-w-[60px] p-2.5 rounded-xl border flex flex-col items-center transition-colors ${on ? "bg-primary text-white border-primary" : "border-gray-200 hover:border-primary/40 bg-white text-gray-600"}`}
                                         >
                                             <span className="text-[10px] uppercase font-bold opacity-70">{d.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" })}</span>
                                             <span className="text-lg font-serif">{d.toLocaleDateString("en-IN", { day: "numeric", timeZone: "Asia/Kolkata" })}</span>
@@ -164,16 +162,16 @@ export default function TherapyBookingPage() {
                                 })}
                             </div>
                             {slotsLoading ? (
-                                <p className="text-sm text-text/50">Loading slots…</p>
+                                <p className="text-sm text-gray-400">Loading slots…</p>
                             ) : slots.length === 0 ? (
-                                <p className="text-sm text-text/50">No open slots that day. Try another date.</p>
+                                <p className="text-sm text-gray-400">No open slots that day. Try another date.</p>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                                     {slots.map((s) => (
                                         <button
                                             key={s}
                                             onClick={() => setPickSlot(s)}
-                                            className={`p-3 rounded border text-sm transition-all ${pickSlot === s ? "bg-secondary text-white border-secondary font-bold" : "border-gray-200 hover:border-secondary/50 text-text/80"}`}
+                                            className={`p-2.5 rounded-xl border text-sm transition-colors ${pickSlot === s ? "bg-secondary text-white border-secondary font-semibold" : "border-gray-200 hover:border-secondary/40 text-gray-600"}`}
                                         >
                                             {s.split(" - ")[0]}
                                         </button>
@@ -183,48 +181,48 @@ export default function TherapyBookingPage() {
                             <button
                                 onClick={book}
                                 disabled={!pickSlot || busy === "book"}
-                                className="mt-5 px-8 py-3 bg-primary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary transition-colors disabled:opacity-50"
+                                className="mt-5 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
                             >
                                 {busy === "book" ? "Booking…" : "Confirm — 1 credit"}
                             </button>
-                        </section>
+                        </Card>
                     )}
 
-                    {/* Upcoming */}
                     <section className="mb-8">
-                        <h2 className="font-bold text-sm text-text/60 uppercase tracking-widest mb-3">Upcoming</h2>
-                        {loading ? <p className="text-sm text-text/50">Loading…</p>
-                            : upcoming.length === 0 ? <p className="text-sm text-text/50">No upcoming sessions.</p>
+                        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Upcoming</h2>
+                        {loading ? <p className="text-sm text-gray-400">Loading…</p>
+                            : upcoming.length === 0 ? <Card padded className="text-sm text-gray-500">No upcoming sessions.</Card>
                                 : (
                                     <div className="space-y-3">
                                         {upcoming.map((s) => (
-                                            <div key={s.id} className="bg-white p-4 rounded-lg border border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                                            <Card key={s.id} padded className="flex flex-wrap items-center justify-between gap-3">
                                                 <div>
                                                     <div className="font-bold text-gray-800">{fmt(s.date)} IST</div>
-                                                    <div className="text-xs text-text/50">{s.type === "THERAPY_SESSION" ? "1:1 Therapy" : "Consultation"} · {s.teacher} · {s.status.toLowerCase()}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">
+                                                        {s.type === "THERAPY_SESSION" ? "1:1 Therapy" : "Consultation"} · {s.teacher} · <span className="capitalize">{s.status.toLowerCase()}</span>
+                                                    </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => join(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded bg-primary text-white hover:bg-secondary disabled:opacity-50">Join</button>
-                                                    <button onClick={() => cancel(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-bold uppercase tracking-widest rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                                                    <button onClick={() => join(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50">Join</button>
+                                                    <button onClick={() => cancel(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
                                                 </div>
-                                            </div>
+                                            </Card>
                                         ))}
                                     </div>
                                 )}
                     </section>
 
-                    {/* Past */}
                     {past.length > 0 && (
                         <section>
-                            <h2 className="font-bold text-sm text-text/60 uppercase tracking-widest mb-3">Past</h2>
-                            <div className="space-y-2">
+                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Past</h2>
+                            <Card className="divide-y divide-gray-50">
                                 {past.map((s) => (
-                                    <div key={s.id} className="bg-white/60 p-3 rounded-lg border border-gray-100 flex items-center justify-between text-sm">
-                                        <span className="text-text/70">{fmt(s.date)}</span>
-                                        <span className="text-xs uppercase tracking-widest text-text/40">{s.status.toLowerCase()}</span>
+                                    <div key={s.id} className="px-5 py-3 flex items-center justify-between text-sm">
+                                        <span className="text-gray-600">{fmt(s.date)}</span>
+                                        <Badge tone={statusTone(s.status)}>{s.status.replace("_", " ").toLowerCase()}</Badge>
                                     </div>
                                 ))}
-                            </div>
+                            </Card>
                         </section>
                     )}
                 </>

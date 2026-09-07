@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LuIndianRupee, LuWallet, LuUserPlus, LuUsers } from "react-icons/lu";
 import { StatCard } from "@/components/admin/StatCard";
 import { TrendChart } from "@/components/admin/TrendChart";
 import { CHART_PRIMARY, CHART_SECONDARY } from "@/components/admin/Sparkline";
+import { PageHeader, ErrorState } from "@/components/admin/ui";
 
 type Series = { label: string; value: number }[];
 
@@ -55,12 +57,12 @@ function chip(delta: number | null): { change?: string; changeType: "positive" |
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">{title}</h3>
-                {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+        <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b border-gray-100">
+                <h3 className="font-bold text-gray-800">{title}</h3>
+                {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
             </div>
-            <div className="p-6">{children}</div>
+            <div className="p-5 sm:p-6">{children}</div>
         </div>
     );
 }
@@ -117,56 +119,57 @@ export default function AnalyticsPage() {
 
     return (
         <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-                <div>
-                    <h1 className="font-serif text-3xl font-bold text-gray-900">Analytics</h1>
-                    <p className="text-gray-500 mt-1">Business performance and growth</p>
-                </div>
+            <PageHeader title="Analytics" subtitle="Business performance and growth.">
                 <select
                     value={range}
                     onChange={(e) => setRange(e.target.value)}
-                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                     {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
-            </div>
+            </PageHeader>
 
             {error && (
-                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-800 font-medium mb-2">{error}</p>
-                    <button onClick={load} className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700">Retry</button>
+                <div className="mb-8">
+                    <ErrorState message={error} onRetry={load} />
                 </div>
             )}
 
             {loading && !data ? (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {Array.from({ length: 4 }).map((_, i) => <div key={i} className="animate-pulse h-28 bg-gray-200 rounded-xl" />)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {Array.from({ length: 4 }).map((_, i) => <div key={i} className="animate-pulse h-28 bg-gray-200/70 rounded-2xl" />)}
                 </div>
             ) : data ? (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <StatCard title="Monthly Revenue" value={inr(data.mrr)} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                        <StatCard title="Monthly Revenue" value={inr(data.mrr)} icon={<LuIndianRupee />} accent="green" />
                         <StatCard
                             title="Revenue Collected"
                             value={inr(data.revenueCollected)}
+                            icon={<LuWallet />}
+                            accent="terracotta"
                             {...chip(data.revenueDelta)}
                             spark={data.revenueSeries.map((p) => p.value)}
                         />
                         <StatCard
                             title="New Members"
                             value={data.newMembers}
+                            icon={<LuUserPlus />}
+                            accent="blue"
                             {...chip(data.newMembersDelta)}
                             spark={data.signupSeries.map((p) => p.value)}
                         />
                         <StatCard
                             title="Active Members"
                             value={data.activeMembers}
+                            icon={<LuUsers />}
+                            accent="amber"
                             change={`${data.everydayMembers} everyday · ${data.therapyMembers} therapy`}
                             changeType="neutral"
                         />
                     </div>
 
-                    <div className="grid lg:grid-cols-3 gap-8 mb-8">
+                    <div className="grid lg:grid-cols-3 gap-6 mb-6">
                         <div className="lg:col-span-2">
                             <Card title="Revenue" subtitle="Collected payments over the selected range">
                                 {data.revenueSeries.some((p) => p.value > 0) ? (

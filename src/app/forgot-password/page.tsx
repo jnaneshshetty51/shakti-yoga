@@ -33,18 +33,18 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-accent/30 py-12 sm:py-20 px-4">
-            <div className="max-w-md w-full bg-white p-6 sm:p-8 rounded-lg shadow-xl border-t-4 border-primary">
+        <main className="min-h-screen flex items-center justify-center bg-[#FBFAF7] py-12 sm:py-20 px-4">
+            <div className="max-w-md w-full bg-white p-6 sm:p-8 rounded-2xl shadow-[0_4px_28px_rgba(16,24,40,0.06)] border border-gray-100">
                 <div className="text-center mb-8">
-                    <Link href="/" className="font-serif text-3xl font-bold text-primary tracking-wider">
-                        Shakti Yoga
+                    <Link href="/" className="font-serif text-3xl font-bold text-primary">
+                        Shakti<span className="text-secondary">.</span>
                     </Link>
-                    <h2 className="mt-4 text-xl font-sans text-text/80">Reset your password</h2>
+                    <h2 className="mt-3 text-lg text-gray-500">Reset your password</h2>
                     <p className="mt-2 text-sm text-text/60">Enter your email and we&apos;ll send you a reset link.</p>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
                         {error}
                     </div>
                 )}
@@ -54,15 +54,15 @@ export default function ForgotPasswordPage() {
                         {message}
                     </div>
                 ) : (
-                    <form className="space-y-5 sm:space-y-6" onSubmit={handleSubmit}>
+                    <form className="space-y-5" onSubmit={handleSubmit}>
                         <div>
-                            <label htmlFor="email" className="block text-sm font-bold text-text/70 mb-1 uppercase tracking-wider">Email</label>
+                            <label htmlFor="email" className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Email</label>
                             <input
                                 type="email"
                                 id="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full p-3 border border-gray-200 rounded focus:outline-none focus:border-primary transition-colors text-sm sm:text-base"
+                                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
                                 placeholder="your@email.com"
                                 required
                             />
@@ -71,15 +71,15 @@ export default function ForgotPasswordPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary transition-colors disabled:opacity-70 shadow-md"
+                            className="w-full py-3 bg-primary text-white font-semibold text-sm rounded-full hover:bg-primary/90 transition-colors disabled:opacity-70"
                         >
                             {loading ? "Sending..." : "Send Reset Link"}
                         </button>
                     </form>
                 )}
 
-                <div className="mt-8 text-center text-sm text-text/60">
-                    <Link href="/login" className="text-primary font-bold hover:text-secondary">Back to log in</Link>
+                <div className="mt-8 text-center text-sm text-gray-500">
+                    <Link href="/login" className="text-primary font-semibold hover:text-secondary">Back to log in</Link>
                 </div>
             </div>
         </main>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { PageHeader, PageLoading, Card, inputClass, labelClass } from "@/components/ui";
 
 interface ProfileForm {
     firstName: string;
@@ -32,11 +33,7 @@ const EMPTY_FORM: ProfileForm = {
 };
 
 function prefsToString(form: ProfileForm): string {
-    return [
-        form.emailPref && "Email",
-        form.whatsappPref && "WhatsApp",
-        form.phonePref && "Phone",
-    ]
+    return [form.emailPref && "Email", form.whatsappPref && "WhatsApp", form.phonePref && "Phone"]
         .filter(Boolean)
         .join(",");
 }
@@ -142,174 +139,125 @@ export default function ProfilePage() {
     };
 
     const handleInputChange = (field: keyof ProfileForm, value: string | boolean) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const initials =
-        `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase() || "SY";
+    const initials = `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase() || "SY";
 
-    if (loading) {
-        return <div className="p-20 text-center text-text/60">Loading profile...</div>;
-    }
+    if (loading) return <PageLoading title="My Profile" />;
 
     return (
         <div>
-            <h1 className="font-serif text-3xl text-primary mb-8">My Profile</h1>
+            <PageHeader title="My Profile" subtitle="Your details, timezone and health profile." />
 
             {status && (
-                <div className="mb-6 p-3 rounded bg-accent/40 border border-primary/10 text-sm text-text">
+                <div className="mb-6 p-3 rounded-xl bg-accent/40 border border-primary/10 text-sm text-text max-w-3xl">
                     {status}
                 </div>
             )}
 
-            <div className="grid md:grid-cols-3 gap-8">
-                <div className="md:col-span-1">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 text-center">
-                        <div className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden bg-secondary flex items-center justify-center text-4xl text-white font-bold">
-                            {avatarUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                            ) : (
-                                initials
-                            )}
-                        </div>
-                        <h2 className="font-serif text-xl font-bold text-text">{formData.firstName} {formData.lastName}</h2>
-                        <p className="text-sm text-text/70 mb-6">{formData.email}</p>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            onChange={handleAvatarFile}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadingAvatar}
-                            className="w-full py-2 border border-primary text-primary text-xs font-bold uppercase tracking-widest rounded hover:bg-primary hover:text-white transition-colors disabled:opacity-60"
-                        >
-                            {uploadingAvatar ? "Uploading..." : "Edit Photo"}
-                        </button>
+            <div className="grid md:grid-cols-3 gap-6">
+                <Card padded className="text-center h-fit">
+                    <div className="w-28 h-28 rounded-full mx-auto mb-3 overflow-hidden bg-secondary flex items-center justify-center text-3xl text-white font-bold font-serif">
+                        {avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            initials
+                        )}
                     </div>
-                </div>
+                    <h2 className="font-bold text-gray-800">
+                        {formData.firstName} {formData.lastName}
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-5 truncate">{formData.email}</p>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleAvatarFile}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                        className="w-full py-2 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary hover:text-white transition-colors disabled:opacity-60"
+                    >
+                        {uploadingAvatar ? "Uploading…" : "Edit photo"}
+                    </button>
+                </Card>
 
-                <div className="md:col-span-2">
-                    <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10 mb-8">
-                        <h3 className="font-serif text-xl text-text mb-6">Personal Details</h3>
-                        <form onSubmit={handleSaveChanges} className="grid grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-6">
+                    <Card padded>
+                        <h3 className="font-bold text-gray-800 mb-5">Personal details</h3>
+                        <form onSubmit={handleSaveChanges} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">First Name</label>
-                                <input
-                                    type="text"
-                                    value={formData.firstName}
-                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
-                                />
+                                <label className={labelClass}>First name</label>
+                                <input type="text" value={formData.firstName} onChange={(e) => handleInputChange("firstName", e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Last Name</label>
-                                <input
-                                    type="text"
-                                    value={formData.lastName}
-                                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
-                                />
+                                <label className={labelClass}>Last name</label>
+                                <input type="text" value={formData.lastName} onChange={(e) => handleInputChange("lastName", e.target.value)} className={inputClass} />
                             </div>
-                            <div className="col-span-2">
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Email</label>
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    disabled
-                                    className="w-full p-2 border border-gray-200 rounded text-sm bg-gray-50 text-text/60"
-                                />
+                            <div className="sm:col-span-2">
+                                <label className={labelClass}>Email</label>
+                                <input type="email" value={formData.email} disabled className={`${inputClass} bg-gray-50 text-gray-500`} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Phone</label>
-                                <input
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
-                                />
+                                <label className={labelClass}>Phone</label>
+                                <input type="tel" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Location</label>
-                                <input
-                                    type="text"
-                                    value={formData.location}
-                                    onChange={(e) => handleInputChange('location', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
-                                />
+                                <label className={labelClass}>Location</label>
+                                <input type="text" value={formData.location} onChange={(e) => handleInputChange("location", e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Timezone</label>
-                                <select
-                                    value={formData.timezone}
-                                    onChange={(e) => handleInputChange('timezone', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
-                                >
+                                <label className={labelClass}>Timezone</label>
+                                <select value={formData.timezone} onChange={(e) => handleInputChange("timezone", e.target.value)} className={inputClass}>
                                     <option value="IST">IST (India Standard Time)</option>
                                     <option value="GMT">GMT (Greenwich Mean Time)</option>
                                     <option value="EST">EST (Eastern Standard Time)</option>
                                     <option value="PST">PST (Pacific Standard Time)</option>
                                 </select>
                             </div>
-                            <div className="col-span-2">
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Communication Preference</label>
-                                <div className="flex gap-6">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.emailPref}
-                                            onChange={(e) => handleInputChange('emailPref', e.target.checked)}
-                                            className="text-primary focus:ring-primary"
-                                        />
-                                        <span className="text-sm">Email</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.whatsappPref}
-                                            onChange={(e) => handleInputChange('whatsappPref', e.target.checked)}
-                                            className="text-primary focus:ring-primary"
-                                        />
-                                        <span className="text-sm">WhatsApp</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.phonePref}
-                                            onChange={(e) => handleInputChange('phonePref', e.target.checked)}
-                                            className="text-primary focus:ring-primary"
-                                        />
-                                        <span className="text-sm">Phone Call</span>
-                                    </label>
+                            <div className="sm:col-span-2">
+                                <label className={labelClass}>Communication preference</label>
+                                <div className="flex flex-wrap gap-5">
+                                    {([
+                                        ["emailPref", "Email"],
+                                        ["whatsappPref", "WhatsApp"],
+                                        ["phonePref", "Phone call"],
+                                    ] as const).map(([field, label]) => (
+                                        <label key={field} className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+                                            <input
+                                                type="checkbox"
+                                                className="accent-primary"
+                                                checked={formData[field]}
+                                                onChange={(e) => handleInputChange(field, e.target.checked)}
+                                            />
+                                            {label}
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
-
-                            <div className="col-span-2 mt-4">
+                            <div className="sm:col-span-2 pt-1">
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="px-6 py-3 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-60"
+                                    className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                                 >
-                                    {saving ? "Saving..." : "Save Changes"}
+                                    {saving ? "Saving…" : "Save changes"}
                                 </button>
                             </div>
                         </form>
-                    </div>
+                    </Card>
 
-                    <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10">
-                        <h3 className="font-serif text-xl text-text mb-6">Health Profile</h3>
+                    <Card padded>
+                        <h3 className="font-bold text-gray-800 mb-5">Health profile</h3>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Primary Goal</label>
-                                <select
-                                    value={formData.goal}
-                                    onChange={(e) => handleInputChange('goal', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
-                                >
+                                <label className={labelClass}>Primary goal</label>
+                                <select value={formData.goal} onChange={(e) => handleInputChange("goal", e.target.value)} className={inputClass}>
                                     <option value="Stress Relief">Stress Relief</option>
                                     <option value="Flexibility">Flexibility</option>
                                     <option value="Strength">Strength</option>
@@ -317,19 +265,17 @@ export default function ProfilePage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-1">Injuries / Conditions</label>
+                                <label className={labelClass}>Injuries / conditions</label>
                                 <textarea
                                     value={formData.conditions}
-                                    onChange={(e) => handleInputChange('conditions', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded text-sm"
+                                    onChange={(e) => handleInputChange("conditions", e.target.value)}
+                                    className={inputClass}
                                     rows={3}
                                 />
                             </div>
-                            <p className="text-xs text-text/50">
-                                Health profile changes are saved with the Save Changes button above.
-                            </p>
+                            <p className="text-xs text-gray-400">Health profile changes are saved with the Save changes button above.</p>
                         </div>
-                    </div>
+                    </Card>
                 </div>
             </div>
         </div>

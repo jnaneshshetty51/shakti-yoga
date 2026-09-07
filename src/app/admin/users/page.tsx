@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { useToast } from "@/components/admin/Toast";
+import { PageHeader, PageLoading, Badge, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
 
 const ROLE_OPTIONS = [
     { label: "Super Admin", value: "SUPER_ADMIN" },
@@ -56,22 +57,15 @@ export default function AdminUsersPage() {
         {
             header: "Role",
             accessor: (user: User) => (
-                <span className="capitalize bg-gray-100 px-2 py-1 rounded text-xs text-gray-600">
-                    {user.role.replace('member_', '').replace('_', ' ')}
-                </span>
+                <Badge tone="gray" className="capitalize">
+                    {user.role.replace('member_', '').replace('_', ' ').toLowerCase()}
+                </Badge>
             ),
             sortable: true
         },
         {
             header: "Status",
-            accessor: (user: User) => (
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${user.status === 'Active' ? 'bg-green-100 text-green-800' :
-                        user.status === 'Trial' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-500'
-                    }`}>
-                    {user.status}
-                </span>
-            ),
+            accessor: (user: User) => <StatusBadge status={user.status} />,
             sortable: true
         },
         { header: "Last Login", accessor: "lastLogin" as keyof User, sortable: true },
@@ -137,24 +131,11 @@ export default function AdminUsersPage() {
         fetchUsers();
     };
 
-    if (loading) {
-        return (
-            <div>
-                <div className="mb-8">
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">User Management</h1>
-                    <p className="text-gray-500">Manage all registered users, members, and staff.</p>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="User Management" />;
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">User Management</h1>
-                <p className="text-gray-500">Manage all registered users, members, and staff.</p>
-            </div>
+            <PageHeader title="User Management" subtitle="Manage all registered users, members, and staff." />
 
             <DTable
                 data={users}
@@ -165,10 +146,10 @@ export default function AdminUsersPage() {
                 enableBulkActions={true}
                 onBulkDelete={handleBulkDelete}
                 actions={(user) => (
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditing(user)} className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Edit</button>
-                        <button onClick={() => handleDelete(user)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Delete</button>
-                    </div>
+                    <TableActions>
+                        <ActionButton onClick={() => setEditing(user)}>Edit</ActionButton>
+                        <ActionButton tone="danger" onClick={() => handleDelete(user)}>Delete</ActionButton>
+                    </TableActions>
                 )}
             />
 

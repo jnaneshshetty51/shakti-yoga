@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { LuHeart } from "react-icons/lu";
+import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
 import type { ClassView, ClassesResponse, ClassAccessInfo } from "@/types/class";
 
 function fmtTime(iso: string) {
@@ -59,70 +61,64 @@ export default function ClassesPage() {
 
     return (
         <div>
-            <h1 className="font-serif text-3xl text-primary mb-8">My Classes</h1>
+            <PageHeader title="My Classes" subtitle="Your live group-class schedule, in IST." />
 
             {loading ? (
-                <div className="text-gray-500 italic">Loading…</div>
+                <Card><EmptyState icon={LuHeart} title="Loading your classes…" /></Card>
             ) : !data ? (
-                <div className="text-gray-500 italic">Could not load your classes. Please refresh.</div>
+                <Card><EmptyState icon={LuHeart} title="Couldn't load your classes" hint="Please refresh the page." /></Card>
             ) : !data.access.ok ? (
                 <AccessNotice access={data.access} />
             ) : (
                 <>
-                    <section className="mb-10">
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-text/50 mb-4">Today</h2>
+                    <section className="mb-8">
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Today</h2>
                         {data.today.length === 0 ? (
-                            <div className="bg-white p-6 rounded-lg border border-primary/10 text-gray-500 italic">
-                                No class scheduled for today.
-                            </div>
+                            <Card padded className="text-sm text-gray-500">No class scheduled for today.</Card>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 {data.today.map((cls) => (
-                                    <div
-                                        key={cls.id}
-                                        className="bg-white p-6 rounded-lg shadow-sm border border-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                                    >
+                                    <Card key={cls.id} padded className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
-                                            <div className="font-bold text-lg text-primary">{cls.batchName}</div>
-                                            <div className="text-sm text-text/70">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-gray-800">{cls.batchName}</span>
+                                                {cls.joinable && <Badge tone="green">Open now</Badge>}
+                                            </div>
+                                            <div className="text-sm text-gray-500 mt-0.5">
                                                 {fmtTime(cls.startsAt)} – {fmtTime(cls.endsAt)} IST · {cls.teacher}
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => join(cls)}
                                             disabled={!cls.joinable || joiningId === cls.id}
-                                            className={`px-6 py-3 font-bold uppercase tracking-widest text-xs rounded transition-colors whitespace-nowrap ${cls.joinable
-                                                ? "bg-secondary text-white hover:bg-primary"
-                                                : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+                                            className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-colors whitespace-nowrap ${
+                                                cls.joinable ? "bg-primary text-white hover:bg-primary/90" : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                            }`}
                                         >
-                                            {joiningId === cls.id
-                                                ? "Opening…"
-                                                : cls.joinable
-                                                    ? "Join Google Meet"
-                                                    : "Opens near start time"}
+                                            {joiningId === cls.id ? "Opening…" : cls.joinable ? "Join Google Meet" : "Opens near start time"}
                                         </button>
-                                    </div>
+                                    </Card>
                                 ))}
                             </div>
                         )}
                     </section>
 
                     <section>
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-text/50 mb-4">Upcoming</h2>
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Upcoming</h2>
                         {data.upcoming.length === 0 ? (
-                            <div className="text-gray-500 italic">Nothing scheduled in the next week yet.</div>
+                            <Card padded className="text-sm text-gray-500">Nothing scheduled in the next week yet.</Card>
                         ) : (
-                            <div className="divide-y divide-gray-100 bg-white rounded-lg border border-primary/10">
+                            <Card className="divide-y divide-gray-50">
                                 {data.upcoming.map((cls) => (
-                                    <div key={cls.id} className="p-4 flex justify-between items-center">
+                                    <div key={cls.id} className="px-5 py-3.5 flex justify-between items-center gap-4">
                                         <div className="text-sm">
-                                            <span className="font-bold text-text/80">{fmtDay(cls.startsAt)}</span>
-                                            <span className="text-text/60"> · {fmtTime(cls.startsAt)} IST</span>
+                                            <span className="font-semibold text-gray-700">{fmtDay(cls.startsAt)}</span>
+                                            <span className="text-gray-400"> · {fmtTime(cls.startsAt)} IST</span>
                                         </div>
-                                        <div className="text-sm text-text/70">{cls.batchName}</div>
+                                        <div className="text-sm text-gray-500">{cls.batchName}</div>
                                     </div>
                                 ))}
-                            </div>
+                            </Card>
                         )}
                     </section>
                 </>
@@ -133,18 +129,18 @@ export default function ClassesPage() {
 
 function AccessNotice({ access }: { access: Extract<ClassAccessInfo, { ok: false }> }) {
     return (
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-primary/10 text-center py-12">
-            <div className="text-6xl mb-4">{access.paywall ? "🔒" : "🧘"}</div>
-            <h2 className="font-serif text-2xl text-primary mb-4">
-                {access.paywall ? "Membership Required" : "1:1 Sessions"}
+        <Card padded className="text-center py-12">
+            <div className="text-5xl mb-3">{access.paywall ? "🔒" : "🧘"}</div>
+            <h2 className="font-serif text-2xl text-gray-800 mb-2">
+                {access.paywall ? "Membership required" : "1:1 sessions"}
             </h2>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">{access.reason}</p>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">{access.reason}</p>
             <Link
                 href={access.paywall ? "/programs" : "/dashboard/therapy/book"}
-                className="inline-block px-6 py-3 bg-secondary text-white font-bold uppercase tracking-widest text-xs rounded hover:bg-primary transition-colors"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-secondary text-white text-sm font-semibold hover:bg-primary transition-colors"
             >
-                {access.paywall ? "View Plans" : "Book a Session"}
+                {access.paywall ? "View plans" : "Book a session"}
             </Link>
-        </div>
+        </Card>
     );
 }

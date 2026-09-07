@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SuperAdminGuard } from "@/components/admin/SuperAdminGuard";
+import { PageHeader, PageLoading, Card, Badge, labelClass } from "@/components/admin/ui";
 
 interface Settings {
     platformName: string;
     supportEmail: string;
     defaultTimezone: string;
+    teacher_rate_class: string;
+    teacher_rate_session: string;
 }
 
 interface Integrations {
@@ -23,7 +26,10 @@ export default function AdminSettingsPage() {
 }
 
 function SettingsInner() {
-    const [settings, setSettings] = useState<Settings>({ platformName: "", supportEmail: "", defaultTimezone: "IST" });
+    const [settings, setSettings] = useState<Settings>({
+        platformName: "", supportEmail: "", defaultTimezone: "IST",
+        teacher_rate_class: "500", teacher_rate_session: "800",
+    });
     const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, minio: false });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -65,88 +71,103 @@ function SettingsInner() {
         }
     };
 
-    if (loading) {
-        return (
-            <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">Platform Settings</h1>
-                <div className="text-gray-500 mt-8">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Platform Settings" />;
 
     const integrationRow = (name: string, connected: boolean, hint: string) => (
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded mb-3">
+        <div className="flex items-center justify-between gap-3 p-4 bg-gray-50 rounded-xl">
             <div>
-                <div className="font-bold text-sm">{name}</div>
+                <div className="font-semibold text-sm text-gray-800">{name}</div>
                 <div className="text-xs text-gray-500">{connected ? "Configured" : `Not configured — ${hint}`}</div>
             </div>
-            <span className={`text-xs font-bold uppercase ${connected ? "text-green-600" : "text-gray-400"}`}>
-                {connected ? "Connected" : "Off"}
-            </span>
+            <Badge tone={connected ? "green" : "gray"}>{connected ? "Connected" : "Off"}</Badge>
         </div>
     );
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">Platform Settings</h1>
-                <p className="text-gray-500">General settings and integration status.</p>
-            </div>
+            <PageHeader title="Platform Settings" subtitle="General settings and integration status." />
 
             {status && (
-                <div className="mb-6 p-3 rounded bg-accent/40 border border-primary/10 text-sm text-text max-w-3xl">{status}</div>
+                <div className="mb-6 p-3 rounded-xl bg-accent/40 border border-primary/10 text-sm text-text max-w-3xl">{status}</div>
             )}
 
-            <form onSubmit={save} className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-3xl">
-                <h2 className="font-bold text-lg text-gray-800 mb-6">General Configuration</h2>
+            <form onSubmit={save} className="max-w-3xl">
+                <Card padded>
+                    <h2 className="font-bold text-gray-800 mb-6">General Configuration</h2>
 
-                <div className="space-y-6">
-                    <div>
-                        <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Platform Name</label>
-                        <input
-                            type="text"
-                            value={settings.platformName}
-                            onChange={(e) => setSettings(s => ({ ...s, platformName: e.target.value }))}
-                            className="w-full p-3 border border-gray-200 rounded"
-                        />
-                    </div>
+                    <div className="space-y-5">
+                        <div>
+                            <label className={labelClass}>Platform Name</label>
+                            <input
+                                type="text"
+                                value={settings.platformName}
+                                onChange={(e) => setSettings(s => ({ ...s, platformName: e.target.value }))}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Support Email</label>
-                        <input
-                            type="email"
-                            value={settings.supportEmail}
-                            onChange={(e) => setSettings(s => ({ ...s, supportEmail: e.target.value }))}
-                            className="w-full p-3 border border-gray-200 rounded"
-                        />
-                    </div>
+                        <div>
+                            <label className={labelClass}>Support Email</label>
+                            <input
+                                type="email"
+                                value={settings.supportEmail}
+                                onChange={(e) => setSettings(s => ({ ...s, supportEmail: e.target.value }))}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Default Timezone</label>
-                        <select
-                            value={settings.defaultTimezone}
-                            onChange={(e) => setSettings(s => ({ ...s, defaultTimezone: e.target.value }))}
-                            className="w-full p-3 border border-gray-200 rounded"
+                        <div>
+                            <label className={labelClass}>Default Timezone</label>
+                            <select
+                                value={settings.defaultTimezone}
+                                onChange={(e) => setSettings(s => ({ ...s, defaultTimezone: e.target.value }))}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                            >
+                                <option value="IST">IST (India Standard Time)</option>
+                                <option value="UTC">UTC</option>
+                            </select>
+                        </div>
+
+                        <div className="pt-5 border-t border-gray-100 grid sm:grid-cols-2 gap-4">
+                            <div className="sm:col-span-2">
+                                <h3 className="font-bold text-gray-800">Teacher payout rates (₹)</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Used for the estimate on each teacher&rsquo;s Earnings screen.</p>
+                            </div>
+                            <div>
+                                <label className={labelClass}>Per completed class</label>
+                                <input
+                                    type="number" min={0}
+                                    value={settings.teacher_rate_class}
+                                    onChange={(e) => setSettings((s) => ({ ...s, teacher_rate_class: e.target.value }))}
+                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Per completed 1:1 session</label>
+                                <input
+                                    type="number" min={0}
+                                    value={settings.teacher_rate_session}
+                                    onChange={(e) => setSettings((s) => ({ ...s, teacher_rate_session: e.target.value }))}
+                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-5 border-t border-gray-100 space-y-3">
+                            <h3 className="font-bold text-gray-800">Integrations</h3>
+                            {integrationRow("Razorpay Payments", integrations.razorpay, "set RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET")}
+                            {integrationRow("MinIO Storage", integrations.minio, "set MINIO_ENDPOINT / MINIO_ACCESS_KEY")}
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                         >
-                            <option value="IST">IST (India Standard Time)</option>
-                            <option value="UTC">UTC</option>
-                        </select>
+                            {saving ? "Saving…" : "Save Changes"}
+                        </button>
                     </div>
-
-                    <div className="pt-6 border-t border-gray-100">
-                        <h3 className="font-bold text-gray-800 mb-4">Integrations</h3>
-                        {integrationRow("Razorpay Payments", integrations.razorpay, "set RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET")}
-                        {integrationRow("MinIO Storage", integrations.minio, "set MINIO_ENDPOINT / MINIO_ACCESS_KEY")}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="px-6 py-3 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-60"
-                    >
-                        {saving ? "Saving..." : "Save Changes"}
-                    </button>
-                </div>
+                </Card>
             </form>
         </div>
     );

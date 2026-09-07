@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
 
 export type Booking = {
     id: string;
@@ -56,14 +57,7 @@ export default function AdminBookingsPage() {
         { header: "Teacher", accessor: "teacher" as keyof Booking },
         {
             header: "Status",
-            accessor: (bk: Booking) => (
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${bk.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                    bk.status === 'Pending' ? 'bg-orange-100 text-orange-800' :
-                        'bg-gray-100 text-gray-500'
-                    }`}>
-                    {bk.status}
-                </span>
-            )
+            accessor: (bk: Booking) => <StatusBadge status={bk.status} />,
         },
     ];
 
@@ -87,34 +81,24 @@ export default function AdminBookingsPage() {
         fetchBookings();
     };
 
-    if (loading) {
-        return (
-            <div>
-                <div className="mb-8">
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Bookings & Trials</h1>
-                    <p className="text-gray-500">Manage 1:1 therapy sessions, consultations, and trial bookings.</p>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Bookings & Trials" />;
 
     return (
         <div>
-            <div className="mb-8">
-                <h1 className="font-serif text-3xl text-gray-800 mb-2">Bookings & Trials</h1>
-                <p className="text-gray-500">Manage 1:1 therapy sessions, consultations, and trial bookings.</p>
-            </div>
+            <PageHeader
+                title="Bookings & Trials"
+                subtitle="Manage 1:1 therapy sessions, consultations, and trial bookings."
+            />
 
             <DTable
                 data={bookings}
                 columns={columns}
                 title="All Bookings"
                 actions={(bk) => (
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditing(bk)} className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Edit</button>
-                        <button onClick={() => handleDelete(bk)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Delete</button>
-                    </div>
+                    <TableActions>
+                        <ActionButton onClick={() => setEditing(bk)}>Edit</ActionButton>
+                        <ActionButton tone="danger" onClick={() => handleDelete(bk)}>Delete</ActionButton>
+                    </TableActions>
                 )}
             />
 

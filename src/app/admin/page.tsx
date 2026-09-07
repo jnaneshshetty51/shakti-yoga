@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LuUsers, LuIndianRupee, LuUserPlus, LuSparkles, LuCalendar, LuRefreshCw } from "react-icons/lu";
 import { StatCard } from "@/components/admin/StatCard";
 import { TrendChart } from "@/components/admin/TrendChart";
 import { CHART_PRIMARY, CHART_SECONDARY } from "@/components/admin/Sparkline";
@@ -123,7 +124,11 @@ const QUICK_ACTIONS = [
 /* ---------- small UI bits ---------- */
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-    return <div className={`bg-white rounded-lg shadow-sm border border-gray-100 ${className}`}>{children}</div>;
+    return (
+        <div className={`bg-white rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 ${className}`}>
+            {children}
+        </div>
+    );
 }
 function SkeletonBlock({ className = "" }: { className?: string }) {
     return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
@@ -187,7 +192,7 @@ export default function AdminDashboardPage() {
     if (error && !data) {
         return (
             <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-8">Dashboard</h1>
+                <h1 className="font-serif text-[28px] text-gray-800 mb-8">Dashboard</h1>
                 <Card className="p-8 text-center">
                     <div className="text-4xl mb-3">⚠️</div>
                     <p className="text-gray-700 mb-4">{error}</p>
@@ -205,11 +210,14 @@ export default function AdminDashboardPage() {
     if (loading && !data) {
         return (
             <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-8">Dashboard</h1>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-28" />)}
+                <div className="mb-8 space-y-2">
+                    <SkeletonBlock className="h-4 w-24" />
+                    <SkeletonBlock className="h-7 w-80 max-w-full" />
                 </div>
-                <SkeletonBlock className="h-64 mb-8" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                    {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-28 rounded-2xl" />)}
+                </div>
+                <SkeletonBlock className="h-64 mb-8 rounded-2xl" />
                 <div className="grid lg:grid-cols-3 gap-8">
                     <SkeletonBlock className="h-80 lg:col-span-2" />
                     <SkeletonBlock className="h-80" />
@@ -229,15 +237,28 @@ export default function AdminDashboardPage() {
 
     return (
         <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-                <h1 className="font-serif text-3xl text-gray-800">Dashboard</h1>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                    <span>Updated {timeAgo(data.generatedAt)}</span>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+                <div>
+                    <p className="text-sm text-gray-400">Welcome back,</p>
+                    <h1 className="font-serif text-[28px] leading-tight text-gray-800">
+                        Here&rsquo;s what&rsquo;s happening at Shakti <span aria-hidden>🌿</span>
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Manage your members, classes and grow your yoga community.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-600">
+                        <LuCalendar className="text-sm text-gray-400" />
+                        {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                    </span>
                     <button
                         onClick={() => load("refresh")}
                         disabled={refreshing}
-                        className="px-3 py-1.5 border border-gray-200 rounded font-bold uppercase tracking-widest text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        title={`Updated ${timeAgo(data.generatedAt)}`}
                     >
+                        <LuRefreshCw className={`text-sm ${refreshing ? "animate-spin" : ""}`} />
                         {refreshing ? "Refreshing…" : "Refresh"}
                     </button>
                 </div>
@@ -250,23 +271,33 @@ export default function AdminDashboardPage() {
             )}
 
             {/* stat cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                 <StatCard
                     title="Active Members"
                     value={stats.activeMembers}
+                    icon={<LuUsers />}
+                    accent="green"
                     change={`${stats.everydayMembers} everyday · ${stats.therapyMembers} therapy`}
                     changeType="neutral"
                 />
-                <StatCard title="Monthly Revenue" value={inr(stats.mrr)} spark={trends.revenue.map((p) => p.value)} />
+                <StatCard
+                    title="Monthly Revenue"
+                    value={inr(stats.mrr)}
+                    icon={<LuIndianRupee />}
+                    accent="terracotta"
+                    spark={trends.revenue.map((p) => p.value)}
+                />
                 <StatCard
                     title="New Members (30d)"
                     value={stats.newMembers}
+                    icon={<LuUserPlus />}
+                    accent="blue"
                     change={newChip?.change}
                     changeType={newChip?.negative ? "negative" : "positive"}
                     trend={newChip ? (newChip.negative ? "down" : "up") : undefined}
                     spark={trends.signups.map((p) => p.value)}
                 />
-                <StatCard title="Active Trials" value={stats.trialUsers} />
+                <StatCard title="Active Trials" value={stats.trialUsers} icon={<LuSparkles />} accent="amber" />
             </div>
 
             {/* secondary stats */}
@@ -277,7 +308,7 @@ export default function AdminDashboardPage() {
                     { label: "Renewals due (7d)", value: inr(stats.renewalRevenue7d) },
                     { label: "Renewals due (30d)", value: inr(stats.renewalRevenue30d) },
                 ].map((s) => (
-                    <div key={s.label} className="bg-white rounded-lg border border-gray-100 px-4 py-3">
+                    <div key={s.label} className="bg-white rounded-2xl border border-gray-100 px-4 py-3">
                         <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</div>
                         <div className="text-lg font-bold text-gray-800 mt-0.5">{s.value}</div>
                     </div>

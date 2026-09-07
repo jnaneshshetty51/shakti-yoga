@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PageHeader, Card, ActionButton } from "@/components/admin/ui";
 
 interface Rule {
     id: string;
@@ -61,11 +62,13 @@ export default function AvailabilityPage() {
     };
 
     return (
-        <div className="p-4 sm:p-8 max-w-4xl">
-            <h1 className="font-serif text-2xl sm:text-3xl text-primary mb-1">Teacher Availability</h1>
-            <p className="text-sm text-gray-500 mb-6">Weekly windows the 1:1 therapy booking page offers as slots.</p>
+        <div className="max-w-4xl">
+            <PageHeader
+                title="Teacher Availability"
+                subtitle="Weekly windows the 1:1 therapy booking page offers as slots."
+            />
 
-            <form onSubmit={add} className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-8 grid gap-3 sm:grid-cols-6 items-end">
+            <form onSubmit={add} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-4 sm:p-6 mb-8 grid gap-3 sm:grid-cols-6 items-end">
                 <label className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-gray-500">
                     Teacher
                     <select value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })} className="mt-1 w-full p-2 border border-gray-200 rounded text-sm font-normal normal-case">
@@ -90,18 +93,18 @@ export default function AvailabilityPage() {
                     Slot (min)
                     <input type="number" min={15} max={120} value={form.slotMinutes} onChange={(e) => setForm({ ...form, slotMinutes: Number(e.target.value) })} className="mt-1 w-full p-2 border border-gray-200 rounded text-sm font-normal" />
                 </label>
-                <button className="sm:col-span-6 sm:w-auto px-6 py-2 bg-primary text-white text-sm font-bold uppercase tracking-widest rounded hover:bg-secondary">Add window</button>
+                <button className="sm:col-span-6 sm:w-auto px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">Add window</button>
                 {err && <p className="sm:col-span-6 text-sm text-red-600">{err}</p>}
             </form>
 
-            <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+            <Card className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-400">
-                            <th className="px-4 py-3 font-medium">Teacher</th>
-                            <th className="px-4 py-3 font-medium">Day</th>
-                            <th className="px-4 py-3 font-medium">Window</th>
-                            <th className="px-4 py-3 font-medium">Slot</th>
+                        <tr className="bg-gray-50/70 text-left text-[11px] uppercase tracking-wider text-gray-400">
+                            <th className="px-4 py-3 font-semibold">Teacher</th>
+                            <th className="px-4 py-3 font-semibold">Day</th>
+                            <th className="px-4 py-3 font-semibold">Window</th>
+                            <th className="px-4 py-3 font-semibold">Slot</th>
                             <th className="px-4 py-3"></th>
                         </tr>
                     </thead>
@@ -109,19 +112,19 @@ export default function AvailabilityPage() {
                         {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Loading…</td></tr>}
                         {!loading && rules.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic">No windows yet — the booking page uses default slots until you add some.</td></tr>}
                         {rules.map((r) => (
-                            <tr key={r.id} className="border-t border-gray-100">
+                            <tr key={r.id} className="border-t border-gray-50">
                                 <td className="px-4 py-3 font-medium text-gray-800">{r.teacherName}</td>
-                                <td className="px-4 py-3">{r.dayOfWeek ?? r.date}</td>
-                                <td className="px-4 py-3 tabular-nums">{r.startTime}–{r.endTime}</td>
-                                <td className="px-4 py-3">{r.slotMinutes}m</td>
+                                <td className="px-4 py-3 text-gray-600">{r.dayOfWeek ?? r.date}</td>
+                                <td className="px-4 py-3 tabular-nums text-gray-600">{r.startTime}–{r.endTime}</td>
+                                <td className="px-4 py-3 text-gray-600">{r.slotMinutes}m</td>
                                 <td className="px-4 py-3 text-right">
-                                    <button onClick={() => remove(r.id)} className="text-xs font-bold uppercase tracking-wider text-red-400 hover:text-red-600">Remove</button>
+                                    <ActionButton tone="danger" onClick={() => remove(r.id)}>Remove</ActionButton>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-            </div>
+            </Card>
         </div>
     );
 }

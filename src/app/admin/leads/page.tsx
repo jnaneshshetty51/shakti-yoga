@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
 
 export type Lead = {
     id: string;
@@ -156,23 +157,15 @@ function LeadsDashboard() {
         }
     };
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'NEW': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'CONTACTED': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'TRIAL': return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'CONVERTED': return 'bg-green-100 text-green-800 border-green-200';
-            case 'LOST': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
+    const statusTone = (status: string) =>
+        ({ NEW: "blue", CONTACTED: "amber", TRIAL: "purple", CONVERTED: "green", LOST: "red" } as const)[status] ?? "gray";
 
     const columns = [
         {
             header: "Contact Info",
             accessor: (lead: Lead) => (
                 <div>
-                    <div className="font-bold text-gray-900">{lead.name}</div>
+                    <div className="font-bold text-gray-800">{lead.name}</div>
                     <div className="text-xs text-gray-500">{lead.email}</div>
                     {lead.phone && <div className="text-xs text-gray-500">{lead.phone}</div>}
                 </div>
@@ -181,18 +174,12 @@ function LeadsDashboard() {
         {
             header: "Source",
             accessor: (lead: Lead) => (
-                <span className="capitalize text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                    {lead.source.replace('_', ' ')}
-                </span>
+                <Badge tone="gray" className="capitalize">{lead.source.replace('_', ' ').toLowerCase()}</Badge>
             )
         },
         {
             header: "Status",
-            accessor: (lead: Lead) => (
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider border ${getStatusStyle(lead.status)}`}>
-                    {lead.status}
-                </span>
-            ),
+            accessor: (lead: Lead) => <Badge tone={statusTone(lead.status)}>{lead.status}</Badge>,
             sortable: true
         },
         {
@@ -210,28 +197,11 @@ function LeadsDashboard() {
         }
     ];
 
-    if (loading) {
-        return (
-            <div>
-                <div className="mb-8 flex justify-between items-end">
-                    <div>
-                        <h1 className="font-serif text-3xl text-gray-800 mb-2">Leads CRM</h1>
-                        <p className="text-gray-500">Track and manage potential members from inquiry to conversion.</p>
-                    </div>
-                </div>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Leads CRM" />;
 
     return (
         <div>
-            <div className="mb-8 flex justify-between items-end">
-                <div>
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Leads CRM</h1>
-                    <p className="text-gray-500">Track and manage potential members from inquiry to conversion.</p>
-                </div>
-            </div>
+            <PageHeader title="Leads CRM" subtitle="Track and manage potential members from inquiry to conversion." />
 
             <DTable
                 data={leads}
@@ -239,76 +209,54 @@ function LeadsDashboard() {
                 title="All Leads"
                 onCreate={handleCreate}
                 actions={(lead) => (
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => handleEdit(lead)} className="text-primary hover:text-secondary text-xs font-bold uppercase tracking-wider">Update</button>
-                        <button onClick={() => handleDelete(lead)} className="text-red-400 hover:text-red-600 text-xs font-bold uppercase tracking-wider">Delete</button>
-                    </div>
+                    <TableActions>
+                        <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
+                        <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
+                    </TableActions>
                 )}
             />
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="font-serif text-2xl text-primary">{isEditMode ? 'Update Lead' : 'Add New Lead'}</h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+                            <h2 className="font-serif text-xl text-gray-800">{isEditMode ? 'Update Lead' : 'Add New Lead'}</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="p-1.5 -mr-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">&times;</button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Name</label>
-                                    <input 
-                                        type="text" 
-                                        required
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
-                                    />
+                                    <label className={labelClass}>Name</label>
+                                    <input type="text" required value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Email</label>
-                                    <input 
-                                        type="email" 
-                                        required
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
-                                    />
+                                    <label className={labelClass}>Email</label>
+                                    <input type="email" required value={formData.email}
+                                        onChange={(e) => setFormData({...formData, email: e.target.value})} className={inputClass} />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Phone</label>
-                                    <input 
-                                        type="text" 
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
-                                    />
+                                    <label className={labelClass}>Phone</label>
+                                    <input type="text" value={formData.phone}
+                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Country</label>
-                                    <input 
-                                        type="text" 
-                                        value={formData.country}
-                                        onChange={(e) => setFormData({...formData, country: e.target.value})}
-                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
-                                    />
+                                    <label className={labelClass}>Country</label>
+                                    <input type="text" value={formData.country}
+                                        onChange={(e) => setFormData({...formData, country: e.target.value})} className={inputClass} />
                                 </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Lead Source</label>
-                                    <select 
-                                        value={formData.source}
-                                        onChange={(e) => setFormData({...formData, source: e.target.value})}
-                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
-                                        disabled={isEditMode}
-                                    >
+                                    <label className={labelClass}>Lead Source</label>
+                                    <select value={formData.source} onChange={(e) => setFormData({...formData, source: e.target.value})}
+                                        className={inputClass} disabled={isEditMode}>
                                         <option value="WEBSITE">Website</option>
                                         <option value="WHATSAPP">WhatsApp</option>
                                         <option value="REFERRAL">Referral</option>
@@ -317,12 +265,8 @@ function LeadsDashboard() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Status</label>
-                                    <select 
-                                        value={formData.status}
-                                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                                        className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
-                                    >
+                                    <label className={labelClass}>Status</label>
+                                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className={inputClass}>
                                         <option value="NEW">New</option>
                                         <option value="CONTACTED">Contacted</option>
                                         <option value="TRIAL">Trial Scheduled/Attended</option>
@@ -333,12 +277,8 @@ function LeadsDashboard() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Assign To (Staff)</label>
-                                <select 
-                                    value={formData.assignedToId}
-                                    onChange={(e) => setFormData({...formData, assignedToId: e.target.value})}
-                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none bg-white"
-                                >
+                                <label className={labelClass}>Assign To (Staff)</label>
+                                <select value={formData.assignedToId} onChange={(e) => setFormData({...formData, assignedToId: e.target.value})} className={inputClass}>
                                     <option value="">Unassigned</option>
                                     {staffList.map(s => (
                                         <option key={s.id} value={s.id}>{s.name}</option>
@@ -347,30 +287,20 @@ function LeadsDashboard() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Notes</label>
-                                <textarea 
-                                    rows={3}
-                                    value={formData.notes}
-                                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                                    className="w-full p-2 border border-gray-200 rounded focus:border-primary focus:outline-none" 
-                                    placeholder="Add any specific context here..."
-                                />
+                                <label className={labelClass}>Notes</label>
+                                <textarea rows={3} value={formData.notes}
+                                    onChange={(e) => setFormData({...formData, notes: e.target.value})} className={inputClass}
+                                    placeholder="Add any specific context here..." />
                             </div>
 
-                            <div className="pt-4 flex gap-3">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-2 border border-gray-200 text-gray-600 font-bold uppercase tracking-widest rounded hover:bg-gray-50 transition-colors"
-                                >
+                            <div className="pt-2 flex justify-end gap-2">
+                                <button type="button" onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
                                     Cancel
                                 </button>
-                                <button 
-                                    type="submit" 
-                                    disabled={isSubmitting}
-                                    className="flex-1 py-2 bg-primary text-white font-bold uppercase tracking-widest rounded hover:bg-secondary transition-colors disabled:opacity-50"
-                                >
-                                    {isSubmitting ? 'Saving...' : (isEditMode ? 'Update Lead' : 'Add Lead')}
+                                <button type="submit" disabled={isSubmitting}
+                                    className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                                    {isSubmitting ? 'Saving…' : (isEditMode ? 'Update Lead' : 'Add Lead')}
                                 </button>
                             </div>
                         </form>

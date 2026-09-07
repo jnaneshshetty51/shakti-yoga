@@ -11,12 +11,15 @@ const DEFAULTS: Record<string, string> = {
     platformName: 'Shakti Yoga',
     supportEmail: 'support@shaktiyoga.com',
     defaultTimezone: 'IST',
+    teacher_rate_class: '500',
+    teacher_rate_session: '800',
 };
 
 export async function GET() {
     if (!(await requireSuperAdmin())) return forbidden();
 
-    const rows = await prisma.setting.findMany();
+    const allowed = Object.keys(DEFAULTS);
+    const rows = await prisma.setting.findMany({ where: { key: { in: allowed } } });
     const settings = { ...DEFAULTS };
     for (const row of rows) settings[row.key] = row.value;
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { LuInbox } from "react-icons/lu";
+import { PageHeader, PageLoading, Card, EmptyState, ErrorState, ActionButton } from "@/components/admin/ui";
 
 interface Message {
     id: string;
@@ -53,69 +55,49 @@ export default function AdminMessagesPage() {
         load();
     };
 
-    if (loading) {
-        return (
-            <div>
-                <h1 className="font-serif text-3xl text-gray-800 mb-8">Messages</h1>
-                <div className="text-gray-500">Loading...</div>
-            </div>
-        );
-    }
+    if (loading) return <PageLoading title="Messages" />;
 
     const visible = messages.filter((m) => showHandled || !m.handled);
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="font-serif text-3xl text-gray-800 mb-2">Messages</h1>
-                    <p className="text-gray-500">Enquiries submitted through the contact form.</p>
-                </div>
-                <label className="flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />
+            <PageHeader title="Messages" subtitle="Enquiries submitted through the contact form.">
+                <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full border border-gray-200 bg-white cursor-pointer">
+                    <input type="checkbox" className="accent-primary" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />
                     Show handled
                 </label>
-            </div>
+            </PageHeader>
 
             {loadError ? (
-                <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500">
-                    Could not load messages.
-                    <button onClick={load} className="ml-2 text-primary font-bold hover:underline">Retry</button>
-                </div>
+                <ErrorState message="Could not load messages." onRetry={load} />
             ) : visible.length === 0 ? (
-                <div className="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-400">
-                    No messages.
-                </div>
+                <Card><EmptyState icon={LuInbox} title="No messages" hint="New contact-form enquiries will appear here." /></Card>
             ) : (
                 <div className="space-y-4">
                     {visible.map((m) => (
-                        <div
+                        <Card
                             key={m.id}
-                            className={`bg-white p-6 rounded-lg shadow-sm border ${m.handled ? "border-gray-100 opacity-70" : "border-primary/10"}`}
+                            padded
+                            className={m.handled ? "opacity-70" : "border-primary/15"}
                         >
                             <div className="flex justify-between items-start mb-3 gap-4">
                                 <div>
                                     <div className="font-bold text-gray-800">{m.name}</div>
                                     <a href={`mailto:${m.email}`} className="text-sm text-primary hover:underline">{m.email}</a>
-                                    {m.subject && <span className="ml-3 text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{m.subject}</span>}
+                                    {m.subject && <span className="ml-3 text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{m.subject}</span>}
                                 </div>
                                 <div className="text-xs text-gray-400 whitespace-nowrap">
                                     {new Date(m.createdAt).toLocaleString()}
                                 </div>
                             </div>
                             <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">{m.message}</p>
-                            <div className="flex gap-3 text-xs font-bold uppercase tracking-wider">
-                                <button
-                                    onClick={() => setHandled(m.id, !m.handled)}
-                                    className="text-primary hover:text-secondary"
-                                >
+                            <div className="flex gap-4">
+                                <ActionButton onClick={() => setHandled(m.id, !m.handled)}>
                                     {m.handled ? "Mark unhandled" : "Mark handled"}
-                                </button>
-                                <button onClick={() => remove(m.id)} className="text-red-400 hover:text-red-600">
-                                    Delete
-                                </button>
+                                </ActionButton>
+                                <ActionButton tone="danger" onClick={() => remove(m.id)}>Delete</ActionButton>
                             </div>
-                        </div>
+                        </Card>
                     ))}
                 </div>
             )}

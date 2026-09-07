@@ -1,143 +1,168 @@
 "use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import type { IconType } from "react-icons";
+import {
+    LuLayoutDashboard, LuHeart, LuTrendingUp, LuBell, LuCreditCard, LuUser,
+    LuLifeBuoy, LuMenu, LuX, LuLogOut, LuArrowUpRight,
+} from "react-icons/lu";
+
+type NavItem = { name: string; href: string; icon: IconType };
+
+const NAV: NavItem[] = [
+    { name: "Dashboard", href: "/dashboard", icon: LuLayoutDashboard },
+    { name: "My Classes", href: "/dashboard/classes", icon: LuHeart },
+    { name: "Progress", href: "/dashboard/progress", icon: LuTrendingUp },
+    { name: "Activity", href: "/dashboard/activity", icon: LuBell },
+    { name: "Plan & Billing", href: "/dashboard/billing", icon: LuCreditCard },
+    { name: "Profile", href: "/dashboard/profile", icon: LuUser },
+];
+
+const ROLE_BADGE: Record<string, string> = {
+    member_therapy: "1:1 Therapy Member",
+    member_everyday: "Everyday Yoga Member",
+    trial: "Trial Member",
+    admin: "Administrator",
+    teacher: "Teacher",
+};
+
+function initials(name?: string) {
+    if (!name) return "SY";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function NavList({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
+    return (
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            {NAV.map((item) => {
+                const active = pathname === item.href;
+                const Icon = item.icon;
+                return (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                            active ? "bg-primary/10 text-primary" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                        }`}
+                    >
+                        {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />}
+                        <Icon className={`text-lg shrink-0 ${active ? "text-primary" : "text-gray-400"}`} />
+                        {item.name}
+                    </Link>
+                );
+            })}
+            <a
+                href="mailto:support@shaktiyoga.com?subject=Support Request"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            >
+                <LuLifeBuoy className="text-lg shrink-0" />
+                Support
+            </a>
+        </nav>
+    );
+}
+
+function SidebarFooter({
+    name, avatarUrl, badge, isVisitor, onNavigate, onLogout,
+}: {
+    name?: string; avatarUrl?: string | null; badge: string;
+    isVisitor: boolean; onNavigate: () => void; onLogout: () => void;
+}) {
+    return (
+        <div className="p-3 border-t border-gray-100">
+            <div className="flex items-center gap-3 px-3 py-2">
+                <div className="w-9 h-9 bg-primary/15 rounded-full flex items-center justify-center text-primary font-bold text-xs overflow-hidden shrink-0">
+                    {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                        initials(name)
+                    )}
+                </div>
+                <div className="overflow-hidden">
+                    <div className="text-sm font-bold text-gray-800 truncate">{name || "Guest"}</div>
+                    <div className="text-[11px] font-medium text-secondary truncate">{badge}</div>
+                </div>
+            </div>
+            {isVisitor && (
+                <Link
+                    href="/programs"
+                    onClick={onNavigate}
+                    className="mt-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+                >
+                    Upgrade plan <LuArrowUpRight className="text-sm" />
+                </Link>
+            )}
+            <button
+                onClick={onLogout}
+                className="w-full mt-1 flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 hover:text-gray-700 py-2 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+                <LuLogOut className="text-sm" /> Sign out
+            </button>
+        </div>
+    );
+}
 
 export default function Sidebar() {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const pathname = usePathname();
     const { user, logout } = useAuth();
+    const [open, setOpen] = useState(false);
 
-    const getRoleBadge = () => {
-        switch (user?.role) {
-            case 'member_therapy':
-                return '1:1 Therapy Member';
-            case 'member_everyday':
-                return 'Everyday Yoga Member';
-            case 'trial':
-                return 'Trial Member';
-            case 'admin':
-                return 'Administrator';
-            default:
-                return 'Free Account';
-        }
-    };
-
-    const getInitials = (name?: string) => {
-        if (!name) return 'SY';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    const badge = ROLE_BADGE[user?.role ?? ""] ?? "Free Account";
+    const close = () => setOpen(false);
+    const footerProps = {
+        name: user?.name,
+        avatarUrl: user?.avatarUrl,
+        badge,
+        isVisitor: user?.role === "visitor",
+        onNavigate: close,
+        onLogout: () => { close(); logout(); },
     };
 
     return (
         <>
-            {/* Mobile Header Bar */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-primary text-white z-40 px-4 flex items-center justify-between border-b border-white/10">
-                <Link href="/dashboard" className="font-serif text-xl font-bold tracking-wider">
-                    Shakti Yoga
+            {/* Mobile top bar */}
+            <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-gray-200/70 z-40 px-4 flex items-center justify-between">
+                <Link href="/dashboard" className="font-serif text-xl text-primary font-bold">
+                    Shakti<span className="text-secondary">.</span>
                 </Link>
-                <button
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="p-2 text-white focus:outline-none min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    aria-label="Toggle Dashboard Menu"
-                >
-                    <div className="w-6 h-5 flex flex-col justify-between">
-                        <span className={`w-full h-0.5 bg-white transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-                        <span className={`w-full h-0.5 bg-white transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
-                        <span className={`w-full h-0.5 bg-white transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2.5' : ''}`}></span>
-                    </div>
+                <button onClick={() => setOpen(!open)} className="p-2 -mr-2 text-gray-600 rounded-lg hover:bg-gray-100" aria-label="Toggle menu">
+                    {open ? <LuX className="w-6 h-6" /> : <LuMenu className="w-6 h-6" />}
                 </button>
             </div>
 
-            {/* Mobile Drawer Overlay */}
-            {isMobileMenuOpen && (
-                <div
-                    className="lg:hidden fixed inset-0 bg-black/50 z-40"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
-            )}
+            {open && <div className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-fade-in" onClick={close} />}
 
-            {/* Sidebar (Desktop fixed + Mobile Drawer) */}
-            <aside className={`w-64 bg-primary text-white h-screen fixed left-0 top-0 flex-col z-50 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden lg:flex -translate-x-full lg:translate-x-0'}`}>
-                <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                    <Link href="/" className="font-serif text-2xl font-bold tracking-wider">
-                        Shakti Yoga
+            {/* Desktop sidebar */}
+            <aside className="w-64 bg-white border-r border-gray-200/80 hidden lg:flex flex-col fixed h-full z-10">
+                <div className="px-5 pt-6 pb-4">
+                    <Link href="/" className="font-serif text-2xl text-primary font-bold">
+                        Shakti<span className="text-secondary">.</span>
                     </Link>
-                    <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="lg:hidden text-white/70 hover:text-white text-xl p-1"
-                    >
-                        ✕
+                    <div className="mt-0.5 text-[11px] font-medium text-gray-400 tracking-wide">Move · Breathe · Belong</div>
+                </div>
+                <NavList pathname={pathname} onNavigate={close} />
+                <SidebarFooter {...footerProps} />
+            </aside>
+
+            {/* Mobile drawer */}
+            <aside
+                className={`lg:hidden fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex flex-col transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
+            >
+                <div className="px-5 pt-6 pb-4 flex items-center justify-between">
+                    <Link href="/" className="font-serif text-2xl text-primary font-bold" onClick={close}>
+                        Shakti<span className="text-secondary">.</span>
+                    </Link>
+                    <button onClick={close} aria-label="Close menu" className="p-2 -mr-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+                        <LuX className="w-5 h-5" />
                     </button>
                 </div>
-
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    <Link
-                        href="/dashboard"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block px-4 py-3 rounded hover:bg-white/10 transition-colors font-sans text-sm uppercase tracking-widest"
-                    >
-                        Dashboard
-                    </Link>
-                    <Link
-                        href="/dashboard/classes"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block px-4 py-3 rounded hover:bg-white/10 transition-colors font-sans text-sm uppercase tracking-widest"
-                    >
-                        My Classes
-                    </Link>
-                    <Link
-                        href="/dashboard/billing"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block px-4 py-3 rounded hover:bg-white/10 transition-colors font-sans text-sm uppercase tracking-widest"
-                    >
-                        Plan & Billing
-                    </Link>
-                    <Link
-                        href="/dashboard/profile"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="block px-4 py-3 rounded hover:bg-white/10 transition-colors font-sans text-sm uppercase tracking-widest"
-                    >
-                        Profile
-                    </Link>
-                    <a
-                        href="mailto:support@shaktiyoga.com?subject=Support Request&body=Hi, I need help with..."
-                        className="block px-4 py-3 rounded hover:bg-white/10 transition-colors font-sans text-sm uppercase tracking-widest opacity-70"
-                    >
-                        Support
-                    </a>
-                </nav>
-
-                <div className="p-4 border-t border-white/10">
-                    <div className="flex items-center gap-3 px-4 py-3">
-                        <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center font-bold text-xs overflow-hidden">
-                            {user?.avatarUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                getInitials(user?.name)
-                            )}
-                        </div>
-                        <div className="text-sm truncate">
-                            <div className="font-bold truncate">{user?.name || 'Guest User'}</div>
-                            <div className="text-[10px] uppercase font-bold text-secondary tracking-wide">{getRoleBadge()}</div>
-                        </div>
-                    </div>
-                    {user?.role === 'visitor' && (
-                        <Link
-                            href="/programs"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="block my-2 py-2 px-3 bg-secondary text-white text-center font-bold text-xs uppercase tracking-widest rounded hover:bg-white hover:text-primary transition-colors"
-                        >
-                            Upgrade Plan
-                        </Link>
-                    )}
-                    <button
-                        onClick={() => { setIsMobileMenuOpen(false); logout(); }}
-                        className="w-full mt-2 text-xs text-center opacity-70 hover:opacity-100 uppercase tracking-widest py-2 hover:bg-white/10 rounded transition-colors"
-                    >
-                        Sign Out
-                    </button>
-                </div>
+                <NavList pathname={pathname} onNavigate={close} />
+                <SidebarFooter {...footerProps} />
             </aside>
         </>
     );
