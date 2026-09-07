@@ -5,6 +5,7 @@ import { getPlan, type PlanConfig } from '@/lib/pricing';
 import {
     createMonthlyPlan,
     createSubscription,
+    createOrder,
     getPublicKeyId,
     isRazorpayConfigured,
 } from '@/lib/razorpay';
@@ -72,30 +73,57 @@ export async function POST(request: Request) {
             );
         }
 
-        const planId = await getOrCreatePlanId(planKey, plan);
-        const subscription = await createSubscription({
-            planId,
-            notes: { userId: user.id, planKey },
-        });
+        const prefill = { name: user.name, email: user.email, contact: user.phone ?? '' };
+        const paymentBase = {
+            userId: user.id,
+            planType: plan.dbPlanType,
+            amount: plan.amount,
+            currency: plan.currency,
+            status: 'CREATED' as const,
+            provider: 'razorpay',
+        };
 
-        await prisma.payment.create({
-            data: {
-                userId: user.id,
-                planType: plan.dbPlanType,
-                amount: plan.amount,
+        // Prefer an auto-renewing subscription. If the Razorpay account doesn't
+        // have the Subscriptions product enabled (its /plans + /subscriptions
+        // endpoints 401), fall back to a one-time order so checkout still works —
+        // the member re-pays each cycle until Subscriptions is activated.
+        try {
+            const planId = await getOrCreatePlanId(planKey, plan);
+            const subscription = await createSubscription({ planId, notes: { userId: user.id, planKey } });
+            await prisma.payment.create({
+                data: { ...paymentBase, providerSubscriptionId: subscription.id },
+            });
+            return NextResponse.json({
+                mode: 'subscription',
+                subscriptionId: subscription.id,
+                keyId: getPublicKeyId(),
+                planName: plan.name,
+                prefill,
+            });
+        } catch (subErr) {
+            console.warn(
+                '[checkout] subscription path unavailable, falling back to one-time order:',
+                subErr instanceof Error ? subErr.message : subErr,
+            );
+            const order = await createOrder({
+                amountMajor: plan.amount,
                 currency: plan.currency,
-                status: 'CREATED',
-                provider: 'razorpay',
-                providerSubscriptionId: subscription.id,
-            },
-        });
-
-        return NextResponse.json({
-            subscriptionId: subscription.id,
-            keyId: getPublicKeyId(),
-            planName: plan.name,
-            prefill: { name: user.name, email: user.email, contact: user.phone ?? '' },
-        });
+                receipt: `sub_${user.id.slice(0, 8)}_${Date.now()}`,
+                notes: { userId: user.id, planType: planKey },
+            });
+            await prisma.payment.create({
+                data: { ...paymentBase, providerOrderId: order.id },
+            });
+            return NextResponse.json({
+                mode: 'order',
+                orderId: order.id,
+                amount: order.amount,
+                currency: order.currency,
+                keyId: getPublicKeyId(),
+                planName: plan.name,
+                prefill,
+            });
+        }
     } catch (error) {
         if (error instanceof ValidationError) return handleValidationError(error);
         console.error('Checkout subscribe error:', error);

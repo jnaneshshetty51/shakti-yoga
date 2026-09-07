@@ -70,11 +70,13 @@ function CheckoutContent() {
                 throw new Error("Payment library is still loading. Please try again in a moment.");
             }
 
-            const rzp = new window.Razorpay({
+            const isSubscription = data.mode === "subscription" || !!data.subscriptionId;
+            const rzpOptions: RazorpayOptions = {
                 key: data.keyId,
                 name: "Shakti Yoga",
-                description: `${data.planName} — monthly membership`,
-                subscription_id: data.subscriptionId,
+                description: isSubscription
+                    ? `${data.planName} — monthly membership`
+                    : `${data.planName} — 1 month`,
                 prefill: data.prefill,
                 theme: { color: "#4A6741" },
                 modal: {
@@ -100,7 +102,12 @@ function CheckoutContent() {
                         setIsProcessing(false);
                     }
                 },
-            });
+                ...(isSubscription
+                    ? { subscription_id: data.subscriptionId }
+                    : { order_id: data.orderId, amount: data.amount, currency: data.currency }),
+            };
+
+            const rzp = new window.Razorpay(rzpOptions);
             rzp.open();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
