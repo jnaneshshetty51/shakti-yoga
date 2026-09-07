@@ -32,7 +32,11 @@ export async function GET(request: Request) {
                 signupSeries(range, now),
                 trialFunnel(range, now),
                 classFillRate(range, now),
-                prisma.subscription.groupBy({ by: ['planType'], where: { status: 'ACTIVE' }, _count: true }),
+                prisma.subscription.groupBy({
+                    by: ['planType'],
+                    where: { status: 'ACTIVE', renewalDate: { gt: now } },
+                    _count: true,
+                }),
                 prisma.user.groupBy({
                     by: ['country'],
                     where: { country: { not: null }, role: { in: ['MEMBER_EVERYDAY', 'MEMBER_THERAPY', 'TRIAL'] } },

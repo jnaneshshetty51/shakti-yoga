@@ -77,7 +77,12 @@ export async function headlineStats(now = new Date()): Promise<HeadlineStats> {
         prisma.user.count({ where: { role: 'MEMBER_EVERYDAY', subscription: live } }),
         prisma.user.count({ where: { role: 'MEMBER_THERAPY', subscription: live } }),
         prisma.user.count({ where: { role: 'TRIAL' } }),
-        prisma.subscription.findMany({ where: { status: 'ACTIVE' }, select: { amount: true } }),
+        // MRR = paid subs that are actually current (ACTIVE and not past their
+        // renewal date). A sub that's ACTIVE but lapsed on renewal is dead revenue.
+        prisma.subscription.findMany({
+            where: { status: 'ACTIVE', renewalDate: { gt: now } },
+            select: { amount: true },
+        }),
         prisma.user.count({ where: { role: { in: MEMBER_ROLES }, createdAt: { gte: ago30 } } }),
         prisma.user.count({ where: { role: { in: MEMBER_ROLES }, createdAt: { gte: ago60, lt: ago30 } } }),
         // No createdAt/updatedAt on Subscription — use renewalDate as the "lapsed on" proxy.
