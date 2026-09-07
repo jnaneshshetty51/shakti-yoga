@@ -20,10 +20,10 @@ export default function PageHeader({ title, subtitle, image }: PageHeaderProps) 
                     />
                 </div>
             )}
-            <div className="relative z-10 max-w-4xl mx-auto">
-                <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6 tracking-wide">{title}</h1>
+            <div className="relative z-10 mx-auto w-full max-w-4xl">
+                <h1 className="w-full font-serif text-[1.9rem] font-bold leading-tight mb-4 sm:mb-6 sm:text-4xl md:text-5xl">{title}</h1>
                 {subtitle && (
-                    <p className="font-sans text-base sm:text-lg md:text-xl opacity-90 max-w-2xl mx-auto leading-relaxed font-light">
+                    <p className="mx-auto w-full max-w-2xl font-sans text-base opacity-90 leading-relaxed font-light sm:text-lg md:text-xl">
                         {subtitle}
                     </p>
                 )}

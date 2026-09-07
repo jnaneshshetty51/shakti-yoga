@@ -17,15 +17,15 @@ export default function Hero() {
                 <div className="absolute top-0 left-0 w-full h-full bg-black/40"></div>
             </div>
 
-            <div className="relative z-10 flex flex-col items-center gap-5 sm:gap-6 px-4 sm:px-8 max-w-4xl mx-auto">
-                <h1 className="font-serif text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide leading-tight drop-shadow-lg">
-                    Premium Online Yoga & Therapy for NRIs, from India’s Heart
+            <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-5 sm:gap-6 sm:px-8">
+                <h1 className="w-full font-serif text-[1.9rem] font-bold leading-[1.15] tracking-wide drop-shadow-lg sm:text-4xl md:text-6xl md:leading-tight">
+                    Premium Online Yoga &amp; Therapy for NRIs, from India&rsquo;s Heart
                 </h1>
-                <p className="font-sans text-base sm:text-lg md:text-xl font-light tracking-wide drop-shadow-md max-w-2xl text-white/90">
+                <p className="w-full max-w-2xl font-sans text-base font-light leading-relaxed tracking-wide drop-shadow-md text-white/90 sm:text-lg md:text-xl">
                     Everyday yoga classes (5 days/week) + personalised 1:1 yoga therapy.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-4 mt-2 sm:mt-4 w-full sm:w-auto">
+                <div className="mt-2 flex w-full flex-col gap-3 sm:mt-4 sm:w-auto sm:flex-row sm:gap-4">
                     <Link href="/trial" className="w-full sm:w-auto text-center px-8 py-3.5 bg-secondary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-primary transition-colors shadow-lg">
                         Start Free Trial
                     </Link>
@@ -34,7 +34,7 @@ export default function Hero() {
                     </Link>
                 </div>
 
-                <div className="mt-4 sm:mt-8 py-2.5 px-4 sm:px-6 bg-black/30 backdrop-blur-sm rounded-2xl sm:rounded-full border border-white/20 text-xs sm:text-sm tracking-wider uppercase font-light max-w-full">
+                <div className="mt-4 max-w-full whitespace-normal rounded-2xl border border-white/20 bg-black/30 px-4 py-2.5 text-center text-[11px] font-light uppercase leading-relaxed tracking-wider backdrop-blur-sm sm:mt-8 sm:rounded-full sm:px-6 sm:text-sm">
                     Live from India · Classes start 5:00 AM IST · WhatsApp support
                 </div>
             </div>

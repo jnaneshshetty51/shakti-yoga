@@ -79,8 +79,9 @@ export default function Navbar() {
                 </div>
             </button>
 
-            {/* Mobile Drawer */}
-            <div className={`fixed inset-0 bg-background z-40 transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 pb-8 overflow-y-auto ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            {/* Mobile Drawer — `hidden` (not translate-off-screen) when closed so a
+                fixed, viewport-wide panel can't expand the mobile layout width. */}
+            <div className={`fixed inset-0 bg-background z-40 md:hidden flex-col pt-24 px-6 pb-8 overflow-y-auto transition-opacity duration-200 ${isMenuOpen ? 'flex opacity-100' : 'hidden opacity-0'}`}>
                 <div className="flex flex-col gap-5">
                     <Link href="/" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Home
