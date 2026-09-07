@@ -48,16 +48,18 @@ export function StatCard({
         ? "text-red-600"
         : "text-gray-500";
 
+  const hasSpark = !!spark && spark.length > 1;
+
   return (
     <div className="bg-white p-5 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 hover:shadow-[0_4px_16px_rgba(16,24,40,0.08)] transition-shadow">
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         {icon && (
-          <div className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-xl ${a.tile} ${a.icon}`}>
+          <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg ${a.tile} ${a.icon}`}>
             {icon}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-bold text-gray-400 uppercase tracking-widest truncate">
+          <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-tight">
             {title}
           </div>
           <div className="text-[26px] leading-tight font-bold text-gray-900 mt-1">
@@ -66,7 +68,7 @@ export function StatCard({
             {suffix}
           </div>
           {change && (
-            <div className="mt-1.5 flex items-baseline gap-1.5 text-xs">
+            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 text-xs">
               <span className={`font-semibold ${changeColor}`}>
                 {trend && trendIcons[trend]} {change.split(" vs ")[0]}
               </span>
@@ -76,10 +78,10 @@ export function StatCard({
             </div>
           )}
         </div>
-        {spark && spark.length > 1 && (
-          <Sparkline points={spark} stroke={a.spark} width={72} height={36} className="shrink-0 self-center" />
-        )}
       </div>
+      {hasSpark && (
+        <Sparkline points={spark!} stroke={a.spark} width={240} height={32} className="mt-3 w-full" />
+      )}
     </div>
   );
 }

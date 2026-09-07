@@ -120,7 +120,14 @@ export function TrendChart({
 
                 {series.map((p, i) =>
                     i % labelEvery === 0 || i === n - 1 ? (
-                        <text key={i} x={x(i)} y={height - 6} fontSize={9} fill="#9ca3af" textAnchor="middle">
+                        <text
+                            key={i}
+                            x={x(i)}
+                            y={height - 6}
+                            fontSize={9}
+                            fill="#9ca3af"
+                            textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
+                        >
                             {p.label}
                         </text>
                     ) : null,

@@ -206,7 +206,7 @@ export default function DTable<T extends { id: string | number;[key: string]: un
 
             {/* Table */}
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[640px] text-left text-sm">
                     <thead className="bg-gray-50/70 text-gray-400 font-semibold uppercase tracking-wider text-[11px]">
                         <tr>
                             {enableBulkActions && (

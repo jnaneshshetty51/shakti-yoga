@@ -16,7 +16,10 @@ export default function ChromeGate({
     footer: React.ReactNode;
 }) {
     const pathname = usePathname() || "/";
-    const bare = pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
+    const bare =
+        pathname.startsWith("/dashboard") ||
+        pathname.startsWith("/admin") ||
+        pathname.startsWith("/teacher");
 
     return (
         <>

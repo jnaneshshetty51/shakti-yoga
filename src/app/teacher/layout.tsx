@@ -117,7 +117,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
                     <Footer name={user?.name} avatarUrl={user?.avatarUrl} onLogout={() => { close(); logout(); }} />
                 </aside>
 
-                <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-16 lg:pt-8">{children}</main>
+                <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-[4.5rem] lg:pt-8">{children}</main>
             </div>
         </ToastProvider>
     );
