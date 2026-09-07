@@ -1,61 +1,47 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { PLANS } from '@/lib/pricing';
+import { PLANS, LADDER, priceFor, regionFor, type PlanKey, type PlanConfig } from '@/lib/pricing';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
-/** Fallback derived from the single source of truth in lib/pricing. */
-const FALLBACK = {
-    everyday: {
-        name: PLANS.everyday.name,
-        price: PLANS.everyday.amount,
-        currency: PLANS.everyday.currency,
-        period: PLANS.everyday.period,
-        features: PLANS.everyday.features,
-    },
-    therapy: {
-        name: PLANS.therapy.name,
-        price: PLANS.therapy.amount,
-        currency: PLANS.therapy.currency,
-        period: PLANS.therapy.period,
-        features: PLANS.therapy.features,
-    },
-    trial: {
-        name: PLANS.trial.name,
-        price: PLANS.trial.amount,
-        currency: PLANS.trial.currency,
-        period: PLANS.trial.period,
-        features: PLANS.trial.features,
-    },
-};
+/**
+ * The plan ladder for the paywall. `?region=IN|INTL` (or a country / currency
+ * hint) picks INR vs USD pricing; the app passes its store storefront.
+ */
+export async function GET(request: Request) {
+    const hint = new URL(request.url).searchParams.get('region');
+    const region = regionFor(hint);
 
-export async function GET() {
-    try {
-        const plans = await prisma.plan.findMany({
-            where: { status: 'PUBLISHED' },
-            orderBy: { sortOrder: 'asc' },
-        });
+    const rung = (key: PlanKey) => {
+        const p: PlanConfig = PLANS[key];
+        const price = priceFor(p, region);
+        return {
+            key: p.key,
+            name: p.name,
+            tier: p.tier,
+            interval: p.interval,
+            price: price.amount,
+            currency: price.currency,
+            period: p.interval === 'annual' ? 'year' : 'month',
+            features: p.features,
+            recommended: !!p.recommended,
+            rcProductId: p.rcProductId,
+            weeklyClassLimit: p.weeklyClassLimit,
+        };
+    };
 
-        if (plans.length === 0) return NextResponse.json(FALLBACK);
-
-        const KEY: Record<string, string> = { EVERYDAY_YOGA: 'everyday', YOGA_THERAPY: 'therapy', TRIAL: 'trial' };
-        const grouped = plans.reduce((acc, plan) => {
-            const key = KEY[plan.planType] ?? plan.planType.toLowerCase();
-            acc[key] = {
-                id: plan.id,
-                name: plan.name,
-                price: plan.price,
-                currency: plan.currency,
-                period: plan.period,
-                features: plan.features,
-                description: plan.description,
-            };
-            return acc;
-        }, {} as Record<string, unknown>);
-
-        return NextResponse.json(Object.keys(grouped).length > 0 ? grouped : FALLBACK);
-    } catch (error) {
-        console.error('Error fetching plans:', error);
-        return NextResponse.json(FALLBACK);
-    }
+    return NextResponse.json(
+        {
+            region,
+            trial: {
+                key: 'trial',
+                name: PLANS.trial.name,
+                price: 0,
+                currency: priceFor(PLANS.trial, region).currency,
+                period: '7 days',
+                features: PLANS.trial.features,
+            },
+            plans: LADDER.map(rung),
+        },
+        { headers: { 'Cache-Control': 'no-store' } },
+    );
 }

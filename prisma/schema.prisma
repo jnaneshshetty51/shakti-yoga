@@ -13,6 +13,7 @@ enum Role {
   STAFF_ADMIN
   TEACHER
   MEMBER_EVERYDAY
+  MEMBER_STARTER
   MEMBER_THERAPY
   TRIAL
   VISITOR
@@ -21,6 +22,8 @@ enum Role {
 enum PlanType {
   EVERYDAY_YOGA
   YOGA_THERAPY
+  STARTER
+  FAMILY
   TRIAL
 }
 
@@ -215,13 +218,18 @@ model Subscription {
   userId            String             @unique
   user              User               @relation(fields: [userId], references: [id])
   planType          PlanType
+  planKey           String? // e.g. 'everyday_annual' — the exact ladder rung (lib/pricing)
+  interval          String             @default("monthly") // monthly | annual | trial
   amount            Float
   currency          String             @default("INR")
   status            SubscriptionStatus @default(ACTIVE)
   startDate         DateTime           @default(now())
   renewalDate       DateTime
-  billingProviderId String? // Razorpay subscription id (sub_xxx) for recurring plans
+  provider          String             @default("razorpay") // razorpay | apple | google
+  store             String? // 'app_store' | 'play_store' — set for RevenueCat-managed subs
+  billingProviderId String? // Razorpay sub id (sub_xxx), or RevenueCat original_transaction_id
   recurring         Boolean            @default(false)
+  familyOwnerId     String? // set on the invited seat of a Family plan → points at the payer
 }
 
 model Setting {
@@ -245,6 +253,7 @@ model Payment {
   userId                 String
   user                   User          @relation(fields: [userId], references: [id])
   planType               PlanType
+  planKey                String? // exact ladder rung (lib/pricing) — distinguishes monthly vs annual
   amount                 Float // major currency units (e.g. rupees)
   currency               String        @default("INR")
   status                 PaymentStatus @default(CREATED)

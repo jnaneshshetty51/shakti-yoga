@@ -23,6 +23,7 @@ nano .env
 | `RESEND_API_KEY` | For email | Resend API key. Unset = contact/booking/payment emails are logged to the console, not sent. |
 | `ANTHROPIC_API_KEY` | For the in-app yoga guide | Anthropic API key (console.anthropic.com). Unset = the assistant feature is hidden in the app (`GET /api/assistant` returns `available: false`); everything else works. Billed per use. |
 | `POSTHOG_KEY` / `POSTHOG_HOST` | For product analytics | PostHog project API key (`phc_...`). Unset = events still write to the local `AnalyticsEvent` table but aren't sent to PostHog. `POSTHOG_HOST` defaults to `https://us.i.posthog.com`. |
+| `REVENUECAT_WEBHOOK_SECRET` | For App Store / Play IAP | The Authorization-header value you set in RevenueCat → Integrations → Webhooks. Unset = `POST /api/webhooks/revenuecat` returns 503; Razorpay web checkout still works. The mobile app also needs `revenueCatIosKey` / `revenueCatAndroidKey` in its `app.json` extra (public SDK keys). |
 | `EMAIL_FROM` | For email | Verified sender, e.g. `Shakti Yoga <hello@shaktiyoga.in>`. Defaults to Resend's sandbox address. |
 | `ADMIN_EMAIL` | For email | Address that receives contact-form enquiries. |
 | `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. Not read client-side - the dev-only Quick Login buttons on `/login` always use the fixed default `Password123!`, so they only work if you left `SEED_PASSWORD` unset. |

@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
 import Script from "next/script";
 import { useAuth } from "@/context/AuthContext";
-import { getPlan, formatPrice } from "@/lib/pricing";
+import { getPlan, formatPrice, priceFor, regionFor } from "@/lib/pricing";
 import Link from "next/link";
 
 function CheckoutContent() {
@@ -12,6 +12,11 @@ function CheckoutContent() {
     const router = useRouter();
     const { user, isLoading, refreshUser } = useAuth();
     const planType = searchParams.get("plan") || "everyday";
+    // ?region= wins; otherwise the sy_region cookie set by middleware (GeoIP) / the ₹-$ toggle.
+    const cookieRegion = typeof document !== "undefined"
+        ? document.cookie.match(/(?:^|;\s*)sy_region=(IN|INTL)/)?.[1]
+        : null;
+    const region = regionFor(searchParams.get("region") ?? cookieRegion);
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -37,7 +42,10 @@ function CheckoutContent() {
     }
 
     const selectedPlan = getPlan(planType);
-    const isFree = selectedPlan.amount === 0;
+    const isFree = selectedPlan.interval === "trial";
+    const price = priceFor(selectedPlan, region);
+    const priceLabel = formatPrice(price.amount, price.currency);
+    const cadence = selectedPlan.interval === "annual" ? "Billed yearly" : "Billed monthly";
 
     const finish = async () => {
         await refreshUser();
@@ -53,7 +61,7 @@ function CheckoutContent() {
             const res = await fetch("/api/checkout/subscribe", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ planType }),
+                body: JSON.stringify({ planKey: planType, region }),
             });
             const data = await res.json();
 
@@ -74,9 +82,7 @@ function CheckoutContent() {
             const rzpOptions: RazorpayOptions = {
                 key: data.keyId,
                 name: "Shakti Yoga",
-                description: isSubscription
-                    ? `${data.planName} — monthly membership`
-                    : `${data.planName} — 1 month`,
+                description: `${data.planName}${isSubscription ? "" : " — one payment"}`,
                 prefill: data.prefill,
                 theme: { color: "#4A6741" },
                 modal: {
@@ -130,11 +136,11 @@ function CheckoutContent() {
                         <div>
                             <h3 className="font-bold text-lg text-gray-800">{selectedPlan.name}</h3>
                             <p className="text-sm text-gray-500">
-                                {isFree ? "7-day free trial" : `Billed monthly`}
+                                {isFree ? "7-day free trial" : cadence}
                             </p>
                         </div>
                         <div className="text-2xl font-bold text-primary">
-                            {isFree ? "Free" : formatPrice(selectedPlan.amount, selectedPlan.currency)}
+                            {isFree ? "Free" : priceLabel}
                         </div>
                     </div>
 
@@ -148,7 +154,7 @@ function CheckoutContent() {
 
                     <div className="flex justify-between items-center pt-4 border-t border-gray-100 font-bold text-lg">
                         <span>Total</span>
-                        <span>{isFree ? "Free" : formatPrice(selectedPlan.amount, selectedPlan.currency)}</span>
+                        <span>{isFree ? "Free" : priceLabel}</span>
                     </div>
                 </div>
 
@@ -178,7 +184,7 @@ function CheckoutContent() {
                             <label htmlFor="terms" className="text-xs text-gray-600">
                                 I agree to the <Link href="/terms" className="underline">Terms of Service</Link> and{" "}
                                 <Link href="/privacy" className="underline">Privacy Policy</Link>.
-                                {!isFree && ` I authorise Shakti Yoga to charge ${formatPrice(selectedPlan.amount, selectedPlan.currency)} for this subscription.`}
+                                {!isFree && ` I authorise Shakti Yoga to charge ${priceLabel} for this subscription.`}
                             </label>
                         </div>
 
@@ -191,7 +197,7 @@ function CheckoutContent() {
                                 ? "Processing..."
                                 : isFree
                                     ? "Start Free Trial"
-                                    : `Pay ${formatPrice(selectedPlan.amount, selectedPlan.currency)}`}
+                                    : `Pay ${priceLabel}`}
                         </button>
 
                         <div className="text-center">

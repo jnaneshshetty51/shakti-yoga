@@ -1,5 +1,15 @@
 import { prisma } from '@/lib/prisma';
 import { Role, SubscriptionStatus } from '@prisma/client';
+import { PLANS } from '@/lib/pricing';
+
+const STARTER_WEEKLY_LIMIT = PLANS.starter.weeklyClassLimit ?? 2;
+
+/** UTC midnight of the Monday that starts this week. */
+function weekStart(now = new Date()): Date {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    return d;
+}
 
 /**
  * Eligibility for the daily group class (Everyday Yoga).
@@ -34,10 +44,11 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
         };
     }
 
-    if (user.role !== Role.MEMBER_EVERYDAY && user.role !== Role.TRIAL) {
+    const memberRoles: Role[] = [Role.MEMBER_EVERYDAY, Role.MEMBER_STARTER, Role.TRIAL];
+    if (!memberRoles.includes(user.role)) {
         return {
             ok: false,
-            reason: 'An active Everyday Yoga membership or trial is required to join the class.',
+            reason: 'An active membership or trial is required to join the class.',
             paywall: true,
         };
     }
@@ -56,6 +67,20 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
         };
     }
 
+    // Starter is capped at N live classes per week.
+    if (user.role === Role.MEMBER_STARTER) {
+        const usedThisWeek = await prisma.classAttendance.count({
+            where: { userId, joinedAt: { gte: weekStart() } },
+        });
+        if (usedThisWeek >= STARTER_WEEKLY_LIMIT) {
+            return {
+                ok: false,
+                reason: `Your Starter plan includes ${STARTER_WEEKLY_LIMIT} live classes a week. Upgrade to Everyday for unlimited classes.`,
+                paywall: true,
+            };
+        }
+    }
+
     return { ok: true };
 }
 
@@ -66,7 +91,7 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
 export async function eligibleEverydayMembers(): Promise<{ id: string; email: string; name: string }[]> {
     return prisma.user.findMany({
         where: {
-            role: { in: [Role.MEMBER_EVERYDAY, Role.TRIAL] },
+            role: { in: [Role.MEMBER_EVERYDAY, Role.MEMBER_STARTER, Role.TRIAL] },
             subscription: {
                 status: { in: VALID_SUB_STATUSES },
                 renewalDate: { gt: new Date() },

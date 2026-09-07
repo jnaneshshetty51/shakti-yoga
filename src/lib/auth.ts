@@ -88,6 +88,8 @@ export function mapDatabaseRole(dbRole: string): string {
             return 'teacher';
         case 'MEMBER_EVERYDAY':
             return 'member_everyday';
+        case 'MEMBER_STARTER':
+            return 'member_starter';
         case 'MEMBER_THERAPY':
             return 'member_therapy';
         case 'TRIAL':

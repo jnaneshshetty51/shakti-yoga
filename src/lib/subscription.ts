@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
-import type { PlanConfig } from '@/lib/pricing';
+import { type PlanConfig, type Region, priceFor } from '@/lib/pricing';
 import { Role, SubscriptionStatus } from '@prisma/client';
 
 /**
@@ -52,9 +52,23 @@ export async function syncSubscriptionState(userId: string, currentRole: Role): 
 export async function activatePlan(
     userId: string,
     plan: PlanConfig,
-    opts: { recurring?: boolean; subscriptionId?: string; renewalDate?: Date } = {},
+    opts: {
+        recurring?: boolean;
+        subscriptionId?: string;
+        renewalDate?: Date;
+        region?: Region;
+        provider?: 'razorpay' | 'apple' | 'google';
+        store?: 'app_store' | 'play_store' | null;
+        familyOwnerId?: string | null;
+        /** override amount/currency (e.g. from a store receipt) */
+        amount?: number;
+        currency?: string;
+    } = {},
 ) {
-    const isTrial = plan.dbPlanType === 'TRIAL';
+    const isTrial = plan.interval === 'trial';
+    const price = priceFor(plan, opts.region ?? 'IN');
+    const amount = opts.amount ?? price.amount;
+    const currency = opts.currency ?? price.currency;
 
     // Referral bonus: consume any banked credit days on this activation.
     const before = await prisma.user.findUnique({
@@ -81,11 +95,16 @@ export async function activatePlan(
 
     const subFields = {
         planType: plan.dbPlanType,
-        amount: plan.amount,
-        currency: plan.currency,
+        planKey: plan.key,
+        interval: plan.interval,
+        amount,
+        currency,
         status: plan.subscriptionStatus,
         renewalDate,
+        provider: opts.provider ?? 'razorpay',
+        store: opts.store ?? null,
         recurring: opts.recurring ?? false,
+        familyOwnerId: opts.familyOwnerId ?? null,
         ...(opts.subscriptionId ? { billingProviderId: opts.subscriptionId } : {}),
     };
 

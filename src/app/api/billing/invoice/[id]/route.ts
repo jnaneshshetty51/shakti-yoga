@@ -7,6 +7,8 @@ import type { PlanType } from '@prisma/client';
 const PLAN_NAME: Record<PlanType, string> = {
     EVERYDAY_YOGA: PLANS.everyday.name,
     YOGA_THERAPY: PLANS.therapy.name,
+    STARTER: PLANS.starter.name,
+    FAMILY: PLANS.family.name,
     TRIAL: PLANS.trial.name,
 };
 

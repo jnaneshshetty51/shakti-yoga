@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { PLANS, formatPrice } from '@/lib/pricing';
+import { PLANS, formatPrice, getPlan, regionFor } from '@/lib/pricing';
 import { verifyPaymentSignature, verifySubscriptionSignature, fetchPayment } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
 import { sendEmail, emailLayout } from '@/lib/email';
@@ -10,8 +10,9 @@ import { posthogCapture, posthogIdentify } from '@/lib/posthog';
 import { markReferralConverted } from '@/lib/referral';
 import type { PlanType, Payment } from '@prisma/client';
 
-function planConfigForDbType(planType: PlanType) {
-    return Object.values(PLANS).find(p => p.dbPlanType === planType) ?? PLANS.everyday;
+function planForPayment(p: Payment) {
+    if (p.planKey) return getPlan(p.planKey);
+    return Object.values(PLANS).find((x) => x.dbPlanType === (p.planType as PlanType)) ?? PLANS.everyday;
 }
 
 async function confirmAndActivate(params: {
@@ -40,13 +41,17 @@ async function confirmAndActivate(params: {
         data: { status: 'PAID', providerPaymentId: razorpayPaymentId, providerSignature: razorpaySignature },
     });
 
-    const plan = planConfigForDbType(paymentRecord.planType);
-    const { user, mappedRole } = await activatePlan(userId, plan, { recurring, subscriptionId });
+    const plan = planForPayment(paymentRecord);
+    const region = regionFor(paymentRecord.currency);
+    const { user, mappedRole } = await activatePlan(userId, plan, {
+        recurring, subscriptionId, region,
+        amount: paymentRecord.amount, currency: paymentRecord.currency,
+    });
 
-    recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.dbPlanType, recurring } });
-    posthogCapture(userId, 'subscription_started', { plan: plan.dbPlanType, billing: 'razorpay', recurring, amount: paymentRecord.amount });
-    posthogIdentify(userId, { plan: plan.dbPlanType, role: mappedRole, subscribed_at: new Date().toISOString() });
-    if (plan.dbPlanType !== 'TRIAL') void markReferralConverted(userId).catch(() => {});
+    recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.key, recurring } });
+    posthogCapture(userId, 'subscription_started', { plan: plan.key, billing: 'razorpay', recurring, amount: paymentRecord.amount });
+    posthogIdentify(userId, { plan: plan.key, role: mappedRole, subscribed_at: new Date().toISOString() });
+    if (plan.interval !== 'trial') void markReferralConverted(userId).catch(() => {});
     recordRevenue({
         userId,
         amount: paymentRecord.amount,
@@ -60,7 +65,7 @@ async function confirmAndActivate(params: {
         subject: `Payment received — ${plan.name}`,
         html: emailLayout(
             `<p>Hi ${user.name.split(' ')[0] || 'there'},</p>
-             <p>We've received your payment of <strong>${formatPrice(paymentRecord.amount, paymentRecord.currency)}</strong> for the ${plan.name} plan${recurring ? ' (renews monthly)' : ''}.</p>
+             <p>We've received your payment of <strong>${formatPrice(paymentRecord.amount, paymentRecord.currency)}</strong> for the ${plan.name} plan${recurring ? ` (renews ${plan.interval === 'annual' ? 'yearly' : 'monthly'})` : ''}.</p>
              <p>Payment reference: <code>${razorpayPaymentId}</code></p>
              <p>Your membership is active. Namaste 🙏</p>`,
         ),

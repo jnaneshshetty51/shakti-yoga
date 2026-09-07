@@ -11,6 +11,7 @@
 export type MappedRole =
     | 'visitor'
     | 'trial'
+    | 'member_starter'
     | 'member_everyday'
     | 'member_therapy'
     | 'teacher'
@@ -30,11 +31,11 @@ export type Action =
     | 'admin.grant_admin'; // promote/demote to a *_ADMIN role  (super only — enforced separately)
 
 const MATRIX: Record<Action, MappedRole[]> = {
-    'site.view': ['visitor', 'trial', 'member_everyday', 'member_therapy', 'teacher', 'admin'],
-    'class.join': ['trial', 'member_everyday', 'teacher', 'admin'],
+    'site.view': ['visitor', 'trial', 'member_starter', 'member_everyday', 'member_therapy', 'teacher', 'admin'],
+    'class.join': ['trial', 'member_starter', 'member_everyday', 'teacher', 'admin'],
     'therapy.book': ['member_therapy', 'admin'],
     'consult.book': ['trial'],
-    'dashboard.access': ['trial', 'member_everyday', 'member_therapy', 'teacher', 'admin'],
+    'dashboard.access': ['trial', 'member_starter', 'member_everyday', 'member_therapy', 'teacher', 'admin'],
     'admin.access': ['admin'],
     'admin.classes': ['admin'],
     'admin.users': ['admin'],

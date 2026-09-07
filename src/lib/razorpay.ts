@@ -133,12 +133,17 @@ export interface RazorpayPlan {
     item: { amount: number; currency: string; name: string };
 }
 
-/** Create a monthly Razorpay plan for a given amount. */
-export function createMonthlyPlan(params: { amountMajor: number; currency: string; name: string }): Promise<RazorpayPlan> {
+/** Create a recurring Razorpay plan (monthly or yearly) for a given amount. */
+export function createRecurringPlan(params: {
+    amountMajor: number;
+    currency: string;
+    name: string;
+    period?: 'monthly' | 'yearly';
+}): Promise<RazorpayPlan> {
     return rzp<RazorpayPlan>('/plans', {
         method: 'POST',
         body: JSON.stringify({
-            period: 'monthly',
+            period: params.period ?? 'monthly',
             interval: 1,
             item: {
                 name: params.name,
@@ -148,6 +153,10 @@ export function createMonthlyPlan(params: { amountMajor: number; currency: strin
         }),
     });
 }
+
+/** @deprecated use createRecurringPlan */
+export const createMonthlyPlan = (params: { amountMajor: number; currency: string; name: string }) =>
+    createRecurringPlan(params);
 
 export interface RazorpaySubscription {
     id: string;

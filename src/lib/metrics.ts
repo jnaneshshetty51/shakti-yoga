@@ -11,7 +11,7 @@ import { Prisma, type Role } from '@prisma/client';
  */
 
 export const DAY = 86_400_000;
-export const MEMBER_ROLES: Role[] = ['MEMBER_EVERYDAY', 'MEMBER_THERAPY'];
+export const MEMBER_ROLES: Role[] = ['MEMBER_EVERYDAY', 'MEMBER_STARTER', 'MEMBER_THERAPY'];
 
 export type RangeKey = '7d' | '30d' | '90d' | '12m';
 export const RANGE_DAYS: Record<RangeKey, number> = { '7d': 7, '30d': 30, '90d': 90, '12m': 365 };

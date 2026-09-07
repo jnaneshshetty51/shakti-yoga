@@ -1,7 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { PLANS, priceFor, formatPrice } from '@/lib/pricing';
+import { resolveRegion } from '@/lib/region';
 
-export default function YogaTherapy() {
+export default async function YogaTherapy() {
+    const region = await resolveRegion();
+    const p = priceFor(PLANS.therapy, region);
+    const priceStr = `${formatPrice(p.amount, p.currency)}/mo`;
     return (
         <section id="therapy" className="py-12 sm:py-20 px-4 sm:px-8 bg-background">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12">
@@ -41,7 +46,7 @@ export default function YogaTherapy() {
 
                     <div className="flex flex-col sm:flex-row gap-4 w-full">
                         <Link href="/yoga-therapy/start" className="w-full sm:w-auto px-6 py-3.5 bg-primary text-white font-sans text-sm uppercase tracking-widest rounded hover:bg-secondary transition-colors text-center font-bold">
-                            Book Therapy Plan (₹5,000/mo)
+                            Book Therapy Plan ({priceStr})
                         </Link>
                         <Link href="/yoga-therapy/start" className="w-full sm:w-auto px-6 py-3.5 border border-primary text-primary font-sans text-sm uppercase tracking-widest rounded hover:bg-primary/5 transition-colors text-center font-bold">
                             Talk to Us First

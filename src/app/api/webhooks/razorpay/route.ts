@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyWebhookSignature } from '@/lib/razorpay';
-import { PLANS } from '@/lib/pricing';
+import { PLANS, getPlan, regionFor } from '@/lib/pricing';
 import { activatePlan } from '@/lib/subscription';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { markReferralConverted } from '@/lib/referral';
@@ -9,8 +9,9 @@ import { sendEmail, emailLayout } from '@/lib/email';
 import { sendPush } from '@/lib/push';
 import type { PlanType } from '@prisma/client';
 
-function planConfigForDbType(planType: PlanType) {
-    return Object.values(PLANS).find(p => p.dbPlanType === planType) ?? PLANS.everyday;
+function planFrom(planKey: string | null, planType: PlanType | null) {
+    if (planKey) return getPlan(planKey);
+    return Object.values(PLANS).find((p) => p.dbPlanType === planType) ?? PLANS.everyday;
 }
 
 /**
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
 
         let userId = subscription?.userId ?? null;
         let planType: PlanType | null = subscription?.planType ?? null;
+        let planKey: string | null = subscription?.planKey ?? null;
 
         if (!subscription) {
             const pending = await prisma.payment.findFirst({
@@ -77,13 +79,15 @@ export async function POST(request: Request) {
             if (pending) {
                 userId = pending.userId;
                 planType = pending.planType;
+                planKey = pending.planKey;
             }
         }
 
         if (!userId || !planType) {
             return NextResponse.json({ ok: true, note: 'no local user for this subscription' });
         }
-        const plan = planConfigForDbType(planType);
+        const plan = planFrom(planKey, planType);
+        const region = regionFor(payEntity?.currency ?? subscription?.currency);
 
         switch (event.event) {
             case 'subscription.charged': {
@@ -120,6 +124,8 @@ export async function POST(request: Request) {
                     recurring: true,
                     subscriptionId: subEntity.id,
                     renewalDate,
+                    region,
+                    ...(payEntity ? { amount: payEntity.amount / 100, currency: payEntity.currency } : {}),
                 });
 
                 recordEvent(firstActivation ? 'SUBSCRIPTION' : 'SUBSCRIPTION_RENEWED', {

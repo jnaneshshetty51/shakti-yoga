@@ -1,193 +1,153 @@
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
-
 import type { Metadata } from "next";
+import { PLANS, priceFor, formatPrice, type PlanKey } from "@/lib/pricing";
+import { resolveRegion } from "@/lib/region";
+import CurrencyToggle from "@/components/CurrencyToggle";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
     title: "Programs & Pricing",
-    description: "Everyday Yoga group classes (₹2,000/mo) and 1:1 Yoga Therapy (₹5,000/mo). Start with a 7-day free trial.",
+    description:
+        "Starter, Everyday Yoga (unlimited live classes) and 1:1 Yoga Therapy. Monthly or annual, priced in ₹ for India and $ for everyone else. 7-day free trial.",
     alternates: { canonical: "/programs" },
 };
 
-export default function ProgramsPage() {
+const CHECK = (
+    <svg viewBox="0 0 20 20" fill="none" className="mt-0.5 h-5 w-5 flex-none">
+        <circle cx="10" cy="10" r="10" className="fill-primary/10" />
+        <path d="M6 10.5l2.5 2.5L14 7.5" stroke="#4A6741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
+const TIERS: { key: PlanKey; annualKey?: PlanKey; blurb: string; cta: string; href: string }[] = [
+    { key: "starter", blurb: "Build the habit with a couple of classes a week.", cta: "Start free trial", href: "/trial" },
+    { key: "everyday", annualKey: "everyday_annual", blurb: "Unlimited daily classes and the full library.", cta: "Start free trial", href: "/trial" },
+    { key: "family", annualKey: "family_annual", blurb: "Two members, unlimited classes each.", cta: "Start free trial", href: "/trial" },
+    { key: "therapy", annualKey: "therapy_annual", blurb: "Private 1:1 sessions for specific health goals.", cta: "Book a consultation", href: "/yoga-therapy/start" },
+];
+
+export default async function ProgramsPage() {
+    const region = await resolveRegion();
+    const price = (k: PlanKey) => {
+        const p = priceFor(PLANS[k], region);
+        return formatPrice(p.amount, p.currency);
+    };
+
     return (
         <main>
             <PageHeader
-                title="Our Programs"
-                subtitle="Choose the path that suits your lifestyle. From daily group energy to personalized one-on-one healing."
+                title="Programs & pricing"
+                subtitle="From building a daily habit to deep 1:1 healing. Every plan starts with a free week."
             />
 
-            {/* Plan Cards */}
-            <section className="py-20 px-8 bg-background">
-                <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
-                    {/* Plan 1: Everyday Yoga */}
-                    <div className="bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow border-t-4 border-secondary relative overflow-hidden flex flex-col">
-                        <div className="absolute top-0 right-0 bg-secondary text-white text-xs font-bold px-3 py-1 uppercase tracking-widest rounded-bl">
-                            Most Popular
-                        </div>
-                        <h3 className="font-serif text-3xl text-text mb-2">Everyday Yoga</h3>
-                        <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">Group Classes</p>
-
-                        <div className="text-5xl font-serif text-primary mb-6">
-                            ₹2,000<span className="text-lg text-text/50 font-sans">/month</span>
-                        </div>
-
-                        <p className="font-sans text-text/80 mb-8 leading-relaxed">
-                            Perfect for maintaining general fitness, flexibility, and mental peace.
-                            Join our supportive community and build a consistent daily habit.
+            <section className="bg-background px-4 py-14 sm:px-8">
+                <div className="mx-auto max-w-6xl">
+                    <div className="mb-10 flex flex-col items-center gap-3">
+                        <CurrencyToggle region={region} />
+                        <p className="font-sans text-xs text-text/50">
+                            {region === "IN" ? "Prices in Indian rupees." : "Prices in US dollars for members outside India."}
                         </p>
-
-                        <ul className="space-y-4 mb-8 font-sans text-text/80 flex-grow">
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span><strong>5 Live Classes</strong> per week</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span>Flexible <strong>IST timings</strong> (Morning & Evening)</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span>Focus on <strong>Stress Relief & Flexibility</strong></span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span><strong>Free 1 Trial Class</strong> included</span>
-                            </li>
-                        </ul>
-
-                        <div className="space-y-3 mt-auto">
-                            <Link href="/trial" className="block w-full py-4 text-center bg-primary text-white font-sans uppercase tracking-widest text-sm rounded hover:bg-secondary transition-colors shadow-md">
-                                Start Free Trial
-                            </Link>
-                            <Link href="/signup?plan=everyday" className="block w-full py-4 text-center border border-primary text-primary font-sans uppercase tracking-widest text-sm rounded hover:bg-primary/5 transition-colors">
-                                Subscribe Now
-                            </Link>
-                        </div>
                     </div>
 
-                    {/* Plan 2: Yoga Therapy */}
-                    <div className="bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow border-t-4 border-primary flex flex-col">
-                        <h3 className="font-serif text-3xl text-text mb-2">Yoga Therapy</h3>
-                        <p className="font-sans text-sm text-text/60 uppercase tracking-widest mb-6">1:1 Personalized</p>
-
-                        <div className="text-5xl font-serif text-primary mb-6">
-                            ₹5,000<span className="text-lg text-text/50 font-sans">/month</span>
-                        </div>
-
-                        <p className="font-sans text-text/80 mb-8 leading-relaxed">
-                            Designed for deep healing and addressing specific health conditions.
-                            Get a fully customized practice tailored to your body's needs.
-                        </p>
-
-                        <ul className="space-y-4 mb-8 font-sans text-text/80 flex-grow">
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span><strong>4 Personalized Sessions</strong> per month</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span>Detailed <strong>Health Assessment</strong></span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span>For <strong>Pain, Anxiety, Chronic Issues</strong></span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <span className="text-green-600 text-xl">✓</span>
-                                <span>Ongoing <strong>Plan Adjustments</strong></span>
-                            </li>
-                        </ul>
-
-                        <div className="space-y-3 mt-auto">
-                            <Link href="/yoga-therapy/start" className="block w-full py-4 text-center bg-secondary text-white font-sans uppercase tracking-widest text-sm rounded hover:bg-primary transition-colors shadow-md">
-                                Book 1:1 Plan
-                            </Link>
-                            <Link href="/yoga-therapy/start" className="block w-full py-4 text-center border border-secondary text-secondary font-sans uppercase tracking-widest text-sm rounded hover:bg-secondary/5 transition-colors">
-                                Schedule Intro Call
-                            </Link>
-                        </div>
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                        {TIERS.map(({ key, annualKey, blurb, cta, href }) => {
+                            const plan = PLANS[key];
+                            const featured = key === "everyday";
+                            return (
+                                <div
+                                    key={key}
+                                    className={`relative flex flex-col rounded-3xl bg-white p-6 shadow-[0_2px_20px_rgba(44,62,50,0.06)] ${
+                                        featured ? "border-2 border-primary" : "border border-primary/15"
+                                    }`}
+                                >
+                                    {featured && (
+                                        <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 font-sans text-[10px] font-bold uppercase tracking-widest text-white">
+                                            Most popular
+                                        </span>
+                                    )}
+                                    <h3 className="font-serif text-xl text-text">{plan.name}</h3>
+                                    <p className="mt-1 min-h-[40px] font-sans text-sm text-text/60">{blurb}</p>
+                                    <p className="mt-4 font-serif text-3xl text-primary">
+                                        {price(key)}
+                                        <span className="font-sans text-sm text-text/45"> / mo</span>
+                                    </p>
+                                    {annualKey && (
+                                        <p className="mt-1 font-sans text-xs text-text/50">
+                                            or {price(annualKey)}/yr — 2 months free
+                                        </p>
+                                    )}
+                                    <ul className="mt-5 flex-1 space-y-2.5 font-sans text-sm text-text/80">
+                                        {plan.features.map((f) => (
+                                            <li key={f} className="flex gap-2.5">{CHECK}<span>{f}</span></li>
+                                        ))}
+                                    </ul>
+                                    <Link
+                                        href={href}
+                                        className={`mt-6 block rounded-full py-3 text-center font-sans text-xs font-bold uppercase tracking-widest transition-colors ${
+                                            featured
+                                                ? "bg-primary text-white hover:bg-primary/90"
+                                                : "border-2 border-primary text-primary hover:bg-primary hover:text-white"
+                                        }`}
+                                    >
+                                        {cta}
+                                    </Link>
+                                </div>
+                            );
+                        })}
                     </div>
+
+                    <p className="mt-8 text-center font-sans text-sm text-text/60">
+                        All plans: 7-day free trial, cancel anytime, no card required to start.
+                    </p>
                 </div>
             </section>
 
-            {/* Comparison Table */}
-            <section className="py-20 px-8 bg-accent/30">
-                <div className="max-w-5xl mx-auto">
-                    <h2 className="font-serif text-3xl text-primary text-center mb-12">Compare Plans</h2>
-
-                    <div className="bg-white rounded-lg shadow-sm border border-primary/10 overflow-hidden">
-                        <div className="grid grid-cols-3 bg-primary text-white p-6 font-serif font-bold text-lg md:text-xl">
+            {/* Comparison */}
+            <section className="bg-accent/30 px-4 py-16 sm:px-8">
+                <div className="mx-auto max-w-4xl">
+                    <h2 className="mb-10 text-center font-serif text-3xl text-primary">Everyday Yoga vs Yoga Therapy</h2>
+                    <div className="overflow-hidden rounded-3xl border border-primary/10 bg-white">
+                        <div className="grid grid-cols-3 bg-primary p-5 font-serif text-base font-bold text-white sm:text-lg">
                             <div>Feature</div>
-                            <div className="text-center">Everyday Yoga</div>
-                            <div className="text-center">Yoga Therapy</div>
+                            <div className="text-center">Everyday</div>
+                            <div className="text-center">Therapy</div>
                         </div>
-
-                        <div className="divide-y divide-gray-100 font-sans text-text/80">
-                            <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors">
-                                <div className="font-bold text-primary">Format</div>
-                                <div className="text-center">Live Group Classes</div>
-                                <div className="text-center">1:1 Private Sessions</div>
-                            </div>
-                            <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors">
-                                <div className="font-bold text-primary">Focus</div>
-                                <div className="text-center">General Fitness & Flow</div>
-                                <div className="text-center">Specific Healing & Recovery</div>
-                            </div>
-                            <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors">
-                                <div className="font-bold text-primary">Attention Level</div>
-                                <div className="text-center">General Corrections</div>
-                                <div className="text-center">100% Personalized Attention</div>
-                            </div>
-                            <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors">
-                                <div className="font-bold text-primary">Flexibility</div>
-                                <div className="text-center">Choose any batch time</div>
-                                <div className="text-center">Scheduled per your convenience</div>
-                            </div>
-                            <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors">
-                                <div className="font-bold text-primary">Who it's for</div>
-                                <div className="text-center">Beginners to Advanced</div>
-                                <div className="text-center">Those with health conditions</div>
-                            </div>
-                            <div className="grid grid-cols-3 p-6 hover:bg-gray-50 transition-colors bg-accent/10">
-                                <div className="font-bold text-primary">Price</div>
-                                <div className="text-center font-bold text-lg">₹2,000 / month</div>
-                                <div className="text-center font-bold text-lg">₹5,000 / month</div>
-                            </div>
+                        <div className="divide-y divide-primary/10 font-sans text-sm text-text/80">
+                            {[
+                                ["Format", "Live group classes", "1:1 private sessions"],
+                                ["Focus", "Fitness, flexibility, calm", "Specific healing & recovery"],
+                                ["Attention", "Group corrections", "100% personalised"],
+                                ["Who it's for", "Beginner to advanced", "Managing a health condition"],
+                                ["Price", `${price("everyday")} / mo`, `${price("therapy")} / mo`],
+                            ].map(([f, a, b], i) => (
+                                <div key={f} className={`grid grid-cols-3 p-5 ${i === 4 ? "bg-accent/20 font-bold" : ""}`}>
+                                    <div className="font-semibold text-primary">{f}</div>
+                                    <div className="text-center">{a}</div>
+                                    <div className="text-center">{b}</div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Add-ons / Included */}
-            <section className="py-20 px-8 bg-background">
-                <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="font-serif text-3xl text-primary mb-12">Everything You Need to Succeed</h2>
-
-                    <div className="grid md:grid-cols-3 gap-8">
-                        <div className="p-6 rounded-lg border border-primary/10 bg-white">
-                            <div className="text-4xl mb-4">📱</div>
-                            <h3 className="font-serif text-xl text-text mb-2">Community Access</h3>
-                            <p className="text-sm text-text/70">
-                                Included in both plans. Join our exclusive WhatsApp group for daily tips and motivation.
-                            </p>
-                        </div>
-
-                        <div className="p-6 rounded-lg border border-primary/10 bg-white">
-                            <div className="text-4xl mb-4">💬</div>
-                            <h3 className="font-serif text-xl text-text mb-2">Teacher Support</h3>
-                            <p className="text-sm text-text/70">
-                                Direct access to teachers for queries. We are here to guide your journey.
-                            </p>
-                        </div>
-
-                        <div className="p-6 rounded-lg border border-secondary/30 bg-secondary/5">
-                            <div className="text-4xl mb-4">🥗</div>
-                            <h3 className="font-serif text-xl text-secondary mb-2">Lifestyle Guidance</h3>
-                            <p className="text-sm text-text/70">
-                                <strong>Therapy Exclusive:</strong> Optional nutritional and lifestyle advice to support your healing.
-                            </p>
-                        </div>
+            {/* Included */}
+            <section className="bg-background px-4 py-16 sm:px-8">
+                <div className="mx-auto max-w-4xl text-center">
+                    <h2 className="mb-10 font-serif text-3xl text-primary">In every plan</h2>
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {[
+                            ["Community", "A WhatsApp group for daily class links, reminders and encouragement."],
+                            ["Teacher support", "Real teachers who know your name and answer your questions."],
+                            ["Practice library", "Guided practices, breathwork and challenges for the days between classes."],
+                        ].map(([h, p]) => (
+                            <div key={h} className="rounded-2xl border border-primary/10 bg-white p-6 text-left">
+                                <h3 className="font-serif text-lg text-text">{h}</h3>
+                                <p className="mt-2 font-sans text-sm text-text/70">{p}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>

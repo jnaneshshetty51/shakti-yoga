@@ -1,8 +1,9 @@
 import Hero from "@/components/Hero";
 import TargetAudience from "@/components/TargetAudience";
 
-// Testimonials come from the DB; refresh the cached page hourly.
-export const revalidate = 3600;
+// Pricing is per-visitor (₹ for India, $ for everyone else — resolved from the
+// region cookie in <Programs>/<YogaTherapy>), so the homepage renders per request.
+export const dynamic = "force-dynamic";
 
 import Programs from "@/components/Programs";
 import HowItWorks from "@/components/HowItWorks";

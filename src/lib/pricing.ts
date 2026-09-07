@@ -1,83 +1,223 @@
 import type { PlanType, Role, SubscriptionStatus } from '@prisma/client';
 
 /**
- * Single source of truth for plan pricing and the roles/subscription state
- * each plan grants. Keep marketing pages, checkout UI and the checkout API
- * in sync by importing from here.
+ * Single source of truth for the plan ladder: prices (INR + USD), billing
+ * interval, the role / entitlements each plan grants, and the store / RevenueCat
+ * product identifier. Marketing pages, the paywall, checkout and the RevenueCat
+ * webhook all import from here.
  */
+
+export type Region = 'IN' | 'INTL';
+export type PlanTier = 'trial' | 'starter' | 'everyday' | 'therapy' | 'family';
+export type BillingInterval = 'monthly' | 'annual' | 'trial';
+
 export interface PlanConfig {
+    /** Stable key used in URLs, checkout payloads and RevenueCat metadata. */
+    key: string;
     name: string;
-    /** Amount charged per billing period, in whole `currency` units (rupees). */
-    amount: number;
-    currency: string;
-    /** Human-readable billing period, e.g. "month" or "7 days". */
-    period: string;
-    /** How many days of access one activation grants (renewal/expiry window). */
+    tier: PlanTier;
+    interval: BillingInterval;
+    /** Price in whole rupees. */
+    inr: number;
+    /** Price in whole US dollars (NRI / international storefronts). */
+    usd: number;
+    /** Days of access one activation grants. */
     renewalDays: number;
-    features: string[];
     role: Role;
     dbPlanType: PlanType;
     subscriptionStatus: SubscriptionStatus;
-    /** 1:1 therapy session credits granted when this plan activates. */
+    /** 1:1 therapy credits granted on activation. */
     credits: number;
+    /** Live group classes per week; null = unlimited. */
+    weeklyClassLimit: number | null;
+    /** Extra member seats beyond the owner (family plans). */
+    extraSeats: number;
+    features: string[];
+    /** App Store / Play / RevenueCat product identifier. */
+    rcProductId: string;
+    recommended?: boolean;
 }
 
 export const CURRENCY = 'INR';
 
 export const PLANS = {
-    everyday: {
-        name: 'Everyday Yoga',
-        amount: 2000,
-        currency: CURRENCY,
-        period: 'month',
-        renewalDays: 30,
-        features: ['5 Live Classes/week', 'Community Access', 'Flexible Timings'],
-        role: 'MEMBER_EVERYDAY',
-        dbPlanType: 'EVERYDAY_YOGA',
-        subscriptionStatus: 'ACTIVE',
-        credits: 0,
-    },
-    therapy: {
-        name: 'Yoga Therapy',
-        amount: 5000,
-        currency: CURRENCY,
-        period: 'month',
-        renewalDays: 30,
-        features: ['4 Personal 1:1 Sessions', 'Health Assessment', 'Custom Plan'],
-        role: 'MEMBER_THERAPY',
-        dbPlanType: 'YOGA_THERAPY',
-        subscriptionStatus: 'ACTIVE',
-        credits: 4,
-    },
     trial: {
+        key: 'trial',
         name: 'Free Trial',
-        amount: 0,
-        currency: CURRENCY,
-        period: '7 days',
+        tier: 'trial',
+        interval: 'trial',
+        inr: 0,
+        usd: 0,
         renewalDays: 7,
-        features: ['1 Live Class', '15-min Consult', 'Community Access'],
         role: 'TRIAL',
         dbPlanType: 'TRIAL',
         subscriptionStatus: 'TRIAL',
         credits: 1,
+        weeklyClassLimit: null,
+        extraSeats: 0,
+        features: ['1 live class', '15-min consult', 'Full content library', 'Community access'],
+        rcProductId: '',
+    },
+    starter: {
+        key: 'starter',
+        name: 'Starter',
+        tier: 'starter',
+        interval: 'monthly',
+        inr: 699,
+        usd: 14,
+        renewalDays: 30,
+        role: 'MEMBER_STARTER',
+        dbPlanType: 'STARTER',
+        subscriptionStatus: 'ACTIVE',
+        credits: 0,
+        weeklyClassLimit: 2,
+        extraSeats: 0,
+        features: ['2 live classes / week', 'Full practice library', 'Challenges & community'],
+        rcProductId: 'sy_starter_monthly',
+    },
+    everyday: {
+        key: 'everyday',
+        name: 'Everyday Yoga',
+        tier: 'everyday',
+        interval: 'monthly',
+        inr: 1499,
+        usd: 29,
+        renewalDays: 30,
+        role: 'MEMBER_EVERYDAY',
+        dbPlanType: 'EVERYDAY_YOGA',
+        subscriptionStatus: 'ACTIVE',
+        credits: 0,
+        weeklyClassLimit: null,
+        extraSeats: 0,
+        features: ['Unlimited live classes', 'All content & practices', 'Challenges & community'],
+        rcProductId: 'sy_everyday_monthly',
+    },
+    everyday_annual: {
+        key: 'everyday_annual',
+        name: 'Everyday Yoga · Annual',
+        tier: 'everyday',
+        interval: 'annual',
+        inr: 11988,
+        usd: 249,
+        renewalDays: 365,
+        role: 'MEMBER_EVERYDAY',
+        dbPlanType: 'EVERYDAY_YOGA',
+        subscriptionStatus: 'ACTIVE',
+        credits: 0,
+        weeklyClassLimit: null,
+        extraSeats: 0,
+        features: ['Everything in Everyday', 'Two months free', 'Locked-in price for a year'],
+        rcProductId: 'sy_everyday_annual',
+        recommended: true,
+    },
+    therapy: {
+        key: 'therapy',
+        name: 'Yoga Therapy',
+        tier: 'therapy',
+        interval: 'monthly',
+        inr: 4999,
+        usd: 89,
+        renewalDays: 30,
+        role: 'MEMBER_THERAPY',
+        dbPlanType: 'YOGA_THERAPY',
+        subscriptionStatus: 'ACTIVE',
+        credits: 4,
+        weeklyClassLimit: null,
+        extraSeats: 0,
+        features: ['4 personal 1:1 sessions / month', 'Everyday Yoga included', 'Health assessment + plan'],
+        rcProductId: 'sy_therapy_monthly',
+    },
+    therapy_annual: {
+        key: 'therapy_annual',
+        name: 'Yoga Therapy · Annual',
+        tier: 'therapy',
+        interval: 'annual',
+        inr: 44988,
+        usd: 799,
+        renewalDays: 365,
+        role: 'MEMBER_THERAPY',
+        dbPlanType: 'YOGA_THERAPY',
+        subscriptionStatus: 'ACTIVE',
+        credits: 4,
+        weeklyClassLimit: null,
+        extraSeats: 0,
+        features: ['Everything in Therapy', 'Two months free', '48 sessions a year'],
+        rcProductId: 'sy_therapy_annual',
+    },
+    family: {
+        key: 'family',
+        name: 'Family',
+        tier: 'family',
+        interval: 'monthly',
+        inr: 2199,
+        usd: 45,
+        renewalDays: 30,
+        role: 'MEMBER_EVERYDAY',
+        dbPlanType: 'FAMILY',
+        subscriptionStatus: 'ACTIVE',
+        credits: 0,
+        weeklyClassLimit: null,
+        extraSeats: 1,
+        features: ['Two members', 'Unlimited live classes each', 'All content & community'],
+        rcProductId: 'sy_family_monthly',
+    },
+    family_annual: {
+        key: 'family_annual',
+        name: 'Family · Annual',
+        tier: 'family',
+        interval: 'annual',
+        inr: 19188,
+        usd: 399,
+        renewalDays: 365,
+        role: 'MEMBER_EVERYDAY',
+        dbPlanType: 'FAMILY',
+        subscriptionStatus: 'ACTIVE',
+        credits: 0,
+        weeklyClassLimit: null,
+        extraSeats: 1,
+        features: ['Everything in Family', 'Two months free'],
+        rcProductId: 'sy_family_annual',
     },
 } satisfies Record<string, PlanConfig>;
 
 export type PlanKey = keyof typeof PLANS;
 
+/** The paywall order (trial is handled separately). */
+export const LADDER: PlanKey[] = [
+    'starter', 'everyday', 'everyday_annual', 'family', 'family_annual', 'therapy', 'therapy_annual',
+];
+
 export function isPlanKey(key: string | null | undefined): key is PlanKey {
     return !!key && key in PLANS;
 }
 
-/** Resolve a plan key to its config, falling back to the Everyday plan. */
 export function getPlan(key: string | null | undefined): PlanConfig {
     return isPlanKey(key) ? PLANS[key] : PLANS.everyday;
 }
 
-/** Format an amount for display, e.g. formatPrice(2000) -> "₹2,000". */
+/** Look up a plan by its RevenueCat / store product id. */
+export function planByProductId(productId: string): PlanConfig | null {
+    const id = productId.trim();
+    return (Object.values(PLANS) as PlanConfig[]).find((p) => p.rcProductId && p.rcProductId === id) ?? null;
+}
+
+/** Amount + currency for a plan in a region. */
+export function priceFor(plan: PlanConfig, region: Region): { amount: number; currency: string } {
+    return region === 'INTL'
+        ? { amount: plan.usd, currency: 'USD' }
+        : { amount: plan.inr, currency: 'INR' };
+}
+
+/** Map a country / storefront hint to a pricing region. */
+export function regionFor(hint: string | null | undefined): Region {
+    const h = (hint || '').trim().toUpperCase();
+    if (!h || h === 'IN' || h === 'INDIA' || h === 'INR') return 'IN';
+    return 'INTL';
+}
+
 export function formatPrice(amount: number, currency: string = CURRENCY): string {
     try {
-        return new Intl.NumberFormat('en-IN', {
+        return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-IN', {
             style: 'currency',
             currency,
             maximumFractionDigits: 0,

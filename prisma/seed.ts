@@ -72,6 +72,12 @@ async function main() {
     await prisma.subscription.deleteMany({
       where: { user: { email: { in: seedEmails } } },
     });
+    await prisma.payment.deleteMany({
+      where: { user: { email: { in: seedEmails } } },
+    }).catch(() => {});
+    await prisma.referral.deleteMany({
+      where: { OR: [{ referrer: { email: { in: seedEmails } } }, { referee: { email: { in: seedEmails } } }] },
+    }).catch(() => {});
     await prisma.userProfile.deleteMany({
       where: { user: { email: { in: seedEmails } } },
     });

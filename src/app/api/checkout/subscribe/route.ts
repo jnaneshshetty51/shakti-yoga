@@ -1,28 +1,32 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { getPlan, type PlanConfig } from '@/lib/pricing';
+import { getPlan, isPlanKey, priceFor, regionFor, LADDER, type PlanConfig, type Region } from '@/lib/pricing';
 import {
-    createMonthlyPlan,
+    createRecurringPlan,
     createSubscription,
     createOrder,
     getPublicKeyId,
     isRazorpayConfigured,
 } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
-import { readJson, oneOf, ValidationError, handleValidationError } from '@/lib/validation';
+import { readJson, ValidationError, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
 
-/** Reuse a Razorpay plan per (planKey, amount, currency); create + cache on first use. */
-async function getOrCreatePlanId(planKey: string, plan: PlanConfig): Promise<string> {
-    const settingKey = `razorpay_plan_${planKey}_${plan.amount}_${plan.currency}`;
+const KEYS = ['trial', ...LADDER] as const;
+
+/** Reuse a Razorpay plan per (planKey, region); create + cache on first use. */
+async function getOrCreatePlanId(plan: PlanConfig, region: Region): Promise<string> {
+    const price = priceFor(plan, region);
+    const settingKey = `razorpay_plan_${plan.key}_${price.currency}_${price.amount}`;
     const cached = await prisma.setting.findUnique({ where: { key: settingKey } });
     if (cached) return cached.value;
 
-    const created = await createMonthlyPlan({
-        amountMajor: plan.amount,
-        currency: plan.currency,
-        name: `${plan.name} (monthly)`,
+    const created = await createRecurringPlan({
+        amountMajor: price.amount,
+        currency: price.currency,
+        name: plan.name,
+        period: plan.interval === 'annual' ? 'yearly' : 'monthly',
     });
     await prisma.setting.create({ data: { key: settingKey, value: created.id } });
     return created.id;
@@ -31,34 +35,29 @@ async function getOrCreatePlanId(planKey: string, plan: PlanConfig): Promise<str
 export async function POST(request: Request) {
     try {
         const payload = await getSession();
-        if (!payload) {
-            return NextResponse.json({ error: 'Please log in first.' }, { status: 401 });
-        }
+        if (!payload) return NextResponse.json({ error: 'Please log in first.' }, { status: 401 });
 
         const body = await readJson(request);
-        const planKey = oneOf(body.planType, ['everyday', 'therapy', 'trial'] as const, 'planType');
-        const plan = getPlan(planKey);
+        const rawKey = String(body.planKey ?? body.planType ?? '');
+        const key = (KEYS as readonly string[]).includes(rawKey) ? rawKey : 'everyday';
+        const plan = getPlan(key);
+        const region = regionFor(typeof body.region === 'string' ? body.region : payload.email);
+        const price = priceFor(plan, region);
 
         const user = await prisma.user.findUnique({ where: { id: payload.id } });
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Free trial: no payment, activate immediately (non-recurring).
-        if (plan.amount === 0) {
-            if (plan.dbPlanType === 'TRIAL' && user.trialStartedAt) {
+        if (plan.interval === 'trial') {
+            if (user.trialStartedAt) {
                 return NextResponse.json(
                     { error: 'You have already used your free trial. Choose a plan to continue.' },
                     { status: 409 },
                 );
             }
-            if (plan.dbPlanType === 'TRIAL' && (user.role === 'MEMBER_EVERYDAY' || user.role === 'MEMBER_THERAPY')) {
-                return NextResponse.json(
-                    { error: 'You already have an active membership.' },
-                    { status: 409 },
-                );
+            if (user.role === 'MEMBER_EVERYDAY' || user.role === 'MEMBER_THERAPY' || user.role === 'MEMBER_STARTER') {
+                return NextResponse.json({ error: 'You already have an active membership.' }, { status: 409 });
             }
-            const { mappedRole } = await activatePlan(user.id, plan);
+            const { mappedRole } = await activatePlan(user.id, plan, { region });
             recordEvent('TRIAL_START', { userId: user.id });
             return NextResponse.json({
                 free: true,
@@ -66,6 +65,7 @@ export async function POST(request: Request) {
             });
         }
 
+        if (!isPlanKey(key)) return NextResponse.json({ error: 'Unknown plan.' }, { status: 400 });
         if (!isRazorpayConfigured()) {
             return NextResponse.json(
                 { error: 'Payments are not configured yet. Please contact us to activate your membership.' },
@@ -77,22 +77,19 @@ export async function POST(request: Request) {
         const paymentBase = {
             userId: user.id,
             planType: plan.dbPlanType,
-            amount: plan.amount,
-            currency: plan.currency,
+            planKey: key,
+            amount: price.amount,
+            currency: price.currency,
             status: 'CREATED' as const,
             provider: 'razorpay',
         };
 
-        // Prefer an auto-renewing subscription. If the Razorpay account doesn't
-        // have the Subscriptions product enabled (its /plans + /subscriptions
-        // endpoints 401), fall back to a one-time order so checkout still works —
-        // the member re-pays each cycle until Subscriptions is activated.
+        // Prefer an auto-renewing subscription; fall back to a one-time order if
+        // the Razorpay account has Subscriptions disabled.
         try {
-            const planId = await getOrCreatePlanId(planKey, plan);
-            const subscription = await createSubscription({ planId, notes: { userId: user.id, planKey } });
-            await prisma.payment.create({
-                data: { ...paymentBase, providerSubscriptionId: subscription.id },
-            });
+            const planId = await getOrCreatePlanId(plan, region);
+            const subscription = await createSubscription({ planId, notes: { userId: user.id, planKey: key, region } });
+            await prisma.payment.create({ data: { ...paymentBase, providerSubscriptionId: subscription.id } });
             return NextResponse.json({
                 mode: 'subscription',
                 subscriptionId: subscription.id,
@@ -106,14 +103,12 @@ export async function POST(request: Request) {
                 subErr instanceof Error ? subErr.message : subErr,
             );
             const order = await createOrder({
-                amountMajor: plan.amount,
-                currency: plan.currency,
+                amountMajor: price.amount,
+                currency: price.currency,
                 receipt: `sub_${user.id.slice(0, 8)}_${Date.now()}`,
-                notes: { userId: user.id, planType: planKey },
+                notes: { userId: user.id, planKey: key, region },
             });
-            await prisma.payment.create({
-                data: { ...paymentBase, providerOrderId: order.id },
-            });
+            await prisma.payment.create({ data: { ...paymentBase, providerOrderId: order.id } });
             return NextResponse.json({
                 mode: 'order',
                 orderId: order.id,
