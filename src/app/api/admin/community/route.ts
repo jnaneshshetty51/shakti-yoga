@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { Role } from '@prisma/client';
@@ -28,7 +28,7 @@ function serialize(g: {
 }
 
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     try {
         const groups = await prisma.whatsAppGroup.findMany({ orderBy: [{ active: 'desc' }, { name: 'asc' }] });
         return NextResponse.json({
@@ -42,7 +42,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment('CONTENT');
     if (!admin) return forbidden();
     try {
         const b = await request.json().catch(() => ({}));
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment('CONTENT');
     if (!admin) return forbidden();
     try {
         const b = await request.json().catch(() => ({}));
@@ -112,7 +112,7 @@ export async function PATCH(request: Request) {
 export const PUT = PATCH;
 
 export async function DELETE(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment('CONTENT');
     if (!admin) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');

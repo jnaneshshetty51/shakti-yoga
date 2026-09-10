@@ -20,8 +20,10 @@ export function sessionClaims(user: {
     name: string;
     role: Role | string;
     tokenVersion?: number | null;
+    adminDepartment?: string | null;
 }): SessionPayload {
     const tier = adminTier(user.role);
+    const dept = tier === 'staff' && user.adminDepartment ? (user.adminDepartment as 'CONTENT' | 'SUPPORT') : undefined;
     return {
         id: user.id,
         email: user.email,
@@ -29,6 +31,7 @@ export function sessionClaims(user: {
         role: mapDatabaseRole(user.role),
         tv: user.tokenVersion ?? 0,
         ...(tier ? { tier } : {}),
+        ...(dept ? { dept } : {}),
     };
 }
 

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 /** GET /api/admin/content/comments — reported first, then most recent. */
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     try {
         const rows = await prisma.contentComment.findMany({
             orderBy: [{ reportCount: 'desc' }, { createdAt: 'desc' }],
@@ -39,7 +39,7 @@ export async function GET() {
 
 /** PATCH { id, hidden } — hide / unhide, keeping Content.commentCount in step. */
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const body = await request.json().catch(() => ({}));
     const id = String(body.id ?? '');
     const hidden = Boolean(body.hidden);
@@ -61,7 +61,7 @@ export async function PATCH(request: Request) {
 
 /** DELETE ?id= — remove a comment for good. */
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const id = new URL(request.url).searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 

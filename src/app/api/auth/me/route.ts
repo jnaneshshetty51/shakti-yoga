@@ -41,6 +41,7 @@ export async function GET() {
                 avatarUrl: true,
                 credits: true,
                 tokenVersion: true,
+                adminDepartment: true,
             },
         });
 
@@ -60,7 +61,7 @@ export async function GET() {
 
         const effectiveRole = await syncSubscriptionState(user.id, user.role);
         const mappedRole = mapDatabaseRole(effectiveRole);
-        const { tokenVersion: _tv, ...safeUser } = user;
+        const { tokenVersion: _tv, adminDepartment, ...safeUser } = user;
 
         // Keep the session claims in sync with reality so middleware and the
         // client agree (e.g. after a lazy subscription expiry or a name change).
@@ -70,7 +71,8 @@ export async function GET() {
             ? payload.exp - Math.floor(Date.now() / 1000)
             : null;
         const claimsDrifted =
-            mappedRole !== payload.role || user.name !== payload.name || user.email !== payload.email;
+            mappedRole !== payload.role || user.name !== payload.name || user.email !== payload.email
+            || (payload.dept ?? null) !== (adminDepartment ?? null);
         const nearExpiry = secondsLeft !== null && secondsLeft < 7 * 24 * 60 * 60;
 
         let freshToken: string | undefined;
@@ -85,7 +87,7 @@ export async function GET() {
         }
 
         return NextResponse.json({
-            user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole) },
+            user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole), department: adminDepartment },
             // The native app has no cookie jar — when we re-mint the session it
             // must pick up the new token from the body and persist it.
             ...(freshToken ? { token: freshToken } : {}),

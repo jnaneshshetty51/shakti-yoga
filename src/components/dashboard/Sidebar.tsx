@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { IconType } from "react-icons";
 import {
     LuLayoutDashboard, LuHeart, LuTrendingUp, LuBell, LuCreditCard, LuUser,
-    LuLifeBuoy, LuMenu, LuX, LuLogOut, LuArrowUpRight,
+    LuLifeBuoy, LuMenu, LuX, LuLogOut, LuArrowUpRight, LuGift, LuUsers, LuAward,
 } from "react-icons/lu";
 
 type NavItem = { name: string; href: string; icon: IconType };
@@ -18,6 +18,9 @@ const NAV: NavItem[] = [
     { name: "Progress", href: "/dashboard/progress", icon: LuTrendingUp },
     { name: "Activity", href: "/dashboard/activity", icon: LuBell },
     { name: "Plan & Billing", href: "/dashboard/billing", icon: LuCreditCard },
+    { name: "Family", href: "/dashboard/family", icon: LuUsers },
+    { name: "Refer & Earn", href: "/dashboard/refer", icon: LuGift },
+    { name: "Certificates", href: "/dashboard/certificates", icon: LuAward },
     { name: "Profile", href: "/dashboard/profile", icon: LuUser },
 ];
 
@@ -55,13 +58,16 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate: () =>
                     </Link>
                 );
             })}
-            <a
-                href="mailto:support@shaktiyoga.com?subject=Support Request"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            <Link
+                href="/dashboard/support"
+                onClick={onNavigate}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    pathname === "/dashboard/support" ? "bg-primary/10 text-primary" : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                }`}
             >
                 <LuLifeBuoy className="text-lg shrink-0" />
                 Support
-            </a>
+            </Link>
         </nav>
     );
 }

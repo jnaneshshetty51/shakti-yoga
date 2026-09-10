@@ -9,14 +9,16 @@ import {
     LuLayoutDashboard, LuChartLine, LuChartColumnBig, LuUsers, LuFlower2, LuTarget, LuGraduationCap,
     LuCreditCard, LuHeart, LuCalendarDays, LuCalendarClock, LuClock, LuMessageSquare,
     LuFileText, LuInbox, LuArchive, LuSettings, LuSearch, LuCircleHelp, LuMenu, LuX,
-    LuChevronDown, LuLogOut, LuUserRound,
+    LuChevronDown, LuLogOut, LuUserRound, LuClipboardList, LuUserPlus, LuGift, LuLifeBuoy,
+    LuBuilding2, LuTent, LuAward,
 } from "react-icons/lu";
 import { CommandPalette, useCommandPalette } from "@/components/admin/CommandPalette";
 import { NotificationsBell } from "@/components/admin/NotificationsBell";
 import { ToastProvider } from "@/components/admin/Toast";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/admin/ui";
 
-type NavItem = { name: string; href: string; icon: IconType; superOnly?: boolean };
+type Department = "CONTENT" | "SUPPORT";
+type NavItem = { name: string; href: string; icon: IconType; superOnly?: boolean; departments?: Department[] };
 type NavGroup = { label: string; items: NavItem[] };
 
 const NAV: NavGroup[] = [
@@ -35,6 +37,8 @@ const NAV: NavGroup[] = [
             { name: "Members", href: "/admin/members", icon: LuFlower2 },
             { name: "Leads", href: "/admin/leads", icon: LuTarget },
             { name: "Staff", href: "/admin/staff", icon: LuGraduationCap },
+            { name: "Family", href: "/admin/family", icon: LuUserPlus },
+            { name: "Referrals", href: "/admin/referrals", icon: LuGift },
         ],
     },
     {
@@ -45,16 +49,31 @@ const NAV: NavGroup[] = [
             { name: "Schedule", href: "/admin/schedule", icon: LuCalendarDays },
             { name: "Bookings", href: "/admin/bookings", icon: LuCalendarClock },
             { name: "Availability", href: "/admin/availability", icon: LuClock },
+            { name: "Therapy Assessments", href: "/admin/therapy", icon: LuClipboardList },
+        ],
+    },
+    {
+        label: "Business",
+        items: [
+            { name: "Corporate", href: "/admin/corporate", icon: LuBuilding2 },
+            { name: "Retreats & Events", href: "/admin/retreats", icon: LuTent },
         ],
     },
     {
         label: "Content",
         items: [
-            { name: "Content", href: "/admin/content", icon: LuFileText },
-            { name: "Practices", href: "/admin/practices", icon: LuFlower2 },
-            { name: "Challenges", href: "/admin/challenges", icon: LuTarget },
-            { name: "WhatsApp", href: "/admin/community", icon: LuMessageSquare },
+            { name: "Content", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
+            { name: "Practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
+            { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
+            { name: "WhatsApp", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
+            { name: "Certificates", href: "/admin/certificates", icon: LuAward },
             { name: "Messages", href: "/admin/messages", icon: LuInbox },
+        ],
+    },
+    {
+        label: "Support",
+        items: [
+            { name: "Support Inbox", href: "/admin/support", icon: LuLifeBuoy, departments: ["SUPPORT"] },
         ],
     },
     {
@@ -168,9 +187,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const cmd = useCommandPalette();
 
     const isSuper = user?.tier === "super";
-    const tierLabel = user?.tier === "staff" ? "Staff Admin" : "Super Admin";
+    const department = user?.department ?? null;
+    const tierLabel = department
+        ? department === "CONTENT" ? "Content Team" : "Support Staff"
+        : user?.tier === "staff" ? "Staff Admin" : "Super Admin";
+    // A departmented staff account (Content Team / Support Staff) sees ONLY its
+    // own department's items — this is their whole admin experience, not a
+    // filtered version of the full one. A full admin (no department) sees
+    // everything except superOnly items, as before.
     const groups = NAV
-        .map((g) => ({ ...g, items: g.items.filter((i) => !i.superOnly || isSuper) }))
+        .map((g) => ({
+            ...g,
+            items: g.items.filter((i) =>
+                department ? i.departments?.includes(department) : (!i.superOnly || isSuper)
+            ),
+        }))
         .filter((g) => g.items.length > 0);
 
     return (

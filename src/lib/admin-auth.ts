@@ -22,15 +22,26 @@ async function session(): Promise<SessionPayload | null> {
     return payload;
 }
 
+/** Any admin session (super or staff), regardless of department scoping. Internal — routes should call requireAdmin() or requireDepartment() instead. */
+async function adminSession(): Promise<SessionPayload | null> {
+    const payload = await session();
+    if (!payload || payload.role !== 'admin') return null;
+    return payload;
+}
+
 /**
- * Returns the session payload if the caller is any admin (super or staff),
- * otherwise null.
+ * Returns the session payload for a *full* admin (super, or a staff admin with
+ * no department scope) — otherwise null. A departmented staff admin (Content
+ * Team / Support Staff) is deliberately rejected here: routes that are that
+ * department's territory must call requireDepartment() instead, and routes
+ * outside every department's territory (users, corporate, retreats, ...)
+ * correctly stay out of reach for a departmented account.
  *   const admin = await requireAdmin();
  *   if (!admin) return forbidden();
  */
 export async function requireAdmin(): Promise<SessionPayload | null> {
-    const payload = await session();
-    if (!payload || payload.role !== 'admin') return null;
+    const payload = await adminSession();
+    if (!payload || payload.dept) return null;
     return payload;
 }
 
@@ -39,13 +50,26 @@ export async function requireAdmin(): Promise<SessionPayload | null> {
  * token predates the `tier` claim, so it's correct without forcing a re-login.
  */
 export async function requireSuperAdmin(): Promise<SessionPayload | null> {
-    const payload = await requireAdmin();
+    const payload = await adminSession();
     if (!payload) return null;
     if (payload.tier === 'super') return payload;
     if (payload.tier === 'staff') return null;
     // Legacy token without a tier claim — confirm against the DB.
     const user = await prisma.user.findUnique({ where: { id: payload.id }, select: { role: true } });
     return user?.role === 'SUPER_ADMIN' ? payload : null;
+}
+
+/**
+ * Admin, scoped to one department. A SUPER_ADMIN or a STAFF_ADMIN with no
+ * `adminDepartment` set (full access) always passes; a departmented staff
+ * account only passes for its own department.
+ */
+export async function requireDepartment(dept: 'CONTENT' | 'SUPPORT'): Promise<SessionPayload | null> {
+    const payload = await adminSession();
+    if (!payload) return null;
+    if (payload.tier === 'super') return payload;
+    if (!payload.dept) return payload; // full-access staff admin
+    return payload.dept === dept ? payload : null;
 }
 
 /** Admin or teacher — for endpoints teachers also operate (class join, session Meet links). */

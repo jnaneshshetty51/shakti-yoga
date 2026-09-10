@@ -68,10 +68,10 @@ export async function POST(request: Request) {
         );
         await setSessionCookie(token, maxAge);
 
-        const { passwordHash: _passwordHash, tokenVersion: _tv, ...safeUser } = user;
+        const { passwordHash: _passwordHash, tokenVersion: _tv, adminDepartment, ...safeUser } = user;
 
         return NextResponse.json({
-            user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole) },
+            user: { ...safeUser, role: mappedRole, tier: adminTier(effectiveRole), department: adminDepartment },
             message: 'Logged in successfully',
         });
     } catch (error) {

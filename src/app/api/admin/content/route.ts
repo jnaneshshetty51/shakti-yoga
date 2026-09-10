@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
 import { isCtaType, toContentCategory, serializeContent } from '@/lib/content';
@@ -33,7 +33,7 @@ function slugify(s: string) {
 
 export async function GET() {
     try {
-        const payload = await requireAdmin();
+        const payload = await requireDepartment('CONTENT');
         if (!payload) return forbidden();
 
         const [stories, blogPosts, groups, contentRows, classBatches] = await Promise.all([
@@ -311,7 +311,7 @@ function getType(request: Request): ContentType | null {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const type = getType(request);
     if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
     try {
@@ -326,7 +326,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const type = getType(request);
     if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
     try {
@@ -342,7 +342,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const url = new URL(request.url);
     const type = getType(request);
     const id = url.searchParams.get('id');

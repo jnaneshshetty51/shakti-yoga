@@ -42,20 +42,21 @@ export default function TherapyStartPage() {
                         <div className="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-2xl mb-6">
                             ✨
                         </div>
-                        <h2 className="font-serif text-2xl text-gray-800 mb-2">Start Therapy Plan</h2>
+                        <h2 className="font-serif text-2xl text-gray-800 mb-2">Start Your Assessment</h2>
                         <p className="text-text/60 mb-6 min-h-[3rem]">
-                            Ready to heal? Get full access to personalized 1:1 sessions immediately.
+                            Ready to heal? Complete a short health assessment so a therapist can recommend the right plan
+                            for you before you subscribe.
                         </p>
                         <ul className="space-y-3 mb-8 text-sm text-gray-600">
-                            <li className="flex items-center gap-2">✓ 4 Private Sessions / month</li>
-                            <li className="flex items-center gap-2">✓ Personalized Health Plan</li>
-                            <li className="flex items-center gap-2">✓ Daily Support via WhatsApp</li>
+                            <li className="flex items-center gap-2">✓ 5-minute health assessment</li>
+                            <li className="flex items-center gap-2">✓ Reviewed by a Shakti therapist</li>
+                            <li className="flex items-center gap-2">✓ Personalized recommendation before you pay</li>
                         </ul>
                         <Link
-                            href="/checkout?plan=therapy"
+                            href="/yoga-therapy/intake"
                             className="block w-full py-3 bg-secondary text-white font-bold uppercase tracking-widest text-center rounded hover:bg-primary transition-colors shadow-md"
                         >
-                            Subscribe (₹5,000/mo)
+                            Begin Yoga Therapy Assessment
                         </Link>
                     </div>
                 </div>

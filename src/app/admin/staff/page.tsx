@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
 import { PageHeader, Card, EmptyState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { useAuth } from "@/context/AuthContext";
+
+const DEPARTMENT_LABEL: Record<string, string> = { CONTENT: "Content Team", SUPPORT: "Support Staff" };
 
 interface Staff {
     id: string;
@@ -10,6 +13,7 @@ interface Staff {
     email: string;
     phone: string;
     role: string;
+    department: "CONTENT" | "SUPPORT" | null;
     photoUrl: string | null;
     title: string;
     bio: string;
@@ -29,7 +33,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const BLANK = {
-    name: "", email: "", role: "TEACHER", phone: "",
+    name: "", email: "", role: "TEACHER", phone: "", adminDepartment: "",
     title: "", bio: "", specialties: "", yearsExperience: "", displayOrder: "0", publicVisible: true,
 };
 
@@ -58,6 +62,8 @@ function PhotoInput({ current, onFile }: { current: string | null; onFile: (f: F
 }
 
 export default function AdminStaffPage() {
+    const { user } = useAuth();
+    const isSuper = user?.tier === "super";
     const [staff, setStaff] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<string[]>(["TEACHER", "STAFF_ADMIN"]);
     const [loading, setLoading] = useState(true);
@@ -124,7 +130,7 @@ export default function AdminStaffPage() {
     const startEdit = (s: Staff) => {
         setEditingId(s.id);
         setEditForm({
-            name: s.name, email: s.email, role: s.role, phone: s.phone,
+            name: s.name, email: s.email, role: s.role, phone: s.phone, adminDepartment: s.department ?? "",
             title: s.title, bio: s.bio, specialties: s.specialties.join(", "),
             yearsExperience: s.yearsExperience?.toString() ?? "", displayOrder: s.displayOrder.toString(),
             publicVisible: s.publicVisible,
@@ -191,6 +197,13 @@ export default function AdminStaffPage() {
                                 {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
                             </select>
                             <input placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+                            {isSuper && form.role === "STAFF_ADMIN" && (
+                                <select value={form.adminDepartment} onChange={(e) => setForm({ ...form, adminDepartment: e.target.value })} className={inputClass}>
+                                    <option value="">Full admin access (no department)</option>
+                                    <option value="CONTENT">Content Team</option>
+                                    <option value="SUPPORT">Support Staff</option>
+                                </select>
+                            )}
                             <input placeholder='Title, e.g. "Senior Yoga Therapist"' value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
                             <input placeholder="Specialties, comma separated" value={form.specialties} onChange={(e) => setForm({ ...form, specialties: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
                             <input type="number" min={0} max={80} placeholder="Years of experience" value={form.yearsExperience} onChange={(e) => setForm({ ...form, yearsExperience: e.target.value })} className={inputClass} />
@@ -222,6 +235,13 @@ export default function AdminStaffPage() {
                                             {["TEACHER", "STAFF_ADMIN", "SUPER_ADMIN"].map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                                         </select>
                                         <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className={inputClass} placeholder="Phone" />
+                                        {isSuper && editForm.role === "STAFF_ADMIN" && (
+                                            <select value={editForm.adminDepartment} onChange={(e) => setEditForm({ ...editForm, adminDepartment: e.target.value })} className={inputClass}>
+                                                <option value="">Full admin access (no department)</option>
+                                                <option value="CONTENT">Content Team</option>
+                                                <option value="SUPPORT">Support Staff</option>
+                                            </select>
+                                        )}
                                         <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className={inputClass} placeholder="Title" />
                                         <input value={editForm.specialties} onChange={(e) => setEditForm({ ...editForm, specialties: e.target.value })} className={`sm:col-span-2 ${inputClass}`} placeholder="Specialties (comma separated)" />
                                         <input type="number" min={0} max={80} value={editForm.yearsExperience} onChange={(e) => setEditForm({ ...editForm, yearsExperience: e.target.value })} className={inputClass} placeholder="Years experience" />
@@ -259,6 +279,7 @@ export default function AdminStaffPage() {
                                         </div>
                                         <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
                                             <Badge tone="gray">{ROLE_LABEL[s.role] || s.role}</Badge>
+                                            {s.department && <Badge tone="blue">{DEPARTMENT_LABEL[s.department]}</Badge>}
                                             <span>{s.email}</span>
                                             {s.yearsExperience != null && <span>{s.yearsExperience} yrs</span>}
                                         </div>

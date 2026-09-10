@@ -11,6 +11,8 @@ export interface SessionPayload extends JWTPayload {
     tv?: number;
     /** Admin tier for role === 'admin': 'super' | 'staff'. Absent for everyone else. */
     tier?: 'super' | 'staff';
+    /** Scoped admin department (Content Team / Support Staff). Absent = full admin access. */
+    dept?: 'CONTENT' | 'SUPPORT';
 }
 
 if (!process.env.JWT_SECRET) {

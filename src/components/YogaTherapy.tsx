@@ -44,13 +44,28 @@ export default async function YogaTherapy() {
                         </li>
                     </ul>
 
-                    <div className="flex flex-col sm:flex-row gap-4 w-full">
+                    <div className="flex flex-col sm:flex-row gap-4 w-full mb-8 sm:mb-10">
                         <Link href="/yoga-therapy/start" className="w-full sm:w-auto px-6 py-3.5 bg-primary text-white font-sans text-sm uppercase tracking-widest rounded hover:bg-secondary transition-colors text-center font-bold">
                             Book Therapy Plan ({priceStr})
                         </Link>
                         <Link href="/yoga-therapy/start" className="w-full sm:w-auto px-6 py-3.5 border border-primary text-primary font-sans text-sm uppercase tracking-widest rounded hover:bg-primary/5 transition-colors text-center font-bold">
                             Talk to Us First
                         </Link>
+                    </div>
+
+                    <div className="border-t border-primary/10 pt-6">
+                        <p className="font-sans text-xs uppercase tracking-widest text-secondary mb-3">Yoga Therapy Begins With Understanding You</p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 font-sans text-xs sm:text-sm text-text/70">
+                            <span>Assessment</span>
+                            <span className="text-secondary">→</span>
+                            <span>Consultation</span>
+                            <span className="text-secondary">→</span>
+                            <span>Personalized Recommendation</span>
+                            <span className="text-secondary">→</span>
+                            <span>Guided Sessions</span>
+                            <span className="text-secondary">→</span>
+                            <span>Progress</span>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -110,6 +110,15 @@ enum LeadStatus {
   LOST
 }
 
+enum TherapyIntakeStatus {
+  DRAFT // being filled in, not yet submitted
+  SUBMITTED // submitted, editable until a therapist starts reviewing
+  UNDER_REVIEW // a therapist has opened it — locked from further edits
+  RECOMMENDED
+  RECOMMENDED_WITH_CONDITIONS
+  NOT_RECOMMENDED // internal only — never surfaced verbatim to the applicant
+}
+
 // Models
 
 model User {
@@ -127,6 +136,7 @@ model User {
   tokenVersion Int       @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
   referralCode      String?  @unique // this user's own shareable code
   referralCreditDays Int     @default(0) // bonus access days, consumed on the next plan activation
+  adminDepartment AdminDepartment? // null = full admin access; set = scoped to one admin department
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLogin    DateTime?
@@ -138,6 +148,9 @@ model User {
   bookings     Booking[]
   stories      Story[]
   payments     Payment[]
+
+  therapyIntake          TherapyIntake?
+  therapyIntakesReviewed TherapyIntake[] @relation("TherapyIntakeReviewer")
 
   // For Teachers
   classesTaught  ClassBatch[]
@@ -166,6 +179,15 @@ model User {
   referralReceived Referral?  @relation("ReferralReceived")
 
   pushTokens PushToken[]
+
+  certificates         Certificate[]
+  certificatesApproved Certificate[] @relation("CertificateApprover")
+
+  assignedCorporateLeads CorporateLead[]
+
+  supportConversations         SupportConversation[]
+  supportConversationsAssigned SupportConversation[] @relation("SupportAssignee")
+  supportMessagesSent          SupportMessage[]
 }
 
 /// One redeemed referral. Created when someone signs up with a code; advances to
@@ -326,6 +348,50 @@ model Booking {
   notes       String? // Session notes by teacher
   meetingLink String?
   createdAt   DateTime      @default(now())
+}
+
+/// A Yoga Therapy assessment/intake. One per user (re-editable while DRAFT/SUBMITTED,
+/// locked once a therapist starts reviewing it).
+model TherapyIntake {
+  id     String              @id @default(cuid())
+  userId String              @unique
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status TherapyIntakeStatus @default(DRAFT)
+
+  // Personal details
+  fullName String?
+  age      Int?
+  gender   String?
+  heightCm Float?
+  weightKg Float?
+
+  // Health concern
+  primaryConcern     String?
+  concernDuration    String? // e.g. "3 months", "2 years"
+  concernDescription String?
+
+  // Medical history
+  injuriesSurgeries String?
+  medicalConditions String?
+  medications       String?
+  familyHistory     String?
+  priorYogaTherapy  String?
+
+  // Consent + emergency contact
+  consentGiven          Boolean @default(false)
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  submittedAt  DateTime?
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("TherapyIntakeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNotes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 model Story {
@@ -812,4 +878,184 @@ model PushToken {
   lastSeenAt DateTime @default(now())
 
   @@index([userId])
+}
+
+enum AdminDepartment {
+  CONTENT
+  SUPPORT
+}
+
+enum CertificateStatus {
+  PENDING
+  APPROVED
+  REVOKED
+}
+
+/// An earned/issued certificate (e.g. challenge completion). Auto-created as
+/// PENDING when a predefined criterion is met (see updateChallengeProgress in
+/// src/lib/challenges.ts); Founder/Admin can also issue one manually. Requires
+/// Founder/Admin approval before it's visible to the member or verifiable.
+model Certificate {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  reason           String?
+  status           CertificateStatus @default(PENDING)
+  verificationCode String            @unique @default(cuid())
+  issuedAt         DateTime          @default(now())
+  approvedAt       DateTime?
+  approvedById     String?
+  approvedBy       User?             @relation("CertificateApprover", fields: [approvedById], references: [id])
+  sourceType       String? // e.g. "Challenge"
+  sourceId         String?
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum CorporateLeadStatus {
+  NEW
+  CONTACTED
+  DISCUSSION
+  PROPOSAL
+  CONFIRMED
+  PAYMENT
+  COMPLETED
+  LOST
+}
+
+/// A B2B enquiry — distinct from the consumer `Lead` pipeline; corporate deals
+/// carry company-shaped fields and a longer negotiation pipeline.
+model CorporateLead {
+  id              String              @id @default(cuid())
+  companyName     String
+  contactName     String
+  contactEmail    String
+  contactPhone    String?
+  employeeCount   Int?
+  requirement     String?
+  programInterest String?
+  message         String?
+  status          CorporateLeadStatus @default(NEW)
+  dealValue       Float?
+  notes           String?
+  assignedToId    String?
+  assignedTo      User?               @relation(fields: [assignedToId], references: [id])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  activities CorporateLeadActivity[]
+
+  @@index([status])
+}
+
+model CorporateLeadActivity {
+  id              String        @id @default(cuid())
+  corporateLeadId String
+  corporateLead   CorporateLead @relation(fields: [corporateLeadId], references: [id], onDelete: Cascade)
+  type            String // CALL, EMAIL, WHATSAPP, NOTE, STATUS_CHANGE
+  content         String
+  performedBy     String?
+  createdAt       DateTime      @default(now())
+
+  @@index([corporateLeadId])
+}
+
+enum RetreatKind {
+  RETREAT
+  WORKSHOP
+  EVENT
+}
+
+enum RetreatStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum RetreatEnquiryStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+/// A retreat, workshop, or one-off event — same shape, discriminated by `kind`
+/// per the spec (both flow: enquiry -> admin confirmation -> manual payment).
+model Retreat {
+  id          String        @id @default(cuid())
+  kind        RetreatKind   @default(RETREAT)
+  name        String
+  location    String?
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  images      String[]
+  capacity    Int?
+  price       Float?
+  currency    String        @default("INR")
+  status      RetreatStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  enquiries RetreatEnquiry[]
+
+  @@index([status, kind])
+}
+
+model RetreatEnquiry {
+  id                String               @id @default(cuid())
+  retreatId         String
+  retreat           Retreat              @relation(fields: [retreatId], references: [id], onDelete: Cascade)
+  name              String
+  email             String
+  phone             String?
+  message           String?
+  participantsCount Int                  @default(1)
+  status            RetreatEnquiryStatus @default(NEW)
+  createdAt         DateTime             @default(now())
+
+  @@index([retreatId])
+  @@index([status])
+}
+
+enum SupportConversationStatus {
+  OPEN
+  CLOSED
+}
+
+/// A member's support conversation thread. Any staff member can reply (no
+/// manual assignment); `assignedToId` is a soft claim set to whoever replies
+/// first, for the admin queue's "who's handling this" display only.
+model SupportConversation {
+  id            String                    @id @default(cuid())
+  userId        String
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject       String?
+  status        SupportConversationStatus @default(OPEN)
+  assignedToId  String?
+  assignedTo    User?                     @relation("SupportAssignee", fields: [assignedToId], references: [id])
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  lastMessageAt DateTime                  @default(now())
+
+  messages SupportMessage[]
+
+  @@index([status, lastMessageAt])
+  @@index([userId])
+}
+
+model SupportMessage {
+  id             String              @id @default(cuid())
+  conversationId String
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User                @relation(fields: [senderId], references: [id])
+  senderRole     String // "member" | "staff"
+  body           String
+  createdAt      DateTime            @default(now())
+
+  @@index([conversationId])
 }

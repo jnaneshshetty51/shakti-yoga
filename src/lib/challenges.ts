@@ -50,6 +50,16 @@ export async function updateChallengeProgress(userId: string): Promise<void> {
                 where: { id: p.id },
                 data: { completedAt: new Date() },
             });
+            // Predefined criterion met — auto-issue a certificate, pending Founder/Admin approval.
+            await prisma.certificate.create({
+                data: {
+                    userId,
+                    title: `Completed: ${p.challenge.title}`,
+                    reason: `Reached the ${p.challenge.goalTarget} ${GOAL_LABEL[p.challenge.goalType]} goal.`,
+                    sourceType: 'Challenge',
+                    sourceId: p.id,
+                },
+            }).catch(() => {});
             anyCompleted = true;
         }
     }

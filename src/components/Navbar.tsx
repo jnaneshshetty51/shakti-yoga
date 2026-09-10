@@ -36,6 +36,7 @@ export default function Navbar() {
                 <Link href="/" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Home</Link>
                 <Link href="/everyday-yoga" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Everyday Yoga</Link>
                 <Link href="/yoga-therapy" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Yoga Therapy</Link>
+                <Link href="/teachers" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Teachers</Link>
                 <Link href="/about" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">About</Link>
                 <Link href="/blog" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Blog</Link>
             </div>
@@ -94,6 +95,9 @@ export default function Navbar() {
                     </Link>
                     <Link href="/yoga-therapy" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Yoga Therapy
+                    </Link>
+                    <Link href="/teachers" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                        Teachers
                     </Link>
                     <Link href="/about" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         About

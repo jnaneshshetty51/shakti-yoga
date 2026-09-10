@@ -6,12 +6,18 @@ import TargetAudience from "@/components/TargetAudience";
 export const dynamic = "force-dynamic";
 
 import Programs from "@/components/Programs";
-import HowItWorks from "@/components/HowItWorks";
-import FreeTrial from "@/components/FreeTrial";
-import YogaTherapy from "@/components/YogaTherapy";
-import Stories from "@/components/Stories";
 import WhyUs from "@/components/WhyUs";
+import Founder from "@/components/Founder";
+import ShaktiDifference from "@/components/ShaktiDifference";
+import HowItWorks from "@/components/HowItWorks";
+import YogaTherapy from "@/components/YogaTherapy";
+import FreeTrial from "@/components/FreeTrial";
+import Stories from "@/components/Stories";
+import TakeAMoment from "@/components/TakeAMoment";
+import WorkshopsRetreats from "@/components/WorkshopsRetreats";
+import ForOrganizations from "@/components/ForOrganizations";
 import FAQ from "@/components/FAQ";
+import FinalCTA from "@/components/FinalCTA";
 
 export default function Home() {
   return (
@@ -19,12 +25,18 @@ export default function Home() {
       <Hero />
       <TargetAudience />
       <Programs />
-      <HowItWorks />
-      <FreeTrial />
-      <YogaTherapy />
-      <Stories />
       <WhyUs />
+      <Founder />
+      <ShaktiDifference />
+      <HowItWorks />
+      <YogaTherapy />
+      <FreeTrial />
+      <Stories />
+      <TakeAMoment />
+      <WorkshopsRetreats />
+      <ForOrganizations />
       <FAQ />
+      <FinalCTA />
     </main>
   );
 }

@@ -52,6 +52,34 @@ export default function AboutPage() {
                             creating a healthier, happier, and more conscious world."
                         </p>
                     </div>
+
+                    <div id="founder" className="grid md:grid-cols-2 gap-16 items-center scroll-mt-24">
+                        <div>
+                            <h2 className="font-serif text-3xl text-primary mb-6">Meet Acharya Swastik</h2>
+                            <p className="font-serif italic text-lg text-text/70 mb-6 leading-relaxed">
+                                "Yoga changed the direction of my life. My purpose is to share that journey with others."
+                            </p>
+                            <p className="font-sans text-text/80 leading-relaxed mb-6">
+                                Acharya Swastik&rsquo;s path to yoga began far from a mat — in engineering — before a deeper
+                                calling led him to leave that path behind and pursue yoga as his life&rsquo;s work, earning an
+                                MSc in Yoga from Mangalore University.
+                            </p>
+                            <p className="font-sans text-text/80 leading-relaxed">
+                                Shaped by a lifelong connection to the Devi tradition, he founded Shakti Yoga Kendra in Udupi
+                                to share an authentic, disciplined practice with students far beyond India&rsquo;s shores —
+                                a centre where every student is known, supported and guided on their own journey.
+                            </p>
+                        </div>
+                        <div className="relative bg-primary text-white rounded-3xl p-10 shadow-lg">
+                            <span className="absolute top-6 left-8 font-serif text-6xl text-secondary/60 leading-none select-none">&ldquo;</span>
+                            <p className="font-serif italic text-xl leading-relaxed relative z-10">
+                                A centre where students are known, supported and encouraged throughout their journey.
+                            </p>
+                            <p className="mt-6 font-sans text-xs uppercase tracking-widest text-secondary">
+                                — Acharya Swastik, Founder
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </section>
 

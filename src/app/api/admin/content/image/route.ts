@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { uploadFile, mediaSrc } from '@/lib/storage';
 import { validateImageField } from '@/lib/image-upload';
@@ -11,7 +11,7 @@ const PREFIX: Record<string, string> = {
 
 /** Admin image upload for blog thumbnails / story photos (multipart: kind + file). */
 export async function POST(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment('CONTENT');
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { allowed, retryAfterSeconds } = rateLimit(`content-image:${admin.id}`, 40, 60 * 60 * 1000);

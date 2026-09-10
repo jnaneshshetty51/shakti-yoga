@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 /** GET — community posts + comments, most-reported first. */
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const [posts, comments] = await Promise.all([
         prisma.communityPost.findMany({
             orderBy: [{ reportCount: 'desc' }, { createdAt: 'desc' }],
@@ -43,7 +43,7 @@ export async function GET() {
 
 /** PATCH { kind: 'post'|'comment', id, hidden } */
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const b = await request.json().catch(() => ({}));
     const id = String(b.id ?? '');
     const hidden = Boolean(b.hidden);
@@ -68,7 +68,7 @@ export async function PATCH(request: Request) {
 
 /** DELETE ?kind=post|comment&id= */
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const url = new URL(request.url);
     const kind = url.searchParams.get('kind');
     const id = url.searchParams.get('id');

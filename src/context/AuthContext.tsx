@@ -18,6 +18,8 @@ interface User {
     credits: number;
     /** Admin tier — only set when role === 'admin'. */
     tier?: 'super' | 'staff' | null;
+    /** Scoped admin department (Content Team / Support Staff). Null/absent = full admin access. */
+    department?: 'CONTENT' | 'SUPPORT' | null;
 }
 
 export interface RegisterInput {
@@ -61,6 +63,7 @@ function normalizeUser(raw: Record<string, unknown>): User {
         avatarUrl: (raw.avatarUrl as string | null | undefined) ?? null,
         credits: typeof raw.credits === 'number' ? raw.credits : 0,
         tier: raw.tier === 'super' || raw.tier === 'staff' ? raw.tier : null,
+        department: raw.department === 'CONTENT' || raw.department === 'SUPPORT' ? raw.department : null,
     };
 }
 

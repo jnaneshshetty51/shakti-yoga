@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { toContentCategory } from '@/lib/content';
 import { toPracticeLevel } from '@/lib/practice';
@@ -26,7 +26,7 @@ function mediaOrNull(v: unknown): string | null | undefined {
 }
 
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const rows = await prisma.practice.findMany({ orderBy: { createdAt: 'desc' } });
     return NextResponse.json({
         practices: rows.map((p) => ({
@@ -76,7 +76,7 @@ async function upsert(body: Record<string, unknown>, id?: string) {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     try {
         const created = await upsert(await request.json().catch(() => ({})));
         return NextResponse.json({ id: created.id });
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -100,7 +100,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment('CONTENT'))) return forbidden();
     const id = new URL(request.url).searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     const row = await prisma.practice.findUnique({ where: { id }, select: { thumbnailUrl: true } });

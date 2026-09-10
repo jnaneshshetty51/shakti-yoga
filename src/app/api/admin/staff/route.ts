@@ -9,15 +9,17 @@ import { readJson, str, optStr, email as parseEmail, ValidationError, handleVali
 import { sendEmail, emailLayout } from '@/lib/email';
 import { deleteFile, toStorageKey } from '@/lib/storage';
 import { SITE_URL } from '@/lib/site';
-import { Role } from '@prisma/client';
+import { Role, AdminDepartment } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 const STAFF_ROLES: Role[] = [Role.TEACHER, Role.STAFF_ADMIN, Role.SUPER_ADMIN];
 const CREATABLE: Role[] = [Role.TEACHER, Role.STAFF_ADMIN];
+const DEPARTMENTS: AdminDepartment[] = [AdminDepartment.CONTENT, AdminDepartment.SUPPORT];
 
 function serialize(u: {
     id: string; name: string; email: string; phone: string | null; role: Role; avatarUrl: string | null;
+    adminDepartment?: AdminDepartment | null;
     staffProfile: { title: string | null; bio: string | null; specialties: string[]; yearsExperience: number | null; displayOrder: number; publicVisible: boolean } | null;
     _count?: { classesTaught: number; sessionsTaught: number; availability: number };
 }) {
@@ -27,6 +29,7 @@ function serialize(u: {
         email: u.email,
         phone: u.phone ?? '',
         role: u.role,
+        department: u.adminDepartment ?? null,
         photoUrl: u.avatarUrl ?? null,
         title: u.staffProfile?.title ?? '',
         bio: u.staffProfile?.bio ?? '',
@@ -41,7 +44,7 @@ function serialize(u: {
 }
 
 const staffSelect = {
-    id: true, name: true, email: true, phone: true, role: true, avatarUrl: true,
+    id: true, name: true, email: true, phone: true, role: true, avatarUrl: true, adminDepartment: true,
     staffProfile: {
         select: { title: true, bio: true, specialties: true, yearsExperience: true, displayOrder: true, publicVisible: true },
     },
@@ -94,6 +97,21 @@ export async function POST(request: Request) {
             ? Math.max(0, Math.min(80, Math.trunc(Number(body.yearsExperience))))
             : null;
 
+        // Scoping a staff admin to a department (Content Team / Support Staff) is
+        // itself a super-admin decision, same as granting the STAFF_ADMIN seat.
+        let adminDepartment: AdminDepartment | null = null;
+        if (body.adminDepartment) {
+            const d = String(body.adminDepartment).toUpperCase();
+            if (!(DEPARTMENTS as string[]).includes(d)) {
+                throw new ValidationError('Department must be CONTENT or SUPPORT.');
+            }
+            if (role !== Role.STAFF_ADMIN) {
+                throw new ValidationError('Only a staff admin can be scoped to a department.');
+            }
+            if (!(await requireSuperAdmin())) return forbidden();
+            adminDepartment = d as AdminDepartment;
+        }
+
         // Random password; the person sets their own via the emailed link.
         const tempPassword = randomBytes(18).toString('base64url');
         const passwordHash = await hashPassword(tempPassword);
@@ -102,6 +120,7 @@ export async function POST(request: Request) {
             data: {
                 name, email, passwordHash, role,
                 phone: phone ?? null,
+                adminDepartment,
                 staffProfile: {
                     create: {
                         title: title ?? null,
@@ -178,6 +197,18 @@ export async function PATCH(request: Request) {
                 return NextResponse.json({ error: 'Only a super admin can change admin roles.' }, { status: 403 });
             }
             userData.role = r as Role;
+        }
+        if (body.adminDepartment !== undefined) {
+            if (!(await requireSuperAdmin())) return forbidden();
+            const raw = body.adminDepartment ? String(body.adminDepartment).toUpperCase() : null;
+            if (raw && !(DEPARTMENTS as string[]).includes(raw)) {
+                return NextResponse.json({ error: 'Department must be CONTENT or SUPPORT.' }, { status: 400 });
+            }
+            const targetRole = (userData.role as Role) ?? before.role;
+            if (raw && targetRole !== Role.STAFF_ADMIN) {
+                return NextResponse.json({ error: 'Only a staff admin can be scoped to a department.' }, { status: 400 });
+            }
+            userData.adminDepartment = raw as AdminDepartment | null;
         }
 
         const profileData: Record<string, unknown> = {};

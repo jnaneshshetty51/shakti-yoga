@@ -41,6 +41,8 @@ export default function Footer() {
                         <ul className="space-y-3 sm:space-y-4 text-sm opacity-80 font-sans">
                             <li><Link href="/" className="hover:text-secondary transition-colors inline-block py-1">Home</Link></li>
                             <li><Link href="/about" className="hover:text-secondary transition-colors inline-block py-1">About</Link></li>
+                            <li><Link href="/retreats" className="hover:text-secondary transition-colors inline-block py-1">Workshops & Retreats</Link></li>
+                            <li><Link href="/corporate" className="hover:text-secondary transition-colors inline-block py-1">Corporate</Link></li>
                             <li><Link href="/stories" className="hover:text-secondary transition-colors inline-block py-1">Success Stories</Link></li>
                             <li><Link href="/blog" className="hover:text-secondary transition-colors inline-block py-1">Blog & Resources</Link></li>
                             <li><Link href="/contact" className="hover:text-secondary transition-colors inline-block py-1">Contact & Support</Link></li>
