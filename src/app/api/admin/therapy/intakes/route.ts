@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { TherapyIntakeStatus } from '@prisma/client';
 
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/admin/therapy/intakes?status= — list assessments, newest submission first. */
 export async function GET(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['THERAPIST']);
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { searchParams } = new URL(request.url);

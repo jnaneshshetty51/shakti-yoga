@@ -5,7 +5,7 @@ import { LuGraduationCap } from "react-icons/lu";
 import { PageHeader, Card, EmptyState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
 import { useAuth } from "@/context/AuthContext";
 
-const DEPARTMENT_LABEL: Record<string, string> = { CONTENT: "Content Team", SUPPORT: "Support Staff" };
+const DEPARTMENT_LABEL: Record<string, string> = { CONTENT: "Content Team", SUPPORT: "Support Staff", TRAINER: "Everyday Trainer", THERAPIST: "Yoga Therapist" };
 
 interface Staff {
     id: string;
@@ -13,7 +13,7 @@ interface Staff {
     email: string;
     phone: string;
     role: string;
-    department: "CONTENT" | "SUPPORT" | null;
+    department: "CONTENT" | "SUPPORT" | "TRAINER" | "THERAPIST" | null;
     photoUrl: string | null;
     title: string;
     bio: string;
@@ -202,6 +202,8 @@ export default function AdminStaffPage() {
                                     <option value="">Full admin access (no department)</option>
                                     <option value="CONTENT">Content Team</option>
                                     <option value="SUPPORT">Support Staff</option>
+                                    <option value="TRAINER">Everyday Trainer</option>
+                                    <option value="THERAPIST">Yoga Therapist</option>
                                 </select>
                             )}
                             <input placeholder='Title, e.g. "Senior Yoga Therapist"' value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
@@ -240,6 +242,8 @@ export default function AdminStaffPage() {
                                                 <option value="">Full admin access (no department)</option>
                                                 <option value="CONTENT">Content Team</option>
                                                 <option value="SUPPORT">Support Staff</option>
+                                    <option value="TRAINER">Everyday Trainer</option>
+                                    <option value="THERAPIST">Yoga Therapist</option>
                                             </select>
                                         )}
                                         <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className={inputClass} placeholder="Title" />

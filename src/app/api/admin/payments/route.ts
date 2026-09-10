@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
+import { issueInvoiceForPayment } from '@/lib/invoice';
 import { PaymentStatus, PlanType, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -122,6 +123,7 @@ export async function POST(request: Request) {
             entityId: payment.id,
             after: { userId, amount, currency, planType, note },
         });
+        void issueInvoiceForPayment(payment.id).catch(() => {});
 
         return NextResponse.json({ id: payment.id });
     } catch (error) {

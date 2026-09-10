@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button } from "@/components/admin/ui";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
+import { MeasurementsPanel } from "@/components/admin/MeasurementsPanel";
 import { useToast } from "@/components/admin/Toast";
 
 type Data = {
@@ -200,6 +201,8 @@ export default function MemberDetailPage() {
                         </div>
                     )}
                 </Section>
+
+                {(m.role === "MEMBER_THERAPY" || data.therapyIntake) && <MeasurementsPanel memberId={m.id} />}
 
                 <Section title="Certificates & therapy">
                     {data.certificates.length === 0 ? <p className="text-sm text-ink-subtle">No certificates.</p> : (

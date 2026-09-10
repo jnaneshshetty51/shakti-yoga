@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { PlanType } from '@prisma/client';
@@ -8,7 +8,7 @@ import { PlanType } from '@prisma/client';
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment(['TRAINER']))) return forbidden();
     try {
         const [batches, teachers] = await Promise.all([
             prisma.classBatch.findMany({
@@ -91,7 +91,7 @@ function toData(body: BatchInput) {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment(['TRAINER']))) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.name || !body.timeSlot || !body.planType || !body.teacherId) {
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['TRAINER']);
     if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
@@ -148,7 +148,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['TRAINER']);
     if (!admin) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');

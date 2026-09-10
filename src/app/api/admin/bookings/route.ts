@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { cancelBooking, bookingInstant } from '@/lib/booking';
@@ -24,7 +24,7 @@ function resolveWhen(body: { date?: string; dateStr?: string; slot?: string }): 
 
 export async function GET() {
     try {
-        const payload = await requireAdmin();
+        const payload = await requireDepartment(['THERAPIST']);
         if (!payload) return forbidden();
 
         const [bookings, teachers] = await Promise.all([
@@ -69,7 +69,7 @@ export async function GET() {
 
 /** POST — create a booking on a member's behalf. */
 export async function POST(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['THERAPIST']);
     if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['THERAPIST']);
     if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
@@ -195,7 +195,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment(['THERAPIST']))) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing booking id' }, { status: 400 });

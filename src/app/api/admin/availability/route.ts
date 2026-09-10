@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 
@@ -9,7 +9,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HM = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
 export async function GET() {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment(['TRAINER', 'THERAPIST']))) return forbidden();
     const [rules, teachers] = await Promise.all([
         prisma.teacherAvailability.findMany({
             include: { teacher: { select: { id: true, name: true } } },
@@ -34,7 +34,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['TRAINER', 'THERAPIST']);
     if (!admin) return forbidden();
     try {
         const b = await request.json().catch(() => ({}));
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['TRAINER', 'THERAPIST']);
     if (!admin) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');

@@ -15,7 +15,7 @@ const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 
 
 const STAFF_ROLES: Role[] = [Role.TEACHER, Role.STAFF_ADMIN, Role.SUPER_ADMIN];
 const CREATABLE: Role[] = [Role.TEACHER, Role.STAFF_ADMIN];
-const DEPARTMENTS: AdminDepartment[] = [AdminDepartment.CONTENT, AdminDepartment.SUPPORT];
+const DEPARTMENTS: AdminDepartment[] = [AdminDepartment.CONTENT, AdminDepartment.SUPPORT, AdminDepartment.TRAINER, AdminDepartment.THERAPIST];
 
 function serialize(u: {
     id: string; name: string; email: string; phone: string | null; role: Role; avatarUrl: string | null;
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         if (body.adminDepartment) {
             const d = String(body.adminDepartment).toUpperCase();
             if (!(DEPARTMENTS as string[]).includes(d)) {
-                throw new ValidationError('Department must be CONTENT or SUPPORT.');
+                throw new ValidationError('Unknown department.');
             }
             if (role !== Role.STAFF_ADMIN) {
                 throw new ValidationError('Only a staff admin can be scoped to a department.');
@@ -202,7 +202,7 @@ export async function PATCH(request: Request) {
             if (!(await requireSuperAdmin())) return forbidden();
             const raw = body.adminDepartment ? String(body.adminDepartment).toUpperCase() : null;
             if (raw && !(DEPARTMENTS as string[]).includes(raw)) {
-                return NextResponse.json({ error: 'Department must be CONTENT or SUPPORT.' }, { status: 400 });
+                return NextResponse.json({ error: 'Unknown department.' }, { status: 400 });
             }
             const targetRole = (userData.role as Role) ?? before.role;
             if (raw && targetRole !== Role.STAFF_ADMIN) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { TherapyIntakeStatus } from '@prisma/client';
 import { beginReview } from '@/lib/therapy-intake';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * intake moves it to UNDER_REVIEW, which locks the applicant out of edits.
  */
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['THERAPIST']);
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { id } = await context.params;

@@ -17,7 +17,7 @@ import { NotificationsBell } from "@/components/admin/NotificationsBell";
 import { ToastProvider } from "@/components/admin/Toast";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/admin/ui";
 
-type Department = "CONTENT" | "SUPPORT";
+type Department = "CONTENT" | "SUPPORT" | "TRAINER" | "THERAPIST";
 type NavItem = { name: string; href: string; icon: IconType; superOnly?: boolean; departments?: Department[] };
 type NavGroup = { label: string; items: NavItem[] };
 
@@ -28,6 +28,7 @@ const NAV: NavGroup[] = [
             { name: "Dashboard", href: "/admin", icon: LuLayoutDashboard },
             { name: "Analytics", href: "/admin/analytics", icon: LuChartLine },
             { name: "Reports", href: "/admin/reports", icon: LuChartColumnBig },
+            { name: "Retention", href: "/admin/retention", icon: LuTarget },
         ],
     },
     {
@@ -46,11 +47,13 @@ const NAV: NavGroup[] = [
         items: [
             { name: "Subscriptions", href: "/admin/subscriptions", icon: LuCreditCard },
             { name: "Payments", href: "/admin/payments", icon: LuReceipt },
-            { name: "Classes", href: "/admin/classes", icon: LuHeart },
-            { name: "Schedule", href: "/admin/schedule", icon: LuCalendarDays },
-            { name: "Bookings", href: "/admin/bookings", icon: LuCalendarClock },
-            { name: "Availability", href: "/admin/availability", icon: LuClock },
-            { name: "Therapy Assessments", href: "/admin/therapy", icon: LuClipboardList },
+            { name: "Invoices", href: "/admin/invoices", icon: LuFileText },
+            { name: "Classes", href: "/admin/classes", icon: LuHeart, departments: ["TRAINER"] },
+            { name: "Schedule", href: "/admin/schedule", icon: LuCalendarDays, departments: ["TRAINER"] },
+            { name: "Bookings", href: "/admin/bookings", icon: LuCalendarClock, departments: ["THERAPIST"] },
+            { name: "Availability", href: "/admin/availability", icon: LuClock, departments: ["TRAINER", "THERAPIST"] },
+            { name: "Therapy Assessments", href: "/admin/therapy", icon: LuClipboardList, departments: ["THERAPIST"] },
+            { name: "Patient updates", href: "/admin/therapy/updates", icon: LuClipboardList, departments: ["THERAPIST"] },
         ],
     },
     {
@@ -194,8 +197,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const isSuper = user?.tier === "super";
     const department = user?.department ?? null;
+    const DEPT_LABEL: Record<string, string> = {
+        CONTENT: "Content Team", SUPPORT: "Support Staff", TRAINER: "Everyday Trainer", THERAPIST: "Yoga Therapist",
+    };
     const tierLabel = department
-        ? department === "CONTENT" ? "Content Team" : "Support Staff"
+        ? DEPT_LABEL[department] ?? "Staff"
         : user?.tier === "staff" ? "Staff Admin" : "Super Admin";
     // A departmented staff account (Content Team / Support Staff) sees ONLY its
     // own department's items — this is their whole admin experience, not a

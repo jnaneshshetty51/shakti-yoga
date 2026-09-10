@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyWebhookSignature } from '@/lib/razorpay';
 import { PLANS, getPlan, regionFor } from '@/lib/pricing';
 import { activatePlan } from '@/lib/subscription';
+import { issueInvoiceForPayment } from '@/lib/invoice';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { markReferralConverted } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
                     if (existing) {
                         return NextResponse.json({ ok: true, note: 'duplicate charge' });
                     }
-                    await prisma.payment.create({
+                    const created = await prisma.payment.create({
                         data: {
                             userId,
                             planType,
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
                             providerPaymentId: payEntity.id,
                         },
                     });
+                    void issueInvoiceForPayment(created.id).catch(() => {});
                 }
 
                 const renewalDate = subEntity.current_end

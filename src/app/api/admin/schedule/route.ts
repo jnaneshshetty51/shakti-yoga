@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin } from '@/lib/admin-auth';
+import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { eligibleEverydayMembers } from '@/lib/class-access';
@@ -10,7 +10,7 @@ const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 
 
 export async function GET() {
     try {
-        const payload = await requireAdmin();
+        const payload = await requireDepartment(['TRAINER']);
         if (!payload) return forbidden();
 
         // Get upcoming class instances for the next 7 days
@@ -111,7 +111,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment(['TRAINER']))) return forbidden();
     try {
         const { batchId, date } = await request.json().catch(() => ({}));
         if (!batchId || !date) {
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    const admin = await requireAdmin();
+    const admin = await requireDepartment(['TRAINER']);
     if (!admin) return forbidden();
     try {
         const { id, status, attendanceCount, recordingUrl, meetingLink } = await request.json().catch(() => ({}));
@@ -175,7 +175,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    if (!(await requireDepartment(['TRAINER']))) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });

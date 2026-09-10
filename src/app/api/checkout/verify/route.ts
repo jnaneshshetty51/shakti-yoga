@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { PLANS, formatPrice, getPlan, regionFor } from '@/lib/pricing';
 import { verifyPaymentSignature, verifySubscriptionSignature, fetchPayment } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
+import { issueInvoiceForPayment } from '@/lib/invoice';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { posthogCapture, posthogIdentify } from '@/lib/posthog';
@@ -40,6 +41,7 @@ async function confirmAndActivate(params: {
         where: { id: paymentRecord.id },
         data: { status: 'PAID', providerPaymentId: razorpayPaymentId, providerSignature: razorpaySignature },
     });
+    void issueInvoiceForPayment(paymentRecord.id).catch(() => {});
 
     const plan = planForPayment(paymentRecord);
     const region = regionFor(paymentRecord.currency);
