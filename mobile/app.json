@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "shaktiyoga",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FDFCF8"
-    },
     "ios": {
       "bundleIdentifier": "com.shaktiyoga.app",
       "supportsTablet": true
