@@ -1,40 +1,32 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { recordAudit } from '@/lib/audit';
-import { getClientIp } from '@/lib/rate-limit';
+import { reverseReferral, setReferralFlag } from '@/lib/referral';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+/**
+ * PATCH /api/admin/referrals/[id]
+ *   { action: "reverse" }        — claw back a rewarded referral (refund / abuse)
+ *   { action: "flag" | "unflag" } — mark / clear for manual review
+ */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const admin = await requireAdmin();
     if (!admin) return forbidden();
     const { id } = await params;
-    try {
-        const body = await request.json().catch(() => ({}));
-        const rewardMonths = Number(body.rewardMonths);
-        if (!Number.isFinite(rewardMonths) || rewardMonths < 0 || rewardMonths > 24) {
-            return NextResponse.json({ error: 'rewardMonths must be between 0 and 24' }, { status: 400 });
-        }
 
-        const before = await prisma.referral.findUnique({ where: { id } });
-        if (!before) return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
+    const body = await request.json().catch(() => ({}));
+    const action = String(body.action ?? '');
 
-        const referral = await prisma.referral.update({
-            where: { id },
-            data: { rewardMonths: Math.trunc(rewardMonths) },
-        });
-
-        await recordAudit({
-            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
-            action: 'referral.reward.update', entity: 'Referral', entityId: id,
-            before: { rewardMonths: before.rewardMonths },
-            after: { rewardMonths: referral.rewardMonths },
-        });
-
-        return NextResponse.json({ referral: { id: referral.id, rewardMonths: referral.rewardMonths } });
-    } catch (error) {
-        console.error('Admin referral PATCH error:', error);
-        return NextResponse.json({ error: 'Could not update referral' }, { status: 500 });
+    if (action === 'reverse') {
+        const result = await reverseReferral(id, admin.id, admin.email);
+        if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+        return NextResponse.json({ ok: true });
     }
+
+    if (action === 'flag' || action === 'unflag') {
+        await setReferralFlag(id, action === 'flag');
+        return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
 }

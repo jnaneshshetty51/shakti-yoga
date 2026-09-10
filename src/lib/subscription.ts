@@ -90,16 +90,12 @@ export async function activatePlan(
     const amount = opts.amount ?? price.amount;
     const currency = opts.currency ?? price.currency;
 
-    // Referral bonus: consume any banked credit days on this activation.
-    const before = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { referralCreditDays: true },
-    });
-    const bonusDays = isTrial ? 0 : Math.min(before?.referralCreditDays ?? 0, 366);
-
+    // Referral credit is a ₹ wallet redeemed at checkout time (see lib/referral.ts
+    // previewCheckoutDiscount/consumeCheckoutDiscount) — activation itself no
+    // longer grants bonus days.
     const renewalDate = opts.renewalDate ?? (() => {
         const d = new Date();
-        d.setDate(d.getDate() + (plan.renewalDays || 30) + bonusDays);
+        d.setDate(d.getDate() + (plan.renewalDays || 30));
         return d;
     })();
 
@@ -109,7 +105,6 @@ export async function activatePlan(
             role: plan.role,
             ...(plan.credits > 0 ? { credits: { increment: plan.credits } } : {}),
             ...(isTrial ? { trialStartedAt: new Date() } : {}),
-            ...(bonusDays > 0 ? { referralCreditDays: 0 } : {}),
         },
     });
 

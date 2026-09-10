@@ -1,18 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader, PageLoading, Card, Button } from "@/components/ui";
-import { LuCopy, LuShare2, LuGift, LuUsers } from "react-icons/lu";
+import { PageHeader, PageLoading, Card, Button, Badge } from "@/components/ui";
+import { LuCopy, LuShare2, LuGift } from "react-icons/lu";
+
+type ReferralStatus = "PENDING" | "SUCCESSFUL" | "EXPIRED" | "REVERSED";
+
+interface ReferralRow {
+    id: string;
+    refereeName: string;
+    status: ReferralStatus;
+    rewardAmount: number;
+    createdAt: string;
+}
 
 interface ReferralStats {
     code: string;
     link: string;
     message: string;
-    invited: number;
-    converted: number;
-    creditDays: number;
-    rewardMonths: number;
+    creditBalance: number;
+    referrerReward: number;
+    refereeDiscount: number;
+    referrals: ReferralRow[];
 }
+
+const STATUS_LABEL: Record<ReferralStatus, string> = {
+    PENDING: "Pending",
+    SUCCESSFUL: "Successful",
+    EXPIRED: "Expired",
+    REVERSED: "Reversed",
+};
+
+const STATUS_TONE: Record<ReferralStatus, "green" | "amber" | "gray" | "red"> = {
+    PENDING: "amber",
+    SUCCESSFUL: "green",
+    EXPIRED: "gray",
+    REVERSED: "red",
+};
+
+const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export default function ReferPage() {
     const [stats, setStats] = useState<ReferralStats | null>(null);
@@ -65,8 +91,16 @@ export default function ReferPage() {
         <div>
             <PageHeader
                 title="Refer & Earn"
-                subtitle="Share Shakti with someone you love. When they join, you both get rewarded."
+                subtitle={`Your friend gets ${inr(stats.refereeDiscount)} off their first membership. You get ${inr(stats.referrerReward)} Shakti credit once they join.`}
             />
+
+            <Card padded className="mb-6">
+                <div className="flex items-center gap-2 text-secondary text-xs font-semibold uppercase tracking-wider mb-1">
+                    <LuGift /> Your Shakti credit
+                </div>
+                <div className="text-3xl font-bold text-gray-800">{inr(stats.creditBalance)}</div>
+                <p className="text-sm text-gray-500 mt-1">Applied automatically at your next membership payment.</p>
+            </Card>
 
             <Card padded className="mb-6">
                 <p className="text-sm text-gray-500 mb-3">Your referral code</p>
@@ -91,36 +125,48 @@ export default function ReferPage() {
                 </div>
             </Card>
 
-            <div className="grid sm:grid-cols-3 gap-4 mb-6">
-                <Card padded>
-                    <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                        <LuUsers /> Invited
-                    </div>
-                    <div className="text-3xl font-bold text-gray-800">{stats.invited}</div>
-                </Card>
-                <Card padded>
-                    <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                        <LuUsers /> Converted
-                    </div>
-                    <div className="text-3xl font-bold text-gray-800">{stats.converted}</div>
-                </Card>
-                <Card padded>
-                    <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                        <LuGift /> Credit earned
-                    </div>
-                    <div className="text-3xl font-bold text-gray-800">{stats.creditDays} days</div>
-                </Card>
-            </div>
+            <h3 className="font-bold text-gray-800 mb-3">Your referrals</h3>
+            <Card className="overflow-hidden mb-6">
+                {stats.referrals.length === 0 ? (
+                    <p className="px-5 py-8 text-center text-sm text-gray-400">
+                        No referrals yet — share your code to get started.
+                    </p>
+                ) : (
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50/70 text-gray-400 text-[11px] font-semibold uppercase tracking-wider">
+                            <tr>
+                                <th className="px-4 py-3">Person</th>
+                                <th className="px-4 py-3">Status</th>
+                                <th className="px-4 py-3 text-right">Reward</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {stats.referrals.map((r) => (
+                                <tr key={r.id} className="text-gray-600">
+                                    <td className="px-4 py-3">{r.refereeName}</td>
+                                    <td className="px-4 py-3">
+                                        <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                                        {r.status === "SUCCESSFUL" ? inr(r.rewardAmount) : r.status === "PENDING" ? "Pending" : "—"}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </Card>
 
             <Card padded>
                 <h3 className="font-bold text-gray-800 mb-2">How it works</h3>
                 <ul className="text-sm text-gray-500 space-y-1.5 list-disc pl-5">
                     <li>Share your code or link with a friend.</li>
-                    <li>When they sign up with it, you&rsquo;re credited automatically.</li>
+                    <li>They create an account and, for Yoga Therapy, complete the assessment.</li>
                     <li>
-                        Once they take a paid plan, you get {stats.rewardMonths} month{stats.rewardMonths === 1 ? "" : "s"} of
-                        credit applied to your subscription.
+                        When they pay for their first membership, they get {inr(stats.refereeDiscount)} off — and you get{" "}
+                        {inr(stats.referrerReward)} Shakti credit. A free trial on its own doesn&rsquo;t count.
                     </li>
+                    <li>Referrals expire if your friend hasn&rsquo;t joined within 90 days.</li>
                 </ul>
             </Card>
         </div>

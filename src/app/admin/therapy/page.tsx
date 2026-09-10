@@ -7,16 +7,16 @@ import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass,
 
 type Status = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "RECOMMENDED" | "RECOMMENDED_WITH_CONDITIONS" | "NOT_RECOMMENDED";
 
-interface IntakeRow {
+type IntakeRow = {
     id: string;
     status: Status;
     primaryConcern: string | null;
     submittedAt: string | null;
     createdAt: string;
     user: { id: string; name: string; email: string; phone: string | null; country: string | null };
-}
+};
 
-interface IntakeDetail extends IntakeRow {
+type IntakeDetail = IntakeRow & {
     fullName: string | null;
     age: number | null;
     gender: string | null;

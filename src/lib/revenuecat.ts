@@ -125,7 +125,7 @@ export async function applyRcEvent(e: RcEvent): Promise<string> {
             planType: plan.dbPlanType, provider, providerId: e.transaction_id ?? undefined,
         });
     }
-    if (first && e.period_type !== 'TRIAL') void markReferralConverted(userId).catch(() => {});
+    if (first && e.period_type !== 'TRIAL') void markReferralConverted(userId, plan.dbPlanType).catch(() => {});
 
     return `granted ${plan.key}`;
 }

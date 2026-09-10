@@ -10,10 +10,13 @@ import {
     isRazorpayConfigured,
 } from '@/lib/razorpay';
 import { activatePlan } from '@/lib/subscription';
+import { previewCheckoutDiscount, consumeCheckoutDiscount, markReferralConverted } from '@/lib/referral';
 import { readJson, ValidationError, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
 
 const KEYS = ['trial', ...LADDER] as const;
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Reuse a Razorpay plan per (planKey, region); create + cache on first use. */
 async function getOrCreatePlanId(plan: PlanConfig, region: Region): Promise<string> {
@@ -66,6 +69,37 @@ export async function POST(request: Request) {
         }
 
         if (!isPlanKey(key)) return NextResponse.json({ error: 'Unknown plan.' }, { status: 400 });
+
+        // Referral: ₹ wallet credit + one-time referee discount (INR only, non-trial).
+        const discount = await previewCheckoutDiscount(user.id, price.currency, plan.interval, price.amount);
+        const totalDiscount = round2(discount.creditApplied + discount.refereeDiscountApplied);
+        const netAmount = Math.max(0, round2(price.amount - totalDiscount));
+
+        // Fully covered by referral credit — no gateway, activate immediately.
+        if (totalDiscount > 0 && netAmount <= 0) {
+            await consumeCheckoutDiscount(user.id, discount);
+            await prisma.payment.create({
+                data: {
+                    userId: user.id,
+                    planType: plan.dbPlanType,
+                    planKey: key,
+                    amount: 0,
+                    currency: price.currency,
+                    status: 'PAID',
+                    provider: 'razorpay',
+                    creditApplied: discount.creditApplied,
+                    refereeDiscountApplied: discount.refereeDiscountApplied,
+                },
+            });
+            const { mappedRole } = await activatePlan(user.id, plan, { region, amount: 0, currency: price.currency });
+            void markReferralConverted(user.id, plan.dbPlanType).catch(() => {});
+            return NextResponse.json({
+                free: true,
+                covered: true,
+                user: { id: user.id, name: user.name, email: user.email, role: mappedRole },
+            });
+        }
+
         if (!isRazorpayConfigured()) {
             return NextResponse.json(
                 { error: 'Payments are not configured yet. Please contact us to activate your membership.' },
@@ -78,11 +112,37 @@ export async function POST(request: Request) {
             userId: user.id,
             planType: plan.dbPlanType,
             planKey: key,
-            amount: price.amount,
+            amount: netAmount,
             currency: price.currency,
             status: 'CREATED' as const,
             provider: 'razorpay',
+            creditApplied: discount.creditApplied,
+            refereeDiscountApplied: discount.refereeDiscountApplied,
         };
+
+        // A referral discount only reduces this one payment, so it can't ride on an
+        // auto-renewing subscription — take the one-time order path instead (renewal
+        // is manual anyway).
+        if (totalDiscount > 0) {
+            const order = await createOrder({
+                amountMajor: netAmount,
+                currency: price.currency,
+                receipt: `sub_${user.id.slice(0, 8)}_${Date.now()}`,
+                notes: { userId: user.id, planKey: key, region },
+            });
+            await prisma.payment.create({ data: { ...paymentBase, providerOrderId: order.id } });
+            return NextResponse.json({
+                mode: 'order',
+                orderId: order.id,
+                amount: order.amount,
+                currency: order.currency,
+                keyId: getPublicKeyId(),
+                planName: plan.name,
+                grossAmount: price.amount,
+                discount,
+                prefill,
+            });
+        }
 
         // Prefer an auto-renewing subscription; fall back to a one-time order if
         // the Razorpay account has Subscriptions disabled.

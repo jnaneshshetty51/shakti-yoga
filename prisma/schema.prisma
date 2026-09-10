@@ -110,6 +110,13 @@ enum LeadStatus {
   LOST
 }
 
+enum ReferralStatus {
+  PENDING // referee signed up, hasn't made a qualifying payment yet
+  SUCCESSFUL // qualifying payment made, referrer credited
+  EXPIRED // referee didn't convert within the validity window — no reward
+  REVERSED // reward clawed back (refund / abuse) by an admin
+}
+
 enum TherapyIntakeStatus {
   DRAFT // being filled in, not yet submitted
   SUBMITTED // submitted, editable until a therapist starts reviewing
@@ -135,7 +142,7 @@ model User {
   trialStartedAt DateTime? // set once, the first time the user activates a free trial
   tokenVersion Int       @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
   referralCode      String?  @unique // this user's own shareable code
-  referralCreditDays Int     @default(0) // bonus access days, consumed on the next plan activation
+  referralCreditBalance Float @default(0) // ₹ wallet, redeemable at checkout (any plan, any renewal)
   adminDepartment AdminDepartment? // null = full admin access; set = scoped to one admin department
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -190,24 +197,33 @@ model User {
   supportMessagesSent          SupportMessage[]
 }
 
-/// One redeemed referral. Created when someone signs up with a code; advances to
-/// `converted` on that person's first paid subscription, which is when the
-/// referrer's reward is granted. One row per referred person.
+/// One redeemed referral. Created (PENDING) when someone signs up with a code;
+/// advances to SUCCESSFUL on that person's first qualifying paid membership — the
+/// point the referrer's ₹ reward is credited — or EXPIRED if that never happens
+/// inside the validity window. One row per referred person.
 model Referral {
-  id           String    @id @default(cuid())
-  referrerId   String
-  referrer     User      @relation("ReferralsSent", fields: [referrerId], references: [id], onDelete: Cascade)
-  code         String
-  refereeId    String    @unique
-  referee      User      @relation("ReferralReceived", fields: [refereeId], references: [id], onDelete: Cascade)
-  status       String    @default("signed_up") // signed_up | converted
-  rewardMonths Int       @default(1)
-  convertedAt  DateTime?
-  rewardedAt   DateTime?
-  createdAt    DateTime  @default(now())
+  id         String         @id @default(cuid())
+  referrerId String
+  referrer   User           @relation("ReferralsSent", fields: [referrerId], references: [id], onDelete: Cascade)
+  code       String
+  refereeId  String         @unique
+  referee    User           @relation("ReferralReceived", fields: [refereeId], references: [id], onDelete: Cascade)
+  status     ReferralStatus @default(PENDING)
+
+  // ₹ snapshots — what was actually granted, independent of later setting changes.
+  rewardAmount          Float @default(0) // credited to the referrer
+  refereeDiscountAmount Float @default(0) // taken off the referee's first payment
+
+  expiresAt   DateTime // referrer's reward lapses if the referee hasn't paid by this date
+  convertedAt DateTime?
+  rewardedAt  DateTime?
+  reversedAt  DateTime?
+  flagged     Boolean   @default(false) // admin-marked for manual review
+  createdAt   DateTime  @default(now())
 
   @@index([referrerId])
   @@index([status])
+  @@index([expiresAt])
 }
 
 model UserProfile {
@@ -287,6 +303,8 @@ model Payment {
   providerSubscriptionId String? // set for recurring subscription charges
   providerPaymentId      String?       @unique
   providerSignature      String?
+  creditApplied          Float         @default(0) // ₹ of the payer's own referral-credit wallet spent on this payment
+  refereeDiscountApplied Float         @default(0) // ₹ one-time new-referee discount spent on this payment
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 }

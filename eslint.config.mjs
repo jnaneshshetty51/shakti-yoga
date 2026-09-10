@@ -30,6 +30,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Standalone dev/util scripts, not part of the app build.
     "scripts/**",
+    // The Expo mobile app is its own project with its own tooling.
+    "mobile/**",
   ]),
 ]);
 

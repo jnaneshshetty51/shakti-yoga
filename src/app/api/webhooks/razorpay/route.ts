@@ -143,7 +143,7 @@ export async function POST(request: Request) {
                     metadata: { plan: planType },
                 });
                 if (firstActivation && planType !== 'TRIAL') {
-                    void markReferralConverted(userId).catch(() => {});
+                    void markReferralConverted(userId, planType).catch(() => {});
                 }
                 if (!firstActivation) {
                     sendPush(userId, {

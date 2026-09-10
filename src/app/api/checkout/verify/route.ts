@@ -7,7 +7,7 @@ import { activatePlan } from '@/lib/subscription';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { posthogCapture, posthogIdentify } from '@/lib/posthog';
-import { markReferralConverted } from '@/lib/referral';
+import { markReferralConverted, consumeCheckoutDiscount } from '@/lib/referral';
 import type { PlanType, Payment } from '@prisma/client';
 
 function planForPayment(p: Payment) {
@@ -48,10 +48,19 @@ async function confirmAndActivate(params: {
         amount: paymentRecord.amount, currency: paymentRecord.currency,
     });
 
+    // Spend any referral wallet credit / one-time referee discount this order carried,
+    // then (for a real first payment) reward the referrer.
+    if (paymentRecord.creditApplied > 0 || paymentRecord.refereeDiscountApplied > 0) {
+        await consumeCheckoutDiscount(userId, {
+            creditApplied: paymentRecord.creditApplied,
+            refereeDiscountApplied: paymentRecord.refereeDiscountApplied,
+        }).catch(() => {});
+    }
+
     recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.key, recurring } });
     posthogCapture(userId, 'subscription_started', { plan: plan.key, billing: 'razorpay', recurring, amount: paymentRecord.amount });
     posthogIdentify(userId, { plan: plan.key, role: mappedRole, subscribed_at: new Date().toISOString() });
-    if (plan.interval !== 'trial') void markReferralConverted(userId).catch(() => {});
+    if (plan.interval !== 'trial') void markReferralConverted(userId, paymentRecord.planType).catch(() => {});
     recordRevenue({
         userId,
         amount: paymentRecord.amount,

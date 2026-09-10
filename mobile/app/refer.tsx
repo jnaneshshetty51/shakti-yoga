@@ -7,14 +7,30 @@ import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { spacing } from "@/theme";
 
+interface ReferralRow {
+  id: string;
+  refereeName: string;
+  status: "PENDING" | "SUCCESSFUL" | "EXPIRED" | "REVERSED";
+  rewardAmount: number;
+}
+
 interface ReferralStats {
   code: string;
   link: string;
   message: string;
-  invited: number;
-  converted: number;
-  creditDays: number;
+  creditBalance: number;
+  referrerReward: number;
+  refereeDiscount: number;
+  referrals: ReferralRow[];
 }
+
+const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+const STATUS_LABEL: Record<ReferralRow["status"], string> = {
+  PENDING: "Pending",
+  SUCCESSFUL: "Successful",
+  EXPIRED: "Expired",
+  REVERSED: "Reversed",
+};
 
 export default function ReferScreen() {
   const { data, loading, error } = useResource(() => api.get<ReferralStats>("/api/referral"), []);
@@ -37,28 +53,37 @@ export default function ReferScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
           <Card style={{ marginBottom: spacing.md }}>
+            <BodyText muted>Your Shakti credit</BodyText>
+            <BodyText style={styles.balance}>{inr(data.creditBalance)}</BodyText>
+            <BodyText muted style={{ fontSize: 12 }}>Applied automatically at your next membership payment.</BodyText>
+          </Card>
+
+          <Card style={{ marginBottom: spacing.md }}>
             <BodyText muted>Your referral code</BodyText>
             <BodyText style={styles.code}>{data.code}</BodyText>
+            <BodyText muted style={{ fontSize: 12 }}>
+              They get {inr(data.refereeDiscount)} off their first membership · you get {inr(data.referrerReward)} credit.
+            </BodyText>
             <View style={styles.actions}>
               <Button variant="outline" onPress={copy} style={{ flex: 1 }}>{copied ? "Copied" : "Copy Link"}</Button>
               <Button onPress={() => Share.share({ message: data.message })} style={{ flex: 1 }}>Share</Button>
             </View>
           </Card>
 
-          <View style={styles.statsRow}>
-            <Card style={styles.statCard}>
-              <BodyText muted>Invited</BodyText>
-              <BodyText style={styles.statValue}>{data.invited}</BodyText>
-            </Card>
-            <Card style={styles.statCard}>
-              <BodyText muted>Converted</BodyText>
-              <BodyText style={styles.statValue}>{data.converted}</BodyText>
-            </Card>
-            <Card style={styles.statCard}>
-              <BodyText muted>Credit</BodyText>
-              <BodyText style={styles.statValue}>{data.creditDays}d</BodyText>
-            </Card>
-          </View>
+          <BodyText style={{ fontWeight: "700", marginBottom: spacing.sm }}>Your referrals</BodyText>
+          {data.referrals.length === 0 ? (
+            <BodyText muted>No referrals yet — share your code to get started.</BodyText>
+          ) : (
+            data.referrals.map((r) => (
+              <Card key={r.id} style={styles.referralRow}>
+                <BodyText style={{ flex: 1 }}>{r.refereeName}</BodyText>
+                <BodyText muted>{STATUS_LABEL[r.status]}</BodyText>
+                <BodyText style={{ fontWeight: "700", width: 64, textAlign: "right" }}>
+                  {r.status === "SUCCESSFUL" ? inr(r.rewardAmount) : "—"}
+                </BodyText>
+              </Card>
+            ))
+          )}
         </ScrollView>
       )}
     </Screen>
@@ -66,9 +91,8 @@ export default function ReferScreen() {
 }
 
 const styles = StyleSheet.create({
+  balance: { fontSize: 28, fontWeight: "800", marginVertical: spacing.xs },
   code: { fontSize: 28, fontWeight: "800", marginVertical: spacing.xs, letterSpacing: 1 },
   actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
-  statsRow: { flexDirection: "row", gap: spacing.sm },
-  statCard: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 20, fontWeight: "800", marginTop: spacing.xs },
+  referralRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
 });
