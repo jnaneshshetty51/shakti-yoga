@@ -145,6 +145,39 @@ export interface ChallengeView {
   completed: boolean;
 }
 
+// ---- Progress (/api/progress, /api/me/achievements) ------------------
+
+export interface Achievement {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  earnedAt: string | null;
+}
+
+export interface AchievementsResponse {
+  achievements: Achievement[];
+  earnedCount: number;
+  total: number;
+}
+
+export interface ProgressResponse {
+  generatedAt: string;
+  memberSince: string | null;
+  credits: number;
+  sessionCredits: SessionBalance | null;
+  totals: {
+    classesAllTime: number;
+    classesThisMonth: number;
+    classesLastMonth: number;
+    sessionsCompleted: number;
+    currentStreakWeeks: number;
+    longestStreakWeeks: number;
+  };
+  weeks: { key: string; label: string; count: number }[];
+  sessions: { id: string; at: string; status: string; teacher: string; notes: string | null }[];
+}
+
 // ---- Home aggregate (/api/me/home) ------------------------------------
 
 export interface HomeStreak {
