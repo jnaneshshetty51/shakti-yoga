@@ -26,9 +26,12 @@ export async function setToken(token: string | null): Promise<void> {
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** The parsed response body, so callers can read fields beyond `error`. */
+  data: unknown;
+  constructor(message: string, status: number, data?: unknown) {
     super(message);
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -54,7 +57,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const data = text ? JSON.parse(text) : {};
 
   if (!res.ok) {
-    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status);
+    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data);
   }
 
   // Some routes (e.g. /api/auth/me) roll the session forward and hand back a

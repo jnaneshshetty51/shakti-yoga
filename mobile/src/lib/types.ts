@@ -8,9 +8,29 @@ export interface ClassView {
   joinable: boolean;
 }
 
+/** Per-cycle session-credit balance for capped plans (monthly Everyday / Family). */
+export interface SessionBalance {
+  cycleStart: string;
+  cycleEnd: string;
+  granted: number;
+  used: number;
+  remaining: number;
+  perCycle: number;
+}
+
+type StarterUsage = { used: number; limit: number };
+
 export type ClassAccess =
-  | { ok: true; starter?: { used: number; limit: number } }
-  | { ok: false; reason: string; paywall: boolean; starter?: { used: number; limit: number } };
+  | { ok: true; starter?: StarterUsage; sessionBalance?: SessionBalance | null }
+  | {
+      ok: false;
+      reason: string;
+      paywall: boolean;
+      starter?: StarterUsage;
+      /** true = plan is valid but the per-cycle session pool is used up (offer support, not renewal). */
+      outOfSessions?: boolean;
+      sessionBalance?: SessionBalance | null;
+    };
 
 export interface ClassesResponse {
   today: ClassView[];

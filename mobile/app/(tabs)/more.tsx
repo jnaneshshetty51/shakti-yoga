@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView, Pressable, Linking, StyleSheet } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Heading, BodyText, Card } from "@/components/ui";
@@ -31,16 +31,20 @@ export default function MoreScreen() {
             <Row icon="card-outline" label="Membership" onPress={() => router.push("/membership")} />
             <Row icon="gift-outline" label="Refer & Earn" onPress={() => router.push("/refer")} />
             <Row icon="people-outline" label="Family" onPress={() => router.push("/family")} />
+            <Row icon="ribbon-outline" label="Certificates" onPress={() => router.push("/certificates")} />
           </Card>
         )}
 
         <Card style={styles.section}>
+          <Row icon="calendar-outline" label="Workshops & Retreats" onPress={() => router.push("/events")} />
+          {user?.role !== "member_therapy" && (
+            <Row icon="medkit-outline" label="Begin Yoga Therapy Assessment" onPress={() => router.push("/therapy-intake")} />
+          )}
+        </Card>
+
+        <Card style={styles.section}>
           <Row icon="person-outline" label="Profile" onPress={() => router.push("/profile")} />
-          <Row
-            icon="logo-whatsapp"
-            label="Support"
-            onPress={() => Linking.openURL("https://wa.me/917760222478")}
-          />
+          <Row icon="chatbubble-ellipses-outline" label="Support" onPress={() => router.push("/support")} />
         </Card>
 
         <Card style={styles.section}>

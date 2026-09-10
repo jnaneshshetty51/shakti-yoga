@@ -5,6 +5,14 @@ covers the **Expo mobile app** at `mobile/` — the student's daily operating sp
 (discover a class → check in → join on Google Meet → track progress), as distinct from
 the website's `Discover → Trust → Understand → Decide → Join` job.
 
+For the full screen-by-screen breakdown (every screen, button, state, transition, and
+backend call, cross-checked against the actual schema/API), see
+`MOBILE_APP_SCREENS_SPEC.md`. That doc's §1 "Known backend gaps" — most importantly **no
+real group-class session-credit ledger** (attendance is recorded at join-click with no
+teacher-confirmation step and no 20/cycle balance for the full Everyday plan) — is the
+single highest-priority open decision blocking the "sessions remaining" promise at the
+center of the product.
+
 **Backstory:** `CONTENT_PLATFORM_PLAN.md` describes mobile work ("Phases 1–5") in detail,
 but that code was never found — not in this repo's git history, not on this machine, not
 in any of the account's 60 GitHub repos (checked). It either lived only on another

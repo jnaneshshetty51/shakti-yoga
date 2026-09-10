@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { api, getToken, setToken, ApiError } from "@/lib/api";
+import { registerForPush, unregisterForPush } from "@/lib/push";
 
 export type UserRole = "visitor" | "member_everyday" | "member_therapy" | "trial" | "admin" | "teacher";
 
@@ -54,7 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await api.get<{ user: AppUser | null }>("/api/auth/me");
       setUser(data.user);
-      if (!data.user) await setToken(null);
+      if (data.user) void registerForPush();
+      else await setToken(null);
     } catch {
       // Network hiccup — keep the token, try again next launch rather than
       // logging the user out for a flaky connection.
@@ -71,15 +73,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await api.post<AuthResponse>("/api/auth/mobile/login", { email, password }, { anonymous: true });
     await setToken(data.token);
     setUser(data.user);
+    void registerForPush();
   }, []);
 
   const register = useCallback(async (fields: Parameters<AuthContextValue["register"]>[0]) => {
     const data = await api.post<AuthResponse>("/api/auth/mobile/register", fields, { anonymous: true });
     await setToken(data.token);
     setUser(data.user);
+    void registerForPush();
   }, []);
 
   const logout = useCallback(async () => {
+    await unregisterForPush(); // needs the bearer token — must run before setToken(null)
     await setToken(null);
     setUser(null);
   }, []);

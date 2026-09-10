@@ -3,13 +3,14 @@ import { View, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Screen, Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState } from "@/components/ui";
+import { SessionBalanceCard } from "@/components/SessionBalanceCard";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { useJoin } from "@/lib/useJoin";
 import { timeUntil, formatClassTime } from "@/lib/format";
 import { colors, spacing } from "@/theme";
-import type { ClassView, ClassesResponse } from "@/lib/types";
+import type { ClassesResponse } from "@/lib/types";
 import type { BookingRow } from "@/lib/types";
 
 function greeting(name?: string) {
@@ -27,20 +28,32 @@ function EverydayHome() {
   if (!data) return null;
 
   if (!data.access.ok) {
+    const { outOfSessions, paywall, reason } = data.access;
     return (
-      <Card>
-        <Heading size="sm">
-          {data.access.paywall ? "Your membership isn't active" : "Group classes aren't part of your plan"}
-        </Heading>
-        <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
-          {data.access.reason}
-        </BodyText>
-        {data.access.paywall && (
-          <Link href="/membership" asChild>
-            <Button>Renew Membership</Button>
-          </Link>
-        )}
-      </Card>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <Card>
+          <Heading size="sm">
+            {outOfSessions
+              ? "You've used all your sessions"
+              : paywall
+                ? "Your membership isn't active"
+                : "Group classes aren't part of your plan"}
+          </Heading>
+          <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
+            {reason}
+          </BodyText>
+          {outOfSessions ? (
+            <Link href="/support" asChild>
+              <Button>Contact Support</Button>
+            </Link>
+          ) : paywall ? (
+            <Link href="/membership" asChild>
+              <Button>Renew Membership</Button>
+            </Link>
+          ) : null}
+        </Card>
+        <SessionBalanceCard balance={data.access.sessionBalance} style={{ marginTop: spacing.md }} />
+      </ScrollView>
     );
   }
 
@@ -53,6 +66,8 @@ function EverydayHome() {
       contentContainerStyle={{ padding: spacing.lg }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
     >
+      <SessionBalanceCard balance={data.access.sessionBalance} style={{ marginBottom: spacing.lg }} />
+
       {next ? (
         <Card style={{ marginBottom: spacing.lg }}>
           <BodyText muted style={styles.eyebrow}>Next Class</BodyText>

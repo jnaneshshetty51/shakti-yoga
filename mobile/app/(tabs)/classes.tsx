@@ -1,6 +1,8 @@
 import React from "react";
 import { View, ScrollView, RefreshControl, StyleSheet } from "react-native";
+import { Link } from "expo-router";
 import { Screen, Heading, BodyText, Card, Button, LoadingView, EmptyState } from "@/components/ui";
+import { SessionBalanceCard } from "@/components/SessionBalanceCard";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
@@ -56,11 +58,27 @@ export default function ClassesScreen() {
       ) : error ? (
         <EmptyState title="Couldn't load the timetable" subtitle={error} />
       ) : !data || !access?.ok ? (
-        <View style={{ padding: spacing.lg }}>
-          <EmptyState title="No access yet" subtitle={access && !access.ok ? access.reason : undefined} />
-        </View>
+        <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+          <Card>
+            <Heading size="sm">
+              {access && !access.ok && access.outOfSessions
+                ? "You've used all your sessions"
+                : "No class access"}
+            </Heading>
+            <BodyText muted style={{ marginTop: spacing.xs, marginBottom: access && !access.ok && (access.outOfSessions || access.paywall) ? spacing.md : 0 }}>
+              {access && !access.ok ? access.reason : "Join Shakti to access the daily class timetable."}
+            </BodyText>
+            {access && !access.ok && access.outOfSessions ? (
+              <Link href="/support" asChild><Button>Contact Support</Button></Link>
+            ) : access && !access.ok && access.paywall ? (
+              <Link href="/membership" asChild><Button>Renew Membership</Button></Link>
+            ) : null}
+          </Card>
+          {access && !access.ok && <SessionBalanceCard balance={access.sessionBalance} style={{ marginTop: spacing.md }} />}
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }} refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}>
+          <SessionBalanceCard balance={access.sessionBalance} style={{ marginBottom: spacing.md }} />
           <Heading size="sm" style={{ marginBottom: spacing.sm }}>Today</Heading>
           {data.today.length === 0 ? (
             <BodyText muted style={{ marginBottom: spacing.lg }}>No more classes today.</BodyText>
