@@ -107,6 +107,24 @@ export async function fetchPayment(paymentId: string): Promise<{ status: string;
     return res.json();
 }
 
+/** Refund a captured payment — full, or a partial `amountMajor` (whole rupees). */
+export async function refundPayment(
+    paymentId: string,
+    amountMajor?: number,
+): Promise<{ id: string; status: string; amount: number; payment_id: string }> {
+    const res = await fetch(`${API_BASE}/payments/${paymentId}/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+        body: JSON.stringify(
+            amountMajor != null && amountMajor > 0 ? { amount: Math.round(amountMajor * 100) } : {},
+        ),
+    });
+    if (!res.ok) {
+        throw new Error(`Razorpay refund failed (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Subscriptions (recurring billing)
 // ---------------------------------------------------------------------------

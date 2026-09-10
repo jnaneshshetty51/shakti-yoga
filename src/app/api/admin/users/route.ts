@@ -41,6 +41,9 @@ export async function GET() {
                 email: user.email,
                 role: user.role.toLowerCase(),
                 credits: user.credits,
+                active: user.active,
+                phone: user.phone,
+                country: user.country,
                 status,
                 plan: subscription ?
                     subscription.planType === 'EVERYDAY_YOGA' ? 'Everyday Yoga' :
@@ -63,8 +66,11 @@ export async function PATCH(request: Request) {
 
     try {
         const body = await request.json().catch(() => ({}));
-        const { id, name, role, credits, phone, country } = body;
+        const { id, name, role, credits, phone, country, active } = body;
         if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+        if (active === false && id === admin.id) {
+            return NextResponse.json({ error: 'You cannot deactivate your own account.' }, { status: 400 });
+        }
 
         if (role && !(role in Role)) {
             return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
@@ -72,7 +78,7 @@ export async function PATCH(request: Request) {
 
         const before = await prisma.user.findUnique({
             where: { id },
-            select: { name: true, role: true, credits: true, phone: true, country: true },
+            select: { name: true, role: true, credits: true, phone: true, country: true, active: true },
         });
         if (!before) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
@@ -93,13 +99,19 @@ export async function PATCH(request: Request) {
         if (credits !== undefined) data.credits = Math.max(0, Math.trunc(Number(credits) || 0));
         if (phone !== undefined) data.phone = phone || null;
         if (country !== undefined) data.country = country || null;
+        if (active !== undefined) {
+            data.active = Boolean(active);
+            // Revoke live sessions when deactivating.
+            if (!active) data.tokenVersion = { increment: 1 };
+        }
 
         const user = await prisma.user.update({ where: { id }, data });
 
         await recordAudit({
             actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
-            action: 'user.update', entity: 'User', entityId: id,
-            before, after: { name: user.name, role: user.role, credits: user.credits, phone: user.phone, country: user.country },
+            action: active === false ? 'user.deactivate' : active === true ? 'user.reactivate' : 'user.update',
+            entity: 'User', entityId: id,
+            before, after: { name: user.name, role: user.role, credits: user.credits, phone: user.phone, country: user.country, active: user.active },
         });
 
         return NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });

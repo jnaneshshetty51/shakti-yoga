@@ -22,6 +22,9 @@ export type User = {
     email: string;
     role: string;
     credits?: number;
+    active?: boolean;
+    phone?: string | null;
+    country?: string | null;
     status: 'Active' | 'Inactive' | 'Trial';
     plan?: string;
     lastLogin: string;
@@ -121,6 +124,8 @@ export default function AdminUsersPage() {
                 name: values.name,
                 role: values.role,
                 credits: values.credits,
+                phone: values.phone,
+                country: values.country,
             }),
         });
         if (!res.ok) {
@@ -128,6 +133,22 @@ export default function AdminUsersPage() {
             throw new Error(data.error || 'Update failed');
         }
         setEditing(null);
+        fetchUsers();
+    };
+
+    const toggleActive = async (user: User) => {
+        const next = !(user.active ?? true);
+        if (!confirm(`${next ? 'Reactivate' : 'Deactivate'} ${user.name}? ${next ? '' : 'They will be signed out and blocked from logging in.'}`)) return;
+        const res = await fetch('/api/admin/users', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: user.id, active: next }),
+        });
+        if (!res.ok) {
+            showToast('error', (await res.json().catch(() => ({}))).error || 'Could not update');
+            return;
+        }
+        showToast('success', next ? `${user.name} reactivated` : `${user.name} deactivated`);
         fetchUsers();
     };
 
@@ -148,6 +169,9 @@ export default function AdminUsersPage() {
                 actions={(user) => (
                     <TableActions>
                         <ActionButton onClick={() => setEditing(user)}>Edit</ActionButton>
+                        <ActionButton onClick={() => toggleActive(user)}>
+                            {(user.active ?? true) ? "Deactivate" : "Reactivate"}
+                        </ActionButton>
                         <ActionButton tone="danger" onClick={() => handleDelete(user)}>Delete</ActionButton>
                     </TableActions>
                 )}
@@ -163,11 +187,15 @@ export default function AdminUsersPage() {
                         { name: "name", label: "Name", required: true },
                         { name: "role", label: "Role", type: "select", required: true, options: ROLE_OPTIONS },
                         { name: "credits", label: "1:1 Session Credits", type: "number" },
+                        { name: "phone", label: "Phone" },
+                        { name: "country", label: "Country" },
                     ]}
                     initial={{
                         name: editing.name,
                         role: editing.role.toUpperCase(),
                         credits: editing.credits ?? 0,
+                        phone: editing.phone ?? "",
+                        country: editing.country ?? "",
                     }}
                 />
             )}

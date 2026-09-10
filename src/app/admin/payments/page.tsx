@@ -3,8 +3,10 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
+import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { formatPrice } from "@/lib/pricing";
-import { PageHeader, PageLoading, Badge, type Tone } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, Button, TableActions, ActionButton, type Tone } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type PaymentStatus = "CREATED" | "PAID" | "FAILED" | "REFUNDED";
 
@@ -50,11 +52,25 @@ const fmtDate = (iso: string) =>
         minute: "2-digit",
     });
 
+const MANUAL_FIELDS: FieldDef[] = [
+    { name: "email", label: "Member email", type: "email", required: true },
+    { name: "amount", label: "Amount", type: "number", required: true },
+    { name: "currency", label: "Currency", type: "select", options: [{ label: "INR", value: "INR" }, { label: "USD", value: "USD" }] },
+    { name: "planType", label: "Plan", type: "select", options: [
+        { label: "Everyday Yoga", value: "EVERYDAY_YOGA" }, { label: "Yoga Therapy", value: "YOGA_THERAPY" },
+        { label: "Starter", value: "STARTER" }, { label: "Family", value: "FAMILY" }, { label: "Trial", value: "TRIAL" },
+    ] },
+    { name: "note", label: "Note (e.g. bank transfer ref)", type: "textarea" },
+];
+
 function PaymentsTable() {
     const initialStatus = useSearchParams().get("status");
+    const { showToast } = useToast();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
     const [capped, setCapped] = useState(false);
+    const [manualOpen, setManualOpen] = useState(false);
+    const [busyId, setBusyId] = useState<string | null>(null);
 
     const fetchPayments = useCallback(async () => {
         try {
@@ -75,6 +91,43 @@ function PaymentsTable() {
     useEffect(() => {
         fetchPayments();
     }, [fetchPayments]);
+
+    const recordManual = async (values: EntityValues) => {
+        const res = await fetch("/api/admin/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not record");
+        setManualOpen(false);
+        showToast("success", "Payment recorded.");
+        fetchPayments();
+    };
+
+    const refund = async (p: Payment) => {
+        const partial = prompt(
+            `Refund amount for ${p.member} (max ${p.amount} ${p.currency}). Leave blank for a full refund.`,
+            "",
+        );
+        if (partial === null) return;
+        const amount = partial.trim() ? Number(partial) : undefined;
+        setBusyId(p.id);
+        try {
+            const res = await fetch(`/api/admin/payments/${p.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "refund", amount }),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || "Refund failed");
+            showToast("success", json.partial ? "Partial refund issued." : "Payment refunded.");
+            fetchPayments();
+        } catch (e) {
+            showToast("error", e instanceof Error ? e.message : "Refund failed");
+        } finally {
+            setBusyId(null);
+        }
+    };
 
     const columns = [
         {
@@ -124,7 +177,9 @@ function PaymentsTable() {
             <PageHeader
                 title="Payments"
                 subtitle="Every checkout and renewal charge, newest first."
-            />
+            >
+                <Button onClick={() => setManualOpen(true)}>Record payment</Button>
+            </PageHeader>
             {initialStatus && (
                 <p className="mb-3 text-xs text-gray-500">
                     Filtered to <span className="font-semibold">{initialStatus}</span> payments.{" "}
@@ -141,7 +196,27 @@ function PaymentsTable() {
                 columns={columns}
                 title="Payments"
                 filters={initialStatus ? undefined : [{ key: "status", label: "Status", options: STATUS_FILTER }]}
+                actions={(p: Payment) =>
+                    p.status === "PAID" ? (
+                        <TableActions>
+                            <ActionButton tone="danger" disabled={busyId === p.id} onClick={() => refund(p)}>
+                                Refund
+                            </ActionButton>
+                        </TableActions>
+                    ) : null
+                }
             />
+
+            {manualOpen && (
+                <EntityFormModal
+                    title="Record a payment"
+                    submitLabel="Record"
+                    fields={MANUAL_FIELDS}
+                    initial={{ currency: "INR", planType: "EVERYDAY_YOGA" }}
+                    onCancel={() => setManualOpen(false)}
+                    onSubmit={recordManual}
+                />
+            )}
         </div>
     );
 }

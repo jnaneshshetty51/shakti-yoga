@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaSearch, FaHome, FaUsers, FaChartBar, FaEdit, FaCog, FaComments, FaCalendar, FaCreditCard, FaBook, FaTimes, FaUserCheck, FaReceipt } from "react-icons/fa";
+import { FaSearch, FaHome, FaUsers, FaChartBar, FaEdit, FaCog, FaComments, FaCalendar, FaCreditCard, FaBook, FaTimes, FaUserCheck, FaReceipt, FaUserFriends, FaGift, FaHeartbeat, FaBuilding, FaCampground, FaAward, FaLeaf, FaTrophy, FaLifeRing, FaBullhorn } from "react-icons/fa";
 
 interface CommandItem {
   id: string;
@@ -17,19 +17,30 @@ interface CommandItem {
 const commandItems: CommandItem[] = [
   { id: "dashboard", name: "Dashboard", description: "Overview & attention items", icon: <FaHome />, href: "/admin", category: "Main" },
   { id: "analytics", name: "Analytics", description: "Trends, revenue, funnel", icon: <FaChartBar />, href: "/admin/analytics", category: "Main" },
+  { id: "reports", name: "Reports", description: "Revenue, cohorts, CSV exports", icon: <FaChartBar />, href: "/admin/reports", category: "Main" },
   { id: "users", name: "Users", description: "All accounts", icon: <FaUsers />, href: "/admin/users", category: "People" },
   { id: "members", name: "Members", description: "Active members by track", icon: <FaUsers />, href: "/admin/members", category: "People" },
   { id: "leads", name: "Leads", description: "Prospects & trial requests", icon: <FaUserCheck />, href: "/admin/leads", category: "People" },
   { id: "staff", name: "Staff", description: "Teachers & admins", icon: <FaUsers />, href: "/admin/staff", category: "People" },
+  { id: "family", name: "Family", description: "Family plans & seats", icon: <FaUserFriends />, href: "/admin/family", category: "People" },
+  { id: "referrals", name: "Referrals", description: "Refer & Earn activity", icon: <FaGift />, href: "/admin/referrals", category: "People" },
   { id: "subscriptions", name: "Subscriptions", description: "Plans & billing state", icon: <FaCreditCard />, href: "/admin/subscriptions", category: "Revenue" },
   { id: "payments", name: "Payments", description: "Payment & renewal charge ledger", icon: <FaReceipt />, href: "/admin/payments", category: "Revenue" },
+  { id: "broadcast", name: "Broadcast", description: "Send a push to a segment", icon: <FaBullhorn />, href: "/admin/broadcast", category: "Revenue" },
   { id: "bookings", name: "Bookings", description: "1:1 session bookings", icon: <FaCalendar />, href: "/admin/bookings", category: "Classes" },
   { id: "classes", name: "Classes", description: "Group class batches", icon: <FaCalendar />, href: "/admin/classes", category: "Classes" },
   { id: "schedule", name: "Schedule", description: "Class instances & Meet links", icon: <FaCalendar />, href: "/admin/schedule", category: "Classes" },
   { id: "availability", name: "Availability", description: "Teacher availability windows", icon: <FaCalendar />, href: "/admin/availability", category: "Classes" },
-  { id: "content", name: "Content", description: "Blog posts & stories", icon: <FaEdit />, href: "/admin/content", category: "Content" },
-  { id: "community", name: "Community", description: "WhatsApp groups", icon: <FaComments />, href: "/admin/community", category: "Content" },
+  { id: "therapy", name: "Therapy Assessments", description: "Yoga therapy intake review", icon: <FaHeartbeat />, href: "/admin/therapy", category: "Classes" },
+  { id: "corporate", name: "Corporate", description: "B2B pipeline", icon: <FaBuilding />, href: "/admin/corporate", category: "Business" },
+  { id: "retreats", name: "Retreats & Events", description: "Retreats, workshops, enquiries", icon: <FaCampground />, href: "/admin/retreats", category: "Business" },
+  { id: "content", name: "Content", description: "Reels, posts, blog, stories", icon: <FaEdit />, href: "/admin/content", category: "Content" },
+  { id: "practices", name: "Practices", description: "Guided practices", icon: <FaLeaf />, href: "/admin/practices", category: "Content" },
+  { id: "challenges", name: "Challenges", description: "Time-boxed member goals", icon: <FaTrophy />, href: "/admin/challenges", category: "Content" },
+  { id: "community", name: "WhatsApp", description: "Community groups", icon: <FaComments />, href: "/admin/community", category: "Content" },
+  { id: "certificates", name: "Certificates", description: "Issue & approve certificates", icon: <FaAward />, href: "/admin/certificates", category: "Content" },
   { id: "messages", name: "Messages", description: "Contact form submissions", icon: <FaComments />, href: "/admin/messages", category: "Content" },
+  { id: "support", name: "Support Inbox", description: "Member support threads", icon: <FaLifeRing />, href: "/admin/support", category: "Support" },
   { id: "audit", name: "Audit Log", description: "Privileged actions (super only)", icon: <FaBook />, href: "/admin/audit", category: "Settings" },
   { id: "settings", name: "Settings", description: "Platform settings (super only)", icon: <FaCog />, href: "/admin/settings", category: "Settings" },
 ];

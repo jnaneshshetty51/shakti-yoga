@@ -10,7 +10,7 @@ import {
     LuCreditCard, LuHeart, LuCalendarDays, LuCalendarClock, LuClock, LuMessageSquare,
     LuFileText, LuInbox, LuArchive, LuSettings, LuSearch, LuCircleHelp, LuMenu, LuX,
     LuChevronDown, LuLogOut, LuUserRound, LuClipboardList, LuUserPlus, LuGift, LuLifeBuoy,
-    LuBuilding2, LuTent, LuAward, LuReceipt,
+    LuBuilding2, LuTent, LuAward, LuReceipt, LuMegaphone,
 } from "react-icons/lu";
 import { CommandPalette, useCommandPalette } from "@/components/admin/CommandPalette";
 import { NotificationsBell } from "@/components/admin/NotificationsBell";
@@ -69,6 +69,7 @@ const NAV: NavGroup[] = [
             { name: "WhatsApp", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
             { name: "Certificates", href: "/admin/certificates", icon: LuAward },
             { name: "Messages", href: "/admin/messages", icon: LuInbox },
+            { name: "Broadcast", href: "/admin/broadcast", icon: LuMegaphone },
         ],
     },
     {

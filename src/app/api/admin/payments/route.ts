@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { PaymentStatus, Prisma } from '@prisma/client';
+import { auditAs } from '@/lib/audit';
+import { PaymentStatus, PlanType, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,5 +74,58 @@ export async function GET(request: Request) {
     } catch (error) {
         console.error('Admin payments GET error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+/** POST /api/admin/payments — record an off-platform payment (cash / bank transfer). */
+export async function POST(request: Request) {
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
+
+    try {
+        const body = await request.json().catch(() => ({}));
+        const email = String(body.email || '').trim().toLowerCase();
+        let userId = String(body.userId || '');
+        if (!userId && email) {
+            const u = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+            userId = u?.id ?? '';
+        }
+        const amount = Number(body.amount);
+        const currency = String(body.currency || 'INR').toUpperCase().slice(0, 3);
+        const planTypeRaw = String(body.planType || '').toUpperCase();
+        const planType = planTypeRaw in PlanType ? (planTypeRaw as PlanType) : PlanType.EVERYDAY_YOGA;
+        const planKey = body.planKey ? String(body.planKey).slice(0, 40) : null;
+        const note = body.note ? String(body.note).slice(0, 200) : null;
+
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+        if (!user) return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return NextResponse.json({ error: 'Enter a valid amount.' }, { status: 400 });
+        }
+
+        const payment = await prisma.payment.create({
+            data: {
+                userId,
+                planType,
+                planKey,
+                amount,
+                currency,
+                status: PaymentStatus.PAID,
+                provider: 'manual',
+                providerPaymentId: `manual_${Date.now()}`,
+            },
+        });
+
+        await auditAs({ id: admin.id, email: admin.email }, request)({
+            action: 'payment.manual.create',
+            entity: 'Payment',
+            entityId: payment.id,
+            after: { userId, amount, currency, planType, note },
+        });
+
+        return NextResponse.json({ id: payment.id });
+    } catch (error) {
+        console.error('Admin payments POST error:', error);
+        return NextResponse.json({ error: 'Could not record the payment.' }, { status: 500 });
     }
 }
