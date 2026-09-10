@@ -147,6 +147,7 @@ function CorporateDashboard() {
                 filters={[{ key: "status", label: "Status", options: Object.keys(STATUS_TONE).map((s) => ({ label: s, value: s })) }]}
                 actions={(lead) => (
                     <TableActions>
+                        <a href={`/admin/corporate/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>
                         <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
                         <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
                     </TableActions>

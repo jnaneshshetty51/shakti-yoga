@@ -210,6 +210,7 @@ function LeadsDashboard() {
                 onCreate={handleCreate}
                 actions={(lead) => (
                     <TableActions>
+                        <a href={`/admin/leads/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>
                         <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
                         <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
                     </TableActions>

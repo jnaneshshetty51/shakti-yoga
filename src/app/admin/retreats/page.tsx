@@ -167,6 +167,7 @@ export default function AdminRetreatsPage() {
                     filters={[{ key: "status", label: "Status", options: ENQUIRY_STATUS_OPTIONS }]}
                     actions={(e) => (
                         <TableActions>
+                            <a href={`/admin/retreats/enquiries/${e.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>
                             <ActionButton onClick={() => setEditingEnquiry(e)}>Update status</ActionButton>
                         </TableActions>
                     )}

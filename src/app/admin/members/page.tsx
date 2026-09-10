@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { LuFlower2, LuHeart, LuMessageSquare, LuIndianRupee } from "react-icons/lu";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
@@ -125,7 +126,7 @@ export default function AdminMembersPage() {
 
     const rowActions = (member: Member) => (
         <TableActions>
-            <a href={`mailto:${member.email}`} className="text-xs font-semibold text-brand hover:text-brand-strong">Email</a>
+            <Link href={`/admin/members/${member.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
             <ActionButton onClick={() => setCreditFor(member)}>Credits</ActionButton>
         </TableActions>
     );
