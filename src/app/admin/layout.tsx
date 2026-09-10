@@ -67,6 +67,8 @@ const NAV: NavGroup[] = [
             { name: "Practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
             { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
             { name: "Achievements", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
+            { name: "FAQ", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },
+            { name: "Site content", href: "/admin/site-content", icon: LuFileText, departments: ["CONTENT"] },
             { name: "WhatsApp", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
             { name: "Certificates", href: "/admin/certificates", icon: LuAward },
             { name: "Messages", href: "/admin/messages", icon: LuInbox },
@@ -82,6 +84,7 @@ const NAV: NavGroup[] = [
     {
         label: "System",
         items: [
+            { name: "Pricing", href: "/admin/pricing", icon: LuCreditCard, superOnly: true },
             { name: "Audit Log", href: "/admin/audit", icon: LuArchive, superOnly: true },
             { name: "Settings", href: "/admin/settings", icon: LuSettings, superOnly: true },
         ],

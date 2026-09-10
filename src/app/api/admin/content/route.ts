@@ -199,7 +199,8 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
                     quote: cap(body.quote, 600),
                     content: cap(body.content, 5000) || null,
                     rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
-                    status: toContentStatus(body.status ?? 'PUBLISHED'),
+                    // New stories land as DRAFT — they need approval before they go live.
+                    status: toContentStatus(body.status ?? 'DRAFT'),
                     ...(imageUrl !== undefined ? { imageUrl } : {}),
                 },
             });
@@ -213,6 +214,14 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         if (has('rating')) data.rating = Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5)));
         if (has('status')) data.status = toContentStatus(body.status);
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
+
+        // Editing the visible copy of an already-approved story sends it back for
+        // re-approval (unless this call is itself setting the status).
+        const touchesCopy = has('quote') || has('content') || has('authorName') || has('name') || has('rating');
+        if (touchesCopy && !has('status')) {
+            const cur = await prisma.story.findUnique({ where: { id }, select: { status: true } });
+            if (cur?.status === 'PUBLISHED') data.status = 'DRAFT';
+        }
         return prisma.story.update({ where: { id }, data });
     }
 

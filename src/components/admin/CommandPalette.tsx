@@ -40,8 +40,11 @@ const commandItems: CommandItem[] = [
   { id: "achievements", name: "Achievements", description: "Badge earn rates + grant/revoke", icon: <FaAward />, href: "/admin/achievements", category: "Content" },
   { id: "community", name: "WhatsApp", description: "Community groups", icon: <FaComments />, href: "/admin/community", category: "Content" },
   { id: "certificates", name: "Certificates", description: "Issue & approve certificates", icon: <FaAward />, href: "/admin/certificates", category: "Content" },
+  { id: "faqs", name: "FAQ", description: "Website + app FAQs", icon: <FaComments />, href: "/admin/faqs", category: "Content" },
+  { id: "site-content", name: "Site content", description: "Why-us benefits + homepage stats", icon: <FaEdit />, href: "/admin/site-content", category: "Content" },
   { id: "messages", name: "Messages", description: "Contact form submissions", icon: <FaComments />, href: "/admin/messages", category: "Content" },
   { id: "support", name: "Support Inbox", description: "Member support threads", icon: <FaLifeRing />, href: "/admin/support", category: "Support" },
+  { id: "pricing", name: "Pricing", description: "Plan prices + features (super only)", icon: <FaCreditCard />, href: "/admin/pricing", category: "Settings" },
   { id: "audit", name: "Audit Log", description: "Privileged actions (super only)", icon: <FaBook />, href: "/admin/audit", category: "Settings" },
   { id: "settings", name: "Settings", description: "Platform settings (super only)", icon: <FaCog />, href: "/admin/settings", category: "Settings" },
 ];

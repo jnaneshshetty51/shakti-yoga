@@ -291,6 +291,15 @@ export default function AdminContentPage() {
         </TableActions>
     );
 
+    const setStoryStatus = async (id: string, status: "PUBLISHED" | "ARCHIVED") => {
+        await fetch(`/api/admin/content?type=story`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status }),
+        });
+        fetchContent();
+    };
+
     if (loading) return <PageLoading title="Content Management" />;
 
     return (
@@ -384,10 +393,21 @@ export default function AdminContentPage() {
                     ]}
                     title="Stories & Testimonials"
                     onCreate={() => setModal({ mode: "create" })}
-                    actions={(s: Story) => rowActions(s.id, {
-                        authorName: s.authorName, location: s.location, planType: s.planType,
-                        rating: s.rating, quote: s.quote, content: s.content, status: s.status, imageUrl: s.imageUrl,
-                    })}
+                    actions={(s: Story) => (
+                        <TableActions>
+                            {s.status !== "PUBLISHED" && (
+                                <ActionButton onClick={() => setStoryStatus(s.id, "PUBLISHED")}>Approve</ActionButton>
+                            )}
+                            {s.status !== "ARCHIVED" && (
+                                <ActionButton onClick={() => setStoryStatus(s.id, "ARCHIVED")}>Reject</ActionButton>
+                            )}
+                            <ActionButton onClick={() => setModal({ mode: "edit", id: s.id, initial: {
+                                authorName: s.authorName, location: s.location, planType: s.planType,
+                                rating: s.rating, quote: s.quote, content: s.content, status: s.status, imageUrl: s.imageUrl,
+                            } })}>Edit</ActionButton>
+                            <ActionButton tone="danger" onClick={() => remove(s.id)}>Delete</ActionButton>
+                        </TableActions>
+                    )}
                 />
             )}
 
