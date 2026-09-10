@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Shakti Yoga Kendra",
-    "slug": "shakti-yoga-kendra",
+    "slug": "shakti-yoga",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -44,7 +44,11 @@
       "expo-sharing"
     ],
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "31c0b7b9-3129-42a2-b05b-9c97ce9b338e"
+      }
+    },
+    "owner": "shaktiyogas-team"
   }
 }
