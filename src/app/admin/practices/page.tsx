@@ -8,7 +8,7 @@ import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from
 type Practice = {
     id: string; title: string; slug: string; description: string; steps: string;
     category: string; level: string; durationMin: number; videoUrl: string;
-    thumbnailUrl: string; status: string;
+    thumbnailUrl: string; status: string; completions: number; completions30d: number;
 };
 
 const CATEGORY_OPTIONS = [
@@ -84,6 +84,9 @@ export default function AdminPracticesPage() {
                     { header: "Category", accessor: (p: Practice) => p.category[0] + p.category.slice(1).toLowerCase() },
                     { header: "Level", accessor: (p: Practice) => p.level.replace("_", " ").toLowerCase() },
                     { header: "Min", accessor: "durationMin" },
+                    { header: "Completions", accessor: (p: Practice) => (
+                        <span className="tabular-nums">{p.completions}<span className="text-xs text-gray-400"> · {p.completions30d} in 30d</span></span>
+                    ) },
                     { header: "Status", accessor: (p: { status: string }) => <StatusBadge status={p.status} /> },
                 ]}
                 title="Guided practices"

@@ -27,7 +27,18 @@ function mediaOrNull(v: unknown): string | null | undefined {
 
 export async function GET() {
     if (!(await requireDepartment('CONTENT'))) return forbidden();
-    const rows = await prisma.practice.findMany({ orderBy: { createdAt: 'desc' } });
+    const rows = await prisma.practice.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { completions: true } } },
+    });
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const recent = await prisma.practiceCompletion.groupBy({
+        by: ['practiceId'],
+        where: { completedAt: { gte: since } },
+        _count: { _all: true },
+    });
+    const recentByPractice = new Map(recent.map((r) => [r.practiceId, r._count._all]));
+
     return NextResponse.json({
         practices: rows.map((p) => ({
             id: p.id,
@@ -41,6 +52,8 @@ export async function GET() {
             videoUrl: p.videoUrl || '',
             thumbnailUrl: p.thumbnailUrl || '',
             status: p.status,
+            completions: p._count.completions,
+            completions30d: recentByPractice.get(p.id) ?? 0,
         })),
     });
 }

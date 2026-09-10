@@ -37,6 +37,7 @@ const commandItems: CommandItem[] = [
   { id: "content", name: "Content", description: "Reels, posts, blog, stories", icon: <FaEdit />, href: "/admin/content", category: "Content" },
   { id: "practices", name: "Practices", description: "Guided practices", icon: <FaLeaf />, href: "/admin/practices", category: "Content" },
   { id: "challenges", name: "Challenges", description: "Time-boxed member goals", icon: <FaTrophy />, href: "/admin/challenges", category: "Content" },
+  { id: "achievements", name: "Achievements", description: "Badge earn rates + grant/revoke", icon: <FaAward />, href: "/admin/achievements", category: "Content" },
   { id: "community", name: "WhatsApp", description: "Community groups", icon: <FaComments />, href: "/admin/community", category: "Content" },
   { id: "certificates", name: "Certificates", description: "Issue & approve certificates", icon: <FaAward />, href: "/admin/certificates", category: "Content" },
   { id: "messages", name: "Messages", description: "Contact form submissions", icon: <FaComments />, href: "/admin/messages", category: "Content" },

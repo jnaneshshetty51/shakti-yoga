@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { serializeContent, serializeBlog, type FeedItem } from '@/lib/content';
+import { audienceWhere } from '@/lib/content-audience';
 import type { ContentCategory } from '@prisma/client';
 
 export interface HomeContent {
@@ -39,18 +40,19 @@ async function affinityCategory(userId: string): Promise<ContentCategory | null>
  */
 export async function getHomeContent(userId: string | null): Promise<HomeContent> {
     try {
+        const aud = await audienceWhere(userId);
         const [reel, post, announcement, blog] = await Promise.all([
             prisma.content.findFirst({
-                where: { status: 'PUBLISHED', type: 'REEL' },
+                where: { status: 'PUBLISHED', type: 'REEL', ...aud },
                 orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
             }),
             prisma.content.findFirst({
-                where: { status: 'PUBLISHED', type: 'POST' },
+                where: { status: 'PUBLISHED', type: 'POST', ...aud },
                 orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
             }),
             prisma.content.findFirst({
-                where: { status: 'PUBLISHED', type: 'ANNOUNCEMENT', pinned: true },
-                orderBy: { publishedAt: 'desc' },
+                where: { status: 'PUBLISHED', type: 'ANNOUNCEMENT', pinned: true, ...aud },
+                orderBy: [{ important: 'desc' }, { publishedAt: 'desc' }],
             }),
             prisma.blogPost.findFirst({
                 where: { status: 'PUBLISHED' },
@@ -83,7 +85,7 @@ export async function getHomeContent(userId: string | null): Promise<HomeContent
             if (cat) {
                 const exclude = [reel, post, announcement].filter(Boolean).map((r) => r!.id);
                 const rows = await prisma.content.findMany({
-                    where: { status: 'PUBLISHED', category: cat, id: { notIn: exclude } },
+                    where: { status: 'PUBLISHED', category: cat, id: { notIn: exclude }, ...aud },
                     orderBy: [{ publishedAt: 'desc' }],
                     take: 4,
                 });

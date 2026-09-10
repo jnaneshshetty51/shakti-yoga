@@ -25,6 +25,7 @@ type ContentRow = {
     category: string; status: string; instagramUrl: string; imageUrl: string;
     ctaType: string; ctaLabel: string; relatedBlogId: string; author: string;
     tags: string; pinned: boolean; notifyOnPublish: boolean;
+    important?: boolean; audience?: string; mediaUrls?: string; expiresAt?: string | null;
     publishedAt: string | null; scheduledAt: string | null;
 };
 type CommentRow = {
@@ -114,11 +115,21 @@ function contentFields(subtype: Subtype, blogOptions: { label: string; value: st
         { name: "title", label: "Title", required: true },
         { name: "category", label: "Category", type: "select", required: true, options: CATEGORY_OPTIONS },
         ...media,
+        ...(subtype !== "REEL"
+            ? [{ name: "mediaUrls", label: "Extra images (one media path per line, from an upload)", type: "textarea" as const }]
+            : []),
         { name: "ctaType", label: "Call to action", type: "select", options: CTA_OPTIONS },
         { name: "ctaLabel", label: "CTA button label", placeholder: "e.g. Join evening yoga" },
         { name: "relatedBlogId", label: "Related article", type: "select", options: blogOptions },
         { name: "tags", label: "Tags (comma separated)" },
         { name: "author", label: "Author" },
+        { name: "audience", label: "Target plan tiers (blank = everyone)", placeholder: "starter, everyday, family, therapy, trial" },
+        ...(subtype === "ANNOUNCEMENT"
+            ? [
+                  { name: "important", label: "Important — highlight and keep on top", type: "checkbox" as const },
+                  { name: "expiresAt", label: "Expires (optional)", type: "datetime-local" as const },
+              ]
+            : []),
         { name: "pinned", label: "Pin to top of feed", type: "checkbox" },
         { name: "notifyOnPublish", label: "Push a notification when this publishes", type: "checkbox" },
         { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
@@ -135,6 +146,9 @@ function contentInitial(r: ContentRow): EntityValues {
         ctaLabel: r.ctaLabel, relatedBlogId: r.relatedBlogId, tags: r.tags,
         author: r.author, pinned: r.pinned, status: r.status,
         notifyOnPublish: r.notifyOnPublish,
+        audience: r.audience ?? "", important: r.important ?? false,
+        mediaUrls: r.mediaUrls ?? "",
+        expiresAt: r.expiresAt ? toLocalInput(r.expiresAt) : "",
         scheduledAt: r.scheduledAt ? toLocalInput(r.scheduledAt) : "",
     };
 }

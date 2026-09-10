@@ -22,6 +22,23 @@ function toTags(v: unknown): string[] {
     return [...new Set(String(v || '').split(/[,\n]/).map((t) => t.trim().replace(/^#/, '')).filter(Boolean))].slice(0, 10);
 }
 
+const PLAN_TIERS = ['starter', 'everyday', 'family', 'therapy', 'trial'];
+function toAudience(v: unknown): string[] {
+    if (Array.isArray(v)) return v.map(String).filter((t) => PLAN_TIERS.includes(t));
+    return String(v || '').split(/[,\n]/).map((t) => t.trim().toLowerCase()).filter((t) => PLAN_TIERS.includes(t));
+}
+
+/** Newline / comma separated media paths we produced -> resolved /api/media urls. */
+function toMediaUrls(v: unknown): string[] {
+    const parts = Array.isArray(v) ? v.map(String) : String(v || '').split(/[,\n]/);
+    return parts
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => (toStorageKey(s) ? mediaSrc(toStorageKey(s)!) : null))
+        .filter((s): s is string => !!s)
+        .slice(0, 10);
+}
+
 function toContentStatus(v: unknown): ContentStatus {
     const s = String(v || '').toUpperCase();
     return s in ContentStatus ? (s as ContentStatus) : ContentStatus.DRAFT;
@@ -126,6 +143,10 @@ export async function GET() {
                 author: row.author,
                 tags: row.tags.join(', '),
                 pinned: row.pinned,
+                important: row.important,
+                audience: row.audience.join(', '),
+                mediaUrls: row.mediaUrls.join('\n'),
+                expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
                 notifyOnPublish: row.notifyOnPublish,
                 publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
                 scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
@@ -252,10 +273,17 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         const scheduledAt = schedRaw && !Number.isNaN(+schedRaw) && schedRaw > new Date() ? schedRaw : null;
         if (scheduledAt) status = 'DRAFT';
 
+        const expRaw = body.expiresAt ? new Date(String(body.expiresAt)) : null;
+        const expiresAt = expRaw && !Number.isNaN(+expRaw) ? expRaw : null;
+
         const common = {
             type: subtype,
             status,
             scheduledAt,
+            expiresAt,
+            important: body.important === true || body.important === 'true',
+            audience: toAudience(body.audience),
+            mediaUrls: toMediaUrls(body.mediaUrls),
             category: toContentCategory(body.category),
             title: cap(body.title || 'Untitled', 200),
             body: cap(body.body, 20_000) || null,

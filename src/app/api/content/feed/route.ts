@@ -8,6 +8,7 @@ import {
     toContentCategory,
     type FeedItem,
 } from '@/lib/content';
+import { audienceWhere } from '@/lib/content-audience';
 import type { ContentCategory, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,10 @@ export async function GET(request: Request) {
     // Pull a generous window from each source, merge, then slice the page.
     const window = cursor + limit + 1;
 
-    const contentWhere: Prisma.ContentWhereInput = { status: 'PUBLISHED' };
+    const contentWhere: Prisma.ContentWhereInput = {
+        status: 'PUBLISHED',
+        ...(await audienceWhere(session?.id ?? null)),
+    };
     if (category) contentWhere.category = category;
     if (typeParam === 'reel') contentWhere.type = 'REEL';
     else if (typeParam === 'post') contentWhere.type = 'POST';

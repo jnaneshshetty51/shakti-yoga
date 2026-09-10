@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
@@ -83,6 +84,9 @@ export default function AdminChallengesPage() {
                 onCreate={() => setModal({ mode: "create" })}
                 actions={(c: Challenge) => (
                     <TableActions>
+                        <Link href={`/admin/challenges/${c.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">
+                            Participants
+                        </Link>
                         <ActionButton onClick={() => setModal({
                             mode: "edit", id: c.id, initial: {
                                 title: c.title, description: c.description, goalType: c.goalType,

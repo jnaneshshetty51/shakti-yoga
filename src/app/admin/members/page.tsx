@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LuFlower2, LuHeart, LuMessageSquare, LuIndianRupee } from "react-icons/lu";
 import DTable from "@/components/admin/DTable";
+import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { StatCard } from "@/components/admin/StatCard";
-import { PageHeader, PageLoading, Tabs, Badge } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type Member = {
     id: string;
@@ -86,19 +88,12 @@ function statusBadge(member: Member) {
     return <Badge tone={member.status === "Active" ? "green" : "gray"}>{member.status}</Badge>;
 }
 
-const rowActions = (member: Member) => (
-    <a
-        href={`mailto:${member.email}`}
-        className="text-xs font-semibold text-primary hover:text-secondary transition-colors"
-    >
-        Email
-    </a>
-);
-
 export default function AdminMembersPage() {
+    const { showToast } = useToast();
     const [data, setData] = useState<Payload | null>(null);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<TabKey>("active");
+    const [creditFor, setCreditFor] = useState<Member | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -114,6 +109,26 @@ export default function AdminMembersPage() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const adjustCredits = async (values: EntityValues) => {
+        if (!creditFor) return;
+        const res = await fetch(`/api/admin/members/${creditFor.id}/credits`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: values.type, delta: Number(values.delta), note: values.note }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Adjustment failed");
+        setCreditFor(null);
+        showToast("success", "Credits adjusted.");
+        fetchData();
+    };
+
+    const rowActions = (member: Member) => (
+        <TableActions>
+            <a href={`mailto:${member.email}`} className="text-xs font-semibold text-brand hover:text-brand-strong">Email</a>
+            <ActionButton onClick={() => setCreditFor(member)}>Credits</ActionButton>
+        </TableActions>
+    );
 
     const columns = useMemo(() => {
         const name = { header: "Member", accessor: nameCell, className: "min-w-[220px]" };
@@ -198,6 +213,24 @@ export default function AdminMembersPage() {
                 searchable
                 actions={rowActions}
             />
+
+            {creditFor && (
+                <EntityFormModal
+                    title={`Adjust credits — ${creditFor.name}`}
+                    submitLabel="Apply"
+                    onCancel={() => setCreditFor(null)}
+                    onSubmit={adjustCredits}
+                    fields={[
+                        { name: "type", label: "Credit type", type: "select", required: true, options: [
+                            { label: "Group-class session credits (capped plans)", value: "session" },
+                            { label: "1:1 therapy credits", value: "therapy" },
+                        ] },
+                        { name: "delta", label: "Change (+ to add, − to remove)", type: "number", required: true },
+                        { name: "note", label: "Reason (audit note)", type: "text" },
+                    ]}
+                    initial={{ type: "session" }}
+                />
+            )}
         </div>
     );
 }

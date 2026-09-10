@@ -66,6 +66,7 @@ const NAV: NavGroup[] = [
             { name: "Content", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
             { name: "Practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
             { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
+            { name: "Achievements", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
             { name: "WhatsApp", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
             { name: "Certificates", href: "/admin/certificates", icon: LuAward },
             { name: "Messages", href: "/admin/messages", icon: LuInbox },
