@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
 import { type PlanConfig, type Region, priceFor } from '@/lib/pricing';
+import { grantCycleCredits } from '@/lib/sessionCredits';
 import { Role, SubscriptionStatus } from '@prisma/client';
 
 /**
@@ -99,6 +100,13 @@ export async function activatePlan(
         return d;
     })();
 
+    // Capped group-class plans (monthly Everyday / Family) open a fresh
+    // session-credit window on every activation and renewal — no rollover.
+    // Uncapped plans clear the field so an upgrade from monthly → annual drops
+    // the cap immediately.
+    const capped = plan.sessionsPerCycle != null;
+    const currentCycleStart = capped ? new Date() : null;
+
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
@@ -116,6 +124,7 @@ export async function activatePlan(
         currency,
         status: plan.subscriptionStatus,
         renewalDate,
+        currentCycleStart,
         provider: opts.provider ?? 'razorpay',
         store: opts.store ?? null,
         recurring: opts.recurring ?? false,
@@ -128,6 +137,10 @@ export async function activatePlan(
         create: { userId, ...subFields },
         update: subFields,
     });
+
+    if (capped && currentCycleStart) {
+        await grantCycleCredits(userId, plan, currentCycleStart);
+    }
 
     const mappedRole = mapDatabaseRole(user.role);
 

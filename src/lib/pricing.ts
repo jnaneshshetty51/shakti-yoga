@@ -28,6 +28,12 @@ export interface PlanConfig {
     subscriptionStatus: SubscriptionStatus;
     /** 1:1 therapy credits granted on activation. */
     credits: number;
+    /**
+     * Group-class sessions granted per billing cycle, consumed on
+     * teacher-confirmed attendance (see lib/sessionCredits). `null` = uncapped —
+     * no ledger, no "N/20 remaining" (annual plans, Starter, Therapy).
+     */
+    sessionsPerCycle: number | null;
     /** Live group classes per week; null = unlimited. */
     weeklyClassLimit: number | null;
     /** Extra member seats beyond the owner (family plans). */
@@ -53,6 +59,7 @@ export const PLANS = {
         dbPlanType: 'TRIAL',
         subscriptionStatus: 'TRIAL',
         credits: 1,
+        sessionsPerCycle: null,
         weeklyClassLimit: null,
         extraSeats: 0,
         features: ['1 live class', '15-min consult', 'Full content library', 'Community access'],
@@ -70,6 +77,7 @@ export const PLANS = {
         dbPlanType: 'STARTER',
         subscriptionStatus: 'ACTIVE',
         credits: 0,
+        sessionsPerCycle: null, // Starter stays on a rolling weekly limit, not the cycle ledger
         weeklyClassLimit: 2,
         extraSeats: 0,
         features: ['2 live classes / week', 'Full practice library', 'Challenges & community'],
@@ -80,16 +88,17 @@ export const PLANS = {
         name: 'Everyday Yoga',
         tier: 'everyday',
         interval: 'monthly',
-        inr: 1499,
-        usd: 29,
+        inr: 2000,
+        usd: 59,
         renewalDays: 30,
         role: 'MEMBER_EVERYDAY',
         dbPlanType: 'EVERYDAY_YOGA',
         subscriptionStatus: 'ACTIVE',
         credits: 0,
+        sessionsPerCycle: 20,
         weeklyClassLimit: null,
         extraSeats: 0,
-        features: ['Unlimited live classes', 'All content & practices', 'Challenges & community'],
+        features: ['20 live classes / cycle', 'All content & practices', 'Challenges & community'],
         rcProductId: 'sy_everyday_monthly',
     },
     everyday_annual: {
@@ -104,9 +113,10 @@ export const PLANS = {
         dbPlanType: 'EVERYDAY_YOGA',
         subscriptionStatus: 'ACTIVE',
         credits: 0,
+        sessionsPerCycle: null, // annual = uncapped live classes (per product decision 2026-09-10)
         weeklyClassLimit: null,
         extraSeats: 0,
-        features: ['Everything in Everyday', 'Two months free', 'Locked-in price for a year'],
+        features: ['Unlimited live classes', 'Two months free', 'Locked-in price for a year'],
         rcProductId: 'sy_everyday_annual',
         recommended: true,
     },
@@ -122,6 +132,7 @@ export const PLANS = {
         dbPlanType: 'YOGA_THERAPY',
         subscriptionStatus: 'ACTIVE',
         credits: 4,
+        sessionsPerCycle: null,
         weeklyClassLimit: null,
         extraSeats: 0,
         features: ['4 personal 1:1 sessions / month', 'Everyday Yoga included', 'Health assessment + plan'],
@@ -138,7 +149,8 @@ export const PLANS = {
         role: 'MEMBER_THERAPY',
         dbPlanType: 'YOGA_THERAPY',
         subscriptionStatus: 'ACTIVE',
-        credits: 4,
+        credits: 48, // 4 sessions/month across the annual term (was 4 — under-granted a full year)
+        sessionsPerCycle: null,
         weeklyClassLimit: null,
         extraSeats: 0,
         features: ['Everything in Therapy', 'Two months free', '48 sessions a year'],
@@ -156,9 +168,10 @@ export const PLANS = {
         dbPlanType: 'FAMILY',
         subscriptionStatus: 'ACTIVE',
         credits: 0,
+        sessionsPerCycle: 20, // per member seat
         weeklyClassLimit: null,
         extraSeats: 1,
-        features: ['Two members', 'Unlimited live classes each', 'All content & community'],
+        features: ['Two members', '20 live classes / cycle each', 'All content & community'],
         rcProductId: 'sy_family_monthly',
     },
     family_annual: {
@@ -173,6 +186,7 @@ export const PLANS = {
         dbPlanType: 'FAMILY',
         subscriptionStatus: 'ACTIVE',
         credits: 0,
+        sessionsPerCycle: null, // annual = uncapped
         weeklyClassLimit: null,
         extraSeats: 1,
         features: ['Everything in Family', 'Two months free'],

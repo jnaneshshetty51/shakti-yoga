@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Role, SubscriptionStatus } from '@prisma/client';
 import { PLANS } from '@/lib/pricing';
+import { getSessionBalance, type SessionBalance } from '@/lib/sessionCredits';
 
 const STARTER_WEEKLY_LIMIT = PLANS.starter.weeklyClassLimit ?? 2;
 
@@ -26,8 +27,16 @@ export interface StarterUsage {
 }
 
 export type ClassAccess =
-    | { ok: true; starter?: StarterUsage }
-    | { ok: false; reason: string; paywall: boolean; starter?: StarterUsage };
+    | { ok: true; starter?: StarterUsage; sessionBalance?: SessionBalance | null }
+    | {
+          ok: false;
+          reason: string;
+          paywall: boolean;
+          starter?: StarterUsage;
+          /** true = plan is valid but the per-cycle session pool is exhausted (offer EY-12, not renewal). */
+          outOfSessions?: boolean;
+          sessionBalance?: SessionBalance | null;
+      };
 
 const STAFF_ROLES: Role[] = [Role.SUPER_ADMIN, Role.STAFF_ADMIN, Role.TEACHER];
 const VALID_SUB_STATUSES: SubscriptionStatus[] = [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL];
@@ -90,7 +99,24 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
         return { ok: true, starter };
     }
 
-    return { ok: true };
+    // Everyday / Family monthly plans draw from a per-cycle session pool.
+    // Uncapped plans (annual, trial) return null here and fall through.
+    const sessionBalance = await getSessionBalance(userId);
+    if (sessionBalance && sessionBalance.remaining <= 0) {
+        const refresh = new Date(sessionBalance.cycleEnd).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'long',
+        });
+        return {
+            ok: false,
+            reason: `You've used all ${sessionBalance.perCycle} sessions in this cycle. They refresh on ${refresh}.`,
+            paywall: true,
+            outOfSessions: true,
+            sessionBalance,
+        };
+    }
+
+    return { ok: true, sessionBalance };
 }
 
 /**

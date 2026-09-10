@@ -32,7 +32,10 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
         if (!isStaff) {
             const access = await canJoinGroupClass(session.id);
             if (!access.ok) {
-                return NextResponse.json({ error: access.reason, paywall: access.paywall }, { status: 403 });
+                return NextResponse.json(
+                    { error: access.reason, paywall: access.paywall, outOfSessions: access.outOfSessions ?? false },
+                    { status: 403 },
+                );
             }
         }
 
@@ -56,7 +59,9 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
             );
         }
 
-        // Record attendance for members only — staff/teacher joins don't count.
+        // Record a self check-in for members only (status defaults to CHECKED_IN —
+        // it does NOT consume a session credit; the teacher confirms Present after
+        // class, see lib/sessionCredits.applyAttendance). Staff/teacher joins don't count.
         // createMany + skipDuplicates avoids a logged unique-constraint error on re-join.
         if (!isStaff) {
             const { count } = await prisma.classAttendance.createMany({

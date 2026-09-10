@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { getSessionBalance } from '@/lib/sessionCredits';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function GET() {
     const since = new Date(now.getTime() - 12 * WEEK);
 
     try {
-        const [user, attendance, allAttendanceDates, sessions] = await Promise.all([
+        const [user, attendance, allAttendanceDates, sessions, sessionCredits] = await Promise.all([
             prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true, credits: true } }),
             prisma.classAttendance.findMany({
                 where: { userId, joinedAt: { gte: since } },
@@ -40,6 +41,7 @@ export async function GET() {
                 orderBy: { date: 'desc' },
                 take: 20,
             }),
+            getSessionBalance(userId),
         ]);
 
         // ---- weekly series (last 8 weeks) ----
@@ -94,6 +96,7 @@ export async function GET() {
                 generatedAt: now.toISOString(),
                 memberSince: user?.createdAt.toISOString() ?? null,
                 credits: user?.credits ?? 0,
+                sessionCredits,
                 totals: {
                     classesAllTime: allAttendanceDates.length,
                     classesThisMonth: thisMonthCount,

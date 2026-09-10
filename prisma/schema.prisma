@@ -35,6 +35,20 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
+enum AttendanceStatus {
+  CHECKED_IN // self-reported by tapping Join — not yet counted against the cycle
+  PRESENT // teacher-confirmed — consumes one session credit on a capped plan
+  ABSENT // teacher-marked no-show — no charge
+}
+
+enum SessionCreditReason {
+  CYCLE_GRANT // +N when a capped plan is activated or renewed (no rollover)
+  CLASS_ATTENDED // -1 when a teacher confirms a member Present
+  CLASS_REVERSED // +1 when a confirmed Present is later corrected to Absent
+  PURCHASE // +N from buying extra sessions (EY-12)
+  ADMIN_ADJUST // manual correction by an admin
+}
+
 enum BookingType {
   THERAPY_SESSION
   CONSULTATION
@@ -165,7 +179,9 @@ model User {
   availability   TeacherAvailability[] @relation("TeacherAvailability")
 
   // For Students
-  classAttendance ClassAttendance[]
+  classAttendance      ClassAttendance[]
+  attendanceConfirmed  ClassAttendance[]     @relation("AttendanceConfirmedBy")
+  sessionCreditEntries SessionCreditEntry[]
 
   // For Staff/Admins managing leads
   assignedLeads Lead[]
@@ -271,6 +287,7 @@ model Subscription {
   familyInviteCode  String?            @unique // the owner's shareable seat code
   pendingPlanKey    String? // a scheduled downgrade — applied at the next renewal
   pausedAt          DateTime? // set when the member pauses; access still runs to renewalDate
+  currentCycleStart DateTime? // start of the active session-credit window (capped plans only; null = uncapped)
 }
 
 model Setting {
@@ -340,14 +357,45 @@ model ClassInstance {
 }
 
 model ClassAttendance {
-  id              String        @id @default(cuid())
+  id              String           @id @default(cuid())
   userId          String
-  user            User          @relation(fields: [userId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
   classInstanceId String
-  classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
-  joinedAt        DateTime      @default(now())
+  classInstance   ClassInstance    @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+  joinedAt        DateTime         @default(now())
+  status          AttendanceStatus @default(CHECKED_IN)
+  confirmedAt     DateTime? // when a teacher finalised this member's attendance
+  confirmedById   String?
+  confirmedBy     User?            @relation("AttendanceConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  addedByTeacher  Boolean          @default(false) // teacher created this row (member never tapped Join)
+
+  creditEntries SessionCreditEntry[]
 
   @@unique([userId, classInstanceId])
+  @@index([classInstanceId, status])
+}
+
+/// Append-only ledger of session-credit movements for capped group-class plans
+/// (Everyday Yoga / Family, monthly). The balance for the active cycle is
+/// sum(delta) over entries whose cycleStart matches Subscription.currentCycleStart —
+/// a renewal opens a new cycle, so unused credits simply stop counting (no
+/// rollover). Uncapped plans (annual Everyday/Family, Starter, Yoga Therapy)
+/// never get entries.
+model SessionCreditEntry {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta             Int // +20 grant, -1 attended, +1 reversed, …
+  reason            SessionCreditReason
+  cycleStart        DateTime // the Subscription cycle window this entry belongs to
+  classAttendanceId String?
+  classAttendance   ClassAttendance?    @relation(fields: [classAttendanceId], references: [id], onDelete: SetNull)
+  note              String?
+  createdById       String? // teacher/admin behind a manual or confirmation-driven entry
+  createdAt         DateTime            @default(now())
+
+  @@index([userId, cycleStart])
+  @@index([classAttendanceId])
 }
 
 // NOTE: migration 20260906190000 adds a PARTIAL unique index

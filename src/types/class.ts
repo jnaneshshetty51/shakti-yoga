@@ -8,9 +8,24 @@ export interface ClassView {
     joinable: boolean;
 }
 
+export interface SessionBalanceInfo {
+    cycleStart: string;
+    cycleEnd: string;
+    granted: number;
+    used: number;
+    remaining: number;
+    perCycle: number;
+}
+
 export type ClassAccessInfo =
-    | { ok: true }
-    | { ok: false; reason: string; paywall: boolean };
+    | { ok: true; sessionBalance?: SessionBalanceInfo | null }
+    | {
+          ok: false;
+          reason: string;
+          paywall: boolean;
+          outOfSessions?: boolean;
+          sessionBalance?: SessionBalanceInfo | null;
+      };
 
 export interface ClassesResponse {
     today: ClassView[];

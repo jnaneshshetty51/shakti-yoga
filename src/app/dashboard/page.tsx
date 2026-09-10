@@ -157,10 +157,18 @@ export default function DashboardPage() {
                         {access && !access.ok ? (
                             <div>
                                 <h3 className="font-serif text-xl text-gray-800 mb-1">
-                                    {access.paywall ? "Your access has lapsed" : "Your plan is 1:1 therapy"}
+                                    {access.outOfSessions
+                                        ? "No sessions left this cycle"
+                                        : access.paywall
+                                          ? "Your access has lapsed"
+                                          : "Your plan is 1:1 therapy"}
                                 </h3>
                                 <p className="text-sm text-gray-500 mb-4">{access.reason}</p>
-                                {access.paywall ? (
+                                {access.outOfSessions ? (
+                                    <Link href="/dashboard/support" className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
+                                        Ask about an extra session <LuArrowRight className="text-sm" />
+                                    </Link>
+                                ) : access.paywall ? (
                                     <div className="flex flex-wrap gap-2">
                                         <Link href="/checkout?plan=everyday" className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
                                             Renew Everyday Yoga
@@ -257,6 +265,19 @@ export default function DashboardPage() {
                             <Link href="/dashboard/therapy/book" className="text-sm font-semibold text-secondary hover:underline">
                                 Book now →
                             </Link>
+                        </Card>
+                    )}
+
+                    {access?.sessionBalance && (
+                        <Card padded className="bg-primary/5 border-primary/15">
+                            <h3 className="font-bold text-primary mb-1">Session credits</h3>
+                            <div className="text-3xl font-bold text-gray-800">
+                                {access.sessionBalance.remaining}
+                                <span className="text-gray-400 text-xl"> / {access.sessionBalance.perCycle}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest">
+                                Refresh {new Date(access.sessionBalance.cycleEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            </p>
                         </Card>
                     )}
                 </div>

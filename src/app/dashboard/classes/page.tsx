@@ -71,6 +71,22 @@ export default function ClassesPage() {
                 <AccessNotice access={data.access} />
             ) : (
                 <>
+                    {data.access.ok && data.access.sessionBalance && (
+                        <Card padded className="mb-6 flex items-center justify-between gap-4">
+                            <div>
+                                <div className="text-2xl font-bold text-gray-800">
+                                    {data.access.sessionBalance.remaining}
+                                    <span className="text-gray-400 text-lg"> / {data.access.sessionBalance.perCycle}</span>
+                                </div>
+                                <div className="text-sm text-gray-500">sessions left this cycle</div>
+                            </div>
+                            <div className="text-xs text-gray-400 text-right">
+                                Refreshes<br />
+                                {new Date(data.access.sessionBalance.cycleEnd).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}
+                            </div>
+                        </Card>
+                    )}
+
                     <section className="mb-8">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Today</h2>
                         {data.today.length === 0 ? (
@@ -128,6 +144,21 @@ export default function ClassesPage() {
 }
 
 function AccessNotice({ access }: { access: Extract<ClassAccessInfo, { ok: false }> }) {
+    if (access.outOfSessions) {
+        return (
+            <Card padded className="text-center py-12">
+                <div className="text-5xl mb-3">⏳</div>
+                <h2 className="font-serif text-2xl text-gray-800 mb-2">No sessions left this cycle</h2>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">{access.reason}</p>
+                <Link
+                    href="/dashboard/support"
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-secondary text-white text-sm font-semibold hover:bg-primary transition-colors"
+                >
+                    Ask about an extra session
+                </Link>
+            </Card>
+        );
+    }
     return (
         <Card padded className="text-center py-12">
             <div className="text-5xl mb-3">{access.paywall ? "🔒" : "🧘"}</div>

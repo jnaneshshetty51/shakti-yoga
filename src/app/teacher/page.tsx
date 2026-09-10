@@ -135,9 +135,16 @@ export default function TeacherTodayPage() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-800">{c.name}</p>
                                         <p className="text-xs text-gray-500">{when(c.at)} · {c.attendanceCount} joined</p>
-                                        <button onClick={() => setLink("class", c.id, c.ownLink ? c.meetingLink : "")} className="text-xs font-semibold text-primary hover:text-secondary mt-1">
-                                            {c.ownLink ? "Change my link" : c.meetingLink ? "Override link" : "Set Meet link"}
-                                        </button>
+                                        <div className="flex flex-wrap gap-3 mt-1">
+                                            <button onClick={() => setLink("class", c.id, c.ownLink ? c.meetingLink : "")} className="text-xs font-semibold text-primary hover:text-secondary">
+                                                {c.ownLink ? "Change my link" : c.meetingLink ? "Override link" : "Set Meet link"}
+                                            </button>
+                                            {new Date(c.at).getTime() < Date.now() && (
+                                                <Link href={`/teacher/classes/${c.id}/attendance`} className="text-xs font-semibold text-primary hover:text-secondary">
+                                                    Take attendance →
+                                                </Link>
+                                            )}
+                                        </div>
                                     </div>
                                     {c.meetingLink ? (
                                         <a
