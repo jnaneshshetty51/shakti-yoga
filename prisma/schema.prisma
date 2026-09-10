@@ -838,6 +838,19 @@ model RevenueRecord {
   @@index([createdAt])
 }
 
+/// One row per webhook event we have already processed. Handlers insert before
+/// doing work and skip on a unique-constraint hit, so a redelivered event is a
+/// no-op (RevenueCat has no other idempotency key; Razorpay leans on Payment).
+model ProcessedWebhookEvent {
+  id        String   @id @default(cuid())
+  provider  String // 'revenuecat' | 'razorpay'
+  eventId   String
+  eventType String?
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   actorId    String?

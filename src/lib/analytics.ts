@@ -76,6 +76,15 @@ export async function recordRevenue(opts: {
     status?: 'SUCCESS' | 'FAILED' | 'REFUNDED';
 }): Promise<void> {
     try {
+        // A provider charge id maps to exactly one revenue row — guard against
+        // webhook redelivery double-counting money.
+        if (opts.providerId) {
+            const existing = await prisma.revenueRecord.findFirst({
+                where: { providerId: opts.providerId },
+                select: { id: true },
+            });
+            if (existing) return;
+        }
         await prisma.revenueRecord.create({
             data: {
                 userId: opts.userId,

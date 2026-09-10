@@ -9,7 +9,7 @@ type Sev = "danger" | "warn" | "info";
 type AttentionKey = keyof Dashboard["attention"];
 
 const ITEMS: { key: AttentionKey; sev: Sev; label: (n: number) => string; href: string }[] = [
-    { key: "failedPayments7d", sev: "danger", label: (n) => `failed payment${n === 1 ? "" : "s"} this week`, href: "/admin/subscriptions" },
+    { key: "failedPayments7d", sev: "danger", label: (n) => `failed payment${n === 1 ? "" : "s"} this week`, href: "/admin/payments?status=FAILED" },
     { key: "bookingsNoLink", sev: "danger", label: (n) => `upcoming session${n === 1 ? "" : "s"} with no Meet link`, href: "/admin/bookings" },
     { key: "pendingBookings", sev: "warn", label: (n) => `booking${n === 1 ? "" : "s"} awaiting confirmation`, href: "/admin/bookings" },
     { key: "expiringSoon", sev: "warn", label: (n) => `subscription${n === 1 ? "" : "s"} expiring within 7 days`, href: "/admin/subscriptions" },

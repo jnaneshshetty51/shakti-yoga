@@ -16,6 +16,8 @@ import { Role, SubscriptionStatus } from '@prisma/client';
  */
 
 export interface RcEvent {
+    /** RevenueCat's per-event UUID — the idempotency key (see webhooks/revenuecat/route.ts). */
+    id?: string;
     type: string;
     app_user_id: string;
     original_app_user_id?: string;

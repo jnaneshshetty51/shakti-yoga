@@ -263,7 +263,7 @@ export async function buildAdminNotifications(now = new Date()): Promise<AdminNo
             kind: 'alert',
             severity: 'high',
             title: `${plural(failedPayments.length, 'failed payment')} in the last week`,
-            href: '/admin/subscriptions',
+            href: '/admin/payments?status=FAILED',
             at: iso(failedPayments[0].createdAt),
         });
     }

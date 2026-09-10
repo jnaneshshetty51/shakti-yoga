@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaSearch, FaHome, FaUsers, FaChartBar, FaEdit, FaCog, FaComments, FaCalendar, FaCreditCard, FaBook, FaTimes, FaUserCheck } from "react-icons/fa";
+import { FaSearch, FaHome, FaUsers, FaChartBar, FaEdit, FaCog, FaComments, FaCalendar, FaCreditCard, FaBook, FaTimes, FaUserCheck, FaReceipt } from "react-icons/fa";
 
 interface CommandItem {
   id: string;
@@ -22,6 +22,7 @@ const commandItems: CommandItem[] = [
   { id: "leads", name: "Leads", description: "Prospects & trial requests", icon: <FaUserCheck />, href: "/admin/leads", category: "People" },
   { id: "staff", name: "Staff", description: "Teachers & admins", icon: <FaUsers />, href: "/admin/staff", category: "People" },
   { id: "subscriptions", name: "Subscriptions", description: "Plans & billing state", icon: <FaCreditCard />, href: "/admin/subscriptions", category: "Revenue" },
+  { id: "payments", name: "Payments", description: "Payment & renewal charge ledger", icon: <FaReceipt />, href: "/admin/payments", category: "Revenue" },
   { id: "bookings", name: "Bookings", description: "1:1 session bookings", icon: <FaCalendar />, href: "/admin/bookings", category: "Classes" },
   { id: "classes", name: "Classes", description: "Group class batches", icon: <FaCalendar />, href: "/admin/classes", category: "Classes" },
   { id: "schedule", name: "Schedule", description: "Class instances & Meet links", icon: <FaCalendar />, href: "/admin/schedule", category: "Classes" },
