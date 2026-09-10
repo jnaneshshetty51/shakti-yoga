@@ -1,19 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { PLANS } from '@/lib/pricing';
+import { getStreak } from '@/lib/streak';
 
 export const dynamic = 'force-dynamic';
-
-const DAY = 86_400_000;
-const WEEK = 7 * DAY;
-
-/** UTC midnight of the Monday starting the week that contains `d`. */
-function weekStart(d: Date): number {
-    const x = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-    const dow = (new Date(x).getUTCDay() + 6) % 7; // 0 = Monday
-    return x - dow * DAY;
-}
 
 /**
  * GET /api/me/streak — compact consistency numbers for the Home screen widget.
@@ -25,38 +14,9 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const since = new Date(Date.now() - 30 * WEEK);
-        const rows = await prisma.classAttendance.findMany({
-            where: { userId: session.id, joinedAt: { gte: since } },
-            select: { joinedAt: true },
+        return NextResponse.json(await getStreak(session.id), {
+            headers: { 'Cache-Control': 'no-store' },
         });
-
-        const weeks = new Set(rows.map((r) => weekStart(r.joinedAt)));
-        const thisWeek = weekStart(new Date());
-
-        let current = 0;
-        let cursor = weeks.has(thisWeek) ? thisWeek : thisWeek - WEEK;
-        while (weeks.has(cursor)) {
-            current += 1;
-            cursor -= WEEK;
-        }
-
-        const classesThisWeek = rows.filter((r) => weekStart(r.joinedAt) === thisWeek).length;
-
-        // Starter members get a weekly live-class cap — surface it for the widget.
-        const me = await prisma.user.findUnique({ where: { id: session.id }, select: { role: true } });
-        const starterLimit =
-            me?.role === 'MEMBER_STARTER' ? (PLANS.starter.weeklyClassLimit ?? 2) : null;
-
-        return NextResponse.json(
-            {
-                currentStreakWeeks: current,
-                classesThisWeek,
-                attendedThisWeek: classesThisWeek > 0,
-                starterLimit,
-            },
-            { headers: { 'Cache-Control': 'no-store' } },
-        );
     } catch (error) {
         console.error('[me/streak] failed', error);
         return NextResponse.json({ currentStreakWeeks: 0, classesThisWeek: 0, attendedThisWeek: false });
