@@ -47,3 +47,62 @@ export interface BookingRow {
   notes: string | null;
   hasMeetingLink: boolean;
 }
+
+// ---- Content feed (/api/content/*) --------------------------------------
+
+export type CtaType =
+  | "none" | "join_next_class" | "view_classes" | "book_therapy" | "open_blog" | "open_practice";
+
+export interface Cta {
+  type: CtaType;
+  label: string | null;
+  blogId: string | null;
+  practiceId: string | null;
+}
+
+interface FeedCommon {
+  id: string;
+  title: string;
+  author: string;
+  publishedAt: string | null;
+  pinned: boolean;
+  cta: Cta;
+}
+interface FeedSocial {
+  category: string;
+  tags: string[];
+  imageUrl: string | null;
+  likeCount: number;
+  saveCount: number;
+  commentCount: number;
+  liked: boolean;
+  saved: boolean;
+}
+
+export type FeedItem =
+  | (FeedCommon & FeedSocial & { kind: "reel"; caption: string | null; instagramUrl: string | null })
+  | (FeedCommon & FeedSocial & { kind: "post" | "announcement"; body: string | null; mediaUrls: string[] })
+  | (FeedCommon & {
+      kind: "blog";
+      slug: string;
+      excerpt: string | null;
+      category: string;
+      imageUrl: string | null;
+      readMinutes: number;
+      relatedClass: { id: string; name: string } | null;
+      body?: string;
+    });
+
+export interface FeedResponse {
+  items: FeedItem[];
+  nextCursor: number | null;
+}
+
+export interface ContentComment {
+  id: string;
+  body: string;
+  author: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  mine: boolean;
+}

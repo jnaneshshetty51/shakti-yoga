@@ -25,8 +25,22 @@ export function Heading({ children, style, size = "lg" }: { children: ReactNode;
   return <RNText style={[{ fontSize, fontWeight: "700", color: colors.primary }, style]}>{children}</RNText>;
 }
 
-export function BodyText({ children, style, muted = false }: { children: ReactNode; style?: StyleProp<TextStyle>; muted?: boolean }) {
-  return <RNText style={[styles.body, muted && { color: colors.muted }, style]}>{children}</RNText>;
+export function BodyText({
+  children,
+  style,
+  muted = false,
+  numberOfLines,
+}: {
+  children: ReactNode;
+  style?: StyleProp<TextStyle>;
+  muted?: boolean;
+  numberOfLines?: number;
+}) {
+  return (
+    <RNText numberOfLines={numberOfLines} style={[styles.body, muted && { color: colors.muted }, style]}>
+      {children}
+    </RNText>
+  );
 }
 
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {

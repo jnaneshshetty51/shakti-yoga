@@ -3,6 +3,7 @@ import { View, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import { Link } from "expo-router";
 import { Screen, Heading, BodyText, Card, Button, LoadingView, EmptyState } from "@/components/ui";
 import { SessionBalanceCard } from "@/components/SessionBalanceCard";
+import { TherapyScheduleView } from "@/components/TherapyScheduleView";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
@@ -38,10 +39,10 @@ export default function ClassesScreen() {
   if (user?.role === "member_therapy") {
     return (
       <Screen>
-        <EmptyState
-          title="Your sessions are on Home"
-          subtitle="Yoga Therapy is scheduled 1:1 — see your next session and full calendar from the Home tab."
-        />
+        <View style={styles.header}>
+          <Heading size="lg">My Therapy</Heading>
+        </View>
+        <TherapyScheduleView />
       </Screen>
     );
   }

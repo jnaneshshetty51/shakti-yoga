@@ -29,6 +29,7 @@ export default function MoreScreen() {
         {isMember && (
           <Card style={styles.section}>
             <Row icon="card-outline" label="Membership" onPress={() => router.push("/membership")} />
+            <Row icon="qr-code-outline" label="Membership Card" onPress={() => router.push("/membership-card")} />
             <Row icon="gift-outline" label="Refer & Earn" onPress={() => router.push("/refer")} />
             <Row icon="people-outline" label="Family" onPress={() => router.push("/family")} />
             <Row icon="ribbon-outline" label="Certificates" onPress={() => router.push("/certificates")} />
@@ -36,15 +37,25 @@ export default function MoreScreen() {
         )}
 
         <Card style={styles.section}>
-          <Row icon="calendar-outline" label="Workshops & Retreats" onPress={() => router.push("/events")} />
+          <Row icon="calendar-clear-outline" label="Calendar" onPress={() => router.push("/calendar")} />
+          <Row icon="sparkles-outline" label="Workshops & Retreats" onPress={() => router.push("/events")} />
+          <Row icon="bookmark-outline" label="Saved" onPress={() => router.push("/saved")} />
           {user?.role !== "member_therapy" && (
             <Row icon="medkit-outline" label="Begin Yoga Therapy Assessment" onPress={() => router.push("/therapy-intake")} />
           )}
         </Card>
 
         <Card style={styles.section}>
+          <Row icon="help-circle-outline" label="Help & FAQ" onPress={() => router.push("/faq")} />
+          <Row icon="chatbubbles-outline" label="Success Stories" onPress={() => router.push("/testimonials")} />
+          <Row icon="call-outline" label="Contact Shakti" onPress={() => router.push("/contact")} />
+        </Card>
+
+        <Card style={styles.section}>
           <Row icon="person-outline" label="Profile" onPress={() => router.push("/profile")} />
           <Row icon="chatbubble-ellipses-outline" label="Support" onPress={() => router.push("/support")} />
+          <Row icon="shield-checkmark-outline" label="Account Security" onPress={() => router.push("/account-security")} />
+          <Row icon="options-outline" label="Consent & Permissions" onPress={() => router.push("/consent")} />
         </Card>
 
         <Card style={styles.section}>
