@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
 import { CorporateLeadStatus } from '@prisma/client';
 
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
             },
         });
 
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'corporate.create', entity: 'CorporateLead', entityId: lead.id, after: { companyName } });
         return NextResponse.json(lead);
     } catch (error) {
         console.error('Admin corporate leads POST error:', error);

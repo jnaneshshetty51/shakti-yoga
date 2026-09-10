@@ -61,6 +61,21 @@ export default function AvailabilityPage() {
         load();
     };
 
+    const [editing, setEditing] = useState<Rule | null>(null);
+    const saveEdit = async () => {
+        if (!editing) return;
+        await fetch("/api/admin/availability", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                id: editing.id, startTime: editing.startTime, endTime: editing.endTime,
+                slotMinutes: editing.slotMinutes, dayOfWeek: editing.dayOfWeek, active: editing.active,
+            }),
+        });
+        setEditing(null);
+        load();
+    };
+
     return (
         <div className="max-w-4xl">
             <PageHeader
@@ -111,17 +126,47 @@ export default function AvailabilityPage() {
                     <tbody>
                         {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Loading…</td></tr>}
                         {!loading && rules.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic">No windows yet — the booking page uses default slots until you add some.</td></tr>}
-                        {rules.map((r) => (
-                            <tr key={r.id} className="border-t border-gray-50">
-                                <td className="px-4 py-3 font-medium text-gray-800">{r.teacherName}</td>
-                                <td className="px-4 py-3 text-gray-600">{r.dayOfWeek ?? r.date}</td>
-                                <td className="px-4 py-3 tabular-nums text-gray-600">{r.startTime}–{r.endTime}</td>
-                                <td className="px-4 py-3 text-gray-600">{r.slotMinutes}m</td>
-                                <td className="px-4 py-3 text-right">
-                                    <ActionButton tone="danger" onClick={() => remove(r.id)}>Remove</ActionButton>
-                                </td>
-                            </tr>
-                        ))}
+                        {rules.map((r) => {
+                            const ed = editing?.id === r.id ? editing : null;
+                            return (
+                                <tr key={r.id} className="border-t border-gray-50">
+                                    <td className="px-4 py-3 font-medium text-gray-800">{r.teacherName}</td>
+                                    <td className="px-4 py-3 text-gray-600">
+                                        {ed && ed.dayOfWeek ? (
+                                            <select value={ed.dayOfWeek} onChange={(e) => setEditing({ ...ed, dayOfWeek: e.target.value })} className="p-1 border border-gray-200 rounded text-sm">
+                                                {DAYS.map((d) => <option key={d}>{d}</option>)}
+                                            </select>
+                                        ) : (r.dayOfWeek ?? r.date)}
+                                    </td>
+                                    <td className="px-4 py-3 tabular-nums text-gray-600">
+                                        {ed ? (
+                                            <span className="flex gap-1">
+                                                <input type="time" value={ed.startTime} onChange={(e) => setEditing({ ...ed, startTime: e.target.value })} className="p-1 border border-gray-200 rounded text-sm" />
+                                                <input type="time" value={ed.endTime} onChange={(e) => setEditing({ ...ed, endTime: e.target.value })} className="p-1 border border-gray-200 rounded text-sm" />
+                                            </span>
+                                        ) : `${r.startTime}–${r.endTime}`}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-600">
+                                        {ed ? (
+                                            <input type="number" min={15} max={120} value={ed.slotMinutes} onChange={(e) => setEditing({ ...ed, slotMinutes: Number(e.target.value) })} className="w-16 p-1 border border-gray-200 rounded text-sm" />
+                                        ) : `${r.slotMinutes}m`}
+                                    </td>
+                                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                                        {ed ? (
+                                            <>
+                                                <ActionButton onClick={saveEdit}>Save</ActionButton>{" "}
+                                                <ActionButton onClick={() => setEditing(null)}>Cancel</ActionButton>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ActionButton onClick={() => setEditing(r)}>Edit</ActionButton>{" "}
+                                                <ActionButton tone="danger" onClick={() => remove(r.id)}>Remove</ActionButton>
+                                            </>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </Card>

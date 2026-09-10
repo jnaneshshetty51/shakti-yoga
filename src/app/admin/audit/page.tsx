@@ -36,14 +36,21 @@ function AuditLogInner() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
     const [expanded, setExpanded] = useState<string | null>(null);
+    const [f, setF] = useState({ entity: "", action: "", actor: "", from: "", to: "" });
+
+    const qs = useCallback(() => {
+        const p = new URLSearchParams();
+        Object.entries(f).forEach(([k, v]) => v && p.set(k, v));
+        return p;
+    }, [f]);
 
     const load = useCallback(async (after?: string | null) => {
         setLoading(true);
         setLoadError(false);
         try {
-            const url = new URL("/api/admin/audit", window.location.origin);
-            if (after) url.searchParams.set("cursor", after);
-            const res = await fetch(url.toString().replace(window.location.origin, ""));
+            const p = qs();
+            if (after) p.set("cursor", after);
+            const res = await fetch(`/api/admin/audit?${p.toString()}`);
             const data = await res.json();
             if (res.ok) {
                 setRows((prev) => (after ? [...prev, ...data.logs] : data.logs));
@@ -56,16 +63,31 @@ function AuditLogInner() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [qs]);
 
     useEffect(() => { load(); }, [load]);
+
+    const input = "rounded-control border border-hairline px-2 py-1.5 text-sm";
 
     return (
         <div className="max-w-5xl">
             <PageHeader
                 title="Audit Log"
                 subtitle="Every privileged change — role, subscription, credits, class, Meet link, deletions."
-            />
+            >
+                <a href={`/api/admin/audit?format=csv&${qs().toString()}`} className="text-sm font-semibold text-brand hover:text-brand-strong">Export CSV</a>
+            </PageHeader>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+                <input className={input} placeholder="entity (User, Payment…)" value={f.entity} onChange={(e) => setF({ ...f, entity: e.target.value })} />
+                <input className={input} placeholder="action prefix (subscription.)" value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })} />
+                <input className={input} placeholder="actor email" value={f.actor} onChange={(e) => setF({ ...f, actor: e.target.value })} />
+                <input className={input} type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} />
+                <input className={input} type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} />
+                {(f.entity || f.action || f.actor || f.from || f.to) && (
+                    <button className="text-sm text-ink-subtle hover:text-ink" onClick={() => setF({ entity: "", action: "", actor: "", from: "", to: "" })}>clear</button>
+                )}
+            </div>
 
             <Card className="overflow-hidden">
                 <div className="overflow-x-auto">

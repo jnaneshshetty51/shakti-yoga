@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
 import { RetreatStatus } from '@prisma/client';
 
@@ -27,6 +28,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     }
 
     const retreat = await prisma.retreat.update({ where: { id }, data });
+    await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'retreat.update', entity: 'Retreat', entityId: id, after: { name: retreat.name, status: retreat.status } });
     return NextResponse.json({ retreat });
 }
 
@@ -35,5 +37,6 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const { id } = await context.params;
     await prisma.retreat.delete({ where: { id } });
+    await auditAs({ id: admin.id, email: admin.email }, _request)({ action: 'retreat.delete', entity: 'Retreat', entityId: id });
     return NextResponse.json({ success: true });
 }

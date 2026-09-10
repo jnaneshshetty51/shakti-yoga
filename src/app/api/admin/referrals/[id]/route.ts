@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { reverseReferral, setReferralFlag } from '@/lib/referral';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -25,6 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (action === 'flag' || action === 'unflag') {
         await setReferralFlag(id, action === 'flag');
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `referral.${action}`, entity: 'Referral', entityId: id });
         return NextResponse.json({ ok: true });
     }
 

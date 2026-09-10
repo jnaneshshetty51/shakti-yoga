@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -14,11 +15,13 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
     try {
         const { id, handled } = await request.json().catch(() => ({}));
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
         await prisma.contactMessage.update({ where: { id }, data: { handled: Boolean(handled) } });
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'contact.handled', entity: 'ContactMessage', entityId: id, after: { handled: Boolean(handled) } });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin contact PATCH error:', error);
@@ -27,11 +30,13 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireAdmin())) return forbidden();
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
         await prisma.contactMessage.delete({ where: { id } });
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'contact.delete', entity: 'ContactMessage', entityId: id });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin contact DELETE error:', error);

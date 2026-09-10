@@ -34,6 +34,7 @@ export async function GET() {
             teacher: batch.teacher.name,
             teacherId: batch.teacherId,
             meetingLink: batch.meetingLink ?? '',
+            capacity: batch.capacity ?? '',
             active: batch.active,
         }));
 
@@ -52,6 +53,7 @@ interface BatchInput {
     planType?: string;
     teacherId?: string;
     meetingLink?: string;
+    capacity?: number | string;
     active?: boolean | string;
 }
 
@@ -86,6 +88,10 @@ function toData(body: BatchInput) {
     }
     if (body.teacherId !== undefined) data.teacherId = body.teacherId;
     if (body.meetingLink !== undefined) data.meetingLink = body.meetingLink || null;
+    if (body.capacity !== undefined) {
+        const c = Math.trunc(Number(body.capacity));
+        data.capacity = Number.isFinite(c) && c > 0 ? c : null;
+    }
     if (body.active !== undefined) data.active = body.active === true || body.active === 'true';
     return data;
 }
@@ -110,6 +116,7 @@ export async function POST(request: Request) {
                 planType: body.planType,
                 teacherId: body.teacherId,
                 meetingLink: body.meetingLink || null,
+                capacity: body.capacity && Number(body.capacity) > 0 ? Math.trunc(Number(body.capacity)) : null,
                 daysOfWeek: String(body.daysOfWeek ?? '')
                     .split(',')
                     .map((d: string) => d.trim())

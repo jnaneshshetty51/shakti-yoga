@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { toChallengeGoal } from '@/lib/challenges';
 import { ContentStatus } from '@prisma/client';
@@ -69,9 +70,11 @@ async function upsert(body: Record<string, unknown>, id?: string) {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     try {
         const created = await upsert(await request.json().catch(() => ({})));
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'challenge.create', entity: 'Challenge', entityId: created.id, after: { title: created.title } });
         return NextResponse.json({ id: created.id });
     } catch (e) {
         const message = e instanceof Error && e.message.length < 200 ? e.message : 'Could not save';
@@ -80,11 +83,13 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
         const updated = await upsert(body, body.id);
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'challenge.update', entity: 'Challenge', entityId: updated.id, after: { title: updated.title, status: updated.status } });
         return NextResponse.json({ id: updated.id });
     } catch (e) {
         const message = e instanceof Error && e.message.length < 200 ? e.message : 'Could not save';
@@ -93,11 +98,13 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     const id = new URL(request.url).searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const row = await prisma.challenge.findUnique({ where: { id }, select: { imageUrl: true } });
+    const row = await prisma.challenge.findUnique({ where: { id }, select: { imageUrl: true, title: true } });
     await prisma.challenge.delete({ where: { id } });
     if (row?.imageUrl) await deleteFile(row.imageUrl).catch(() => {});
+    await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'challenge.delete', entity: 'Challenge', entityId: id, before: { title: row?.title } });
     return NextResponse.json({ ok: true });
 }

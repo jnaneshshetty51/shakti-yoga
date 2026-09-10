@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button, ActionButton } from "@/components/admin/ui";
+import { AttendanceModal } from "@/components/admin/AttendanceModal";
+import { useToast } from "@/components/admin/Toast";
 import { LuCalendarClock } from "react-icons/lu";
 
 type ScheduleItem = {
@@ -12,6 +14,7 @@ type ScheduleItem = {
     teacher: string;
     status: string;
     attendanceCount: number;
+    capacity: number | null;
     meetingLink: string;
     batchMeetingLink: string;
 };
@@ -30,10 +33,12 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AdminSchedulePage() {
+    const { showToast } = useToast();
     const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<ScheduleItem | null>(null);
+    const [attendanceFor, setAttendanceFor] = useState<string | null>(null);
 
     const fetchSchedule = useCallback(async () => {
         try {
@@ -83,6 +88,14 @@ export default function AdminSchedulePage() {
         fetchSchedule();
     };
 
+    const deleteClass = async (item: ScheduleItem) => {
+        if (!confirm(`Delete ${item.batchName} on ${item.timeSlot}? (Prefer Cancel to keep the record.)`)) return;
+        const res = await fetch(`/api/admin/schedule?id=${item.id}`, { method: "DELETE" });
+        if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Could not delete");
+        showToast("success", "Class deleted.");
+        fetchSchedule();
+    };
+
     if (loading) return <PageLoading title="Class Schedule" />;
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -123,10 +136,16 @@ export default function AdminSchedulePage() {
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                    <div className="text-2xl font-bold text-gray-800">{item.attendanceCount}</div>
+                                    <div className="text-2xl font-bold text-gray-800">
+                                        {item.attendanceCount}{item.capacity != null && <span className="text-sm text-gray-400">/{item.capacity}</span>}
+                                    </div>
                                     <div className="mt-0.5"><StatusBadge status={item.status} /></div>
                                 </div>
-                                <Button variant="secondary" size="sm" onClick={() => setEditing(item)}>Edit</Button>
+                                <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+                                    <ActionButton onClick={() => setAttendanceFor(item.id)}>Attendance</ActionButton>
+                                    <Button variant="secondary" size="sm" onClick={() => setEditing(item)}>Edit</Button>
+                                    <ActionButton tone="danger" onClick={() => deleteClass(item)}>Delete</ActionButton>
+                                </div>
                             </div>
                         </Card>
                     ))}
@@ -169,6 +188,10 @@ export default function AdminSchedulePage() {
                         meetingLink: editing.meetingLink,
                     }}
                 />
+            )}
+
+            {attendanceFor && (
+                <AttendanceModal instanceId={attendanceFor} onClose={() => { setAttendanceFor(null); fetchSchedule(); }} />
             )}
         </div>
     );

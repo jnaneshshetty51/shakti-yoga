@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
 import { RetreatKind, RetreatStatus } from '@prisma/client';
 
@@ -39,5 +40,6 @@ export async function POST(request: Request) {
             status: RetreatStatus.DRAFT,
         },
     });
+    await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'retreat.create', entity: 'Retreat', entityId: retreat.id, after: { name } });
     return NextResponse.json({ retreat });
 }

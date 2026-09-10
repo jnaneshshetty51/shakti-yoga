@@ -17,6 +17,7 @@ export type ClassBatch = {
     teacher: string;
     teacherId: string;
     meetingLink: string;
+    capacity?: number | string;
     active: boolean;
 };
 
@@ -87,6 +88,7 @@ export default function AdminClassesPage() {
             options: teachers.map(t => ({ label: t.name, value: t.id })),
         },
         { name: "meetingLink", label: "Default Google Meet Link", placeholder: "https://meet.google.com/…" },
+        { name: "capacity", label: "Capacity (blank = unlimited)", type: "number" },
         { name: "active", label: "Active", type: "checkbox" },
     ];
 
@@ -153,6 +155,7 @@ export default function AdminClassesPage() {
                         planType: editing.planType,
                         teacherId: editing.teacherId,
                         meetingLink: editing.meetingLink,
+                        capacity: editing.capacity ?? "",
                         active: editing.active,
                     }}
                     onCancel={() => setEditing(null)}

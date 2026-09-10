@@ -72,6 +72,43 @@ export async function POST(request: Request) {
     }
 }
 
+export async function PATCH(request: Request) {
+    const admin = await requireDepartment(['TRAINER', 'THERAPIST']);
+    if (!admin) return forbidden();
+    try {
+        const b = await request.json().catch(() => ({}));
+        if (!b.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+        if ((b.startTime && !HM.test(b.startTime)) || (b.endTime && !HM.test(b.endTime))) {
+            return NextResponse.json({ error: 'startTime / endTime must be HH:MM (24h)' }, { status: 400 });
+        }
+        if (b.dayOfWeek && !DAYS.includes(b.dayOfWeek)) {
+            return NextResponse.json({ error: 'dayOfWeek must be Mon..Sun' }, { status: 400 });
+        }
+        const before = await prisma.teacherAvailability.findUnique({ where: { id: String(b.id) } });
+        if (!before) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+        const data: Record<string, unknown> = {};
+        if (b.startTime) data.startTime = b.startTime;
+        if (b.endTime) data.endTime = b.endTime;
+        if (b.dayOfWeek !== undefined) data.dayOfWeek = b.dayOfWeek || null;
+        if (b.date !== undefined) data.date = b.date ? new Date(`${b.date}T00:00:00.000Z`) : null;
+        if (b.slotMinutes !== undefined) data.slotMinutes = Math.min(120, Math.max(15, Math.trunc(Number(b.slotMinutes) || 45)));
+        if (b.active !== undefined) data.active = Boolean(b.active);
+
+        const rule = await prisma.teacherAvailability.update({ where: { id: String(b.id) }, data });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'availability.update', entity: 'TeacherAvailability', entityId: rule.id,
+            before: { startTime: before.startTime, endTime: before.endTime, dayOfWeek: before.dayOfWeek, active: before.active },
+            after: data,
+        });
+        return NextResponse.json({ rule: { id: rule.id } });
+    } catch (error) {
+        console.error('Admin availability PATCH error:', error);
+        return NextResponse.json({ error: 'Could not update availability' }, { status: 500 });
+    }
+}
+
 export async function DELETE(request: Request) {
     const admin = await requireDepartment(['TRAINER', 'THERAPIST']);
     if (!admin) return forbidden();

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { toContentCategory } from '@/lib/content';
 import { toPracticeLevel } from '@/lib/practice';
@@ -89,9 +90,11 @@ async function upsert(body: Record<string, unknown>, id?: string) {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     try {
         const created = await upsert(await request.json().catch(() => ({})));
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'practice.create', entity: 'Practice', entityId: created.id, after: { title: created.title } });
         return NextResponse.json({ id: created.id });
     } catch (e) {
         console.error('[admin/practices] POST', e);
@@ -100,11 +103,13 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
         const updated = await upsert(body, body.id);
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'practice.update', entity: 'Practice', entityId: updated.id, after: { title: updated.title, status: updated.status } });
         return NextResponse.json({ id: updated.id });
     } catch (e) {
         console.error('[admin/practices] PATCH', e);
@@ -113,11 +118,13 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     const id = new URL(request.url).searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    const row = await prisma.practice.findUnique({ where: { id }, select: { thumbnailUrl: true } });
+    const row = await prisma.practice.findUnique({ where: { id }, select: { thumbnailUrl: true, title: true } });
     await prisma.practice.delete({ where: { id } });
     if (row?.thumbnailUrl) await deleteFile(row.thumbnailUrl).catch(() => {});
+    await auditAs({ id: admin.id, email: admin.email }, request)({ action: 'practice.delete', entity: 'Practice', entityId: id, before: { title: row?.title } });
     return NextResponse.json({ ok: true });
 }

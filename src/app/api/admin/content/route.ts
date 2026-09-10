@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
 import { isCtaType, toContentCategory, serializeContent } from '@/lib/content';
@@ -348,12 +349,14 @@ function getType(request: Request): ContentType | null {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     const type = getType(request);
     if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
     try {
         const body = await request.json().catch(() => ({}));
         const created = await upsertContent(type, body, true);
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `${type}.create`, entity: type, entityId: created.id });
         return NextResponse.json({ id: created.id });
     } catch (error) {
         console.error('Admin content POST error:', error);
@@ -363,13 +366,15 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     const type = getType(request);
     if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
         const updated = await upsertContent(type, body, false);
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `${type}.update`, entity: type, entityId: updated.id, after: { status: body.status } });
         return NextResponse.json({ id: updated.id });
     } catch (error) {
         console.error('Admin content PATCH error:', error);
@@ -379,12 +384,14 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireDepartment('CONTENT'))) return forbidden();
+    const admin = await requireDepartment('CONTENT');
+    if (!admin) return forbidden();
     const url = new URL(request.url);
     const type = getType(request);
     const id = url.searchParams.get('id');
     if (!type || !id) return NextResponse.json({ error: 'Missing type or id' }, { status: 400 });
     try {
+        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `${type}.delete`, entity: type, entityId: id });
         if (type === 'story') await prisma.story.delete({ where: { id } });
         else if (type === 'blog') await prisma.blogPost.delete({ where: { id } });
         else if (type === 'content') {

@@ -49,6 +49,7 @@ export async function GET() {
             teacher: string;
             status: string;
             attendanceCount: number;
+            capacity: number | null;
             meetingLink: string; // per-instance override, '' when it falls back to the batch link
             batchMeetingLink: string;
         }
@@ -74,6 +75,7 @@ export async function GET() {
                     teacher: instance.batch.teacher.name,
                     status: instance.status,
                     attendanceCount: instance.attendanceCount,
+                    capacity: instance.capacity ?? instance.batch.capacity ?? null,
                     meetingLink: instance.meetingLink ?? '',
                     batchMeetingLink: instance.batch.meetingLink ?? '',
                 });
@@ -175,11 +177,31 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireDepartment(['TRAINER']))) return forbidden();
+    const admin = await requireDepartment(['TRAINER']);
+    if (!admin) return forbidden();
     try {
-        const id = new URL(request.url).searchParams.get('id');
+        const url = new URL(request.url);
+        const id = url.searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });
+
+        const inst = await prisma.classInstance.findUnique({
+            where: { id },
+            select: { status: true, date: true, _count: { select: { attendees: true } } },
+        });
+        if (!inst) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        if (inst._count.attendees > 0 && url.searchParams.get('force') !== '1') {
+            return NextResponse.json(
+                { error: `This class has ${inst._count.attendees} attendance record(s). Cancel it instead, or pass force=1.` },
+                { status: 409 },
+            );
+        }
+
         await prisma.classInstance.delete({ where: { id } });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'class.instance.delete', entity: 'ClassInstance', entityId: id,
+            before: { status: inst.status, date: inst.date, attendees: inst._count.attendees },
+        });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin schedule DELETE error:', error);
