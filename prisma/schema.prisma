@@ -148,6 +148,7 @@ model User {
   email        String    @unique
   passwordHash String?
   role         Role      @default(VISITOR)
+  active       Boolean   @default(true) // false = admin-deactivated; blocked at sign-in
   phone        String?
   country      String?
   timezone     String    @default("IST")
@@ -211,6 +212,12 @@ model User {
   supportConversations         SupportConversation[]
   supportConversationsAssigned SupportConversation[] @relation("SupportAssignee")
   supportMessagesSent          SupportMessage[]
+
+  invoices             Invoice[]
+  therapyMeasurements  TherapyMeasurement[]
+  measurementsRecorded TherapyMeasurement[] @relation("MeasurementRecorder")
+  patientUpdates       PatientUpdate[]
+  patientUpdatesReviewed PatientUpdate[]    @relation("PatientUpdateReviewer")
 }
 
 /// One redeemed referral. Created (PENDING) when someone signs up with a code;
@@ -336,6 +343,7 @@ model ClassBatch {
   teacherId   String
   teacher     User     @relation(fields: [teacherId], references: [id])
   active      Boolean  @default(true)
+  capacity    Int? // max attendees per instance; null = uncapped
   meetingLink String? // default Google Meet URL for every instance of this batch
 
   instances ClassInstance[]
@@ -349,6 +357,7 @@ model ClassInstance {
   status          String // Scheduled, Completed, Cancelled
   recordingUrl    String?
   meetingLink     String? // overrides batch.meetingLink for this one occurrence
+  capacity        Int? // overrides batch.capacity for this one occurrence
   attendanceCount Int        @default(0)
 
   attendees ClassAttendance[]
@@ -535,7 +544,10 @@ model Content {
 
   publishedAt DateTime?
   scheduledAt DateTime? // future -> publish-scheduled cron flips it to PUBLISHED (Phase 3)
+  expiresAt   DateTime? // after this the item drops out of the feed/home
   pinned      Boolean   @default(false)
+  important   Boolean   @default(false) // ANNOUNCEMENT: highlighted + always-on-top
+  audience    String[]  @default([]) // plan-tier keys it targets; empty = everyone
 
   likeCount    Int @default(0)
   saveCount    Int @default(0)
@@ -962,6 +974,8 @@ model PushToken {
 enum AdminDepartment {
   CONTENT
   SUPPORT
+  TRAINER
+  THERAPIST
 }
 
 enum CertificateStatus {
@@ -1137,4 +1151,91 @@ model SupportMessage {
   createdAt      DateTime            @default(now())
 
   @@index([conversationId])
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PAID
+  VOID
+}
+
+/// A numbered tax invoice for a payment. Generated on a successful payment and
+/// stored as a PDF in object storage (pdfKey).
+model Invoice {
+  id             String        @id @default(cuid())
+  number         String        @unique // sequential, e.g. "SYK/2026/00042"
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId      String? // Payment.id when it came from a real payment
+  subscriptionId String?
+  amountInr      Float
+  taxInr         Float         @default(0) // GST component, if any
+  status         InvoiceStatus @default(ISSUED)
+  pdfKey         String? // /api/media/<key>
+  notes          String?
+  issuedAt       DateTime      @default(now())
+
+  @@index([userId])
+  @@index([issuedAt])
+}
+
+/// A point-in-time therapy progress reading, entered by a therapist/admin.
+/// Scores are 0-10 (higher = worse for pain/stress, better for mobility/sleep —
+/// UI labels each). Feeds the member's "Therapy Journey" charts.
+model TherapyMeasurement {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  takenAt        DateTime @default(now())
+  painScore      Int?
+  mobilityScore  Int?
+  sleepScore     Int?
+  stressScore    Int?
+  weightKg       Float?
+  note           String?
+  recordedById   String?
+  recordedBy     User?    @relation("MeasurementRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, takenAt])
+}
+
+enum PatientUpdateStatus {
+  PENDING
+  REVIEWED
+}
+
+/// A between-sessions update a therapy member submits (symptom change, question).
+/// Lands in the therapist's review queue.
+model PatientUpdate {
+  id            String              @id @default(cuid())
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body          String
+  attachmentKey String?
+  status        PatientUpdateStatus @default(PENDING)
+  reviewNote    String?
+  reviewedById  String?
+  reviewedBy    User?               @relation("PatientUpdateReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt    DateTime?
+  createdAt     DateTime            @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// One admin-initiated push broadcast — an audit/history record of what went out.
+model BroadcastLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  title      String
+  body       String
+  url        String?
+  segment    String // "all" | "everyday" | "therapy" | ...
+  channelId  String   @default("default")
+  recipients Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

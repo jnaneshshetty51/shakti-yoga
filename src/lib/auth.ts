@@ -23,7 +23,9 @@ export function sessionClaims(user: {
     adminDepartment?: string | null;
 }): SessionPayload {
     const tier = adminTier(user.role);
-    const dept = tier === 'staff' && user.adminDepartment ? (user.adminDepartment as 'CONTENT' | 'SUPPORT') : undefined;
+    const dept = tier === 'staff' && user.adminDepartment
+        ? (user.adminDepartment as SessionPayload['dept'])
+        : undefined;
     return {
         id: user.id,
         email: user.email,

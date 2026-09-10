@@ -53,6 +53,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
         }
 
+        if (!user.active) {
+            return NextResponse.json(
+                { error: 'This account has been deactivated. Contact support if you think this is a mistake.' },
+                { status: 403 },
+            );
+        }
+
         await prisma.user.update({
             where: { id: user.id },
             data: { lastLogin: new Date() },

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PLANS, LADDER, priceFor, regionFor, type PlanKey, type PlanConfig } from '@/lib/pricing';
+import { LADDER, priceFor, regionFor, type PlanKey, type PlanConfig } from '@/lib/pricing';
+import { resolvedPlans } from '@/lib/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
     const hint = new URL(request.url).searchParams.get('region');
     const region = regionFor(hint);
+    const PLANS = await resolvedPlans();
 
     const rung = (key: PlanKey) => {
         const p: PlanConfig = PLANS[key];

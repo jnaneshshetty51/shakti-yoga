@@ -64,12 +64,15 @@ export async function requireSuperAdmin(): Promise<SessionPayload | null> {
  * `adminDepartment` set (full access) always passes; a departmented staff
  * account only passes for its own department.
  */
-export async function requireDepartment(dept: 'CONTENT' | 'SUPPORT'): Promise<SessionPayload | null> {
+export type AdminDept = 'CONTENT' | 'SUPPORT' | 'TRAINER' | 'THERAPIST';
+
+export async function requireDepartment(dept: AdminDept | AdminDept[]): Promise<SessionPayload | null> {
     const payload = await adminSession();
     if (!payload) return null;
     if (payload.tier === 'super') return payload;
     if (!payload.dept) return payload; // full-access staff admin
-    return payload.dept === dept ? payload : null;
+    const allowed = Array.isArray(dept) ? dept : [dept];
+    return allowed.includes(payload.dept as AdminDept) ? payload : null;
 }
 
 /** Admin or teacher — for endpoints teachers also operate (class join, session Meet links). */

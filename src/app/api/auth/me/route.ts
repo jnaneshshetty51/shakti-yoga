@@ -35,6 +35,7 @@ export async function GET() {
                 name: true,
                 email: true,
                 role: true,
+                active: true,
                 phone: true,
                 country: true,
                 timezone: true,
@@ -45,7 +46,7 @@ export async function GET() {
             },
         });
 
-        if (!user) {
+        if (!user || !user.active) {
             // Token references a user that no longer exists — drop the stale cookie
             // so the browser stops sending it (otherwise middleware keeps letting
             // them past to pages that then bounce them here).
@@ -61,7 +62,7 @@ export async function GET() {
 
         const effectiveRole = await syncSubscriptionState(user.id, user.role);
         const mappedRole = mapDatabaseRole(effectiveRole);
-        const { tokenVersion: _tv, adminDepartment, ...safeUser } = user;
+        const { tokenVersion: _tv, active: _active, adminDepartment, ...safeUser } = user;
 
         // Keep the session claims in sync with reality so middleware and the
         // client agree (e.g. after a lazy subscription expiry or a name change).
