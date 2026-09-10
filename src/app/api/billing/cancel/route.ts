@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { cancelSubscription } from '@/lib/razorpay';
-import { getPlan, priceFor, regionFor } from '@/lib/pricing';
+import { priceFor, regionFor } from '@/lib/pricing';
+import { resolvedPlan } from '@/lib/plans';
 import { recordEvent } from '@/lib/analytics';
 import { posthogCapture } from '@/lib/posthog';
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
         if (sub.planType !== 'EVERYDAY_YOGA') {
             return NextResponse.json({ error: 'Only Everyday plans can switch to Starter.' }, { status: 400 });
         }
-        const starter = getPlan('starter');
+        const starter = await resolvedPlan('starter');
         const price = priceFor(starter, regionFor(sub.currency));
         await prisma.subscription.update({ where: { userId: session.id }, data: { pendingPlanKey: 'starter' } });
         recordEvent('subscription_cancelled', { userId: session.id, metadata: { intent, reason, to: 'starter' } });

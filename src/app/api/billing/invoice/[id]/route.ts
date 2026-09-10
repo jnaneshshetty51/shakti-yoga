@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { PLANS } from '@/lib/pricing';
+import { issueInvoiceForPayment, renderInvoicePdf } from '@/lib/invoice';
 import type { PlanType } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
 
 const PLAN_NAME: Record<PlanType, string> = {
     EVERYDAY_YOGA: PLANS.everyday.name,
@@ -12,7 +15,7 @@ const PLAN_NAME: Record<PlanType, string> = {
     TRIAL: PLANS.trial.name,
 };
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await ctx.params;
@@ -29,13 +32,47 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         return NextResponse.json({ error: 'No invoice for an unpaid transaction' }, { status: 409 });
     }
 
+    // Use the real numbered Invoice row — issue one lazily for older payments.
+    let invoiceRow = await prisma.invoice.findFirst({ where: { paymentId: payment.id } });
+    if (!invoiceRow) {
+        await issueInvoiceForPayment(payment.id).catch(() => {});
+        invoiceRow = await prisma.invoice.findFirst({ where: { paymentId: payment.id } });
+    }
+
+    const number =
+        invoiceRow?.number ?? `SY-${payment.createdAt.getFullYear()}-${payment.id.slice(-8).toUpperCase()}`;
+    const issuedAt = invoiceRow?.issuedAt ?? payment.createdAt;
+    const amount = invoiceRow?.amountInr ?? payment.amount;
+    const tax = invoiceRow?.taxInr ?? 0;
+    const lineItem = `${PLAN_NAME[payment.planType]} — subscription`;
+
+    if (new URL(req.url).searchParams.get('format') === 'pdf') {
+        const pdf = await renderInvoicePdf({
+            number,
+            issuedAt,
+            memberName: payment.user.name,
+            memberEmail: payment.user.email,
+            lineItem,
+            amount,
+            tax,
+            currency: payment.currency,
+        });
+        return new NextResponse(Buffer.from(pdf), {
+            headers: {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `inline; filename="${number.replace(/\//g, '-')}.pdf"`,
+            },
+        });
+    }
+
     return NextResponse.json({
         invoice: {
-            number: `SY-${payment.createdAt.getFullYear()}-${payment.id.slice(-8).toUpperCase()}`,
-            date: payment.createdAt.toISOString(),
+            number,
+            date: issuedAt.toISOString(),
             billedTo: { name: payment.user.name, email: payment.user.email },
-            lineItem: `${PLAN_NAME[payment.planType]} — subscription`,
-            amount: payment.amount,
+            lineItem,
+            amount,
+            tax,
             currency: payment.currency,
             reference: payment.providerPaymentId ?? payment.providerOrderId ?? payment.id,
             provider: payment.provider,

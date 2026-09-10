@@ -1,10 +1,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { PLANS, priceFor, formatPrice } from '@/lib/pricing';
+import { priceFor, formatPrice } from '@/lib/pricing';
+import { resolvedPlans } from '@/lib/plans';
 import { resolveRegion } from '@/lib/region';
 
 export default async function YogaTherapy() {
-    const region = await resolveRegion();
+    const [region, PLANS] = await Promise.all([resolveRegion(), resolvedPlans()]);
     const p = priceFor(PLANS.therapy, region);
     const priceStr = `${formatPrice(p.amount, p.currency)}/mo`;
     return (

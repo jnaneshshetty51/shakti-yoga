@@ -66,6 +66,8 @@ interface FeedCommon {
   author: string;
   publishedAt: string | null;
   pinned: boolean;
+  /** ANNOUNCEMENT only — highlighted + always-on-top. Absent on blog items. */
+  important?: boolean;
   cta: Cta;
 }
 interface FeedSocial {

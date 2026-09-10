@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { getPlan, isPlanKey, priceFor, regionFor, LADDER, type PlanConfig, type Region } from '@/lib/pricing';
+import { isPlanKey, priceFor, regionFor, LADDER, type PlanConfig, type Region } from '@/lib/pricing';
+import { resolvedPlan } from '@/lib/plans';
 import {
     createRecurringPlan,
     createSubscription,
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
         const body = await readJson(request);
         const rawKey = String(body.planKey ?? body.planType ?? '');
         const key = (KEYS as readonly string[]).includes(rawKey) ? rawKey : 'everyday';
-        const plan = getPlan(key);
+        const plan = await resolvedPlan(key);
         const region = regionFor(typeof body.region === 'string' ? body.region : payload.email);
         const price = priceFor(plan, region);
 

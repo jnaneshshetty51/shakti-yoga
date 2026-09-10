@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { useJoin } from "@/lib/useJoin";
 import { formatClassTime } from "@/lib/format";
+import { TherapyProgress } from "@/components/TherapyProgress";
 import { colors, spacing, radius } from "@/theme";
 import type { BookingRow } from "@/lib/types";
 
@@ -172,6 +173,8 @@ export function TherapyScheduleView() {
             ))}
           </>
         )}
+
+        <TherapyProgress />
       </ScrollView>
 
       {rescheduling && (

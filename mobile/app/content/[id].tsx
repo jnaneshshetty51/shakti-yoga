@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, View, TextInput, Pressable, Share, StyleSheet, ActivityIndicator } from "react-native";
+import { ScrollView, View, TextInput, Pressable, Share, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,10 +7,37 @@ import { Screen, Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { api, ApiError, API_URL } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
+import { mediaUri } from "@/lib/media";
 import { runCta, ctaLabel } from "@/lib/contentCta";
 import { toParagraphs } from "@/lib/text";
 import { colors, spacing, radius } from "@/theme";
 import type { FeedItem, ContentComment } from "@/lib/types";
+
+/** Hero image + any extra carousel images on a post/announcement/reel. */
+function ContentImages({ item }: { item: FeedItem }) {
+  const { width } = useWindowDimensions();
+  const primary = "imageUrl" in item ? mediaUri(item.imageUrl) : null;
+  const extra = ("mediaUrls" in item ? item.mediaUrls : []).map((u) => mediaUri(u)).filter(Boolean) as string[];
+  const gallery = [primary, ...extra].filter(Boolean) as string[];
+  if (gallery.length === 0) return null;
+
+  const w = width - spacing.lg * 2;
+  if (gallery.length === 1) {
+    return <Image source={{ uri: gallery[0] }} style={[styles.hero, { width: w }]} resizeMode="cover" />;
+  }
+  return (
+    <ScrollView
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      style={{ marginTop: spacing.md }}
+    >
+      {gallery.map((uri, i) => (
+        <Image key={i} source={{ uri }} style={[styles.hero, { width: w, marginTop: 0, marginRight: i === gallery.length - 1 ? 0 : spacing.sm }]} resizeMode="cover" />
+      ))}
+    </ScrollView>
+  );
+}
 
 export default function ContentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +68,8 @@ export default function ContentDetailScreen() {
             {item.author}
             {item.publishedAt ? ` · ${new Date(item.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}
           </BodyText>
+
+          <ContentImages item={item} />
 
           {item.kind === "reel" && (
             <View style={{ marginTop: spacing.md }}>
@@ -210,6 +239,7 @@ function Comments({ contentId }: { contentId: string }) {
 }
 
 const styles = StyleSheet.create({
+  hero: { height: 200, borderRadius: radius.control, marginTop: spacing.md, backgroundColor: colors.border },
   actionRow: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
   action: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   composeRow: { flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" },

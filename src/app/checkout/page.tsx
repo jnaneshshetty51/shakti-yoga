@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Script from "next/script";
 import { useAuth } from "@/context/AuthContext";
 import { getPlan, formatPrice, priceFor, regionFor } from "@/lib/pricing";
@@ -21,6 +21,39 @@ function CheckoutContent() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [scriptReady, setScriptReady] = useState(false);
+    // Live pricing (admin /admin/pricing overrides) — /api/plans overlays Setting['plan_overrides'].
+    const [livePlan, setLivePlan] = useState<
+        { name: string; amount: number; currency: string; features: string[] } | null
+    >(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`/api/plans?region=${region}`)
+            .then((r) => r.json())
+            .then((d) => {
+                if (cancelled) return;
+                const all = [...(d?.plans ?? []), d?.trial].filter(Boolean) as {
+                    key: string;
+                    name: string;
+                    price: number;
+                    currency: string;
+                    features?: string[];
+                }[];
+                const match = all.find((p) => p.key === planType);
+                if (match) {
+                    setLivePlan({
+                        name: match.name,
+                        amount: match.price,
+                        currency: match.currency,
+                        features: match.features ?? [],
+                    });
+                }
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [region, planType]);
 
     if (!isLoading && !user) {
         return (
@@ -41,11 +74,17 @@ function CheckoutContent() {
         );
     }
 
-    const selectedPlan = getPlan(planType);
-    const isFree = selectedPlan.interval === "trial";
-    const price = priceFor(selectedPlan, region);
+    const codePlan = getPlan(planType);
+    const isFree = codePlan.interval === "trial";
+    const selectedPlan = {
+        name: livePlan?.name ?? codePlan.name,
+        features: livePlan && livePlan.features.length ? livePlan.features : codePlan.features,
+    };
+    const price = livePlan
+        ? { amount: livePlan.amount, currency: livePlan.currency }
+        : priceFor(codePlan, region);
     const priceLabel = formatPrice(price.amount, price.currency);
-    const cadence = selectedPlan.interval === "annual" ? "Billed yearly" : "Billed monthly";
+    const cadence = codePlan.interval === "annual" ? "Billed yearly" : "Billed monthly";
 
     const finish = async () => {
         await refreshUser();

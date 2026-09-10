@@ -1,10 +1,12 @@
 import React, { useCallback, useState } from "react";
-import { ScrollView, View, StyleSheet, Alert } from "react-native";
+import { ScrollView, View, StyleSheet, Alert, Pressable } from "react-native";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { Screen, BodyText, Card, Badge, Button, LoadingView, EmptyState, Heading } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, getToken, API_URL } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { formatPrice } from "@/lib/format";
 import { spacing } from "@/theme";
@@ -73,6 +75,27 @@ export default function MembershipScreen() {
       setBusy(null);
     }
   }, [reload]);
+
+  const downloadReceipt = useCallback(async (paymentId: string) => {
+    setBusy(`receipt-${paymentId}`);
+    try {
+      const token = await getToken();
+      const dest = new File(Paths.cache, `shakti-invoice-${paymentId}.pdf`);
+      const file = await File.downloadFileAsync(`${API_URL}/api/billing/invoice/${paymentId}?format=pdf`, dest, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        idempotent: true,
+      });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      } else {
+        Alert.alert("Downloaded", "Saved to the app cache.");
+      }
+    } catch {
+      Alert.alert("Couldn't get the receipt", "Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }, []);
 
   const confirm = (intent: "cancel" | "pause" | "downgrade", title: string, body: string) =>
     Alert.alert(title, body, [
@@ -157,6 +180,15 @@ export default function MembershipScreen() {
                   <BodyText>{new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</BodyText>
                   <BodyText muted>{formatPrice(p.amount, p.currency)}</BodyText>
                   <Badge tone={p.status === "PAID" ? "success" : p.status === "FAILED" ? "danger" : "neutral"}>{p.status}</Badge>
+                  {p.status === "PAID" ? (
+                    <Pressable onPress={() => downloadReceipt(p.id)} disabled={busy === `receipt-${p.id}`} hitSlop={8}>
+                      <BodyText style={{ color: "#4A6741", fontWeight: "600", fontSize: 13 }}>
+                        {busy === `receipt-${p.id}` ? "…" : "Receipt"}
+                      </BodyText>
+                    </Pressable>
+                  ) : (
+                    <View style={{ width: 48 }} />
+                  )}
                 </View>
               ))}
             </Card>

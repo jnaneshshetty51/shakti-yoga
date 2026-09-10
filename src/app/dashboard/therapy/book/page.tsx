@@ -137,7 +137,7 @@ export default function TherapyBookingPage() {
                     <h3 className="font-serif text-xl text-gray-800 mb-2">No session credits</h3>
                     <p className="text-sm text-gray-500 mb-6">Subscribe to Yoga Therapy to get monthly 1:1 sessions.</p>
                     <Link href="/checkout?plan=therapy" className="inline-flex px-6 py-2.5 rounded-full bg-secondary text-white text-sm font-semibold hover:bg-primary transition-colors">
-                        Subscribe — ₹5,000/mo
+                        Subscribe to Yoga Therapy
                     </Link>
                 </Card>
             ) : (

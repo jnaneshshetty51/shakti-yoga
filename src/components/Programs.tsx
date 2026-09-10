@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { PLANS, priceFor, formatPrice, type PlanConfig } from '@/lib/pricing';
+import { priceFor, formatPrice, type PlanConfig } from '@/lib/pricing';
+import { resolvedPlans } from '@/lib/plans';
 import { resolveRegion } from '@/lib/region';
 import CurrencyToggle from '@/components/CurrencyToggle';
 
@@ -11,7 +12,7 @@ const CHECK = (
 );
 
 export default async function Programs() {
-    const region = await resolveRegion();
+    const [region, PLANS] = await Promise.all([resolveRegion(), resolvedPlans()]);
     const everyday = PLANS.everyday;
     const therapy = PLANS.therapy;
     const priceLabel = (p: PlanConfig) => formatPrice(priceFor(p, region).amount, priceFor(p, region).currency);
@@ -34,9 +35,11 @@ export default async function Programs() {
                 <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2">
                     {/* Everyday Yoga */}
                     <div className="relative flex flex-col rounded-3xl border border-secondary/30 bg-white p-7 shadow-[0_2px_20px_rgba(44,62,50,0.06)] sm:p-8">
-                        <span className="absolute -top-3 left-7 rounded-full bg-secondary px-3 py-1 font-sans text-[10px] font-bold uppercase tracking-widest text-white">
-                            Most popular
-                        </span>
+                        {everyday.recommended !== false && (
+                            <span className="absolute -top-3 left-7 rounded-full bg-secondary px-3 py-1 font-sans text-[10px] font-bold uppercase tracking-widest text-white">
+                                Most popular
+                            </span>
+                        )}
                         <h3 className="font-serif text-2xl text-text">{everyday.name}</h3>
                         <p className="mt-1 font-sans text-xs uppercase tracking-[0.15em] text-text/50">Unlimited group classes</p>
                         <p className="mt-5 font-serif text-4xl text-primary">
@@ -44,7 +47,7 @@ export default async function Programs() {
                             <span className="font-sans text-base text-text/45"> / month</span>
                         </p>
                         <ul className="mt-6 flex-1 space-y-3 font-sans text-[15px] text-text/80">
-                            {['Unlimited live classes, 5 days a week', 'Flexible IST timings + recordings', 'Full practice library & challenges', 'Community support'].map((f) => (
+                            {everyday.features.map((f) => (
                                 <li key={f} className="flex gap-3">{CHECK}<span>{f}</span></li>
                             ))}
                         </ul>
@@ -66,7 +69,7 @@ export default async function Programs() {
                             <span className="font-sans text-base text-text/45"> / month</span>
                         </p>
                         <ul className="mt-6 flex-1 space-y-3 font-sans text-[15px] text-text/80">
-                            {['4 private 1:1 sessions a month', 'Health assessment + custom plan', 'Everyday Yoga classes included', 'Direct line to your therapist'].map((f) => (
+                            {therapy.features.map((f) => (
                                 <li key={f} className="flex gap-3">{CHECK}<span>{f}</span></li>
                             ))}
                         </ul>

@@ -1,7 +1,8 @@
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { PLANS, priceFor, formatPrice, type PlanKey } from "@/lib/pricing";
+import { priceFor, formatPrice, type PlanKey } from "@/lib/pricing";
+import { resolvedPlans } from "@/lib/plans";
 import { resolveRegion } from "@/lib/region";
 import CurrencyToggle from "@/components/CurrencyToggle";
 
@@ -29,7 +30,7 @@ const TIERS: { key: PlanKey; annualKey?: PlanKey; blurb: string; cta: string; hr
 ];
 
 export default async function ProgramsPage() {
-    const region = await resolveRegion();
+    const [region, PLANS] = await Promise.all([resolveRegion(), resolvedPlans()]);
     const price = (k: PlanKey) => {
         const p = priceFor(PLANS[k], region);
         return formatPrice(p.amount, p.currency);
@@ -62,7 +63,7 @@ export default async function ProgramsPage() {
                                         featured ? "border-2 border-primary" : "border border-primary/15"
                                     }`}
                                 >
-                                    {featured && (
+                                    {featured && plan.recommended !== false && (
                                         <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 font-sans text-[10px] font-bold uppercase tracking-widest text-white">
                                             Most popular
                                         </span>

@@ -36,6 +36,8 @@ export function AnnouncementBanner({ announcement }: { announcement: FeedItem | 
 
   if (!item) return null;
 
+  const important = "important" in item && item.important;
+
   const dismiss = async () => {
     setItem(null);
     try {
@@ -48,12 +50,27 @@ export function AnnouncementBanner({ announcement }: { announcement: FeedItem | 
   };
 
   return (
-    <Pressable onPress={() => router.push(`/content/${item.id}`)} style={styles.banner}>
-      <Ionicons name="megaphone-outline" size={18} color={colors.primary} />
-      <BodyText style={{ flex: 1, fontWeight: "600" }} numberOfLines={2}>{item.title}</BodyText>
-      <Pressable onPress={dismiss} hitSlop={10}>
-        <Ionicons name="close" size={16} color={colors.muted} />
-      </Pressable>
+    <Pressable
+      onPress={() => router.push(`/content/${item.id}`)}
+      style={[styles.banner, important && styles.bannerImportant]}
+    >
+      <Ionicons
+        name={important ? "alert-circle" : "megaphone-outline"}
+        size={18}
+        color={important ? colors.white : colors.primary}
+      />
+      <BodyText
+        style={{ flex: 1, fontWeight: "700", color: important ? colors.white : colors.text }}
+        numberOfLines={3}
+      >
+        {item.title}
+      </BodyText>
+      {/* Important announcements stay on top and can't be dismissed. */}
+      {!important && (
+        <Pressable onPress={dismiss} hitSlop={10}>
+          <Ionicons name="close" size={16} color={colors.muted} />
+        </Pressable>
+      )}
     </Pressable>
   );
 }
@@ -69,5 +86,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  bannerImportant: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
 });

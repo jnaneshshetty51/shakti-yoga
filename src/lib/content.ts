@@ -54,6 +54,7 @@ export type FeedItem =
           tags: string[];
           publishedAt: string | null;
           pinned: boolean;
+          important: boolean;
           likeCount: number;
           saveCount: number;
           commentCount: number;
@@ -73,6 +74,7 @@ export type FeedItem =
           tags: string[];
           publishedAt: string | null;
           pinned: boolean;
+          important: boolean;
           likeCount: number;
           saveCount: number;
           commentCount: number;
@@ -131,6 +133,7 @@ export function serializeContent(
             tags: row.tags,
             publishedAt,
             pinned: row.pinned,
+            important: row.important,
             likeCount: row.likeCount,
             saveCount: row.saveCount,
             commentCount: row.commentCount,
@@ -151,6 +154,7 @@ export function serializeContent(
         tags: row.tags,
         publishedAt,
         pinned: row.pinned,
+        important: row.important,
         likeCount: row.likeCount,
         saveCount: row.saveCount,
         commentCount: row.commentCount,

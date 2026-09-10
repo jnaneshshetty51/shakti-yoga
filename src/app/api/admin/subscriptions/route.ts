@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { PLANS, isPlanKey } from '@/lib/pricing';
+import { resolvedPlan } from '@/lib/plans';
 import { activatePlan } from '@/lib/subscription';
 import { SubscriptionStatus, PlanType, Role } from '@prisma/client';
 
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
         const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
         if (!user) return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
 
-        const { user: updated } = await activatePlan(user.id, PLANS[planKey], {
+        const { user: updated } = await activatePlan(user.id, await resolvedPlan(planKey), {
             provider: 'razorpay',
             skipCookie: true,
             ...(amount != null && Number.isFinite(amount) ? { amount } : {}),

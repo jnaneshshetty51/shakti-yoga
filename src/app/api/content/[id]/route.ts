@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { serializeContent, serializeBlog, readMinutes } from '@/lib/content';
+import { audienceWhere } from '@/lib/content-audience';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     try {
         const content = await prisma.content.findFirst({
-            where: { id, status: 'PUBLISHED' },
+            where: { AND: [{ id, status: 'PUBLISHED' }, await audienceWhere(session?.id ?? null)] },
         });
         if (content) {
             let liked = false;
