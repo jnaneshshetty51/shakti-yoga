@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
+import { auditAs } from '@/lib/audit';
 import { PLANS } from '@/lib/pricing';
+import { Role, SubscriptionStatus } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
 const SEATS_TOTAL = 1 + PLANS.family.extraSeats;
 
-/** GET /api/admin/family — every family plan, owner + seats, read-only. */
+function inviteCode(): string {
+    return Array.from({ length: 6 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 30)]).join('');
+}
+
+/** GET /api/admin/family — every family plan, owner + seats. */
 export async function GET() {
     if (!(await requireAdmin())) return forbidden();
 
@@ -47,4 +53,68 @@ export async function GET() {
     );
 
     return NextResponse.json({ groups });
+}
+
+/** PATCH /api/admin/family  { ownerId, action: "resetCode" | "cancel" } */
+export async function PATCH(request: Request) {
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
+
+    const { ownerId, action } = await request.json().catch(() => ({}));
+    const owner = await prisma.subscription.findUnique({ where: { userId: String(ownerId || '') } });
+    if (!owner || owner.planType !== 'FAMILY' || owner.familyOwnerId) {
+        return NextResponse.json({ error: 'Family owner not found.' }, { status: 404 });
+    }
+    const audit = auditAs({ id: admin.id, email: admin.email }, request);
+
+    if (action === 'resetCode') {
+        let code = owner.familyInviteCode;
+        for (let i = 0; i < 6; i++) {
+            try {
+                code = inviteCode();
+                await prisma.subscription.update({ where: { userId: owner.userId }, data: { familyInviteCode: code } });
+                break;
+            } catch { /* clash — retry */ }
+        }
+        await audit({ action: 'family.code.reset', entity: 'Subscription', entityId: owner.id });
+        return NextResponse.json({ ok: true, inviteCode: code });
+    }
+
+    if (action === 'cancel') {
+        const seats = await prisma.subscription.findMany({ where: { familyOwnerId: owner.userId }, select: { id: true, userId: true } });
+        await prisma.$transaction([
+            prisma.subscription.update({ where: { id: owner.id }, data: { status: SubscriptionStatus.CANCELLED } }),
+            ...seats.flatMap((s) => [
+                prisma.subscription.update({ where: { id: s.id }, data: { status: SubscriptionStatus.EXPIRED } }),
+                prisma.user.update({ where: { id: s.userId }, data: { role: Role.VISITOR } }),
+            ]),
+        ]);
+        await audit({ action: 'family.cancel', entity: 'Subscription', entityId: owner.id, after: { seatsReleased: seats.length } });
+        return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+}
+
+/** DELETE /api/admin/family?seatId=<subId> — remove one seat from a family group. */
+export async function DELETE(request: Request) {
+    const admin = await requireAdmin();
+    if (!admin) return forbidden();
+
+    const seatId = new URL(request.url).searchParams.get('seatId');
+    if (!seatId) return NextResponse.json({ error: 'Missing seatId' }, { status: 400 });
+
+    const seat = await prisma.subscription.findUnique({ where: { id: seatId } });
+    if (!seat || !seat.familyOwnerId) {
+        return NextResponse.json({ error: 'Seat not found.' }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+        prisma.subscription.update({ where: { id: seatId }, data: { status: SubscriptionStatus.EXPIRED, familyOwnerId: null } }),
+        prisma.user.update({ where: { id: seat.userId }, data: { role: Role.VISITOR } }),
+    ]);
+    await auditAs({ id: admin.id, email: admin.email }, request)({
+        action: 'family.seat.remove', entity: 'Subscription', entityId: seatId, before: { userId: seat.userId },
+    });
+    return NextResponse.json({ ok: true });
 }

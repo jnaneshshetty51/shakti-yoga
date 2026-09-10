@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LuUserPlus } from "react-icons/lu";
-import { PageHeader, PageLoading, ErrorState, Card, EmptyState, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, PageLoading, ErrorState, Card, EmptyState, StatusBadge, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 interface Member {
     id: string;
@@ -31,6 +32,7 @@ function fmt(iso: string) {
 }
 
 export default function AdminFamilyPage() {
+    const { showToast } = useToast();
     const [groups, setGroups] = useState<Group[] | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +50,26 @@ export default function AdminFamilyPage() {
 
     useEffect(() => { load(); }, [load]);
 
+    const act = async (ownerId: string, action: "resetCode" | "cancel") => {
+        if (action === "cancel" && !confirm("Cancel this family plan? All seats lose access at once.")) return;
+        const res = await fetch("/api/admin/family", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ownerId, action }),
+        });
+        if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Failed");
+        showToast("success", action === "resetCode" ? "New invite code generated." : "Family plan cancelled.");
+        load();
+    };
+
+    const removeSeat = async (seatId: string, name: string) => {
+        if (!confirm(`Remove ${name} from this family plan?`)) return;
+        const res = await fetch(`/api/admin/family?seatId=${seatId}`, { method: "DELETE" });
+        if (!res.ok) return showToast("error", "Could not remove the seat.");
+        showToast("success", `${name} removed.`);
+        load();
+    };
+
     if (error) return <ErrorState message={error} onRetry={load} />;
     if (!groups) return <PageLoading title="Family" />;
 
@@ -55,7 +77,7 @@ export default function AdminFamilyPage() {
         <div>
             <PageHeader
                 title="Family"
-                subtitle="Every family plan and its seats. Read-only — members manage their own family group from the app."
+                subtitle="Every family plan and its seats. Members manage their own group from the app; use these controls to intervene."
             />
 
             {groups.length === 0 ? (
@@ -69,10 +91,15 @@ export default function AdminFamilyPage() {
                                     <div className="font-semibold text-ink">{g.ownerName}</div>
                                     <div className="text-sm text-ink-muted">{g.ownerEmail}</div>
                                 </div>
-                                <div className="flex items-center gap-3 text-sm">
+                                <div className="flex flex-wrap items-center gap-3 text-sm">
                                     <StatusBadge status={g.status} />
                                     <span className="text-ink-subtle">renews {fmt(g.renewalDate)}</span>
                                     <span className="text-ink-subtle">{g.seatsUsed}/{g.seatsTotal} seats</span>
+                                    {g.inviteCode && <span className="font-mono text-xs text-ink-subtle">{g.inviteCode}</span>}
+                                    <ActionButton onClick={() => act(g.ownerId, "resetCode")}>Reset code</ActionButton>
+                                    {g.status !== "CANCELLED" && (
+                                        <ActionButton tone="danger" onClick={() => act(g.ownerId, "cancel")}>Cancel plan</ActionButton>
+                                    )}
                                 </div>
                             </div>
 
@@ -87,6 +114,7 @@ export default function AdminFamilyPage() {
                                             <div className="flex items-center gap-3">
                                                 <StatusBadge status={m.status} />
                                                 <span className="text-ink-subtle text-xs">renews {fmt(m.renewalDate)}</span>
+                                                <ActionButton tone="danger" onClick={() => removeSeat(m.id, m.name)}>Remove</ActionButton>
                                             </div>
                                         </div>
                                     ))}

@@ -84,6 +84,8 @@ export async function activatePlan(
         /** override amount/currency (e.g. from a store receipt) */
         amount?: number;
         currency?: string;
+        /** skip re-issuing the session cookie — set when an admin activates a plan for another user */
+        skipCookie?: boolean;
     } = {},
 ) {
     const isTrial = plan.interval === 'trial';
@@ -144,7 +146,9 @@ export async function activatePlan(
 
     const mappedRole = mapDatabaseRole(user.role);
 
-    await setSessionCookie(await signToken(sessionClaims(user)));
+    if (!opts.skipCookie) {
+        await setSessionCookie(await signToken(sessionClaims(user)));
+    }
 
     return { user, mappedRole };
 }
