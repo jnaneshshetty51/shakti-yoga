@@ -6,6 +6,7 @@ import { Screen, BodyText, Card, LoadingView, EmptyState } from "@/components/ui
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
+import { resolveNotificationPath } from "@/lib/deepLink";
 import { colors, spacing } from "@/theme";
 
 interface ActivityItem {
@@ -22,16 +23,6 @@ interface ActivityResponse {
   items: ActivityItem[];
   unreadCount: number;
   seenAt: string | null;
-}
-
-const WEB_TO_MOBILE: Record<string, string> = {
-  "/dashboard/classes": "/(tabs)/classes",
-  "/dashboard/billing": "/membership",
-  "/dashboard/therapy/book": "/therapy",
-  "/dashboard": "/(tabs)",
-};
-function toMobileRoute(href: string): string {
-  return WEB_TO_MOBILE[href] ?? "/(tabs)";
 }
 
 const DOT_COLOR: Record<ActivityItem["severity"], string> = {
@@ -104,7 +95,7 @@ export default function ActivityScreen() {
           refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(toMobileRoute(item.href))}>
+            <Pressable onPress={() => router.push(resolveNotificationPath(item.href))}>
               <Card style={[styles.card, !item.read && styles.unread]}>
                 <View style={[styles.dot, { backgroundColor: DOT_COLOR[item.severity] }]} />
                 <View style={{ flex: 1 }}>

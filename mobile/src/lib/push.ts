@@ -25,10 +25,14 @@ export async function registerForPush(): Promise<void> {
         if (status !== "granted") return;
 
         if (Platform.OS === "android") {
-            await Notifications.setNotificationChannelAsync("default", {
-                name: "Default",
-                importance: Notifications.AndroidImportance.DEFAULT,
-            });
+            const H = Notifications.AndroidImportance.HIGH;
+            const D = Notifications.AndroidImportance.DEFAULT;
+            await Promise.all([
+                Notifications.setNotificationChannelAsync("default", { name: "General", importance: D }),
+                Notifications.setNotificationChannelAsync("classes", { name: "Class reminders", importance: H }),
+                Notifications.setNotificationChannelAsync("sessions", { name: "1:1 sessions", importance: H }),
+                Notifications.setNotificationChannelAsync("billing", { name: "Billing & membership", importance: D }),
+            ]);
         }
 
         const projectId =

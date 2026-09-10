@@ -4,12 +4,53 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { isAppLockOn, authenticateIfLocked } from "@/lib/appLock";
+import { resolveNotificationPath } from "@/lib/deepLink";
 import { spacing } from "@/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+/** Routes a tapped push notification (cold-start or while running) to the right screen. */
+function NotificationRouter() {
+  const response = Notifications.useLastNotificationResponse();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const handled = useRef<string | null>(null);
+  const pending = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!response || isLoading) return;
+    const key = response.notification.request.identifier;
+    if (handled.current === key) return;
+    handled.current = key;
+    const data = response.notification.request.content.data as { url?: string } | undefined;
+    const path = resolveNotificationPath(data?.url);
+    if (user) setTimeout(() => router.push(path), 0);
+    else pending.current = path;
+  }, [response, user, isLoading, router]);
+
+  useEffect(() => {
+    if (user && !isLoading && pending.current) {
+      const path = pending.current;
+      pending.current = null;
+      setTimeout(() => router.push(path), 0);
+    }
+  }, [user, isLoading, router]);
+
+  return null;
+}
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -80,6 +121,7 @@ export default function RootLayout() {
         <AuthGate>
           <LockGate>
             <StatusBar style="dark" />
+            <NotificationRouter />
             <Stack screenOptions={{ headerShown: false }} />
           </LockGate>
         </AuthGate>
