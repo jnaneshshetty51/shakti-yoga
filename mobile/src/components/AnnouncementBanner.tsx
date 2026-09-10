@@ -4,30 +4,35 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BodyText } from "@/components/ui";
-import { api } from "@/lib/api";
 import { colors, spacing, radius } from "@/theme";
 import type { FeedItem } from "@/lib/types";
 
 const KEY = "dismissed_announcements";
 
-export function AnnouncementBanner() {
+/** Renders the pinned announcement from the Home payload, unless the member has
+ *  dismissed it (dismissal is stored per content id in AsyncStorage). */
+export function AnnouncementBanner({ announcement }: { announcement: FeedItem | null }) {
   const [item, setItem] = useState<FeedItem | null>(null);
 
   useEffect(() => {
+    if (!announcement) {
+      setItem(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.get<{ announcement: FeedItem | null }>("/api/content/home");
-        if (!res.announcement || cancelled) return;
         const raw = await AsyncStorage.getItem(KEY);
         const dismissed: string[] = raw ? JSON.parse(raw) : [];
-        if (!dismissed.includes(res.announcement.id)) setItem(res.announcement);
+        if (!cancelled) setItem(dismissed.includes(announcement.id) ? null : announcement);
       } catch {
-        /* ignore */
+        if (!cancelled) setItem(announcement);
       }
     })();
-    return () => { cancelled = true; };
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [announcement]);
 
   if (!item) return null;
 

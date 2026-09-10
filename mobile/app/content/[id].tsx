@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { api, ApiError, API_URL } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { runCta, ctaLabel } from "@/lib/contentCta";
+import { toParagraphs } from "@/lib/text";
 import { colors, spacing, radius } from "@/theme";
 import type { FeedItem, ContentComment } from "@/lib/types";
 
@@ -58,9 +59,19 @@ export default function ContentDetailScreen() {
 
           {item.kind === "blog" && (
             <View style={{ marginTop: spacing.md }}>
-              {item.excerpt && <BodyText style={{ fontSize: 15, lineHeight: 23 }}>{item.excerpt}</BodyText>}
-              <Button style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(`${API_URL}/blog/${item.slug}`)}>
-                Read the full article
+              {item.body ? (
+                toParagraphs(item.body).map((para, i) => (
+                  <BodyText key={i} style={{ fontSize: 15, lineHeight: 23, marginTop: i === 0 ? 0 : spacing.md }}>{para}</BodyText>
+                ))
+              ) : item.excerpt ? (
+                <BodyText style={{ fontSize: 15, lineHeight: 23 }}>{item.excerpt}</BodyText>
+              ) : null}
+              <Button
+                variant="outline"
+                style={{ marginTop: spacing.lg }}
+                onPress={() => WebBrowser.openBrowserAsync(`${API_URL}/blog/${item.slug}`)}
+              >
+                Read on shaktiyoga.in
               </Button>
             </View>
           )}

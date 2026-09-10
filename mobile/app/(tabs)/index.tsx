@@ -1,17 +1,22 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking } from "react-native";
 import { Link, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
 import { Screen, Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState } from "@/components/ui";
 import { SessionBalanceCard } from "@/components/SessionBalanceCard";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { StreakCard } from "@/components/StreakCard";
+import { ChallengeCard } from "@/components/ChallengeCard";
+import { ContentRail } from "@/components/ContentRail";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { useJoin } from "@/lib/useJoin";
 import { timeUntil, formatClassTime } from "@/lib/format";
 import { colors, spacing } from "@/theme";
-import type { ClassesResponse, BookingRow } from "@/lib/types";
+import type { HomeResponse, FeedItem } from "@/lib/types";
 
 function greeting(name?: string) {
   const hour = new Date().getHours();
@@ -19,131 +24,39 @@ function greeting(name?: string) {
   return name ? `${time}, ${name.split(" ")[0]}` : time;
 }
 
-function EverydayHome() {
-  const { user } = useAuth();
-  const isTrial = user?.role === "trial";
-  const { data, loading, error, reload } = useResource(() => api.get<ClassesResponse>("/api/classes"), []);
-  const { joiningId, joinClass } = useJoin();
+function discoveryItems(data: HomeResponse): FeedItem[] {
+  return [data.content.featuredReel, ...data.content.forYou].filter((x): x is FeedItem => Boolean(x));
+}
 
-  if (loading) return <LoadingView />;
-  if (error) return <EmptyState title="Couldn't load classes" subtitle={error} />;
-  if (!data) return null;
-
-  if (!data.access.ok) {
-    const { outOfSessions, paywall, reason } = data.access;
-    return (
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <Card>
-          <Heading size="sm">
-            {outOfSessions
-              ? "You've used all your sessions"
-              : paywall
-                ? isTrial ? "Your free trial is complete" : "Your membership ended"
-                : "Group classes aren't part of your plan"}
-          </Heading>
-          <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>{reason}</BodyText>
-          {outOfSessions ? (
-            <Link href="/support" asChild><Button>Contact Support</Button></Link>
-          ) : paywall ? (
-            <Button onPress={() => router.push(isTrial ? "/info/everyday" : "/membership")}>
-              {isTrial ? "See plans" : "Renew Membership"}
-            </Button>
-          ) : null}
-        </Card>
-        <SessionBalanceCard balance={data.access.sessionBalance} style={{ marginTop: spacing.md }} />
-        <ExploreLinks />
-      </ScrollView>
-    );
-  }
-
-  const all = [...data.today, ...data.upcoming].filter((c) => new Date(c.endsAt).getTime() > Date.now());
-  const next = all[0];
-  const restToday = data.today.filter((c) => c.id !== next?.id);
-
+function CommunityCard({ community }: { community: HomeResponse["community"] }) {
+  if (!community) return null;
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg }} refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}>
-      <AnnouncementBanner />
-
-      {isTrial ? (
-        <Card style={styles.trialBanner}>
-          <BodyText style={{ fontWeight: "700" }}>This is your one free trial class</BodyText>
-          <BodyText muted style={{ fontSize: 13, marginTop: 2 }}>Pick any batch below. After it, choose a plan to keep going.</BodyText>
-        </Card>
-      ) : (
-        <SessionBalanceCard balance={data.access.sessionBalance} style={{ marginBottom: spacing.lg }} />
-      )}
-
-      {next ? (
-        <Card style={{ marginBottom: spacing.lg }}>
-          <BodyText muted style={styles.eyebrow}>{isTrial ? "Your trial class" : "Next Class"}</BodyText>
-          <Heading size="md">{next.batchName}</Heading>
-          <BodyText style={{ marginTop: spacing.xs }}>{formatClassTime(next.startsAt)} · {next.teacher}</BodyText>
-          <Badge tone={next.joinable ? "success" : "neutral"}>{timeUntil(next.startsAt)}</Badge>
-          <Button style={{ marginTop: spacing.md }} disabled={!next.joinable} loading={joiningId === next.id} onPress={() => joinClass(next.id)}>
-            {next.joinable ? "Join Class" : "Opens 30 min before"}
-          </Button>
-        </Card>
-      ) : (
-        <EmptyState title="No more classes today" subtitle="Check tomorrow's timetable in Classes." />
-      )}
-
-      {restToday.length > 0 && (
-        <>
-          <Heading size="sm" style={{ marginBottom: spacing.sm }}>Also today</Heading>
-          {restToday.map((c) => (
-            <Card key={c.id} style={{ marginBottom: spacing.sm }}>
-              <BodyText style={{ fontWeight: "700" }}>{c.batchName}</BodyText>
-              <BodyText muted>{formatClassTime(c.startsAt)} · {c.teacher}</BodyText>
-            </Card>
-          ))}
-        </>
-      )}
-    </ScrollView>
+    <Pressable onPress={() => Linking.openURL(community.whatsappLink)}>
+      <Card style={{ marginBottom: spacing.lg }}>
+        <View style={styles.linkRow}>
+          <Ionicons name="logo-whatsapp" size={20} color={colors.primary} />
+          <BodyText style={{ flex: 1, fontWeight: "700" }}>{community.name}</BodyText>
+          <Ionicons name="open-outline" size={16} color={colors.muted} />
+        </View>
+        {community.pinnedMessage ? (
+          <BodyText muted style={{ marginTop: spacing.xs, fontSize: 13 }} numberOfLines={2}>
+            {community.pinnedMessage}
+          </BodyText>
+        ) : null}
+      </Card>
+    </Pressable>
   );
 }
 
-function TherapyHome() {
-  const { user } = useAuth();
-  const { data, loading, error, reload } = useResource(() => api.get<{ bookings: BookingRow[] }>("/api/bookings"), []);
-  const { joiningId, joinBooking } = useJoin();
-
-  if (loading) return <LoadingView />;
-  if (error) return <EmptyState title="Couldn't load your sessions" subtitle={error} />;
-
-  const bookings = data?.bookings ?? [];
-  const upcoming = bookings
-    .filter((b) => (b.status === "PENDING" || b.status === "CONFIRMED") && new Date(b.date).getTime() > Date.now() - 3_600_000)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const next = upcoming[0];
-  const completed = bookings.filter((b) => b.status === "COMPLETED").length;
-
+function DiscoverySections({ data }: { data: HomeResponse }) {
+  const rec = data.content.recommended;
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg }} refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}>
-      <AnnouncementBanner />
-
-      {next ? (
-        <Card style={{ marginBottom: spacing.lg }}>
-          <BodyText muted style={styles.eyebrow}>Your Next Session</BodyText>
-          <Heading size="md">Yoga Therapy</Heading>
-          <BodyText style={{ marginTop: spacing.xs }}>{formatClassTime(next.date)} · {next.teacher}</BodyText>
-          <Badge>{timeUntil(next.date)}</Badge>
-          <Button style={{ marginTop: spacing.md }} loading={joiningId === next.id} onPress={() => joinBooking(next.id)}>Join Session</Button>
-        </Card>
-      ) : (
-        <EmptyState title="No upcoming sessions" subtitle="Your therapist schedules your sessions — check back or contact Support." />
+    <>
+      <ContentRail title="From Shakti" items={discoveryItems(data)} />
+      {rec && rec.items.length > 0 && (
+        <ContentRail title={`Because you like ${rec.category.toLowerCase()}`} items={rec.items} />
       )}
-
-      <Pressable onPress={() => router.push("/therapy")}>
-        <Card style={styles.linkRow}>
-          <View style={{ flex: 1 }}>
-            <BodyText muted style={styles.eyebrow}>Therapy Journey</BodyText>
-            <Heading size="md">{completed} completed</Heading>
-            <BodyText muted>{user?.credits ?? 0} sessions remaining</BodyText>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-        </Card>
-      </Pressable>
-    </ScrollView>
+    </>
   );
 }
 
@@ -151,6 +64,7 @@ function ExploreLinks() {
   return (
     <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
       <TeaserRow icon="book-outline" label="Read & watch" onPress={() => router.push("/(tabs)/practice")} />
+      <TeaserRow icon="trophy-outline" label="Challenges" onPress={() => router.push("/challenges")} />
       <TeaserRow icon="help-circle-outline" label="FAQ" onPress={() => router.push("/faq")} />
       <TeaserRow icon="calendar-outline" label="Workshops & Retreats" onPress={() => router.push("/events")} />
     </View>
@@ -169,9 +83,177 @@ function TeaserRow({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyph
   );
 }
 
-function ExploreHome() {
+function EverydayHome({ data, loading, reload }: { data: HomeResponse; loading: boolean; reload: () => void }) {
+  const { user } = useAuth();
+  const isTrial = user?.role === "trial";
+  const { joiningId, joinClass } = useJoin();
+  const c = data.classes;
+
+  if (!c) return <EmptyState title="Couldn't load your classes" subtitle="Pull down to try again." />;
+
+  if (!c.access.ok) {
+    const { outOfSessions, paywall, reason } = c.access;
+    return (
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
+      >
+        <AnnouncementBanner announcement={data.announcement} />
+        <Card>
+          <Heading size="sm">
+            {outOfSessions
+              ? "You've used all your sessions"
+              : paywall
+                ? isTrial ? "Your free trial is complete" : "Your membership ended"
+                : "Group classes aren't part of your plan"}
+          </Heading>
+          <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>{reason}</BodyText>
+          {outOfSessions ? (
+            <Link href="/support" asChild><Button>Contact Support</Button></Link>
+          ) : paywall ? (
+            <Button onPress={() => router.push(isTrial ? "/info/everyday" : "/membership")}>
+              {isTrial ? "See plans" : "Renew Membership"}
+            </Button>
+          ) : null}
+        </Card>
+        <SessionBalanceCard balance={c.sessionBalance} style={{ marginTop: spacing.md }} />
+        <View style={{ marginTop: spacing.lg }}>
+          <DiscoverySections data={data} />
+          <CommunityCard community={data.community} />
+        </View>
+        <ExploreLinks />
+      </ScrollView>
+    );
+  }
+
+  const next = c.next;
+
+  return (
+    <ScrollView
+      contentContainerStyle={{ padding: spacing.lg }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
+    >
+      <AnnouncementBanner announcement={data.announcement} />
+
+      {isTrial ? (
+        <Card style={styles.trialBanner}>
+          <BodyText style={{ fontWeight: "700" }}>This is your one free trial class</BodyText>
+          <BodyText muted style={{ fontSize: 13, marginTop: 2 }}>Pick any batch below. After it, choose a plan to keep going.</BodyText>
+        </Card>
+      ) : (
+        <SessionBalanceCard balance={c.sessionBalance} style={{ marginBottom: spacing.lg }} />
+      )}
+
+      <StreakCard streak={data.streak} />
+
+      {next ? (
+        <Card style={{ marginBottom: spacing.lg }}>
+          <BodyText muted style={styles.eyebrow}>{isTrial ? "Your trial class" : "Next Class"}</BodyText>
+          <Heading size="md">{next.batchName}</Heading>
+          <BodyText style={{ marginTop: spacing.xs }}>{formatClassTime(next.startsAt)} · {next.teacher}</BodyText>
+          <Badge tone={next.joinable ? "success" : "neutral"}>{timeUntil(next.startsAt)}</Badge>
+          <Button style={{ marginTop: spacing.md }} disabled={!next.joinable} loading={joiningId === next.id} onPress={() => joinClass(next.id)}>
+            {next.joinable ? "Join Class" : "Opens 30 min before"}
+          </Button>
+        </Card>
+      ) : (
+        <EmptyState title="No more classes today" subtitle="Check tomorrow's timetable in Classes." />
+      )}
+
+      {c.restToday.length > 0 && (
+        <>
+          <Heading size="sm" style={{ marginBottom: spacing.sm }}>Also today</Heading>
+          {c.restToday.map((cls) => (
+            <Pressable key={cls.id} onPress={() => router.push("/(tabs)/classes")}>
+              <Card style={{ marginBottom: spacing.sm }}>
+                <BodyText style={{ fontWeight: "700" }}>{cls.batchName}</BodyText>
+                <BodyText muted>{formatClassTime(cls.startsAt)} · {cls.teacher}</BodyText>
+              </Card>
+            </Pressable>
+          ))}
+        </>
+      )}
+
+      <View style={{ marginTop: spacing.md }}>
+        <ChallengeCard challenge={data.activeChallenge} />
+        <DiscoverySections data={data} />
+        <CommunityCard community={data.community} />
+      </View>
+    </ScrollView>
+  );
+}
+
+function TherapyHome({ data, loading, reload }: { data: HomeResponse; loading: boolean; reload: () => void }) {
+  const { joiningId, joinBooking } = useJoin();
+  const t = data.therapy;
+
+  if (!t) return <EmptyState title="Couldn't load your sessions" subtitle="Pull down to try again." />;
+
+  const next = t.next;
+  const title = next?.type === "CONSULTATION" ? "Consultation" : "Yoga Therapy session";
+
+  return (
+    <ScrollView
+      contentContainerStyle={{ padding: spacing.lg }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}
+    >
+      <AnnouncementBanner announcement={data.announcement} />
+
+      {next ? (
+        <Card style={{ marginBottom: spacing.lg }}>
+          <BodyText muted style={styles.eyebrow}>Your Next Session</BodyText>
+          <Heading size="md">{title}</Heading>
+          <BodyText style={{ marginTop: spacing.xs }}>{formatClassTime(next.date)} · {next.teacher}</BodyText>
+          <Badge tone={next.joinable ? "success" : "neutral"}>{timeUntil(next.date)}</Badge>
+          <Button
+            style={{ marginTop: spacing.md }}
+            disabled={!next.joinable}
+            loading={joiningId === next.id}
+            onPress={() => joinBooking(next.id)}
+          >
+            {next.joinable ? "Join Session" : "Opens 15 min before"}
+          </Button>
+        </Card>
+      ) : (
+        <EmptyState title="No upcoming sessions" subtitle="Your therapist schedules your sessions — check back or contact Support." />
+      )}
+
+      <Pressable onPress={() => router.push("/therapy")}>
+        <Card style={styles.linkRow}>
+          <View style={{ flex: 1 }}>
+            <BodyText muted style={styles.eyebrow}>Therapy Journey</BodyText>
+            <Heading size="md">{t.completed} completed</Heading>
+            <BodyText muted>{t.creditsRemaining} sessions remaining</BodyText>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Card>
+      </Pressable>
+
+      <View style={{ marginTop: spacing.lg }}>
+        <ChallengeCard challenge={data.activeChallenge} />
+        <DiscoverySections data={data} />
+        <CommunityCard community={data.community} />
+      </View>
+    </ScrollView>
+  );
+}
+
+function ExploreHome({ data }: { data: HomeResponse | null }) {
+  const { user } = useAuth();
+  const isStaff = user?.role === "admin" || user?.role === "teacher";
+
   return (
     <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      {isStaff && (
+        <Card style={{ marginBottom: spacing.md }}>
+          <Heading size="sm">{user?.role === "teacher" ? "Teacher tools" : "Admin console"}</Heading>
+          <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
+            Manage classes, members and content on the web.
+          </BodyText>
+          <Button onPress={() => WebBrowser.openBrowserAsync(`${API_URL}/admin`)}>Open on the web</Button>
+        </Card>
+      )}
+
       <Card style={{ marginBottom: spacing.md }}>
         <Heading size="sm">Everyday Yoga</Heading>
         <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
@@ -188,6 +270,8 @@ function ExploreHome() {
         <Button variant="outline" onPress={() => router.push("/info/therapy")}>Begin an assessment</Button>
       </Card>
 
+      {data && <DiscoverySections data={data} />}
+
       <ExploreLinks />
       <TeaserRow icon="chatbubble-ellipses-outline" label="Success stories" onPress={() => router.push("/testimonials")} />
       <TeaserRow icon="call-outline" label="Contact Shakti" onPress={() => router.push("/contact")} />
@@ -197,25 +281,41 @@ function ExploreHome() {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { data, loading, error, reload } = useResource(() => api.get<HomeResponse>("/api/me/home"), []);
+
+  const role = user?.role;
+  const isEveryday = role === "member_everyday" || role === "member_starter" || role === "trial";
+  const isTherapy = role === "member_therapy";
 
   return (
     <Screen>
       <View style={styles.header}>
-        <Heading size="lg">{greeting(user?.name)}</Heading>
+        <Heading size="lg" style={{ flex: 1 }}>{greeting(user?.name)}</Heading>
+        {user && <NotificationBell count={data?.activity.unreadCount ?? 0} />}
       </View>
-      {user?.role === "member_therapy" ? (
-        <TherapyHome />
-      ) : user?.role === "member_everyday" || user?.role === "trial" ? (
-        <EverydayHome />
+
+      {!data && loading ? (
+        <LoadingView />
+      ) : !data && error ? (
+        <View style={{ flex: 1 }}>
+          <EmptyState title="Couldn't load your home" subtitle={error} />
+          <View style={{ paddingHorizontal: spacing.lg }}>
+            <Button variant="outline" onPress={reload}>Try again</Button>
+          </View>
+        </View>
+      ) : isTherapy ? (
+        <TherapyHome data={data!} loading={loading} reload={reload} />
+      ) : isEveryday ? (
+        <EverydayHome data={data!} loading={loading} reload={reload} />
       ) : (
-        <ExploreHome />
+        <ExploreHome data={data} />
       )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   eyebrow: { textTransform: "uppercase", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: spacing.xs, color: colors.secondary },
   trialBanner: { marginBottom: spacing.lg, backgroundColor: colors.accent, borderColor: colors.secondary },
   linkRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

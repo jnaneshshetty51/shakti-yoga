@@ -2,7 +2,14 @@ import React, { createContext, useContext, useEffect, useState, useCallback, typ
 import { api, getToken, setToken, ApiError } from "@/lib/api";
 import { registerForPush, unregisterForPush } from "@/lib/push";
 
-export type UserRole = "visitor" | "member_everyday" | "member_therapy" | "trial" | "admin" | "teacher";
+export type UserRole =
+  | "visitor"
+  | "member_everyday"
+  | "member_starter"
+  | "member_therapy"
+  | "trial"
+  | "admin"
+  | "teacher";
 
 export interface AppUser {
   id: string;

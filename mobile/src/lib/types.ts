@@ -106,3 +106,94 @@ export interface ContentComment {
   createdAt: string;
   mine: boolean;
 }
+
+// ---- Practices (/api/practices) --------------------------------------
+
+export type PracticeLevel = "BEGINNER" | "INTERMEDIATE" | "ALL_LEVELS";
+
+export interface PracticeView {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  steps: string | null;
+  category: string;
+  level: PracticeLevel;
+  durationMin: number;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  completed?: boolean;
+  completionCount?: number;
+}
+
+// ---- Challenges (/api/challenges) --------------------------------------
+
+export interface ChallengeView {
+  id: string;
+  title: string;
+  description: string | null;
+  goalType: "CLASSES" | "PRACTICES" | "PRACTICE_MINUTES";
+  goalLabel: string;
+  goalTarget: number;
+  startDate: string;
+  endDate: string;
+  imageUrl: string | null;
+  daysLeft: number;
+  participantCount: number;
+  joined: boolean;
+  progress: number;
+  completed: boolean;
+}
+
+// ---- Home aggregate (/api/me/home) ------------------------------------
+
+export interface HomeStreak {
+  currentStreakWeeks: number;
+  classesThisWeek: number;
+  attendedThisWeek: boolean;
+  starterLimit: number | null;
+}
+
+export interface HomeTherapyNext {
+  id: string;
+  date: string;
+  teacher: string;
+  type: "THERAPY_SESSION" | "CONSULTATION" | "SPECIAL_SESSION";
+  hasMeetingLink: boolean;
+  joinable: boolean;
+}
+
+export interface HomeChallenge {
+  id: string;
+  title: string;
+  goalLabel: string;
+  goalTarget: number;
+  progress: number;
+  daysLeft: number;
+  completed: boolean;
+}
+
+export interface HomeResponse {
+  role: string;
+  announcement: FeedItem | null;
+  content: {
+    featuredReel: FeedItem | null;
+    forYou: FeedItem[];
+    recommended: { category: string; items: FeedItem[] } | null;
+  };
+  activity: { unreadCount: number };
+  community: { name: string; whatsappLink: string; pinnedMessage: string | null } | null;
+  classes?: {
+    access: ClassAccess;
+    next: ClassView | null;
+    restToday: ClassView[];
+    sessionBalance: SessionBalance | null;
+  } | null;
+  streak?: HomeStreak | null;
+  therapy?: {
+    next: HomeTherapyNext | null;
+    completed: number;
+    creditsRemaining: number;
+  } | null;
+  activeChallenge?: HomeChallenge | null;
+}

@@ -15,7 +15,8 @@ export function runCta(cta: Cta): void {
       if (cta.blogId) router.push(`/content/${cta.blogId}`);
       break;
     case "open_practice":
-      router.push("/(tabs)/practice");
+      if (cta.practiceId) router.push(`/practice/${cta.practiceId}`);
+      else router.push("/practices");
       break;
     default:
       break;

@@ -18,7 +18,11 @@ function Row({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; l
 
 export default function MoreScreen() {
   const { user, logout } = useAuth();
-  const isMember = user?.role === "member_everyday" || user?.role === "member_therapy" || user?.role === "trial";
+  const isMember =
+    user?.role === "member_everyday" ||
+    user?.role === "member_starter" ||
+    user?.role === "member_therapy" ||
+    user?.role === "trial";
 
   return (
     <Screen>
@@ -37,6 +41,9 @@ export default function MoreScreen() {
         )}
 
         <Card style={styles.section}>
+          <Row icon="notifications-outline" label="Notifications" onPress={() => router.push("/activity")} />
+          <Row icon="leaf-outline" label="Practices" onPress={() => router.push("/practices")} />
+          <Row icon="trophy-outline" label="Challenges" onPress={() => router.push("/challenges")} />
           <Row icon="calendar-clear-outline" label="Calendar" onPress={() => router.push("/calendar")} />
           <Row icon="sparkles-outline" label="Workshops & Retreats" onPress={() => router.push("/events")} />
           <Row icon="bookmark-outline" label="Saved" onPress={() => router.push("/saved")} />
