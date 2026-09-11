@@ -6,6 +6,7 @@ import TargetAudience from "@/components/TargetAudience";
 export const dynamic = "force-dynamic";
 
 import Programs from "@/components/Programs";
+import VideoSection from "@/components/VideoSection";
 import WhyUs from "@/components/WhyUs";
 import Founder from "@/components/Founder";
 import ShaktiDifference from "@/components/ShaktiDifference";
@@ -24,6 +25,7 @@ export default function Home() {
     <main className="flex flex-col w-full">
       <Hero />
       <TargetAudience />
+      <VideoSection />
       <Programs />
       <WhyUs />
       <Founder />

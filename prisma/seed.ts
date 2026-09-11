@@ -62,6 +62,8 @@ async function main() {
       'superadmin@shaktiyoga.com',
       'staffadmin@shaktiyoga.com',
       'teacher@shaktiyoga.com',
+      'arun@shaktiyoga.com',
+      'ananya@shaktiyoga.com',
       'member.everyday@shaktiyoga.com',
       'member.therapy@shaktiyoga.com',
       'trial@shaktiyoga.com',
@@ -77,6 +79,9 @@ async function main() {
     }).catch(() => {});
     await prisma.referral.deleteMany({
       where: { OR: [{ referrer: { email: { in: seedEmails } } }, { referee: { email: { in: seedEmails } } }] },
+    }).catch(() => {});
+    await prisma.staffProfile.deleteMany({
+      where: { user: { email: { in: seedEmails } } },
     }).catch(() => {});
     await prisma.userProfile.deleteMany({
       where: { user: { email: { in: seedEmails } } },
@@ -96,6 +101,8 @@ async function main() {
     await prisma.blogPost.deleteMany({});
     await prisma.story.deleteMany({});
     await prisma.whatsAppGroup.deleteMany({});
+    await prisma.$executeRawUnsafe('DELETE FROM "SupportMessage"').catch(() => {});
+    await prisma.$executeRawUnsafe('DELETE FROM "SupportConversation"').catch(() => {});
     await prisma.booking.deleteMany({});
 
     // Now delete users
@@ -114,19 +121,30 @@ async function main() {
     throw error;
   }
 
-  // 1. SUPER_ADMIN
+  // 1. SUPER_ADMIN (Acharya Swastik - Founder & Master Acharya)
   const superAdmin = await prisma.user.create({
     data: {
-      name: 'Super Admin',
+      name: 'Acharya Swastik',
       email: 'superadmin@shaktiyoga.com',
       passwordHash: hashedPassword,
       role: Role.SUPER_ADMIN,
       phone: '+1234567890',
-      country: 'USA',
-      timezone: 'America/New_York',
+      country: 'India',
+      timezone: 'Asia/Kolkata',
+      avatarUrl: '/teachers/swastik.webp',
+      staffProfile: {
+        create: {
+          title: 'Founder & Lead Acharya',
+          bio: 'MSc in Yoga from Mangalore University. Dedicated to sharing the transformative wisdom of classical Hatha Yoga and the living Devi tradition from Udupi with students across the world.',
+          specialties: ['Classical Hatha', 'Pranayama', 'Yoga Philosophy', 'Meditation'],
+          yearsExperience: 15,
+          displayOrder: 1,
+          publicVisible: true,
+        },
+      },
     },
   });
-  console.log('✅ Created SUPER_ADMIN:', superAdmin.email);
+  console.log('✅ Created SUPER_ADMIN (Acharya Swastik):', superAdmin.email);
 
   // 2. STAFF_ADMIN
   const staffAdmin = await prisma.user.create({
@@ -136,25 +154,86 @@ async function main() {
       passwordHash: hashedPassword,
       role: Role.STAFF_ADMIN,
       phone: '+1234567891',
-      country: 'USA',
-      timezone: 'America/New_York',
+      country: 'India',
+      timezone: 'Asia/Kolkata',
     },
   });
   console.log('✅ Created STAFF_ADMIN:', staffAdmin.email);
 
-  // 3. TEACHER
+  // 3. TEACHER (Priya Sharma - Senior Hatha Instructor)
   const teacher = await prisma.user.create({
     data: {
-      name: 'Yoga Teacher',
+      name: 'Priya Sharma',
       email: 'teacher@shaktiyoga.com',
       passwordHash: hashedPassword,
       role: Role.TEACHER,
       phone: '+1234567892',
       country: 'India',
       timezone: 'Asia/Kolkata',
+      avatarUrl: '/teachers/priya.webp',
+      staffProfile: {
+        create: {
+          title: 'Senior Hatha & Pranayama Teacher',
+          bio: 'Guiding mindful movement, breath regulation and restorative asanas for busy professionals and overseas NRIs.',
+          specialties: ['Hatha Yoga', 'Pranayama', 'Restorative Yoga', 'Stress Relief'],
+          yearsExperience: 8,
+          displayOrder: 2,
+          publicVisible: true,
+        },
+      },
     },
   });
-  console.log('✅ Created TEACHER:', teacher.email);
+  console.log('✅ Created TEACHER (Priya Sharma):', teacher.email);
+
+  // 3b. TEACHER (Dr. Arun Joshi - Yoga Therapy Specialist)
+  const teacherArun = await prisma.user.create({
+    data: {
+      name: 'Dr. Arun Joshi',
+      email: 'arun@shaktiyoga.com',
+      passwordHash: hashedPassword,
+      role: Role.TEACHER,
+      phone: '+1234567897',
+      country: 'India',
+      timezone: 'Asia/Kolkata',
+      avatarUrl: '/teachers/arun.webp',
+      staffProfile: {
+        create: {
+          title: 'Yoga Therapy & Anatomy Specialist',
+          bio: 'Specializing in spine health, chronic back pain relief, sciatica recovery and personalized therapeutic alignment.',
+          specialties: ['Yoga Therapy', 'Back Pain Relief', 'Posture Correction', 'Therapeutic Alignment'],
+          yearsExperience: 11,
+          displayOrder: 3,
+          publicVisible: true,
+        },
+      },
+    },
+  });
+  console.log('✅ Created TEACHER (Dr. Arun Joshi):', teacherArun.email);
+
+  // 3c. TEACHER (Ananya Rao - Vinyasa Flow Teacher)
+  const teacherAnanya = await prisma.user.create({
+    data: {
+      name: 'Ananya Rao',
+      email: 'ananya@shaktiyoga.com',
+      passwordHash: hashedPassword,
+      role: Role.TEACHER,
+      phone: '+1234567898',
+      country: 'India',
+      timezone: 'Asia/Kolkata',
+      avatarUrl: '/teachers/ananya.webp',
+      staffProfile: {
+        create: {
+          title: 'Vinyasa Flow & Breathwork Teacher',
+          bio: 'Connecting dynamic breath with fluid movement to build strength, mobility, mental clarity and steady vitality.',
+          specialties: ['Vinyasa Flow', 'Breathwork', 'Mobility', 'Mindfulness'],
+          yearsExperience: 6,
+          displayOrder: 4,
+          publicVisible: true,
+        },
+      },
+    },
+  });
+  console.log('✅ Created TEACHER (Ananya Rao):', teacherAnanya.email);
 
   // 4. MEMBER_EVERYDAY
   const memberEveryday = await prisma.user.create({
@@ -166,6 +245,7 @@ async function main() {
       phone: '+1234567893',
       country: 'USA',
       timezone: 'America/Los_Angeles',
+      avatarUrl: '/stories/member1.jpg',
       subscription: {
         create: {
           planType: PlanType.EVERYDAY_YOGA,
@@ -196,6 +276,7 @@ async function main() {
       phone: '+1234567894',
       country: 'USA',
       timezone: 'America/New_York',
+      avatarUrl: '/stories/member2.jpg',
       subscription: {
         create: {
           planType: PlanType.YOGA_THERAPY,
@@ -434,6 +515,8 @@ async function main() {
       category: ContentCategory.MOBILITY,
       level: PracticeLevel.ALL_LEVELS,
       durationMin: 10,
+      videoUrl: '/videos/practice-preview.webm',
+      thumbnailUrl: '/blog/morning-yoga.jpg',
       status: 'PUBLISHED',
       publishedAt: now,
     },
@@ -447,6 +530,8 @@ async function main() {
       category: ContentCategory.SLEEP,
       level: PracticeLevel.BEGINNER,
       durationMin: 12,
+      videoUrl: '/videos/breath-flow.mp4',
+      thumbnailUrl: '/blog/beginners-guide.jpg',
       status: 'PUBLISHED',
       publishedAt: now,
     },
@@ -460,6 +545,8 @@ async function main() {
       category: ContentCategory.BREATHING,
       level: PracticeLevel.ALL_LEVELS,
       durationMin: 5,
+      videoUrl: '/videos/gentle-therapy.mp4',
+      thumbnailUrl: '/blog/back-pain.jpg',
       status: 'PUBLISHED',
       publishedAt: now,
     },
@@ -472,6 +559,7 @@ async function main() {
         type: ContentType.REEL, status: 'PUBLISHED', category: ContentCategory.BREATHING,
         title: '3-minute breath to calm the mind', caption: 'Try this before your evening class.',
         instagramUrl: 'https://www.instagram.com/reel/CexampleReel1/',
+        imageUrl: '/blog/morning-yoga.jpg',
         author: 'Shakti Yoga', pinned: true, publishedAt: now,
         ctaType: 'open_practice', ctaLabel: 'Do the full practice', relatedPracticeId: practiceBreath.id,
       },
@@ -479,6 +567,7 @@ async function main() {
         type: ContentType.REEL, status: 'PUBLISHED', category: ContentCategory.MOBILITY,
         title: 'Release tight hips in 60 seconds', caption: 'Save this for after sitting all day.',
         instagramUrl: 'https://www.instagram.com/reel/CexampleReel2/',
+        imageUrl: '/blog/back-pain.jpg',
         author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 86_400_000),
         ctaType: 'view_classes', ctaLabel: 'See the class schedule',
       },
@@ -486,6 +575,7 @@ async function main() {
         type: ContentType.POST, status: 'PUBLISHED', category: ContentCategory.WELLNESS,
         title: '5 things to do before your morning class',
         body: '1. Drink a glass of water.\n2. Skip the heavy breakfast — practice light.\n3. Roll out your mat the night before.\n4. Silence your phone.\n5. Take three slow breaths before you press *Join*.',
+        imageUrl: '/blog/beginners-guide.jpg',
         author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 2 * 86_400_000),
         ctaType: 'open_blog', ctaLabel: 'Read: benefits of morning yoga', relatedBlogId: blog1.id,
       },
@@ -493,6 +583,7 @@ async function main() {
         type: ContentType.ANNOUNCEMENT, status: 'PUBLISHED', category: ContentCategory.STUDIO,
         title: 'New: guided practices in the app',
         body: 'You can now do short guided practices on your own mat between classes — find them under Explore → Practices. Start with the Morning Wake-Up Flow.',
+        imageUrl: '/therapy.webp',
         author: 'Shakti Yoga', pinned: true, publishedAt: now,
       },
     ],

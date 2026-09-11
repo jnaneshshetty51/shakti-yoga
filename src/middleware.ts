@@ -15,8 +15,8 @@ function regionFromCountry(country: string | null | undefined): 'IN' | 'INTL' {
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const isApi = pathname.startsWith('/api/');
-    const needsAdmin = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
-    const needsTeacher = pathname.startsWith('/teacher') || pathname.startsWith('/api/teacher');
+    const needsAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/api/admin');
+    const needsTeacher = pathname === '/teacher' || pathname.startsWith('/teacher/') || pathname.startsWith('/api/teacher');
     const needsMember = pathname.startsWith('/dashboard');
     const needsAuth = needsAdmin || needsTeacher || needsMember;
 

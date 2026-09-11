@@ -1,7 +1,6 @@
 import PageHeader from "@/components/PageHeader";
 import YogaTherapy from "@/components/YogaTherapy";
 import Link from "next/link";
-
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -19,6 +18,34 @@ export default function TherapyPage() {
             />
 
             <YogaTherapy />
+
+            {/* Therapeutic Video Walkthrough */}
+            <section className="py-16 px-4 sm:px-8 bg-stone-900 text-white">
+                <div className="max-w-4xl mx-auto">
+                    <div className="text-center mb-8">
+                        <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">
+                            Therapeutic Methodology
+                        </span>
+                        <h2 className="font-serif text-2xl sm:text-3xl text-white font-bold">
+                            Inside a 1:1 Therapy Session
+                        </h2>
+                        <p className="text-white/70 text-sm mt-2 max-w-xl mx-auto">
+                            Observe how we use targeted micro-movements, alignment props, and breath pacing to relieve spine compression without strain.
+                        </p>
+                    </div>
+
+                    <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl border border-white/10">
+                        <video
+                            src="/videos/gentle-therapy.mp4"
+                            controls
+                            playsInline
+                            className="w-full h-full object-cover"
+                        >
+                            Your browser does not support HTML5 video.
+                        </video>
+                    </div>
+                </div>
+            </section>
 
             <section className="py-20 px-8 bg-accent/30">
                 <div className="max-w-4xl mx-auto text-center">

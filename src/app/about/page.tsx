@@ -70,14 +70,24 @@ export default function AboutPage() {
                                 a centre where every student is known, supported and guided on their own journey.
                             </p>
                         </div>
-                        <div className="relative bg-primary text-white rounded-3xl p-10 shadow-lg">
-                            <span className="absolute top-6 left-8 font-serif text-6xl text-secondary/60 leading-none select-none">&ldquo;</span>
-                            <p className="font-serif italic text-xl leading-relaxed relative z-10">
-                                A centre where students are known, supported and encouraged throughout their journey.
-                            </p>
-                            <p className="mt-6 font-sans text-xs uppercase tracking-widest text-secondary">
-                                — Acharya Swastik, Founder
-                            </p>
+                        <div className="relative aspect-[4/5] w-full max-w-md mx-auto rounded-3xl overflow-hidden shadow-xl border-4 border-white">
+                            <Image
+                                src="/founder.webp"
+                                alt="Acharya Swastik, Founder of Shakti Yoga Kendra"
+                                fill
+                                className="object-cover"
+                                sizes="(min-width: 768px) 40vw, 90vw"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            <div className="absolute bottom-6 left-6 right-6 text-white">
+                                <span className="text-secondary text-4xl font-serif leading-none select-none">&ldquo;</span>
+                                <p className="font-serif italic text-base sm:text-lg leading-relaxed text-white/95">
+                                    A centre where students are known, supported and encouraged throughout their journey.
+                                </p>
+                                <p className="mt-3 font-sans text-xs uppercase tracking-widest text-secondary font-semibold">
+                                    — Acharya Swastik, Founder
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

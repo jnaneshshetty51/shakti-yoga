@@ -13,7 +13,7 @@ export default async function YogaTherapy() {
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12">
                 <div className="flex-1 relative h-[260px] sm:h-[380px] md:h-[500px] w-full rounded-lg overflow-hidden shadow-xl">
                     <Image
-                        src="/philosophy.webp"
+                        src="/therapy.webp"
                         alt="Yoga Therapy Session"
                         fill
                         className="object-cover"

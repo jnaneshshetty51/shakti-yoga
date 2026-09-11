@@ -1,6 +1,5 @@
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
-
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -25,6 +24,46 @@ export default function ClassesPage() {
                 subtitle="Join our vibrant community from anywhere in the world. Live, interactive, and energizing."
             />
 
+            {/* Video Class Preview Section */}
+            <section className="py-12 sm:py-16 px-4 sm:px-8 bg-stone-900 text-white">
+                <div className="max-w-4xl mx-auto">
+                    <div className="text-center mb-8">
+                        <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Class Preview</span>
+                        <h2 className="font-serif text-2xl sm:text-3xl text-white font-bold">What to Expect on Your Mat</h2>
+                        <p className="text-white/70 text-sm mt-2 max-w-xl mx-auto">
+                            Authentic, steady movement synchronized with breath. Our teachers observe your camera feed and offer verbal postural cues throughout.
+                        </p>
+                    </div>
+
+                    <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl border border-white/10">
+                        <video
+                            src="/videos/practice-preview.webm"
+                            controls
+                            playsInline
+                            className="w-full h-full object-cover"
+                        >
+                            Your browser does not support HTML5 video.
+                        </video>
+                    </div>
+
+                    <div className="grid sm:grid-cols-3 gap-4 mt-6 text-xs text-white/80 text-center sm:text-left">
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                            <span className="text-emerald-400 font-bold block mb-1">✦ Real-time feedback</span>
+                            Teachers guide postural adjustments through live video.
+                        </div>
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                            <span className="text-emerald-400 font-bold block mb-1">✦ Guided Pranayama</span>
+                            Every session closes with 10 mins of breathwork.
+                        </div>
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                            <span className="text-emerald-400 font-bold block mb-1">✦ Class recordings</span>
+                            Available for 24 hours if you ever miss a morning slot.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Schedule Section */}
             <section className="py-12 sm:py-20 px-4 sm:px-8 bg-background">
                 <div className="max-w-4xl mx-auto">
                     <h2 className="font-serif text-2xl sm:text-3xl text-primary text-center mb-8 sm:mb-12">Daily Schedule (Mon-Fri)</h2>
@@ -54,7 +93,7 @@ export default function ClassesPage() {
 
                     <div className="mt-8 sm:mt-12 text-center">
                         <p className="font-sans text-xs sm:text-sm text-text/70 mb-6">
-                            * All classes are conducted live via Zoom. Recordings are available for 24 hours.
+                            * All classes are conducted live via Google Meet. Recordings are available for 24 hours.
                         </p>
                         <Link href="/programs" className="inline-block w-full sm:w-auto px-8 py-3.5 bg-secondary text-white font-sans font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors text-center text-sm">
                             View Pricing Plans
