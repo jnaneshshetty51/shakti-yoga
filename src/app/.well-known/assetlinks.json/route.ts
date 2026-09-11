@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
  */
 export const dynamic = 'force-dynamic';
 
-const PACKAGE = (process.env.ANDROID_PACKAGE || 'in.shaktiyoga.app').trim();
+const PACKAGE = (process.env.ANDROID_PACKAGE || 'com.shaktiyoga.app').trim();
 
 function fingerprints(): string[] {
     return (process.env.ANDROID_SHA256_CERT_FINGERPRINTS || '')

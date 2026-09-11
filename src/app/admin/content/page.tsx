@@ -22,7 +22,7 @@ type WhatsAppGroup = {
 };
 type ContentRow = {
     id: string; contentType: Subtype; title: string; body: string; caption: string;
-    category: string; status: string; instagramUrl: string; imageUrl: string;
+    category: string; status: string; instagramUrl: string; imageUrl: string; videoUrl: string;
     ctaType: string; ctaLabel: string; relatedBlogId: string; author: string;
     tags: string; pinned: boolean; notifyOnPublish: boolean;
     important?: boolean; audience?: string; mediaUrls?: string; expiresAt?: string | null;
@@ -103,7 +103,8 @@ function contentFields(subtype: Subtype, blogOptions: { label: string; value: st
     const media: FieldDef[] =
         subtype === "REEL"
             ? [
-                  { name: "instagramUrl", label: "Instagram URL", required: true, placeholder: "https://www.instagram.com/reel/…" },
+                  { name: "videoUrl", label: "Video (self-hosted, plays natively in the app)", type: "video" },
+                  { name: "instagramUrl", label: "Instagram URL (optional — shown as \"View on Instagram\")", placeholder: "https://www.instagram.com/reel/…" },
                   { name: "caption", label: "Caption", type: "textarea" },
                   { name: "imageUrl", label: "Thumbnail", type: "image" },
               ]
@@ -142,7 +143,7 @@ const SUBTYPE_LABEL: Record<Subtype, string> = { REEL: "Reel", POST: "Post", ANN
 function contentInitial(r: ContentRow): EntityValues {
     return {
         title: r.title, category: r.category, body: r.body, caption: r.caption,
-        instagramUrl: r.instagramUrl, imageUrl: r.imageUrl, ctaType: r.ctaType || "none",
+        instagramUrl: r.instagramUrl, imageUrl: r.imageUrl, videoUrl: r.videoUrl, ctaType: r.ctaType || "none",
         ctaLabel: r.ctaLabel, relatedBlogId: r.relatedBlogId, tags: r.tags,
         author: r.author, pinned: r.pinned, status: r.status,
         notifyOnPublish: r.notifyOnPublish,
@@ -558,6 +559,14 @@ export default function AdminContentPage() {
                         fd.append("kind", activeTab === "story" ? "story" : activeTab === "content" ? "content" : "blog");
                         fd.append("file", file);
                         const res = await fetch("/api/admin/content/image", { method: "POST", body: fd });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Upload failed");
+                        return data.url as string;
+                    }}
+                    uploadVideo={async (file) => {
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        const res = await fetch("/api/admin/content/video", { method: "POST", body: fd });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Upload failed");
                         return data.url as string;

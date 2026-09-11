@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, View, TextInput, Pressable, Share, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -12,6 +13,27 @@ import { runCta, ctaLabel } from "@/lib/contentCta";
 import { toParagraphs } from "@/lib/text";
 import { colors, spacing, radius } from "@/theme";
 import type { FeedItem, ContentComment } from "@/lib/types";
+
+/** Native self-hosted Reel player — the primary "plays in the app" experience. */
+function ReelVideo({ uri }: { uri: string }) {
+  const { width } = useWindowDimensions();
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{
+        width: width - spacing.lg * 2,
+        height: 320,
+        borderRadius: radius.control,
+        marginTop: spacing.md,
+        backgroundColor: colors.border,
+      }}
+      nativeControls
+    />
+  );
+}
 
 /** Hero image + any extra carousel images on a post/announcement/reel. */
 function ContentImages({ item }: { item: FeedItem }) {
@@ -69,14 +91,18 @@ export default function ContentDetailScreen() {
             {item.publishedAt ? ` · ${new Date(item.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}
           </BodyText>
 
-          <ContentImages item={item} />
+          {item.kind === "reel" && item.videoUrl ? (
+            <ReelVideo uri={mediaUri(item.videoUrl)!} />
+          ) : (
+            <ContentImages item={item} />
+          )}
 
           {item.kind === "reel" && (
             <View style={{ marginTop: spacing.md }}>
               {item.caption && <BodyText>{item.caption}</BodyText>}
               {item.instagramUrl && (
-                <Button style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(item.instagramUrl!)}>
-                  Watch on Instagram
+                <Button variant={item.videoUrl ? "outline" : "primary"} style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(item.instagramUrl!)}>
+                  View on Instagram
                 </Button>
               )}
             </View>

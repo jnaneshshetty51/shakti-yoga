@@ -50,6 +50,7 @@ export type FeedItem =
           category: ContentCategory;
           instagramUrl: string | null;
           imageUrl: string | null;
+          videoUrl: string | null;
           author: string;
           tags: string[];
           publishedAt: string | null;
@@ -129,6 +130,7 @@ export function serializeContent(
             category: row.category,
             instagramUrl: row.instagramUrl,
             imageUrl: row.imageUrl,
+            videoUrl: row.videoUrl,
             author: row.author,
             tags: row.tags,
             publishedAt,

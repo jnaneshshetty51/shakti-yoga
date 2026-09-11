@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { FaInstagram, FaYoutube, FaFacebook, FaWhatsapp, FaCreditCard, FaLock } from 'react-icons/fa';
 import { SiRazorpay } from 'react-icons/si';
 import NewsletterSignup from './NewsletterSignup';
+import { getSocialLinks } from '@/lib/settings';
 
-export default function Footer() {
+export default async function Footer() {
+    const social = await getSocialLinks();
     return (
         <footer className="bg-primary text-white pt-12 sm:pt-16 pb-8 px-4 sm:px-8 md:px-16 mt-auto border-t border-white/10">
             <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12 mb-12 sm:mb-16">
@@ -18,10 +20,10 @@ export default function Footer() {
                         Yoga is not just a practice. It’s a way of life. Whether you seek stress relief, physical well-being, or a deeper connection to yourself, Shakti Yoga Kendra welcomes you to embark on this journey with us.
                     </p>
                     <div className="flex gap-3">
-                        <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Instagram"><FaInstagram /></a>
-                        <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="YouTube"><FaYoutube /></a>
-                        <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Facebook"><FaFacebook /></a>
-                        <a href="https://wa.me/917760222478" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="WhatsApp"><FaWhatsapp /></a>
+                        <a href={social.instagram || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Instagram"><FaInstagram /></a>
+                        <a href={social.youtube || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="YouTube"><FaYoutube /></a>
+                        <a href={social.facebook || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="Facebook"><FaFacebook /></a>
+                        <a href={social.whatsapp || "#"} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors" aria-label="WhatsApp"><FaWhatsapp /></a>
                     </div>
                 </div>
 

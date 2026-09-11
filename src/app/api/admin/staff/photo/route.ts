@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     try {
         const key = `staff/${staffId}-${Date.now()}.${img.ext}`;
-        const storedKey = await uploadFile(img.file, key, { contentType: img.contentType });
+        const storedKey = await uploadFile(img.buffer, key, { contentType: img.contentType });
         const src = mediaSrc(storedKey);
 
         await prisma.user.update({ where: { id: staffId }, data: { avatarUrl: src } });

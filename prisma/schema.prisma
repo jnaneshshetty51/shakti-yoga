@@ -528,8 +528,9 @@ model Content {
   body    String? // POST / ANNOUNCEMENT copy (markdown-lite). null for REEL.
   caption String? // REEL one-liner under the thumbnail
 
-  instagramUrl String? // https://www.instagram.com/reel/XXXX/
+  instagramUrl String? // https://www.instagram.com/reel/XXXX/ — optional "View on Instagram" link
   imageUrl     String? // REEL thumbnail / POST + ANNOUNCEMENT hero (as /api/media/<key>)
+  videoUrl     String? // REEL self-hosted clip (as /api/media/<key>) — plays natively in the app
   mediaUrls    String[] @default([]) // POST carousel (Phase 2)
 
   ctaType          String? // 'join_next_class' | 'view_classes' | 'book_therapy' | 'open_blog' | 'open_practice' | 'none'

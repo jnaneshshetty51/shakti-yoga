@@ -82,7 +82,7 @@ interface FeedSocial {
 }
 
 export type FeedItem =
-  | (FeedCommon & FeedSocial & { kind: "reel"; caption: string | null; instagramUrl: string | null })
+  | (FeedCommon & FeedSocial & { kind: "reel"; caption: string | null; instagramUrl: string | null; videoUrl: string | null })
   | (FeedCommon & FeedSocial & { kind: "post" | "announcement"; body: string | null; mediaUrls: string[] })
   | (FeedCommon & {
       kind: "blog";

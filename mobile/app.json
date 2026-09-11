@@ -11,6 +11,7 @@
       "bundleIdentifier": "com.shaktiyoga.app",
       "buildNumber": "1",
       "supportsTablet": true,
+      "associatedDomains": ["applinks:shaktiyoga.in"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Shakti Yoga uses your photo library so you can set a profile picture.",
@@ -35,6 +36,18 @@
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "shaktiyoga.in", "pathPrefix": "/content" },
+            { "scheme": "https", "host": "shaktiyoga.in", "pathPrefix": "/r" },
+            { "scheme": "https", "host": "shaktiyoga.in", "pathPrefix": "/reset-password" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -79,7 +92,8 @@
           "calendarPermission": "Shakti Yoga adds your classes, therapy sessions and retreats to your device calendar when you choose to."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-video"
     ],
     "extra": {
       "router": {},

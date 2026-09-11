@@ -15,7 +15,18 @@ interface Settings {
     flag_showStarter: string;
     flag_showFamily: string;
     flag_trialPaywallDay: string;
+    social_instagram_url: string;
+    social_youtube_url: string;
+    social_facebook_url: string;
+    social_whatsapp_url: string;
 }
+
+const SOCIAL_META: { key: keyof Settings; label: string; placeholder: string }[] = [
+    { key: "social_instagram_url", label: "Instagram", placeholder: "https://instagram.com/shaktiyogakendra" },
+    { key: "social_youtube_url", label: "YouTube", placeholder: "https://youtube.com/@shaktiyogakendra" },
+    { key: "social_facebook_url", label: "Facebook", placeholder: "https://facebook.com/shaktiyogakendra" },
+    { key: "social_whatsapp_url", label: "WhatsApp", placeholder: "https://wa.me/91XXXXXXXXXX" },
+];
 
 const FLAG_META: { key: keyof Settings; label: string; hint: string; type: "bool" | "num" }[] = [
     { key: "flag_iapEnabled", label: "In-app purchases", hint: "Use Apple/Google billing in the app where available (else web checkout)", type: "bool" },
@@ -44,6 +55,8 @@ function SettingsInner() {
         teacher_rate_class: "500", teacher_rate_session: "800",
         flag_iapEnabled: "true", flag_annualDefault: "true", flag_showStarter: "true",
         flag_showFamily: "true", flag_trialPaywallDay: "6",
+        social_instagram_url: "", social_youtube_url: "", social_facebook_url: "",
+        social_whatsapp_url: "https://wa.me/917760222478",
     });
     const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, minio: false });
     const [loading, setLoading] = useState(true);
@@ -198,6 +211,25 @@ function SettingsInner() {
                                     </div>
                                 ),
                             )}
+                        </div>
+
+                        <div className="pt-5 border-t border-gray-100 space-y-3">
+                            <h3 className="font-bold text-gray-800">Social Links</h3>
+                            <p className="text-xs text-gray-500">Shown in the website footer. Leave blank to hide an icon.</p>
+                            <div className="grid sm:grid-cols-2 gap-4">
+                                {SOCIAL_META.map((f) => (
+                                    <div key={f.key}>
+                                        <label className={labelClass}>{f.label}</label>
+                                        <input
+                                            type="url"
+                                            value={settings[f.key]}
+                                            placeholder={f.placeholder}
+                                            onChange={(e) => setSettings((s) => ({ ...s, [f.key]: e.target.value }))}
+                                            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="pt-5 border-t border-gray-100 space-y-3">

@@ -19,6 +19,10 @@ const DEFAULTS: Record<string, string> = {
     flag_showStarter: 'true',
     flag_showFamily: 'true',
     flag_trialPaywallDay: '6',
+    social_instagram_url: '',
+    social_youtube_url: '',
+    social_facebook_url: '',
+    social_whatsapp_url: 'https://wa.me/917760222478',
 };
 
 export async function GET() {

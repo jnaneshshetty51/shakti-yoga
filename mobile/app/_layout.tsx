@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as Linking from "expo-linking";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -8,7 +9,7 @@ import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { isAppLockOn, authenticateIfLocked } from "@/lib/appLock";
-import { resolveNotificationPath } from "@/lib/deepLink";
+import { resolveNotificationPath, resolveIncomingUrl } from "@/lib/deepLink";
 import { spacing } from "@/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -40,6 +41,39 @@ function NotificationRouter() {
     if (user) setTimeout(() => router.push(path), 0);
     else pending.current = path;
   }, [response, user, isLoading, router]);
+
+  useEffect(() => {
+    if (user && !isLoading && pending.current) {
+      const path = pending.current;
+      pending.current = null;
+      setTimeout(() => router.push(path), 0);
+    }
+  }, [user, isLoading, router]);
+
+  return null;
+}
+
+/**
+ * Routes an incoming Universal/App Link or shaktiyoga:// URL (cold-start or
+ * tapped while running) to the right screen. Mirrors NotificationRouter's
+ * pending-queue pattern so a link tapped before login replays after auth.
+ */
+function UrlRouter() {
+  const url = Linking.useURL();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const handled = useRef<string | null>(null);
+  const pending = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!url || isLoading) return;
+    if (handled.current === url) return;
+    handled.current = url;
+    const path = resolveIncomingUrl(url);
+    if (path === "/(tabs)") return; // nothing meaningful to route to
+    if (user) setTimeout(() => router.push(path), 0);
+    else pending.current = path;
+  }, [url, user, isLoading, router]);
 
   useEffect(() => {
     if (user && !isLoading && pending.current) {
@@ -122,6 +156,7 @@ export default function RootLayout() {
           <LockGate>
             <StatusBar style="dark" />
             <NotificationRouter />
+            <UrlRouter />
             <Stack screenOptions={{ headerShown: false }} />
           </LockGate>
         </AuthGate>

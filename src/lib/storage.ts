@@ -61,6 +61,8 @@ const ALLOWED_CONTENT_TYPES = new Set([
     "image/webp",
     "image/gif",
     "application/pdf",
+    "video/mp4",
+    "video/quicktime",
 ]);
 
 /**
@@ -86,19 +88,31 @@ export function mediaSrc(key: string): string {
     return `/api/media/${key}`;
 }
 
-/** Fetch an object's stream + metadata (SigV4-signed request to MinIO). */
-export async function getObjectStream(key: string): Promise<{
+/**
+ * Fetch an object's stream + metadata (SigV4-signed request to MinIO).
+ * Pass `range` (e.g. "bytes=0-1023", straight from the incoming request's
+ * Range header) to fetch a byte range instead of the whole object — needed
+ * for video seeking/streaming. When a range was honored, `contentRange` and
+ * `partial: true` are set so the caller can respond 206 instead of 200.
+ */
+export async function getObjectStream(key: string, range?: string | null): Promise<{
     body: ReadableStream | null;
     contentType?: string;
     contentLength?: number;
+    contentRange?: string;
+    partial: boolean;
 }> {
-    const res = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+    const res = await s3Client.send(
+        new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key, ...(range ? { Range: range } : {}) }),
+    );
     const node = res.Body as Readable | undefined;
     return {
         // In the Node runtime the SDK gives a Node Readable; convert to a web stream.
         body: node ? (Readable.toWeb(node) as unknown as ReadableStream) : null,
         contentType: res.ContentType,
         contentLength: typeof res.ContentLength === "number" ? res.ContentLength : undefined,
+        contentRange: res.ContentRange,
+        partial: !!res.ContentRange,
     };
 }
 
@@ -108,10 +122,12 @@ interface UploadOpts {
 
 /**
  * Store a file under `prefix/` with a random name. Returns the object KEY
- * (wrap with mediaSrc() for an <img src>).
+ * (wrap with mediaSrc() for an <img src>). Pass a `Buffer` directly when the
+ * caller already read one (e.g. to sniff magic bytes) — avoids re-buffering
+ * the same (possibly large) upload a second time.
  */
 export async function uploadFile(
-    file: File | Blob,
+    file: File | Blob | Buffer,
     key: string,
     opts: UploadOpts,
 ): Promise<string> {
@@ -122,7 +138,7 @@ export async function uploadFile(
 
     try {
         await ensureBucket();
-        const buffer = Buffer.from(await file.arrayBuffer());
+        const buffer = Buffer.isBuffer(file) ? file : Buffer.from(await file.arrayBuffer());
         await s3Client.send(
             new PutObjectCommand({
                 Bucket: BUCKET_NAME,

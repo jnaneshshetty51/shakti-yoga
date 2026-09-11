@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         if (!img.ok) return NextResponse.json({ error: img.error }, { status: img.status });
 
         const key = `avatars/${payload.id}-${Date.now()}.${img.ext}`;
-        const storedKey = await uploadFile(img.file, key, { contentType: img.contentType });
+        const storedKey = await uploadFile(img.buffer, key, { contentType: img.contentType });
         const src = mediaSrc(storedKey);
 
         const previous = await prisma.user.findUnique({

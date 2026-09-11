@@ -139,6 +139,7 @@ export async function GET() {
                 caption: row.caption || '',
                 instagramUrl: row.instagramUrl || '',
                 imageUrl: row.imageUrl || '',
+                videoUrl: row.videoUrl || '',
                 ctaType: row.ctaType || 'none',
                 ctaLabel: row.ctaLabel || '',
                 relatedBlogId: row.relatedBlogId || '',
@@ -183,6 +184,13 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         ? (typeof body.imageUrl === 'string' && toStorageKey(body.imageUrl)
             ? mediaSrc(toStorageKey(body.imageUrl)!)
             : (body.imageUrl === '' ? null : undefined))
+        : undefined;
+    // Same pattern for the REEL's self-hosted video — only accept a media
+    // path we produced (the content-video upload endpoint), or '' to clear.
+    const videoUrl = has('videoUrl')
+        ? (typeof body.videoUrl === 'string' && toStorageKey(body.videoUrl)
+            ? mediaSrc(toStorageKey(body.videoUrl)!)
+            : (body.videoUrl === '' ? null : undefined))
         : undefined;
 
     if (type === 'story') {
@@ -270,6 +278,20 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         if (subtype === 'REEL' && igRaw && !INSTAGRAM_RE.test(igRaw)) {
             throw new Error('Instagram URL must look like https://www.instagram.com/reel/XXXX/');
         }
+        if (subtype === 'REEL') {
+            // A Reel needs at least one playable/linkable asset. `videoUrl` may be
+            // `undefined` here meaning "not touched by this request" (partial
+            // update) — in that case fall back to what's already stored.
+            let effectiveVideo = videoUrl;
+            if (effectiveVideo === undefined) {
+                effectiveVideo = isCreate
+                    ? null
+                    : ((await prisma.content.findUnique({ where: { id }, select: { videoUrl: true } }))?.videoUrl ?? null);
+            }
+            if (!effectiveVideo && !igRaw) {
+                throw new Error('A Reel needs either an uploaded video or an Instagram URL.');
+            }
+        }
         const relatedBlogId = cap(body.relatedBlogId, 40) || null;
 
         // Scheduling: a future `scheduledAt` parks the item as a DRAFT until the
@@ -309,6 +331,7 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
                     ...common,
                     publishedAt: status === 'PUBLISHED' ? new Date() : null,
                     ...(imageUrl !== undefined ? { imageUrl } : {}),
+                    ...(videoUrl !== undefined ? { videoUrl } : {}),
                 },
             });
             if (created.status === 'PUBLISHED') void notifyContentPublished(created.id);
@@ -317,6 +340,7 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         const current = await prisma.content.findUnique({ where: { id }, select: { publishedAt: true } });
         const data: Record<string, unknown> = { ...common };
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
+        if (videoUrl !== undefined) data.videoUrl = videoUrl;
         if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
         if (status !== 'PUBLISHED') data.publishedAt = null;
         const updated = await prisma.content.update({ where: { id }, data });
@@ -390,9 +414,9 @@ export async function DELETE(request: Request) {
         if (type === 'story') await prisma.story.delete({ where: { id } });
         else if (type === 'blog') await prisma.blogPost.delete({ where: { id } });
         else if (type === 'content') {
-            const row = await prisma.content.findUnique({ where: { id }, select: { imageUrl: true, mediaUrls: true } });
+            const row = await prisma.content.findUnique({ where: { id }, select: { imageUrl: true, videoUrl: true, mediaUrls: true } });
             await prisma.content.delete({ where: { id } });
-            for (const url of [row?.imageUrl, ...(row?.mediaUrls ?? [])]) {
+            for (const url of [row?.imageUrl, row?.videoUrl, ...(row?.mediaUrls ?? [])]) {
                 if (url) await deleteFile(url).catch(() => {});
             }
         }

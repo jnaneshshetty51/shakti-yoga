@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image";
+export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image" | "video";
 
 export interface FieldDef {
     name: string;
@@ -24,6 +24,8 @@ interface Props {
     onSubmit: (values: EntityValues) => Promise<void>;
     /** Required if any field has type "image". Uploads the file, returns its URL. */
     uploadImage?: (file: File) => Promise<string>;
+    /** Required if any field has type "video". Uploads the file, returns its URL. */
+    uploadVideo?: (file: File) => Promise<string>;
 }
 
 export default function EntityFormModal({
@@ -34,6 +36,7 @@ export default function EntityFormModal({
     onCancel,
     onSubmit,
     uploadImage,
+    uploadVideo,
 }: Props) {
     const [uploading, setUploading] = useState<string | null>(null);
     const [values, setValues] = useState<EntityValues>(() => {
@@ -138,6 +141,40 @@ export default function EntityFormModal({
                                                 setError(null);
                                                 try {
                                                     set(f.name, await uploadImage(file));
+                                                } catch (err) {
+                                                    setError(err instanceof Error ? err.message : "Upload failed");
+                                                } finally {
+                                                    setUploading(null);
+                                                }
+                                            }}
+                                            className="text-xs"
+                                        />
+                                        {uploading === f.name && <p className="text-xs text-gray-400">Uploading…</p>}
+                                        {values[f.name] && (
+                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-gray-400 hover:text-red-500">
+                                                remove
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : f.type === "video" ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="w-24 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 text-xs text-center px-1">
+                                        {values[f.name] ? "video attached" : "none"}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <input
+                                            type="file"
+                                            accept="video/mp4,video/quicktime"
+                                            disabled={!uploadVideo || uploading === f.name}
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                e.target.value = "";
+                                                if (!file || !uploadVideo) return;
+                                                setUploading(f.name);
+                                                setError(null);
+                                                try {
+                                                    set(f.name, await uploadVideo(file));
                                                 } catch (err) {
                                                     setError(err instanceof Error ? err.message : "Upload failed");
                                                 } finally {

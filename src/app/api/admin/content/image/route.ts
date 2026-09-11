@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     try {
         const key = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${img.ext}`;
-        const storedKey = await uploadFile(img.file, key, { contentType: img.contentType });
+        const storedKey = await uploadFile(img.buffer, key, { contentType: img.contentType });
         return NextResponse.json({ url: mediaSrc(storedKey) });
     } catch (error) {
         console.error('Content image upload error:', error);

@@ -7,3 +7,9 @@ export const SITE_NAME = 'Shakti Yoga';
 export const SITE_TAGLINE = 'Premium online yoga & 1:1 yoga therapy, live from India';
 export const SITE_DESCRIPTION =
     'Everyday live yoga classes and personalised 1:1 yoga therapy for NRIs and seekers worldwide — taught from India, joined over Google Meet.';
+
+/** Canonical public URL for a Content item (reel/post/announcement) — used for
+ *  share links, push/notification targets and Universal Link fallbacks. */
+export function contentUrl(id: string): string {
+    return `${SITE_URL}/content/${id}`;
+}
