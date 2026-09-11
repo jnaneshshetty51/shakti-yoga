@@ -6,6 +6,7 @@ import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
 import { isCtaType, toContentCategory, serializeContent } from '@/lib/content';
 import { notifyContentPublished } from '@/lib/content-notify';
+import { truncate as cap } from '@/lib/validation';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 type ContentType = 'story' | 'blog' | 'whatsapp' | 'content';
@@ -171,12 +172,6 @@ export async function GET() {
         console.error('Admin content API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-}
-
-/** Coerce to a trimmed string with a hard length cap; '' -> null upstream. */
-function cap(v: unknown, max: number): string {
-    const s = typeof v === 'string' ? v : v == null ? '' : String(v);
-    return s.slice(0, max).trim();
 }
 
 async function upsertContent(type: ContentType, body: Record<string, unknown>, isCreate: boolean) {

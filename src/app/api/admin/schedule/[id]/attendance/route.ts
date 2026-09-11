@@ -53,10 +53,21 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
             }))
         : [];
 
-    // Resolve any "add this member" emails to a PRESENT decision.
-    for (const email of Array.isArray(body.addEmails) ? body.addEmails : []) {
-        const u = await prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() }, select: { id: true } });
-        if (u && !decisions.some((d) => d.userId === u.id)) decisions.push({ userId: u.id, status: 'PRESENT' });
+    // Resolve any "add this member" emails to a PRESENT decision — one batched
+    // lookup instead of a sequential query per email.
+    const addEmails: string[] = Array.isArray(body.addEmails)
+        ? body.addEmails.map((e: unknown) => String(e).trim().toLowerCase()).filter(Boolean)
+        : [];
+    if (addEmails.length > 0) {
+        const users = await prisma.user.findMany({
+            where: { email: { in: addEmails } },
+            select: { id: true, email: true },
+        });
+        const byEmail = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
+        for (const email of addEmails) {
+            const userId = byEmail.get(email);
+            if (userId && !decisions.some((d) => d.userId === userId)) decisions.push({ userId, status: 'PRESENT' });
+        }
     }
 
     if (decisions.length === 0) return NextResponse.json({ error: 'Nothing to confirm.' }, { status: 400 });

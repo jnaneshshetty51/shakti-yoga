@@ -23,34 +23,44 @@ export async function GET() {
         orderBy: { startDate: 'desc' },
     });
 
-    const groups = await Promise.all(
-        owners.map(async (owner) => {
-            const seats = await prisma.subscription.findMany({
-                where: { familyOwnerId: owner.userId },
-                include: { user: { select: { id: true, name: true, email: true } } },
-                orderBy: { startDate: 'asc' },
-            });
-            return {
-                id: owner.id,
-                ownerId: owner.userId,
-                ownerName: owner.user.name,
-                ownerEmail: owner.user.email,
-                status: owner.status,
-                renewalDate: owner.renewalDate,
-                inviteCode: owner.familyInviteCode,
-                seatsUsed: 1 + seats.length,
-                seatsTotal: SEATS_TOTAL,
-                members: seats.map((s) => ({
-                    id: s.id,
-                    userId: s.userId,
-                    name: s.user.name,
-                    email: s.user.email,
-                    status: s.status,
-                    renewalDate: s.renewalDate,
-                })),
-            };
-        }),
-    );
+    // One batched query for every seat across every family, grouped in memory,
+    // instead of one findMany per owner (N+1 on the admin family page).
+    const allSeats = owners.length
+        ? await prisma.subscription.findMany({
+              where: { familyOwnerId: { in: owners.map((o) => o.userId) } },
+              include: { user: { select: { id: true, name: true, email: true } } },
+              orderBy: { startDate: 'asc' },
+          })
+        : [];
+    const seatsByOwner = new Map<string, typeof allSeats>();
+    for (const seat of allSeats) {
+        const list = seatsByOwner.get(seat.familyOwnerId!) ?? [];
+        list.push(seat);
+        seatsByOwner.set(seat.familyOwnerId!, list);
+    }
+
+    const groups = owners.map((owner) => {
+        const seats = seatsByOwner.get(owner.userId) ?? [];
+        return {
+            id: owner.id,
+            ownerId: owner.userId,
+            ownerName: owner.user.name,
+            ownerEmail: owner.user.email,
+            status: owner.status,
+            renewalDate: owner.renewalDate,
+            inviteCode: owner.familyInviteCode,
+            seatsUsed: 1 + seats.length,
+            seatsTotal: SEATS_TOTAL,
+            members: seats.map((s) => ({
+                id: s.id,
+                userId: s.userId,
+                name: s.user.name,
+                email: s.user.email,
+                status: s.status,
+                renewalDate: s.renewalDate,
+            })),
+        };
+    });
 
     return NextResponse.json({ groups });
 }
@@ -68,16 +78,19 @@ export async function PATCH(request: Request) {
     const audit = auditAs({ id: admin.id, email: admin.email }, request);
 
     if (action === 'resetCode') {
-        let code = owner.familyInviteCode;
-        for (let i = 0; i < 6; i++) {
+        let saved: string | null = null;
+        for (let i = 0; i < 6 && !saved; i++) {
+            const candidate = inviteCode();
             try {
-                code = inviteCode();
-                await prisma.subscription.update({ where: { userId: owner.userId }, data: { familyInviteCode: code } });
-                break;
-            } catch { /* clash — retry */ }
+                await prisma.subscription.update({ where: { userId: owner.userId }, data: { familyInviteCode: candidate } });
+                saved = candidate; // only set once the write actually succeeds
+            } catch { /* unique clash — retry with a new candidate */ }
+        }
+        if (!saved) {
+            return NextResponse.json({ error: 'Could not generate a unique invite code. Try again.' }, { status: 500 });
         }
         await audit({ action: 'family.code.reset', entity: 'Subscription', entityId: owner.id });
-        return NextResponse.json({ ok: true, inviteCode: code });
+        return NextResponse.json({ ok: true, inviteCode: saved });
     }
 
     if (action === 'cancel') {

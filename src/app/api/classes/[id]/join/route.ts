@@ -51,6 +51,23 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
             );
         }
 
+        // Capacity gate: instance-level capacity overrides the batch default;
+        // null on both means uncapped. Someone already checked in (re-joining
+        // the same instance) is never blocked by this — only a brand-new join is.
+        const capacity = instance.capacity ?? instance.batch.capacity;
+        if (!isStaff && capacity != null && instance.attendanceCount >= capacity) {
+            const already = await prisma.classAttendance.findUnique({
+                where: { userId_classInstanceId: { userId: session.id, classInstanceId: instance.id } },
+                select: { id: true },
+            });
+            if (!already) {
+                return NextResponse.json(
+                    { error: 'This class is full. Try another batch or come back for a spot that opens up.' },
+                    { status: 409 },
+                );
+            }
+        }
+
         const meetingLink = resolveMeetingLink(instance);
         if (!meetingLink) {
             return NextResponse.json(

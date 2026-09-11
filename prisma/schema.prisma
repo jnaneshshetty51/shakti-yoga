@@ -1168,7 +1168,8 @@ model Invoice {
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentId      String? // Payment.id when it came from a real payment
   subscriptionId String?
-  amountInr      Float
+  amountInr      Float // despite the name, holds the amount in `currency` — not always INR (NRI/USD checkouts)
+  currency       String        @default("INR") // ISO code the amounts above are actually denominated in
   taxInr         Float         @default(0) // GST component, if any
   status         InvoiceStatus @default(ISSUED)
   pdfKey         String? // /api/media/<key>

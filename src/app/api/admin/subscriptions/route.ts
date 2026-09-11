@@ -40,6 +40,7 @@ export async function GET(request: Request) {
             },
             include: { user: { select: { id: true, name: true, email: true } } },
             orderBy: { renewalDate: 'asc' },
+            take: 200, // matches the invoices route's cap — full-table scans don't scale
         });
 
         return NextResponse.json({

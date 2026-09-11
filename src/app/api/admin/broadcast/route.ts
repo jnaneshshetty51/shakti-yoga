@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { sendPush } from '@/lib/push';
+import { truncate as cap } from '@/lib/validation';
 import {
     PUSH_SEGMENTS,
     SEGMENT_LABEL,
@@ -15,10 +16,6 @@ export const dynamic = 'force-dynamic';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 const CHANNELS = ['default', 'classes', 'sessions', 'billing'] as const;
-
-function cap(v: unknown, max: number): string {
-    return (typeof v === 'string' ? v : '').slice(0, max).trim();
-}
 
 /** GET — segment sizes + recent broadcast history. */
 export async function GET() {

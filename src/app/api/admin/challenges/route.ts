@@ -4,17 +4,13 @@ import { requireDepartment } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
 import { toChallengeGoal } from '@/lib/challenges';
+import { truncate as cap, enumOrDefault } from '@/lib/validation';
 import { ContentStatus } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-function cap(v: unknown, max: number): string {
-    const s = typeof v === 'string' ? v : v == null ? '' : String(v);
-    return s.slice(0, max).trim();
-}
 function toStatus(v: unknown): ContentStatus {
-    const s = String(v || '').toUpperCase();
-    return s in ContentStatus ? (s as ContentStatus) : ContentStatus.DRAFT;
+    return enumOrDefault(v, ContentStatus, ContentStatus.DRAFT);
 }
 function toDate(v: unknown): Date | null {
     if (!v) return null;

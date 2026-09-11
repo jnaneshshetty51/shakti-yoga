@@ -86,6 +86,33 @@ export function oneOf<T extends string>(value: unknown, allowed: readonly T[], l
     return value as T;
 }
 
+/**
+ * Lenient string coercion for admin CRUD forms that clamp/tidy input rather
+ * than reject it: non-string values are stringified (not dropped), then
+ * truncated and trimmed. Never throws — use `str`/`optStr` where invalid
+ * input should be a 400 instead of silently accepted.
+ */
+export function truncate(value: unknown, max: number): string {
+    const s = typeof value === 'string' ? value : value == null ? '' : String(value);
+    return s.slice(0, max).trim();
+}
+
+/**
+ * Coerce a raw value to one of an enum's values (case-insensitive), or fall
+ * back to a default rather than throwing — for admin forms where an
+ * unrecognized status should quietly land on a safe default (e.g. DRAFT)
+ * instead of failing the whole save.
+ */
+export function enumOrDefault<T extends string>(
+    value: unknown,
+    allowed: Record<string, T> | readonly T[],
+    fallback: T,
+): T {
+    const s = String(value ?? '').toUpperCase();
+    const values: readonly string[] = Array.isArray(allowed) ? allowed : Object.values(allowed);
+    return values.includes(s) ? (s as T) : fallback;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function email(value: unknown, label = 'email'): string {
     const v = str(value, { label, max: 254 }).toLowerCase();

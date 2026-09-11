@@ -63,7 +63,7 @@ export async function resolveSegment(segment: PushSegment): Promise<string[]> {
         case 'trial':
             return ids({ role: Role.TRIAL, active: true });
         case 'family':
-            return ids({ subscription: { planType: PlanType.FAMILY }, active: true });
+            return ids({ subscription: { planType: PlanType.FAMILY, ...ACTIVE_SUB }, active: true });
         case 'inactive':
             return ids({
                 role: { in: MEMBER_ROLES },

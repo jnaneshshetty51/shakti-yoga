@@ -26,6 +26,7 @@ export async function GET(request: Request) {
             member: i.user.name,
             email: i.user.email,
             amountInr: i.amountInr,
+            currency: i.currency,
             taxInr: i.taxInr,
             status: i.status,
             issuedAt: i.issuedAt.toISOString(),

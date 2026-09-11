@@ -36,7 +36,8 @@ export async function issueInvoiceForPayment(paymentId: string): Promise<{ id: s
             userId: payment.userId,
             paymentId: payment.id,
             subscriptionId: sub?.id ?? null,
-            amountInr: payment.currency === 'INR' ? payment.amount : payment.amount,
+            amountInr: payment.amount, // in `currency`, not necessarily INR — see the field comment in schema.prisma
+            currency: payment.currency,
             taxInr: 0,
             status: 'PAID',
         },

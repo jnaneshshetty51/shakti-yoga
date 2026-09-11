@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const payment = invoice.paymentId
-        ? await prisma.payment.findUnique({ where: { id: invoice.paymentId }, select: { planKey: true, planType: true, currency: true } })
+        ? await prisma.payment.findUnique({ where: { id: invoice.paymentId }, select: { planKey: true, planType: true } })
         : null;
 
     const pdf = await renderInvoicePdf({
@@ -28,7 +28,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         lineItem: (payment?.planKey || payment?.planType || 'Shakti Yoga membership').replace(/_/g, ' '),
         amount: invoice.amountInr,
         tax: invoice.taxInr,
-        currency: payment?.currency || 'INR',
+        currency: invoice.currency,
     });
 
     return new NextResponse(Buffer.from(pdf), {

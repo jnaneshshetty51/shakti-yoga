@@ -71,16 +71,19 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     return NextResponse.json({ id: m.id });
 }
 
-/** DELETE ?measurementId= */
+/** DELETE ?measurementId= — scoped to the member in the URL, not just the id. */
 export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
     const admin = await requireDepartment('THERAPIST');
     if (!admin) return forbidden();
-    await ctx.params;
+    const { id } = await ctx.params;
     const mid = new URL(request.url).searchParams.get('measurementId');
     if (!mid) return NextResponse.json({ error: 'Missing measurementId' }, { status: 400 });
-    await prisma.therapyMeasurement.delete({ where: { id: mid } });
+
+    const { count } = await prisma.therapyMeasurement.deleteMany({ where: { id: mid, userId: id } });
+    if (count === 0) return NextResponse.json({ error: 'Measurement not found for this member' }, { status: 404 });
+
     await auditAs({ id: admin.id, email: admin.email }, request)({
-        action: 'therapy.measurement.delete', entity: 'TherapyMeasurement', entityId: mid,
+        action: 'therapy.measurement.delete', entity: 'TherapyMeasurement', entityId: mid, after: { userId: id },
     });
     return NextResponse.json({ ok: true });
 }

@@ -1,14 +1,21 @@
 import { prisma } from '@/lib/prisma';
 import { PLANS } from '@/lib/pricing';
+import { istParts, istToUtc } from '@/lib/class-schedule';
 
 const DAY = 86_400_000;
 const WEEK = 7 * DAY;
+const WEEKDAY_ORDER = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
-/** UTC midnight of the Monday starting the week that contains `d`. */
+/**
+ * IST midnight of the Monday starting the week that contains `d`. Classes run
+ * on IST wall-clock time (see class-schedule.ts) — a UTC week boundary would
+ * bucket an early-morning IST class into the wrong week for the first ~5.5
+ * hours of every IST day.
+ */
 function weekStart(d: Date): number {
-    const x = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-    const dow = (new Date(x).getUTCDay() + 6) % 7; // 0 = Monday
-    return x - dow * DAY;
+    const { year, month1, day, weekday } = istParts(d);
+    const dow = (WEEKDAY_ORDER.indexOf(weekday) + 6) % 7; // 0 = Monday
+    return istToUtc(year, month1, day - dow, 0, 0).getTime();
 }
 
 export interface StreakSummary {
