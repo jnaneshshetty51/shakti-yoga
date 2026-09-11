@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 const SUBJECTS = ["General Inquiry", "Free Trial Class", "Yoga Therapy Consultation", "Billing Issue"];
 
+/** Deep-link a `?type=` param (e.g. from the trial page's "Book a Free Consultation") to a subject. */
+const TYPE_TO_SUBJECT: Record<string, string> = {
+    therapy: "Yoga Therapy Consultation",
+    trial: "Free Trial Class",
+    billing: "Billing Issue",
+};
+
 export default function ContactForm() {
-    const [form, setForm] = useState({ name: "", email: "", subject: SUBJECTS[0], message: "" });
+    const searchParams = useSearchParams();
+    const initialSubject = TYPE_TO_SUBJECT[searchParams.get("type") ?? ""] ?? SUBJECTS[0];
+    const [form, setForm] = useState({ name: "", email: "", subject: initialSubject, message: "" });
     const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
     const [error, setError] = useState<string | null>(null);
 

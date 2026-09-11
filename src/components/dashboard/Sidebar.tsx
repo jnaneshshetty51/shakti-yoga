@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { IconType } from "react-icons";
 import {
     LuLayoutDashboard, LuHeart, LuTrendingUp, LuBell, LuCreditCard, LuUser,
-    LuLifeBuoy, LuMenu, LuX, LuLogOut, LuArrowUpRight, LuGift, LuUsers, LuAward,
+    LuLifeBuoy, LuMenu, LuX, LuLogOut, LuArrowUpRight, LuGift, LuUsers, LuAward, LuSparkles,
 } from "react-icons/lu";
 
 type NavItem = { name: string; href: string; icon: IconType };
@@ -15,6 +15,7 @@ type NavItem = { name: string; href: string; icon: IconType };
 const NAV: NavItem[] = [
     { name: "Dashboard", href: "/dashboard", icon: LuLayoutDashboard },
     { name: "My Classes", href: "/dashboard/classes", icon: LuHeart },
+    { name: "Practice", href: "/dashboard/practices", icon: LuSparkles },
     { name: "Progress", href: "/dashboard/progress", icon: LuTrendingUp },
     { name: "Activity", href: "/dashboard/activity", icon: LuBell },
     { name: "Plan & Billing", href: "/dashboard/billing", icon: LuCreditCard },

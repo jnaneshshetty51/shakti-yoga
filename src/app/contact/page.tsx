@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import PageHeader from "@/components/PageHeader";
 import ContactForm from "./ContactForm";
+import { getSocialLinks } from "@/lib/settings";
 
 import type { Metadata } from "next";
 
@@ -9,7 +11,8 @@ export const metadata: Metadata = {
     alternates: { canonical: "/contact" },
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+    const social = await getSocialLinks();
     return (
         <main>
             <PageHeader
@@ -45,13 +48,31 @@ export default function ContactPage() {
                             <p className="font-sans text-sm mb-4">
                                 Get daily updates, tips, and inspiration on our WhatsApp channel.
                             </p>
-                            <a href="#" className="inline-block px-6 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition-colors">
-                                Join WhatsApp Group
-                            </a>
+                            {social.whatsapp ? (
+                                <a
+                                    href={social.whatsapp}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-block px-6 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition-colors"
+                                >
+                                    Join WhatsApp Group
+                                </a>
+                            ) : (
+                                <a
+                                    href="https://wa.me/917760222478"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-block px-6 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700 transition-colors"
+                                >
+                                    Message us on WhatsApp
+                                </a>
+                            )}
                         </div>
                     </div>
 
-                    <ContactForm />
+                    <Suspense fallback={<div className="bg-white p-8 rounded-lg shadow-lg border-t-4 border-primary h-[520px]" />}>
+                        <ContactForm />
+                    </Suspense>
                 </div>
             </section>
         </main>

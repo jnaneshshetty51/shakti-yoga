@@ -12,15 +12,24 @@ interface Result {
 
 export default function VerifyCertificatePage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
-    const [state, setState] = useState<"loading" | "signin" | "result">("loading");
+    const [state, setState] = useState<"loading" | "signin" | "result" | "error">("loading");
     const [result, setResult] = useState<Result | null>(null);
 
+    const check = () => {
+        setState("loading");
+        fetch(`/api/certificates/verify/${code}`)
+            .then(async (res) => {
+                if (res.status === 401) { setState("signin"); return; }
+                if (!res.ok) throw new Error(String(res.status));
+                setResult(await res.json());
+                setState("result");
+            })
+            .catch(() => setState("error"));
+    };
+
     useEffect(() => {
-        fetch(`/api/certificates/verify/${code}`).then(async (res) => {
-            if (res.status === 401) { setState("signin"); return; }
-            setResult(await res.json());
-            setState("result");
-        });
+        check();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [code]);
 
     return (
@@ -28,6 +37,15 @@ export default function VerifyCertificatePage({ params }: { params: Promise<{ co
             <h1 className="font-serif text-2xl text-gray-800 mb-6">Certificate Verification</h1>
 
             {state === "loading" && <p className="text-gray-400">Checking…</p>}
+
+            {state === "error" && (
+                <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-red-700">
+                    <p className="mb-3">Couldn&rsquo;t reach the verification service. Please try again.</p>
+                    <button onClick={check} className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
+                        Retry
+                    </button>
+                </div>
+            )}
 
             {state === "signin" && (
                 <div className="p-6 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800">

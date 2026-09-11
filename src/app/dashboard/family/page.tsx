@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, PageLoading, Card, Button, Badge, inputClass, labelClass } from "@/components/ui";
+import { PageHeader, PageLoading, Card, Button, Badge, ErrorState, inputClass, labelClass } from "@/components/ui";
 import { LuCopy, LuUserPlus } from "react-icons/lu";
 
 interface FamilyView {
@@ -22,14 +22,17 @@ export default function FamilyPage() {
     const [joinCode, setJoinCode] = useState("");
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         try {
             const res = await fetch("/api/family");
             if (!res.ok) throw new Error("Failed to load family plan");
             setView(await res.json());
+            setLoadError(null);
         } catch (err) {
             console.error(err);
+            setLoadError("Could not load your family plan.");
         } finally {
             setLoading(false);
         }
@@ -71,6 +74,7 @@ export default function FamilyPage() {
     };
 
     if (loading) return <PageLoading title="Family Membership" />;
+    if (loadError && !view) return <ErrorState message={loadError} onRetry={load} />;
     if (!view) return null;
 
     return (

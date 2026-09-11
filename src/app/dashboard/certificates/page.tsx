@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { LuAward, LuDownload, LuLink } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, EmptyState, Button } from "@/components/ui";
+import { PageHeader, PageLoading, Card, EmptyState, ErrorState, Button } from "@/components/ui";
 
 interface Certificate {
     id: string;
@@ -15,18 +16,20 @@ interface Certificate {
 
 export default function CertificatesPage() {
     const [certificates, setCertificates] = useState<Certificate[] | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [copied, setCopied] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         try {
             const res = await fetch("/api/certificates");
-            if (res.ok) setCertificates((await res.json()).certificates || []);
+            if (!res.ok) throw new Error(String(res.status));
+            setCertificates((await res.json()).certificates || []);
+            setLoadError(null);
         } catch {
-            /* keep showing whatever we last had */
+            setLoadError("Could not load your certificates.");
         }
     }, []);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
 
     const copyLink = async (code: string) => {
@@ -40,6 +43,7 @@ export default function CertificatesPage() {
         }
     };
 
+    if (!certificates && loadError) return <ErrorState message={loadError} onRetry={load} />;
     if (!certificates) return <PageLoading title="My Certificates" />;
 
     return (
@@ -47,7 +51,18 @@ export default function CertificatesPage() {
             <PageHeader title="My Certificates" subtitle="Certificates earned through challenges and milestones." />
 
             {certificates.length === 0 ? (
-                <Card><EmptyState icon={LuAward} title="No certificates yet" hint="Complete a challenge to earn your first one." /></Card>
+                <Card>
+                    <EmptyState
+                        icon={LuAward}
+                        title="No certificates yet"
+                        hint="Complete a challenge to earn your first one."
+                        action={
+                            <Link href="/dashboard/practices" className="inline-flex px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
+                                Browse challenges
+                            </Link>
+                        }
+                    />
+                </Card>
             ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
                     {certificates.map((c) => (

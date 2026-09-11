@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuLifeBuoy, LuSend } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, Button, Badge } from "@/components/ui";
+import { PageHeader, PageLoading, Card, Button, Badge, ErrorState } from "@/components/ui";
 
 interface Message {
     id: string;
@@ -24,12 +24,19 @@ export default function SupportPage() {
     const [draft, setDraft] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
     const load = useCallback(async () => {
-        const res = await fetch("/api/support", { cache: "no-store" });
-        const data = await res.json();
-        setConversation(data.conversation ?? null);
+        try {
+            const res = await fetch("/api/support", { cache: "no-store" });
+            if (!res.ok) throw new Error(String(res.status));
+            const data = await res.json();
+            setConversation(data.conversation ?? null);
+            setLoadError(null);
+        } catch {
+            setLoadError("Could not load your support conversation.");
+        }
     }, []);
 
     useEffect(() => { load(); }, [load]);
@@ -79,6 +86,7 @@ export default function SupportPage() {
         }
     };
 
+    if (conversation === undefined && loadError) return <ErrorState message={loadError} onRetry={load} />;
     if (conversation === undefined) return <PageLoading title="Support" />;
 
     const isOpen = conversation?.status === "OPEN";

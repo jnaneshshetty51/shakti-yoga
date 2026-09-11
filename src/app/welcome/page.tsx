@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getSocialLinks } from "@/lib/settings";
 
-export default function WelcomePage() {
+export default async function WelcomePage() {
+    const social = await getSocialLinks();
     return (
         <main className="min-h-screen flex items-center justify-center bg-primary/5 py-20 px-4">
             <div className="max-w-2xl w-full bg-white p-12 rounded-lg shadow-xl text-center">
@@ -27,7 +29,12 @@ export default function WelcomePage() {
                         <div className="text-2xl mb-2">📱</div>
                         <h3 className="font-bold text-gray-800 mb-1">Join Community</h3>
                         <p className="text-sm text-gray-600 mb-4">Connect with fellow yogis on WhatsApp.</p>
-                        <a href="#" className="text-primary font-bold text-sm hover:underline">
+                        <a
+                            href={social.whatsapp || "https://wa.me/917760222478"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary font-bold text-sm hover:underline"
+                        >
                             Join Group →
                         </a>
                     </div>

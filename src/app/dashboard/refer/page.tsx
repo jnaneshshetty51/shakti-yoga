@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader, PageLoading, Card, Button, Badge } from "@/components/ui";
+import { PageHeader, PageLoading, Card, Button, Badge, ErrorState } from "@/components/ui";
 import { LuCopy, LuShare2, LuGift } from "react-icons/lu";
 
 type ReferralStatus = "PENDING" | "SUCCESSFUL" | "EXPIRED" | "REVERSED";
@@ -43,6 +43,7 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 export default function ReferPage() {
     const [stats, setStats] = useState<ReferralStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [copied, setCopied] = useState<"link" | "code" | null>(null);
 
     const load = useCallback(async () => {
@@ -50,8 +51,10 @@ export default function ReferPage() {
             const res = await fetch("/api/referral");
             if (!res.ok) throw new Error("Failed to load referral stats");
             setStats(await res.json());
+            setLoadError(null);
         } catch (error) {
             console.error(error);
+            setLoadError("Could not load your referral stats.");
         } finally {
             setLoading(false);
         }
@@ -85,6 +88,7 @@ export default function ReferPage() {
     };
 
     if (loading) return <PageLoading title="Refer & Earn" />;
+    if (loadError && !stats) return <ErrorState message={loadError} onRetry={load} />;
     if (!stats) return null;
 
     return (

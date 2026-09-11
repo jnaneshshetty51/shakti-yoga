@@ -15,7 +15,10 @@ export default function WorkshopsRetreats() {
 
                 <div className="grid md:grid-cols-2 gap-6 sm:gap-8 text-left mb-10 sm:mb-12">
                     {/* Workshops Card */}
-                    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-primary/10 flex flex-col">
+                    <Link
+                        href="/retreats"
+                        className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-primary/10 flex flex-col"
+                    >
                         <div className="relative h-56 sm:h-64 w-full overflow-hidden">
                             <Image
                                 src="/workshops/workshop.webp"
@@ -40,10 +43,13 @@ export default function WorkshopsRetreats() {
                                 <span className="font-bold text-secondary uppercase tracking-wider">Learn More →</span>
                             </div>
                         </div>
-                    </div>
+                    </Link>
 
                     {/* Retreats Card */}
-                    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-primary/10 flex flex-col">
+                    <Link
+                        href="/retreats"
+                        className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-primary/10 flex flex-col"
+                    >
                         <div className="relative h-56 sm:h-64 w-full overflow-hidden">
                             <Image
                                 src="/workshops/retreat.webp"
@@ -68,7 +74,7 @@ export default function WorkshopsRetreats() {
                                 <span className="font-bold text-secondary uppercase tracking-wider">Learn More →</span>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                 </div>
 
                 <Link
