@@ -9,10 +9,19 @@ import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { spacing } from "@/theme";
 
+const MEMBER_ROLES = new Set(["member_everyday", "member_starter", "trial"]);
+
 export default function EverydayInfoScreen() {
   const { user } = useAuth();
   const { data, loading } = useResource(() => api.get<{ plans: PlanRung[] }>("/api/plans"), []);
   const plans = (data?.plans ?? []).filter((p) => p.key.startsWith("everyday") || p.key === "starter");
+  const isMember = !!user && MEMBER_ROLES.has(user.role);
+
+  const cta = () => {
+    if (!user) return router.push("/(auth)/signup");
+    if (isMember) return router.push("/(tabs)");
+    return router.push("/subscribe");
+  };
 
   return (
     <Screen>
@@ -27,11 +36,8 @@ export default function EverydayInfoScreen() {
         <Heading size="sm" style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}>Plans</Heading>
         {loading ? <LoadingView /> : <PlanList plans={plans} />}
 
-        <Button
-          style={{ marginTop: spacing.lg }}
-          onPress={() => (user ? router.push("/(tabs)") : router.push("/(auth)/signup"))}
-        >
-          {user ? "Go to my classes" : "Start Free Trial"}
+        <Button style={{ marginTop: spacing.lg }} onPress={cta}>
+          {!user ? "Start Free Trial" : isMember ? "Go to my classes" : "Subscribe"}
         </Button>
       </ScrollView>
     </Screen>

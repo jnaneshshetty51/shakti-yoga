@@ -113,7 +113,7 @@ export default function MembershipScreen() {
       ) : !sub ? (
         <View style={{ padding: spacing.lg }}>
           <EmptyState title="No active plan" subtitle="Explore our programs to get started." />
-          <Button style={{ marginTop: spacing.md }} onPress={() => router.push("/info/everyday")}>See plans</Button>
+          <Button style={{ marginTop: spacing.md }} onPress={() => router.push("/subscribe")}>See plans</Button>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }}>

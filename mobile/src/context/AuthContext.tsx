@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { api, getToken, setToken, ApiError } from "@/lib/api";
 import { registerForPush, unregisterForPush } from "@/lib/push";
+import { loginPurchases, logoutPurchases } from "@/lib/purchases";
 
 export type UserRole =
   | "visitor"
@@ -62,8 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await api.get<{ user: AppUser | null }>("/api/auth/me");
       setUser(data.user);
-      if (data.user) void registerForPush();
-      else await setToken(null);
+      if (data.user) {
+        void registerForPush();
+        void loginPurchases(data.user.id);
+      } else {
+        await setToken(null);
+      }
     } catch {
       // Network hiccup — keep the token, try again next launch rather than
       // logging the user out for a flaky connection.
@@ -81,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setToken(data.token);
     setUser(data.user);
     void registerForPush();
+    void loginPurchases(data.user.id);
   }, []);
 
   const register = useCallback(async (fields: Parameters<AuthContextValue["register"]>[0]) => {
@@ -88,12 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setToken(data.token);
     setUser(data.user);
     void registerForPush();
+    void loginPurchases(data.user.id);
   }, []);
 
   const logout = useCallback(async () => {
     await unregisterForPush(); // needs the bearer token — must run before setToken(null)
     await setToken(null);
     setUser(null);
+    void logoutPurchases();
   }, []);
 
   const refreshUser = useCallback(async () => {
