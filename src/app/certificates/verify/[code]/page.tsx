@@ -12,14 +12,13 @@ interface Result {
 
 export default function VerifyCertificatePage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params);
-    const [state, setState] = useState<"loading" | "signin" | "result" | "error">("loading");
+    const [state, setState] = useState<"loading" | "result" | "error">("loading");
     const [result, setResult] = useState<Result | null>(null);
 
     const check = () => {
         setState("loading");
         fetch(`/api/certificates/verify/${code}`)
             .then(async (res) => {
-                if (res.status === 401) { setState("signin"); return; }
                 if (!res.ok) throw new Error(String(res.status));
                 setResult(await res.json());
                 setState("result");
@@ -47,15 +46,6 @@ export default function VerifyCertificatePage({ params }: { params: Promise<{ co
                 </div>
             )}
 
-            {state === "signin" && (
-                <div className="p-6 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800">
-                    <p className="mb-3">Sign in to your Shakti account to verify this certificate.</p>
-                    <Link href={`/login?from=/certificates/verify/${code}`} className="inline-block px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
-                        Sign in
-                    </Link>
-                </div>
-            )}
-
             {state === "result" && result && (
                 result.valid ? (
                     <div className="p-6 bg-green-50 border border-green-200 rounded-2xl text-left">
@@ -72,6 +62,10 @@ export default function VerifyCertificatePage({ params }: { params: Promise<{ co
                     </div>
                 )
             )}
+
+            <Link href="/certificates/verify" className="inline-block mt-6 text-sm text-gray-500 hover:text-primary transition-colors">
+                Verify another certificate
+            </Link>
         </div>
     );
 }
