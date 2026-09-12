@@ -50,14 +50,17 @@ async function addToDevice(e: Entry) {
 }
 
 export default function CalendarScreen() {
-  const classes = useResource(() => api.get<ClassesResponse>("/api/classes").catch(() => null), []);
-  const bookings = useResource(() => api.get<{ bookings: BookingRow[] }>("/api/bookings").catch(() => null), []);
+  const classes = useResource(() => api.get<ClassesResponse>("/api/classes"), []);
+  const bookings = useResource(() => api.get<{ bookings: BookingRow[] }>("/api/bookings"), []);
   const retreats = useResource(
-    () => api.get<{ retreats: { id: string; name: string; startDate: string; endDate: string }[] }>("/api/retreats").catch(() => null),
+    () => api.get<{ retreats: { id: string; name: string; startDate: string; endDate: string }[] }>("/api/retreats"),
     [],
   );
 
   const loading = classes.loading || bookings.loading || retreats.loading;
+  // A real fetch failure used to be swallowed into "nothing scheduled" — now
+  // surfaced distinctly so it doesn't look like an empty calendar.
+  const error = classes.error || bookings.error || retreats.error;
 
   const byDay = useMemo(() => {
     const entries: Entry[] = [];
@@ -97,6 +100,8 @@ export default function CalendarScreen() {
       <ScreenHeader title="Calendar" />
       {loading ? (
         <LoadingView />
+      ) : error ? (
+        <EmptyState title="Couldn't load your calendar" subtitle={error} />
       ) : byDay.length === 0 ? (
         <EmptyState title="Nothing scheduled" subtitle="Your classes, therapy sessions and events show here." />
       ) : (
