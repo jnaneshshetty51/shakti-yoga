@@ -41,7 +41,7 @@ export type ClassAccess =
 const STAFF_ROLES: Role[] = [Role.SUPER_ADMIN, Role.STAFF_ADMIN, Role.TEACHER];
 const VALID_SUB_STATUSES: SubscriptionStatus[] = [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL];
 
-export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
+export async function canJoinGroupClass(userId: string, excludeInstanceId?: string): Promise<ClassAccess> {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { subscription: true },
@@ -102,18 +102,39 @@ export async function canJoinGroupClass(userId: string): Promise<ClassAccess> {
     // Everyday / Family monthly plans draw from a per-cycle session pool.
     // Uncapped plans (annual, trial) return null here and fall through.
     const sessionBalance = await getSessionBalance(userId);
-    if (sessionBalance && sessionBalance.remaining <= 0) {
-        const refresh = new Date(sessionBalance.cycleEnd).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'long',
-        });
-        return {
-            ok: false,
-            reason: `You've used all ${sessionBalance.perCycle} sessions in this cycle. They refresh on ${refresh}.`,
-            paywall: true,
-            outOfSessions: true,
-            sessionBalance,
-        };
+    if (sessionBalance) {
+        // getSessionBalance only counts teacher-confirmed attendance — a
+        // self-joined-but-not-yet-confirmed class doesn't debit the ledger
+        // until the teacher marks it Present. Without also counting those
+        // pending check-ins here, a member could join classes faster than a
+        // teacher confirms them and end the cycle over the cap. This only
+        // tightens the join gate; the real deduction still happens on
+        // confirmation, so nothing here writes to the credit ledger.
+        // Exclude the instance being (re-)joined right now — a member
+        // re-opening a class they already checked into shouldn't be penalized
+        // twice for the same one.
+        const pendingCheckIns = sub?.currentCycleStart
+            ? await prisma.classAttendance.count({
+                  where: {
+                      userId, status: 'CHECKED_IN', joinedAt: { gte: sub.currentCycleStart },
+                      ...(excludeInstanceId ? { classInstanceId: { not: excludeInstanceId } } : {}),
+                  },
+              })
+            : 0;
+        const effectiveRemaining = sessionBalance.remaining - pendingCheckIns;
+        if (effectiveRemaining <= 0) {
+            const refresh = new Date(sessionBalance.cycleEnd).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'long',
+            });
+            return {
+                ok: false,
+                reason: `You've used all ${sessionBalance.perCycle} sessions in this cycle. They refresh on ${refresh}.`,
+                paywall: true,
+                outOfSessions: true,
+                sessionBalance,
+            };
+        }
     }
 
     return { ok: true, sessionBalance };
