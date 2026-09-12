@@ -72,7 +72,7 @@ export default function ClassesScreen() {
             {access && !access.ok && access.outOfSessions ? (
               <Link href="/support" asChild><Button>Contact Support</Button></Link>
             ) : access && !access.ok && access.paywall ? (
-              <Link href="/membership" asChild><Button>Renew Membership</Button></Link>
+              <Link href="/subscribe" asChild><Button>Renew Membership</Button></Link>
             ) : null}
           </Card>
           {access && !access.ok && <SessionBalanceCard balance={access.sessionBalance} style={{ marginTop: spacing.md }} />}
