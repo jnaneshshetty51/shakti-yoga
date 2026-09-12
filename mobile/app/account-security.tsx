@@ -75,7 +75,8 @@ export default function AccountSecurityScreen() {
         </Card>
 
         <BodyText muted style={{ marginTop: spacing.md, fontSize: 12 }}>
-          Signing out of other devices isn&rsquo;t available yet — reset your password to end every existing session.
+          There&rsquo;s no dedicated &ldquo;sign out of other devices&rdquo; switch — resetting your password above does
+          the same thing, ending every other signed-in session (phone, tablet, browser) immediately.
         </BodyText>
       </ScrollView>
     </Screen>
