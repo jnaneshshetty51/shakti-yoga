@@ -9,7 +9,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { api, ApiError, getToken, API_URL } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { formatPrice } from "@/lib/format";
-import { spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 
 interface Subscription {
   planType: string;
@@ -55,6 +55,18 @@ export default function MembershipScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const sub = data?.subscription ?? null;
   const storeManaged = sub?.provider === "apple" || sub?.provider === "google";
+
+  // Opens a web page already signed in — otherwise the web session (cookie)
+  // has no way to recognize this app's bearer-token user, forcing whoever
+  // taps "Change plan" to log in a second time in the browser.
+  const openWeb = useCallback(async (path: string) => {
+    try {
+      const { url } = await api.post<{ url: string }>("/api/auth/web-handoff", { path });
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      await WebBrowser.openBrowserAsync(`https://shaktiyoga.in${path}`);
+    }
+  }, []);
 
   const act = useCallback(async (intent: "cancel" | "pause" | "downgrade") => {
     setBusy(intent);
@@ -145,7 +157,7 @@ export default function MembershipScreen() {
               </>
             ) : (
               <View style={{ gap: spacing.sm }}>
-                <Button variant="secondary" onPress={() => WebBrowser.openBrowserAsync("https://shaktiyoga.in/programs")}>
+                <Button variant="secondary" onPress={() => openWeb("/programs")}>
                   Change plan
                 </Button>
                 {sub.planType === "EVERYDAY_YOGA" && (
@@ -155,7 +167,7 @@ export default function MembershipScreen() {
                   </Button>
                 )}
                 {sub.status === "PAUSED" ? (
-                  <Button variant="outline" onPress={() => WebBrowser.openBrowserAsync("https://shaktiyoga.in/dashboard/billing")}>
+                  <Button variant="outline" onPress={() => openWeb("/dashboard/billing")}>
                     Resume membership
                   </Button>
                 ) : (
@@ -182,7 +194,7 @@ export default function MembershipScreen() {
                   <Badge tone={p.status === "PAID" ? "success" : p.status === "FAILED" ? "danger" : "neutral"}>{p.status}</Badge>
                   {p.status === "PAID" ? (
                     <Pressable onPress={() => downloadReceipt(p.id)} disabled={busy === `receipt-${p.id}`} hitSlop={8}>
-                      <BodyText style={{ color: "#4A6741", fontWeight: "600", fontSize: 13 }}>
+                      <BodyText style={{ color: colors.primary, fontWeight: "600", fontSize: 13 }}>
                         {busy === `receipt-${p.id}` ? "…" : "Receipt"}
                       </BodyText>
                     </Pressable>
