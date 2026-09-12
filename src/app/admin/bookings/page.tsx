@@ -117,9 +117,45 @@ export default function AdminBookingsPage() {
         fetchBookings();
     };
 
+    const quickCancel = async (bk: Booking) => {
+        if (!confirm(`Cancel ${bk.userName}'s ${bk.type} booking? Refunds any eligible credit and keeps the record.`)) return;
+        const res = await fetch("/api/admin/bookings", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: bk.id, status: "CANCELLED" }),
+        });
+        if (!res.ok) {
+            showToast("error", (await res.json().catch(() => ({}))).error || "Could not cancel booking");
+            return;
+        }
+        showToast("success", "Booking cancelled.");
+        fetchBookings();
+    };
+
     const handleDelete = async (bk: Booking) => {
         if (!confirm(`Delete ${bk.userName}'s ${bk.type} booking? (Prefer Cancel to refund the credit.)`)) return;
-        await fetch(`/api/admin/bookings?id=${bk.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/bookings?id=${bk.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            showToast("error", (await res.json().catch(() => ({}))).error || "Could not delete booking");
+            return;
+        }
+        showToast("success", "Booking deleted.");
+        fetchBookings();
+    };
+
+    const bulkCancel = async (ids: string[]) => {
+        if (!confirm(`Cancel ${ids.length} booking(s)? Refunds any eligible credit.`)) return;
+        const results = await Promise.all(
+            ids.map((id) =>
+                fetch("/api/admin/bookings", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id, status: "CANCELLED" }),
+                }),
+            ),
+        );
+        const failed = results.filter((r) => !r.ok).length;
+        showToast(failed ? "warning" : "success", failed ? `${failed} of ${ids.length} could not be cancelled` : `${ids.length} booking(s) cancelled`);
         fetchBookings();
     };
 
@@ -148,9 +184,14 @@ export default function AdminBookingsPage() {
                 columns={columns}
                 title="All Bookings"
                 filters={[{ key: "status", label: "Status", options: STATUS_FILTER }]}
+                enableBulkActions
+                bulkActions={[{ label: "Cancel selected", tone: "danger", onClick: bulkCancel }]}
                 actions={(bk) => (
                     <TableActions>
                         <ActionButton onClick={() => setEditing(bk)}>Edit</ActionButton>
+                        {bk.rawStatus !== "CANCELLED" && bk.rawStatus !== "COMPLETED" && (
+                            <ActionButton onClick={() => quickCancel(bk)}>Cancel</ActionButton>
+                        )}
                         <ActionButton tone="danger" onClick={() => handleDelete(bk)}>Delete</ActionButton>
                     </TableActions>
                 )}
