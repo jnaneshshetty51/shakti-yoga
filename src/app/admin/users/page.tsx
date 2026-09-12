@@ -4,16 +4,21 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { useToast } from "@/components/admin/Toast";
+import { useAuth } from "@/context/AuthContext";
 import { PageHeader, PageLoading, Badge, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
 
-const ROLE_OPTIONS = [
-    { label: "Super Admin", value: "SUPER_ADMIN" },
-    { label: "Staff Admin", value: "STAFF_ADMIN" },
+const BASE_ROLE_OPTIONS = [
     { label: "Teacher", value: "TEACHER" },
     { label: "Everyday Member", value: "MEMBER_EVERYDAY" },
     { label: "Therapy Member", value: "MEMBER_THERAPY" },
     { label: "Trial", value: "TRIAL" },
     { label: "Visitor", value: "VISITOR" },
+];
+// The server rejects an admin-role change from anyone but a super admin — only
+// offer these options in the dropdown when the viewer can actually set them.
+const SUPER_ONLY_ROLE_OPTIONS = [
+    { label: "Super Admin", value: "SUPER_ADMIN" },
+    { label: "Staff Admin", value: "STAFF_ADMIN" },
 ];
 
 export type User = {
@@ -36,6 +41,8 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<User | null>(null);
     const { showToast } = useToast();
+    const { user: viewer } = useAuth();
+    const ROLE_OPTIONS = viewer?.tier === "super" ? [...SUPER_ONLY_ROLE_OPTIONS, ...BASE_ROLE_OPTIONS] : BASE_ROLE_OPTIONS;
 
     const fetchUsers = useCallback(async () => {
         try {
