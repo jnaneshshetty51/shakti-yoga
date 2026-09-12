@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { LuSend, LuBell } from "react-icons/lu";
 import { PageHeader, Card, Button, PageLoading, inputClass, labelClass } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
@@ -12,13 +13,14 @@ type HistoryRow = {
 };
 type Data = { segments: Segment[]; channels: string[]; history: HistoryRow[] };
 
-export default function BroadcastPage() {
+function BroadcastForm() {
     const { showToast } = useToast();
+    const initialSegment = useSearchParams().get("segment") ?? "";
     const [data, setData] = useState<Data | null>(null);
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
     const [url, setUrl] = useState("");
-    const [segment, setSegment] = useState("");
+    const [segment, setSegment] = useState(initialSegment);
     const [channelId, setChannelId] = useState("default");
     const [sending, setSending] = useState<"" | "test" | "live">("");
 
@@ -138,5 +140,13 @@ export default function BroadcastPage() {
                 </Card>
             </div>
         </div>
+    );
+}
+
+export default function BroadcastPage() {
+    return (
+        <Suspense fallback={<PageLoading title="Broadcast" />}>
+            <BroadcastForm />
+        </Suspense>
     );
 }

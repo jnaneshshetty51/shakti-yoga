@@ -35,7 +35,7 @@ export default function RetentionPage() {
                             <p className="text-3xl font-bold text-ink mt-1">{s.total}</p>
                         </button>
                         {BROADCAST_SEG[s.key] && (
-                            <Link href={`/admin/broadcast`} className="text-xs font-semibold text-brand mt-2 inline-block">Message segment →</Link>
+                            <Link href={`/admin/broadcast?segment=${BROADCAST_SEG[s.key]}`} className="text-xs font-semibold text-brand mt-2 inline-block">Message segment →</Link>
                         )}
                     </Card>
                 ))}
