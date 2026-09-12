@@ -1,6 +1,5 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import QRCode from "react-native-qrcode-svg";
 import { Screen, Heading, BodyText, LoadingView, EmptyState } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/context/AuthContext";
@@ -37,14 +36,10 @@ export default function MembershipCardScreen() {
           <View style={styles.card}>
             <BodyText style={styles.brand}>SHAKTI YOGA KENDRA</BodyText>
             <Heading size="md" style={{ color: colors.white, marginTop: spacing.sm }}>{user?.name}</Heading>
-            <BodyText style={{ color: "#FFFFFFCC", marginTop: 2 }}>
+            <BodyText style={{ color: colors.white + "CC", marginTop: 2 }}>
               {sub ? PLAN_LABEL[sub.planType] ?? sub.planType : "Guest"}
               {sub ? ` · ${sub.status}` : ""}
             </BodyText>
-
-            <View style={styles.qrWrap}>
-              {user?.id ? <QRCode value={`https://shaktiyoga.in/m/${user.id}`} size={128} backgroundColor="#FFFFFF" /> : null}
-            </View>
 
             {sub && (
               <View style={styles.footer}>
@@ -62,7 +57,7 @@ export default function MembershipCardScreen() {
             )}
           </View>
           <BodyText muted style={{ textAlign: "center", marginTop: spacing.md, fontSize: 12 }}>
-            Show this QR to Shakti staff for check-in.
+            Your membership at a glance. Class check-in happens from the Classes tab.
           </BodyText>
         </View>
       )}
@@ -77,9 +72,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     alignItems: "center",
   },
-  brand: { color: "#FFFFFFCC", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
-  qrWrap: { backgroundColor: colors.white, padding: spacing.md, borderRadius: radius.control, marginTop: spacing.lg },
+  brand: { color: colors.white + "CC", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
   footer: { flexDirection: "row", justifyContent: "space-between", alignSelf: "stretch", marginTop: spacing.lg },
-  metaLabel: { color: "#FFFFFF99", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+  metaLabel: { color: colors.white + "99", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 },
   metaValue: { color: colors.white, fontWeight: "700" },
 });
