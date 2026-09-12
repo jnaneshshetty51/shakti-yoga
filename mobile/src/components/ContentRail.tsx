@@ -1,25 +1,47 @@
 import React from "react";
-import { View, FlatList } from "react-native";
+import { View, FlatList, StyleSheet } from "react-native";
 import { Heading } from "@/components/ui";
 import { FeedCardCompact } from "@/components/FeedCard";
 import { spacing } from "@/theme";
 import type { FeedItem } from "@/lib/types";
 
-/** Horizontal strip of compact content cards for the Home discovery sections. */
-export function ContentRail({ title, items }: { title: string; items: FeedItem[] }) {
-  if (!items.length) return null;
+interface ContentRailProps {
+  title: string;
+  items: FeedItem[];
+}
+
+/** Horizontal strip of compact content cards for Home discovery with edge-to-edge scrolling. */
+export function ContentRail({ title, items }: ContentRailProps) {
+  if (!items || items.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: spacing.lg }}>
-      <Heading size="sm" style={{ marginBottom: spacing.sm }}>{title}</Heading>
+    <View style={styles.container}>
+      <Heading size="sm" style={styles.heading}>
+        {title}
+      </Heading>
       <FlatList
         horizontal
         data={items}
         keyExtractor={(i) => i.id}
         showsHorizontalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ width: spacing.sm }} />}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
         renderItem={({ item }) => <FeedCardCompact item={item} />}
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: spacing.xl,
+  },
+  heading: {
+    fontSize: 18,
+    marginBottom: spacing.sm,
+    letterSpacing: 0.2,
+  },
+  listContent: {
+    paddingRight: spacing.lg,
+  },
+});

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, PageLoading, Card, Badge, SegmentedControl, Button } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Badge, SegmentedControl, Button, Tabs } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Update = {
@@ -40,13 +40,26 @@ export default function PatientUpdatesPage() {
 
     return (
         <div>
-            <PageHeader title="Patient updates" subtitle="Between-session updates from Yoga Therapy members.">
+            <PageHeader title="Yoga Therapy & Patient Care" subtitle="Between-session medical notes and symptom updates from Yoga Therapy members.">
                 <SegmentedControl
                     options={[{ value: "pending", label: "Pending" }, { value: "reviewed", label: "Reviewed" }, { value: "all", label: "All" }]}
                     value={filter}
                     onChange={setFilter}
                 />
             </PageHeader>
+
+            <div className="mb-6">
+                <Tabs
+                    active="updates"
+                    onChange={(k) => {
+                        if (k === "intakes") window.location.href = "/admin/therapy";
+                    }}
+                    tabs={[
+                        { key: "intakes", label: "Intake Assessments" },
+                        { key: "updates", label: "Patient Progress Updates", count: rows.length },
+                    ]}
+                />
+            </div>
 
             {rows.length === 0 ? (
                 <Card padded><p className="text-sm text-ink-subtle">Nothing here.</p></Card>

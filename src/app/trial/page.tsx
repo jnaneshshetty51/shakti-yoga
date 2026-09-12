@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
@@ -52,17 +52,23 @@ function TrialContent() {
         return <div className="p-20 text-center text-text/60">Loading…</div>;
     }
 
-    // Consultations are a therapy-prospect conversation, not a trial — route to contact.
+    // Consultations are a therapy-prospect conversation, not a trial — route directly to contact.
+    useEffect(() => {
+        if (isConsult) {
+            router.replace("/contact?type=therapy");
+        }
+    }, [isConsult, router]);
+
     if (isConsult) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-accent/30 py-20 px-4">
                 <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-xl text-center border-t-4 border-secondary">
-                    <h1 className="font-serif text-3xl text-primary mb-4">Book a Free Consultation</h1>
+                    <h1 className="font-serif text-3xl text-primary mb-4">Connecting to Consultation…</h1>
                     <p className="text-text/70 mb-8">
-                        A 15-minute call to see whether 1:1 Yoga Therapy is right for you. Tell us a little and we&apos;ll be in touch.
+                        Redirecting to schedule your 15-minute call with a senior therapist…
                     </p>
                     <Link href="/contact?type=therapy" className="block w-full py-3.5 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors">
-                        Continue
+                        Click here if not redirected
                     </Link>
                 </div>
             </main>

@@ -55,13 +55,13 @@ export default function AdminMessagesPage() {
         load();
     };
 
-    if (loading) return <PageLoading title="Messages" />;
+    if (loading) return <PageLoading title="Contact Inquiries" />;
 
     const visible = messages.filter((m) => showHandled || !m.handled);
 
     return (
         <div>
-            <PageHeader title="Messages" subtitle="Enquiries submitted through the contact form.">
+            <PageHeader title="Contact Inquiries" subtitle="Website contact form submissions, general inquiries, and prospective student questions.">
                 <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full border border-gray-200 bg-white cursor-pointer">
                     <input type="checkbox" className="accent-primary" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />
                     Show handled
@@ -69,9 +69,9 @@ export default function AdminMessagesPage() {
             </PageHeader>
 
             {loadError ? (
-                <ErrorState message="Could not load messages." onRetry={load} />
+                <ErrorState message="Could not load inquiries." onRetry={load} />
             ) : visible.length === 0 ? (
-                <Card><EmptyState icon={LuInbox} title="No messages" hint="New contact-form enquiries will appear here." /></Card>
+                <Card><EmptyState icon={LuInbox} title="No inquiries" hint="New contact-form enquiries from website visitors will appear here." /></Card>
             ) : (
                 <div className="space-y-4">
                     {visible.map((m) => (

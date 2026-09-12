@@ -27,15 +27,15 @@ const NAV: NavGroup[] = [
         items: [
             { name: "Dashboard", href: "/admin", icon: LuLayoutDashboard },
             { name: "Analytics", href: "/admin/analytics", icon: LuChartLine },
-            { name: "Reports", href: "/admin/reports", icon: LuChartColumnBig },
+            { name: "Reports & Exports", href: "/admin/reports", icon: LuChartColumnBig },
             { name: "Retention", href: "/admin/retention", icon: LuTarget },
         ],
     },
     {
-        label: "People",
+        label: "People & Growth",
         items: [
-            { name: "Users", href: "/admin/users", icon: LuUsers },
             { name: "Members", href: "/admin/members", icon: LuFlower2 },
+            { name: "Users", href: "/admin/users", icon: LuUsers },
             { name: "Leads", href: "/admin/leads", icon: LuTarget },
             { name: "Staff", href: "/admin/staff", icon: LuGraduationCap },
             { name: "Family", href: "/admin/family", icon: LuUserPlus },
@@ -45,49 +45,53 @@ const NAV: NavGroup[] = [
     {
         label: "Operations",
         items: [
+            { name: "Daily Schedule", href: "/admin/schedule", icon: LuCalendarDays, departments: ["TRAINER"] },
+            { name: "Class Batches", href: "/admin/classes", icon: LuHeart, departments: ["TRAINER"] },
+            { name: "1:1 Bookings", href: "/admin/bookings", icon: LuCalendarClock, departments: ["THERAPIST"] },
+            { name: "Teacher Availability", href: "/admin/availability", icon: LuClock, departments: ["TRAINER", "THERAPIST"] },
+            { name: "Therapy & Patient Care", href: "/admin/therapy", icon: LuClipboardList, departments: ["THERAPIST"] },
+        ],
+    },
+    {
+        label: "Billing & Revenue",
+        items: [
             { name: "Subscriptions", href: "/admin/subscriptions", icon: LuCreditCard },
-            { name: "Payments", href: "/admin/payments", icon: LuReceipt },
+            { name: "Payments Ledger", href: "/admin/payments", icon: LuReceipt },
             { name: "Invoices", href: "/admin/invoices", icon: LuFileText },
-            { name: "Classes", href: "/admin/classes", icon: LuHeart, departments: ["TRAINER"] },
-            { name: "Schedule", href: "/admin/schedule", icon: LuCalendarDays, departments: ["TRAINER"] },
-            { name: "Bookings", href: "/admin/bookings", icon: LuCalendarClock, departments: ["THERAPIST"] },
-            { name: "Availability", href: "/admin/availability", icon: LuClock, departments: ["TRAINER", "THERAPIST"] },
-            { name: "Therapy Assessments", href: "/admin/therapy", icon: LuClipboardList, departments: ["THERAPIST"] },
-            { name: "Patient updates", href: "/admin/therapy/updates", icon: LuClipboardList, departments: ["THERAPIST"] },
+        ],
+    },
+    {
+        label: "Communications",
+        items: [
+            { name: "Support Inbox", href: "/admin/support", icon: LuLifeBuoy, departments: ["SUPPORT"] },
+            { name: "Contact Inquiries", href: "/admin/messages", icon: LuInbox },
+            { name: "Push Broadcast", href: "/admin/broadcast", icon: LuMegaphone },
+            { name: "WhatsApp Sangha", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
+        ],
+    },
+    {
+        label: "Content & Programs",
+        items: [
+            { name: "Media & Feed", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
+            { name: "Guided Practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
+            { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
+            { name: "Achievements", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
+            { name: "FAQ Knowledge Base", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },
+            { name: "Site Content", href: "/admin/site-content", icon: LuFileText, departments: ["CONTENT"] },
+            { name: "Certificates", href: "/admin/certificates", icon: LuAward },
         ],
     },
     {
         label: "Business",
         items: [
-            { name: "Corporate", href: "/admin/corporate", icon: LuBuilding2 },
+            { name: "Corporate Wellness", href: "/admin/corporate", icon: LuBuilding2 },
             { name: "Retreats & Events", href: "/admin/retreats", icon: LuTent },
-        ],
-    },
-    {
-        label: "Content",
-        items: [
-            { name: "Content", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "Practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
-            { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
-            { name: "Achievements", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
-            { name: "FAQ", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },
-            { name: "Site content", href: "/admin/site-content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "WhatsApp", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
-            { name: "Certificates", href: "/admin/certificates", icon: LuAward },
-            { name: "Messages", href: "/admin/messages", icon: LuInbox },
-            { name: "Broadcast", href: "/admin/broadcast", icon: LuMegaphone },
-        ],
-    },
-    {
-        label: "Support",
-        items: [
-            { name: "Support Inbox", href: "/admin/support", icon: LuLifeBuoy, departments: ["SUPPORT"] },
         ],
     },
     {
         label: "System",
         items: [
-            { name: "Pricing", href: "/admin/pricing", icon: LuCreditCard, superOnly: true },
+            { name: "Pricing Plans", href: "/admin/pricing", icon: LuCreditCard, superOnly: true },
             { name: "Audit Log", href: "/admin/audit", icon: LuArchive, superOnly: true },
             { name: "Settings", href: "/admin/settings", icon: LuSettings, superOnly: true },
         ],

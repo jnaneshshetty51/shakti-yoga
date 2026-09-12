@@ -113,16 +113,23 @@ export default function AdminClassesPage() {
         fetchBatches();
     };
 
-    if (loading) return <PageLoading title="Class Management" />;
+    if (loading) return <PageLoading title="Class Batches" />;
 
     return (
         <div>
-            <PageHeader title="Class Management" subtitle="Manage recurring class batches and schedules." />
+            <PageHeader title="Class Batches" subtitle="Master recurring class batches, timings, teacher assignments, and default Google Meet links.">
+                <a
+                    href="/admin/schedule"
+                    className="px-3 py-1.5 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
+                >
+                    View Live Schedule &amp; Attendance →
+                </a>
+            </PageHeader>
 
             <DTable
                 data={batches}
                 columns={columns}
-                title="Class Batches"
+                title="Recurring Batches"
                 onCreate={() => setCreating(true)}
                 actions={(batch) => (
                     <TableActions>

@@ -28,12 +28,20 @@ export default function TakeAMoment() {
                     ))}
                 </div>
 
-                <Link
-                    href="/dashboard"
-                    className="inline-block px-8 py-3.5 bg-white text-primary font-sans font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary hover:text-white transition-all transform hover:-translate-y-0.5 shadow-lg"
-                >
-                    Explore Shakti →
-                </Link>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <Link
+                        href="/trial"
+                        className="w-full sm:w-auto px-8 py-3.5 bg-white text-primary font-sans font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary hover:text-white transition-all transform hover:-translate-y-0.5 shadow-lg"
+                    >
+                        Try Free for 7 Days →
+                    </Link>
+                    <Link
+                        href="/everyday-yoga"
+                        className="w-full sm:w-auto px-8 py-3.5 border border-white/40 text-white font-sans font-bold uppercase tracking-widest text-sm rounded hover:bg-white/10 transition-colors"
+                    >
+                        View Class Schedule
+                    </Link>
+                </div>
             </div>
         </section>
     );

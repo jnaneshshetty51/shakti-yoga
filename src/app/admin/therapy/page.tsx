@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, Tabs, labelClass, inputClass } from "@/components/admin/ui";
 
 type Status = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "RECOMMENDED" | "RECOMMENDED_WITH_CONDITIONS" | "NOT_RECOMMENDED";
 
@@ -150,7 +150,20 @@ export default function AdminTherapyIntakesPage() {
 
     return (
         <div>
-            <PageHeader title="Yoga Therapy Assessments" subtitle="Review intake forms and record a recommendation." />
+            <PageHeader title="Yoga Therapy & Patient Care" subtitle="Review member health intakes, medical conditions, and between-session progress updates." />
+
+            <div className="mb-6">
+                <Tabs
+                    active="intakes"
+                    onChange={(k) => {
+                        if (k === "updates") window.location.href = "/admin/therapy/updates";
+                    }}
+                    tabs={[
+                        { key: "intakes", label: "Intake Assessments", count: rows.length },
+                        { key: "updates", label: "Patient Progress Updates" },
+                    ]}
+                />
+            </div>
 
             <DTable
                 data={rows}

@@ -89,8 +89,8 @@ export default function AdminCommunityPage() {
     return (
         <div className="max-w-4xl">
             <PageHeader
-                title="Community Groups"
-                subtitle="WhatsApp groups shown on each member's dashboard by their plan."
+                title="WhatsApp Sangha"
+                subtitle="Dedicated WhatsApp community circles surfaced dynamically on member dashboards based on their role and plan."
             >
                 <Button variant={creating ? "secondary" : "primary"} onClick={() => setCreating((c) => !c)}>
                     {creating ? "Cancel" : "New group"}

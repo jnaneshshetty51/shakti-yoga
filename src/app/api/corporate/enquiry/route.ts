@@ -22,14 +22,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Company name, contact name and email are required' }, { status: 400 });
     }
 
-    await prisma.corporateLead.create({
-        data: {
-            companyName, contactName, contactEmail, contactPhone,
-            employeeCount: Number.isFinite(employeeCount) ? employeeCount : null,
-            requirement, programInterest,
-            message,
-        },
-    });
+    try {
+        await prisma.corporateLead.create({
+            data: {
+                companyName, contactName, contactEmail, contactPhone,
+                employeeCount: Number.isFinite(employeeCount) ? employeeCount : null,
+                requirement, programInterest,
+                message,
+            },
+        });
 
-    return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Corporate enquiry error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }

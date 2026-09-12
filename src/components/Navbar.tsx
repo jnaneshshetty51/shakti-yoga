@@ -32,10 +32,11 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Menu */}
-            <div className="hidden md:flex gap-10">
+            <div className="hidden md:flex gap-8 lg:gap-10">
                 <Link href="/" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Home</Link>
                 <Link href="/everyday-yoga" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Everyday Yoga</Link>
                 <Link href="/yoga-therapy" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Yoga Therapy</Link>
+                <Link href="/programs" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Pricing</Link>
                 <Link href="/teachers" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Teachers</Link>
                 <Link href="/about" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">About</Link>
                 <Link href="/blog" className="font-sans text-sm text-text hover:text-primary transition-colors uppercase tracking-widest">Blog</Link>
@@ -96,8 +97,17 @@ export default function Navbar() {
                     <Link href="/yoga-therapy" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Yoga Therapy
                     </Link>
+                    <Link href="/programs" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                        Plans &amp; Pricing
+                    </Link>
                     <Link href="/teachers" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         Teachers
+                    </Link>
+                    <Link href="/retreats" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                        Workshops &amp; Retreats
+                    </Link>
+                    <Link href="/corporate" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
+                        Corporate Wellness
                     </Link>
                     <Link href="/about" onClick={() => setIsMenuOpen(false)} className="text-xl font-serif text-text hover:text-primary transition-colors py-2">
                         About

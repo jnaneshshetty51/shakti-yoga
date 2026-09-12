@@ -57,8 +57,8 @@ export default function BroadcastPage() {
     return (
         <div>
             <PageHeader
-                title="Broadcast"
-                subtitle="Send a push notification to a member segment. Test on your own device first."
+                title="Push Broadcast"
+                subtitle="Send mobile push notifications to active, trial, or at-risk member segments. Always test on your own device first."
             />
 
             <div className="grid gap-6 lg:grid-cols-[1fr,340px]">

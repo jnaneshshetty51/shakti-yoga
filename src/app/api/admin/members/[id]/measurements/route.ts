@@ -14,7 +14,7 @@ const score = (v: unknown): number | null => {
 
 /** GET — a member's therapy progress readings, oldest first (for charting). */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-    if (!(await requireDepartment(['THERAPIST', 'CONTENT']))) return forbidden();
+    if (!(await requireDepartment('THERAPIST'))) return forbidden();
     const { id } = await ctx.params;
 
     const rows = await prisma.therapyMeasurement.findMany({

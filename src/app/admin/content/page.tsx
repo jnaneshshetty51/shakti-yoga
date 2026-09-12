@@ -5,7 +5,7 @@ import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
 
-type ContentTab = "content" | "story" | "blog" | "whatsapp" | "comments" | "community";
+type ContentTab = "content" | "story" | "blog" | "comments" | "community";
 type Subtype = "REEL" | "POST" | "ANNOUNCEMENT";
 
 type Story = {
@@ -16,9 +16,6 @@ type BlogPost = {
     id: string; title: string; category: string; date: string; slug: string;
     excerpt: string; content: string; author: string; status: string; imageUrl: string;
     ctaType: string; ctaLabel: string; relatedClassBatchId: string;
-};
-type WhatsAppGroup = {
-    id: string; name: string; role: string; whatsappLink: string; pinnedMessage: string;
 };
 type ContentRow = {
     id: string; contentType: Subtype; title: string; body: string; caption: string;
@@ -92,12 +89,6 @@ function blogFields(classBatchOptions: { label: string; value: string }[]): Fiel
         { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
     ];
 }
-const GROUP_FIELDS: FieldDef[] = [
-    { name: "name", label: "Group Name", required: true },
-    { name: "link", label: "WhatsApp Link", required: true },
-    { name: "role", label: "For Role", type: "select", required: true, options: ROLE_OPTIONS },
-    { name: "pinnedMessage", label: "Pinned Message", type: "textarea" },
-];
 
 function contentFields(subtype: Subtype, blogOptions: { label: string; value: string }[]): FieldDef[] {
     const media: FieldDef[] =
@@ -171,7 +162,6 @@ export default function AdminContentPage() {
     const [contentView, setContentView] = useState<"list" | "calendar">("list");
     const [stories, setStories] = useState<Story[]>([]);
     const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-    const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
     const [comments, setComments] = useState<CommentRow[]>([]);
     const [communityPosts, setCommunityPosts] = useState<CommunityModRow[]>([]);
     const [communityComments, setCommunityComments] = useState<CommunityModRow[]>([]);
@@ -187,7 +177,6 @@ export default function AdminContentPage() {
                 const data = await response.json();
                 setStories(data.stories || []);
                 setBlogPosts(data.blogPosts || []);
-                setGroups(data.groups || []);
                 setContent(data.content || []);
                 setBlogOptions(data.blogOptions || []);
                 setClassBatchOptions(data.classBatchOptions || []);
@@ -260,8 +249,7 @@ export default function AdminContentPage() {
         activeTab === "content"
             ? contentFields(modal?.subtype ?? "POST", blogOptions)
             : activeTab === "story" ? STORY_FIELDS
-            : activeTab === "blog" ? blogFields(classBatchOptions)
-            : GROUP_FIELDS;
+            : blogFields(classBatchOptions);
 
     const save = async (values: EntityValues) => {
         const payload: Record<string, unknown> = { ...values, id: modal?.id };
@@ -305,19 +293,18 @@ export default function AdminContentPage() {
 
     return (
         <div>
-            <PageHeader title="Content Management" subtitle="Reels, posts, announcements, blog and community links." />
+            <PageHeader title="Media & Feed" subtitle="Social reels, reflections, announcements, blog articles, stories, and discussions." />
 
             <div className="mb-6">
                 <Tabs
                     active={activeTab}
                     onChange={(k) => setActiveTab(k as ContentTab)}
                     tabs={[
-                        { key: "content", label: "Content", count: content.length },
-                        { key: "story", label: "Stories", count: stories.length },
-                        { key: "blog", label: "Blog", count: blogPosts.length },
-                        { key: "whatsapp", label: "WhatsApp", count: groups.length },
+                        { key: "content", label: "Media Feed", count: content.length },
+                        { key: "story", label: "Stories & Testimonials", count: stories.length },
+                        { key: "blog", label: "Articles & Blog", count: blogPosts.length },
                         { key: "comments", label: "Comments", count: comments.filter((c) => c.reportCount > 0).length || comments.length },
-                        { key: "community", label: "Community", count: communityPosts.filter((p) => p.reportCount > 0).length + communityComments.length || communityPosts.length },
+                        { key: "community", label: "Community Forum", count: communityPosts.filter((p) => p.reportCount > 0).length + communityComments.length || communityPosts.length },
                     ]}
                 />
             </div>
@@ -428,22 +415,6 @@ export default function AdminContentPage() {
                         excerpt: p.excerpt, content: p.content, status: p.status, imageUrl: p.imageUrl,
                         slug: p.slug, ctaType: p.ctaType || "none", ctaLabel: p.ctaLabel,
                         relatedClassBatchId: p.relatedClassBatchId,
-                    })}
-                />
-            )}
-
-            {activeTab === 'whatsapp' && (
-                <DTable
-                    data={groups}
-                    columns={[
-                        { header: "Group Name", accessor: "name", className: "font-bold" },
-                        { header: "Role", accessor: "role" },
-                        { header: "Link", accessor: (g: WhatsAppGroup) => <span className="truncate block w-40 text-blue-500">{g.whatsappLink}</span> },
-                    ]}
-                    title="WhatsApp Groups"
-                    onCreate={() => setModal({ mode: "create" })}
-                    actions={(g: WhatsAppGroup) => rowActions(g.id, {
-                        name: g.name, link: g.whatsappLink, role: g.role, pinnedMessage: g.pinnedMessage,
                     })}
                 />
             )}

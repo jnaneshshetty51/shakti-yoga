@@ -20,8 +20,8 @@ const FALLBACK: FaqItem[] = [
         answer: "We provide recordings of the sessions so you can practice at your own convenience if you miss a live slot."
     },
     {
-        question: "How does the payment work?",
-        answer: "We accept international payments via Stripe/PayPal. You are billed monthly and can cancel anytime."
+        question: "How does payment work?",
+        answer: "We accept all major international credit/debit cards (Visa, Mastercard, American Express), UPI, and net banking via our secure Razorpay gateway. Pricing is automatically localized in ₹ for India and $ for international practitioners. You can cancel your subscription anytime with zero lock-in."
     }
 ];
 

@@ -77,8 +77,8 @@ function Inner() {
     return (
         <div>
             <PageHeader
-                title="Pricing"
-                subtitle="Edit the price, feature list and 'recommended' flag for each plan. Entitlements (role, credits, class limits) stay in code."
+                title="Pricing Plans"
+                subtitle="Manage regional pricing (INR/USD), plan recommendations, and marketing features for each membership tier."
             >
                 <Button loading={saving} onClick={save}>Save pricing</Button>
             </PageHeader>

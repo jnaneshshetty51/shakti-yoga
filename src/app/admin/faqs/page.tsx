@@ -63,7 +63,7 @@ export default function AdminFaqsPage() {
 
     return (
         <div>
-            <PageHeader title="FAQ" subtitle="Questions shown on the website and in the app. Publish to make one live." />
+            <PageHeader title="FAQ Knowledge Base" subtitle="Frequently asked questions published across the public website and mobile apps." />
             <DTable
                 data={rows}
                 columns={[

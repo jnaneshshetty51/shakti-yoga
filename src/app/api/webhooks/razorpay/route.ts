@@ -8,7 +8,7 @@ import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { markReferralConverted } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { sendPush } from '@/lib/push';
-import type { PlanType } from '@prisma/client';
+import { Prisma, type PlanType } from '@prisma/client';
 
 function planFrom(planKey: string | null, planType: PlanType | null) {
     if (planKey) return getPlan(planKey);
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'bad json' }, { status: 400 });
     }
 
+    let dedupeKey: string | null = null;
     try {
         const subEntity = event.payload.subscription?.entity;
         const payEntity = event.payload.payment?.entity;
@@ -89,6 +90,23 @@ export async function POST(request: Request) {
         }
         const plan = planFrom(planKey, planType);
         const region = regionFor(payEntity?.currency ?? subscription?.currency);
+
+        // Idempotency: subscription.charged already dedupes on
+        // Payment.providerPaymentId (@unique), but the other event types have
+        // no other guard — without this, every Razorpay retry of
+        // cancelled/halted/completed/pending/payment.failed re-sends the
+        // email/push and re-fires analytics.
+        dedupeKey = `${event.event}:${subEntity.id}:${payEntity?.id ?? 'none'}`;
+        try {
+            await prisma.processedWebhookEvent.create({
+                data: { provider: 'razorpay', eventId: dedupeKey, eventType: event.event },
+            });
+        } catch (e) {
+            if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+                return NextResponse.json({ ok: true, note: 'duplicate' });
+            }
+            throw e;
+        }
 
         switch (event.event) {
             case 'subscription.charged': {
@@ -214,7 +232,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
     } catch (error) {
         console.error('[razorpay webhook] handler error', error);
-        // 200 so Razorpay doesn't hammer retries for a transient DB blip we've logged.
-        return NextResponse.json({ ok: false });
+        // Release the claim so Razorpay's retry can reprocess once the
+        // transient failure clears, and return 500 (not a swallowed 200) so
+        // Razorpay's own retry mechanism actually fires — a charge that
+        // failed to activate here previously had no recovery path at all.
+        if (dedupeKey) {
+            await prisma.processedWebhookEvent
+                .deleteMany({ where: { provider: 'razorpay', eventId: dedupeKey } })
+                .catch(() => {});
+        }
+        return NextResponse.json({ error: 'Handler error' }, { status: 500 });
     }
 }

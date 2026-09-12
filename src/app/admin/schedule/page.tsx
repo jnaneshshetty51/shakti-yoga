@@ -104,8 +104,16 @@ export default function AdminSchedulePage() {
 
     return (
         <div>
-            <PageHeader title="Class Schedule" subtitle="Group-class instances for the next 7 days.">
-                <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class</Button>
+            <PageHeader title="Daily Schedule & Attendance" subtitle="Live running class instances for the next 7 days, Google Meet links, and student attendance check-ins.">
+                <div className="flex items-center gap-2">
+                    <a
+                        href="/admin/classes"
+                        className="px-3 py-2 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
+                    >
+                        Manage Master Batches →
+                    </a>
+                    <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class instance</Button>
+                </div>
             </PageHeader>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 mb-8">

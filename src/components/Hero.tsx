@@ -23,12 +23,12 @@ export default function Hero() {
                 <div className="absolute top-0 left-0 w-full h-full bg-black/45"></div>
             </div>
 
-            <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-5 sm:gap-6 sm:px-8">
-                <h1 className="w-full font-serif text-[1.9rem] font-bold leading-[1.15] tracking-wide drop-shadow-lg sm:text-4xl md:text-6xl md:leading-tight">
-                    Premium Online Yoga &amp; Therapy for NRIs, from India&rsquo;s Heart
+            <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center gap-5 px-5 sm:gap-6 sm:px-8">
+                <h1 className="w-full font-serif text-[2rem] font-bold leading-[1.15] tracking-wide drop-shadow-lg sm:text-4xl md:text-6xl md:leading-tight">
+                    Authentic Yoga &amp; Personalized Therapy, Guided Live from India to the World
                 </h1>
                 <p className="w-full max-w-2xl font-sans text-base font-light leading-relaxed tracking-wide drop-shadow-md text-white/90 sm:text-lg md:text-xl">
-                    Everyday yoga classes (5 days/week) + personalised 1:1 yoga therapy.
+                    Daily live classes across global time zones + dedicated 1:1 clinical yoga therapy.
                 </p>
 
                 <div className="mt-2 flex w-full flex-col gap-3 sm:mt-4 sm:w-auto sm:flex-row sm:gap-4 items-center">
@@ -58,7 +58,7 @@ export default function Hero() {
                 </div>
 
                 <div className="mt-4 max-w-full whitespace-normal rounded-2xl border border-white/20 bg-black/30 px-4 py-2.5 text-center text-[11px] font-light uppercase leading-relaxed tracking-wider backdrop-blur-sm sm:mt-8 sm:rounded-full sm:px-6 sm:text-sm">
-                    Live from India · Classes start 5:00 AM IST · WhatsApp support
+                    Live from India · Batches for US, UK, Europe &amp; Asia · Direct teacher corrections
                 </div>
             </div>
 

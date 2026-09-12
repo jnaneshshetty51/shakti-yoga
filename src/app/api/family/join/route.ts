@@ -13,8 +13,13 @@ export async function POST(request: Request) {
     const { allowed } = rateLimit(`family-join:${session.id}`, 8, 60 * 60 * 1000);
     if (!allowed) return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
 
-    const body = await request.json().catch(() => ({}));
-    const result = await joinFamily(session.id, String(body.code ?? ''));
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
-    return NextResponse.json({ ok: true, role: result.role });
+    try {
+        const body = await request.json().catch(() => ({}));
+        const result = await joinFamily(session.id, String(body.code ?? ''));
+        if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+        return NextResponse.json({ ok: true, role: result.role });
+    } catch (error) {
+        console.error('Family join error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }

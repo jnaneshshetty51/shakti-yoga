@@ -10,7 +10,7 @@ import {
   type TextStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, spacing, radius } from "@/theme";
+import { colors, spacing, radius, shadows } from "@/theme";
 
 export function Screen({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
@@ -116,11 +116,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   body: { fontSize: 14, color: colors.text, lineHeight: 20 },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
+    ...shadows.card,
   },
   button: {
     borderRadius: radius.control,
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonText: { color: colors.white, fontWeight: "700", fontSize: 15 },
+  buttonText: { color: colors.white, fontWeight: "700", fontSize: 15, letterSpacing: 0.2 },
   badge: {
     alignSelf: "flex-start",
     borderRadius: radius.pill,
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 10,
   },
-  badgeText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  badgeText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

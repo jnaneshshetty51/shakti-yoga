@@ -27,7 +27,7 @@ export default function TherapyStartPage() {
                             <li className="flex items-center gap-2">✓ No commitment required</li>
                         </ul>
                         <Link
-                            href="/trial?type=consult"
+                            href="/contact?type=therapy"
                             className="block w-full py-3 border-2 border-primary text-primary font-bold uppercase tracking-widest text-center rounded hover:bg-primary hover:text-white transition-colors"
                         >
                             Book Free Consult

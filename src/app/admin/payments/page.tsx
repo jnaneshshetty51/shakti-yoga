@@ -175,8 +175,8 @@ function PaymentsTable() {
     return (
         <div>
             <PageHeader
-                title="Payments"
-                subtitle="Every checkout and renewal charge, newest first."
+                title="Payments Ledger"
+                subtitle="Real-time transaction ledger of member checkouts, subscription renewals, refunds, and offline manual entries."
             >
                 <Button onClick={() => setManualOpen(true)}>Record payment</Button>
             </PageHeader>

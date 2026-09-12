@@ -12,7 +12,6 @@ import Founder from "@/components/Founder";
 import ShaktiDifference from "@/components/ShaktiDifference";
 import HowItWorks from "@/components/HowItWorks";
 import YogaTherapy from "@/components/YogaTherapy";
-import FreeTrial from "@/components/FreeTrial";
 import Stories from "@/components/Stories";
 import TakeAMoment from "@/components/TakeAMoment";
 import WorkshopsRetreats from "@/components/WorkshopsRetreats";
@@ -32,7 +31,6 @@ export default function Home() {
       <ShaktiDifference />
       <HowItWorks />
       <YogaTherapy />
-      <FreeTrial />
       <Stories />
       <TakeAMoment />
       <WorkshopsRetreats />

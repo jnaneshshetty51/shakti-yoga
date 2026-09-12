@@ -137,7 +137,7 @@ function CorporateDashboard() {
 
     return (
         <div>
-            <PageHeader title="Corporate" subtitle="B2B wellness enquiries, from first contact to signed deal." />
+            <PageHeader title="Corporate Wellness" subtitle="B2B wellness proposals, corporate workshops, and institutional wellness contracts." />
 
             <DTable
                 data={leads}
