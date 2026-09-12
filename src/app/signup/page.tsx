@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 function refFromUrl(): string {
@@ -36,6 +36,15 @@ export default function SignupPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [referralCode] = useState(refFromUrl);
+    const [refereeDiscountInr, setRefereeDiscountInr] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!referralCode) return;
+        fetch("/api/referral/settings")
+            .then((r) => r.json())
+            .then((d) => setRefereeDiscountInr(typeof d.refereeDiscountInr === "number" ? d.refereeDiscountInr : null))
+            .catch(() => {});
+    }, [referralCode]);
 
     const set = (key: keyof typeof form) => (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -87,7 +96,10 @@ export default function SignupPage() {
 
                 {referralCode ? (
                     <div className="mb-5 rounded-lg bg-primary/10 border border-primary/20 px-3.5 py-2.5 text-sm text-primary">
-                        Referral code <span className="font-bold">{referralCode}</span> applied — your first month is free.
+                        Referral code <span className="font-bold">{referralCode}</span> applied
+                        {refereeDiscountInr != null
+                            ? ` — get ₹${refereeDiscountInr} off your first month (India pricing).`
+                            : " — you'll get a discount on your first month at checkout."}
                     </div>
                 ) : null}
 
