@@ -5,7 +5,7 @@ import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { PLANS, isPlanKey } from '@/lib/pricing';
 import { resolvedPlan } from '@/lib/plans';
-import { activatePlan } from '@/lib/subscription';
+import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { SubscriptionStatus, PlanType, Role } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -95,6 +95,12 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ ok: true, userId: user.id });
     } catch (error) {
+        if (error instanceof SubscriptionProviderConflictError) {
+            return NextResponse.json(
+                { error: `${error.message} Cancel or delete their existing subscription row first, then activate this one.` },
+                { status: 409 },
+            );
+        }
         console.error('Admin subscriptions POST error:', error);
         return NextResponse.json({ error: 'Could not activate the plan.' }, { status: 500 });
     }

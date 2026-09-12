@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getPlan, isPlanKey } from '@/lib/pricing';
-import { activatePlan } from '@/lib/subscription';
+import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { reconcileFamilySeats } from '@/lib/family';
 import { recordEvent } from '@/lib/analytics';
 
@@ -26,11 +26,21 @@ export async function applyPendingDowngrades(): Promise<number> {
             continue;
         }
         const plan = getPlan(sub.pendingPlanKey);
-        await activatePlan(sub.userId, plan, {
-            recurring: false,
-            amount: sub.amount ?? undefined,
-            currency: sub.currency,
-        });
+        try {
+            await activatePlan(sub.userId, plan, {
+                recurring: false,
+                amount: sub.amount ?? undefined,
+                currency: sub.currency,
+            });
+        } catch (err) {
+            if (err instanceof SubscriptionProviderConflictError) {
+                // One user's unresolved provider conflict shouldn't block
+                // everyone else's scheduled downgrade in the same batch run.
+                console.error(`[subscription-maintenance] provider conflict for user ${sub.userId}: ${err.message}`);
+                continue;
+            }
+            throw err;
+        }
         await prisma.subscription.update({ where: { id: sub.id }, data: { pendingPlanKey: null } });
         void recordEvent('subscription_started', {
             userId: sub.userId,
