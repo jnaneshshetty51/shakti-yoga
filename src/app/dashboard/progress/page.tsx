@@ -1,16 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { LuFlame, LuAward, LuHeart, LuMessageSquare } from "react-icons/lu";
+import { LuFlame, LuAward, LuHeart, LuMessageSquare, LuCalendarClock } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, CardHeader, Badge, EmptyState, ErrorState, statusTone } from "@/components/ui";
 import { StatCard } from "@/components/admin/StatCard";
 import { TrendChart } from "@/components/admin/TrendChart";
 import { CHART_PRIMARY } from "@/components/admin/Sparkline";
 
+interface SessionBalance {
+    remaining: number;
+    perCycle: number;
+    cycleEnd: string;
+}
+
 interface Progress {
     generatedAt: string;
     memberSince: string | null;
     credits: number;
+    sessionCredits: SessionBalance | null;
     totals: {
         classesAllTime: number;
         classesThisMonth: number;
@@ -65,7 +72,7 @@ export default function ProgressPage() {
                 subtitle={data.memberSince ? `On the mat with Shakti since ${fmtDate(data.memberSince)}.` : "Your practice at a glance."}
             />
 
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div className={`grid grid-cols-2 ${data.sessionCredits ? "xl:grid-cols-5" : "xl:grid-cols-4"} gap-4 mb-8`}>
                 <StatCard
                     title="Classes this month"
                     value={totals.classesThisMonth}
@@ -78,6 +85,15 @@ export default function ProgressPage() {
                 <StatCard title="Classes all-time" value={totals.classesAllTime} icon={<LuHeart />} accent="blue" spark={data.weeks.map((w) => w.count)} />
                 <StatCard title="Current streak" value={`${totals.currentStreakWeeks} wk`} icon={<LuFlame />} accent="amber" />
                 <StatCard title="Longest streak" value={`${totals.longestStreakWeeks} wk`} icon={<LuAward />} accent="terracotta" />
+                {data.sessionCredits && (
+                    <StatCard
+                        title="Classes left this cycle"
+                        value={`${data.sessionCredits.remaining} / ${data.sessionCredits.perCycle}`}
+                        icon={<LuCalendarClock />}
+                        accent="blue"
+                        change={`resets ${fmtDate(data.sessionCredits.cycleEnd)}`}
+                    />
+                )}
             </div>
 
             <Card className="mb-8">

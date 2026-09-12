@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { getSessionBalance } from '@/lib/sessionCredits';
 
 export async function GET() {
     try {
@@ -9,7 +10,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const [subscription, payments, user] = await Promise.all([
+        const [subscription, payments, user, sessionCredits] = await Promise.all([
             prisma.subscription.findUnique({ where: { userId: payload.id } }),
             prisma.payment.findMany({
                 where: { userId: payload.id },
@@ -27,12 +28,16 @@ export async function GET() {
                 },
             }),
             prisma.user.findUnique({ where: { id: payload.id }, select: { credits: true, role: true } }),
+            // null for uncapped plans (annual, Starter, Therapy) — only capped
+            // monthly Everyday/Family plans have a per-cycle group-class balance.
+            getSessionBalance(payload.id),
         ]);
 
         return NextResponse.json({
             subscription,
             payments,
             credits: user?.credits ?? 0,
+            sessionCredits,
             role: user?.role ?? 'VISITOR',
         });
     } catch (error) {
