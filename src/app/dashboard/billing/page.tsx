@@ -21,23 +21,38 @@ interface Subscription {
     amount: number;
     currency: string;
     status: string;
+    provider: string;
     startDate: string;
     renewalDate: string;
     recurring: boolean;
 }
 
+interface SessionBalance {
+    used: number;
+    remaining: number;
+    perCycle: number;
+    cycleEnd: string;
+}
+
 const PLAN_LABEL: Record<string, string> = {
     EVERYDAY_YOGA: "Everyday Yoga",
     YOGA_THERAPY: "Yoga Therapy",
+    STARTER: "Starter",
+    FAMILY: "Family",
     TRIAL: "Free Trial",
 };
+
+type Intent = "cancel" | "pause" | "downgrade";
 
 export default function BillingPage() {
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [payments, setPayments] = useState<PaymentRow[]>([]);
     const [credits, setCredits] = useState(0);
+    const [sessionCredits, setSessionCredits] = useState<SessionBalance | null>(null);
     const [loading, setLoading] = useState(true);
-    const [cancelling, setCancelling] = useState(false);
+    const [busy, setBusy] = useState<"" | Intent | "resume">("");
+    const [showManage, setShowManage] = useState(false);
+    const [banner, setBanner] = useState<{ tone: "info" | "error"; text: string; manageUrl?: string } | null>(null);
 
     const load = useCallback(async () => {
         try {
@@ -47,6 +62,7 @@ export default function BillingPage() {
             setSubscription(data.subscription);
             setPayments(data.payments || []);
             setCredits(data.credits || 0);
+            setSessionCredits(data.sessionCredits || null);
         } catch (error) {
             console.error(error);
         } finally {
@@ -58,28 +74,79 @@ export default function BillingPage() {
         load();
     }, [load]);
 
-    const handleCancel = async () => {
-        if (!confirm("Cancel your subscription? You'll keep access until the end of the current period.")) return;
-        setCancelling(true);
+    const runIntent = async (intent: Intent) => {
+        setBusy(intent);
+        setBanner(null);
         try {
-            const res = await fetch("/api/billing/cancel", { method: "POST" });
+            const res = await fetch("/api/billing/cancel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ intent }),
+            });
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || "Could not cancel");
+                setBanner({ tone: "error", text: data.error || "Something went wrong." });
+                return;
             }
+            // A store-billed (Apple/Google) subscription can't be changed here —
+            // the API deliberately did nothing. Show that plainly instead of
+            // reloading as if the action succeeded.
+            if (data.storeManaged) {
+                setBanner({ tone: "info", text: data.message, manageUrl: data.manageUrl });
+                setShowManage(false);
+                return;
+            }
+            setBanner({ tone: "info", text: data.message });
+            setShowManage(false);
             await load();
-        } catch (error) {
-            alert(error instanceof Error ? error.message : "Could not cancel");
+        } catch {
+            setBanner({ tone: "error", text: "Something went wrong. Please try again." });
         } finally {
-            setCancelling(false);
+            setBusy("");
+        }
+    };
+
+    const resume = async () => {
+        setBusy("resume");
+        setBanner(null);
+        try {
+            const res = await fetch("/api/billing/resume", { method: "POST" });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setBanner({ tone: "error", text: data.error || "Could not resume." });
+                return;
+            }
+            setBanner({ tone: "info", text: data.message });
+            await load();
+        } finally {
+            setBusy("");
         }
     };
 
     if (loading) return <PageLoading title="Plan & Billing" />;
 
+    const isPaused = subscription?.status === "PAUSED";
+    const canManage = subscription && subscription.status !== "CANCELLED" && !isPaused && subscription.amount > 0;
+    const canDowngrade = subscription?.planType === "EVERYDAY_YOGA";
+    const whatsAtStake = [
+        credits > 0 ? `${credits} 1:1 session credit${credits === 1 ? "" : "s"}` : null,
+        sessionCredits && sessionCredits.remaining > 0 ? `${sessionCredits.remaining} class credit${sessionCredits.remaining === 1 ? "" : "s"} this cycle` : null,
+    ].filter(Boolean).join(" and ");
+
     return (
         <div>
             <PageHeader title="Plan & Billing" subtitle="Your subscription, renewals and payment history." />
+
+            {banner && (
+                <div className={`mb-5 p-3 rounded-xl text-sm ${banner.tone === "error" ? "bg-red-50 text-red-600 border border-red-200" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
+                    {banner.text}
+                    {banner.manageUrl && (
+                        <a href={banner.manageUrl} target="_blank" rel="noreferrer" className="ml-2 font-semibold underline">
+                            Manage in store
+                        </a>
+                    )}
+                </div>
+            )}
 
             <Card padded className="mb-8">
                 {subscription ? (
@@ -95,7 +162,7 @@ export default function BillingPage() {
                                         : "No charge"}
                                 </p>
                                 <p className="text-gray-400 text-xs mt-1">
-                                    {subscription.status === "CANCELLED"
+                                    {subscription.status === "CANCELLED" || isPaused
                                         ? "Access until"
                                         : subscription.recurring
                                             ? "Auto-renews"
@@ -106,10 +173,18 @@ export default function BillingPage() {
                             <Badge tone={statusTone(subscription.status)}>{subscription.status}</Badge>
                         </div>
 
-                        {credits > 0 && (
-                            <p className="text-sm text-gray-500 mb-5">
-                                1:1 session credits remaining: <strong className="text-gray-800">{credits}</strong>
-                            </p>
+                        {(credits > 0 || sessionCredits) && (
+                            <div className="text-sm text-gray-500 mb-5 space-y-1">
+                                {credits > 0 && (
+                                    <p>1:1 session credits remaining: <strong className="text-gray-800">{credits}</strong></p>
+                                )}
+                                {sessionCredits && (
+                                    <p>
+                                        Classes this cycle: <strong className="text-gray-800">{sessionCredits.remaining} / {sessionCredits.perCycle}</strong> remaining
+                                        {" "}(resets {new Date(sessionCredits.cycleEnd).toLocaleDateString()})
+                                    </p>
+                                )}
+                            </div>
                         )}
 
                         <div className="flex flex-wrap gap-2">
@@ -119,13 +194,21 @@ export default function BillingPage() {
                             >
                                 Change plan
                             </Link>
-                            {subscription.status !== "CANCELLED" && subscription.amount > 0 && (
+                            {isPaused && (
                                 <button
-                                    onClick={handleCancel}
-                                    disabled={cancelling}
-                                    className="px-5 py-2.5 rounded-full border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-60"
+                                    onClick={resume}
+                                    disabled={busy === "resume"}
+                                    className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                                 >
-                                    {cancelling ? "Cancelling…" : "Cancel subscription"}
+                                    {busy === "resume" ? "Resuming…" : "Resume"}
+                                </button>
+                            )}
+                            {canManage && (
+                                <button
+                                    onClick={() => setShowManage(true)}
+                                    className="px-5 py-2.5 rounded-full border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors"
+                                >
+                                    Pause or cancel
                                 </button>
                             )}
                         </div>
@@ -142,6 +225,80 @@ export default function BillingPage() {
                     </div>
                 )}
             </Card>
+
+            {showManage && subscription && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    onClick={() => !busy && setShowManage(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="font-serif text-xl text-gray-800 mb-2">Manage your subscription</h2>
+                        <p className="text-sm text-gray-500 mb-5">
+                            {whatsAtStake
+                                ? `You currently have ${whatsAtStake} — here's what happens to them with each option.`
+                                : "Choose what you'd like to do."}
+                        </p>
+
+                        <div className="space-y-3">
+                            <div className="p-4 rounded-xl border border-gray-100">
+                                <p className="font-semibold text-gray-800 text-sm">Pause</p>
+                                <p className="text-xs text-gray-500 mt-0.5 mb-2">
+                                    Keep everything as-is until {new Date(subscription.renewalDate).toLocaleDateString()}, then resume any time before that date with one tap — nothing is lost.
+                                </p>
+                                <button
+                                    onClick={() => runIntent("pause")}
+                                    disabled={busy !== ""}
+                                    className="text-sm font-semibold text-primary hover:text-primary/80 disabled:opacity-60"
+                                >
+                                    {busy === "pause" ? "Pausing…" : "Pause my plan"}
+                                </button>
+                            </div>
+
+                            {canDowngrade && (
+                                <div className="p-4 rounded-xl border border-gray-100">
+                                    <p className="font-semibold text-gray-800 text-sm">Downgrade to Starter</p>
+                                    <p className="text-xs text-gray-500 mt-0.5 mb-2">
+                                        Takes effect at your next renewal — you keep full Everyday access until then.
+                                    </p>
+                                    <button
+                                        onClick={() => runIntent("downgrade")}
+                                        disabled={busy !== ""}
+                                        className="text-sm font-semibold text-primary hover:text-primary/80 disabled:opacity-60"
+                                    >
+                                        {busy === "downgrade" ? "Scheduling…" : "Downgrade at renewal"}
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="p-4 rounded-xl border border-red-100 bg-red-50/40">
+                                <p className="font-semibold text-red-700 text-sm">Cancel</p>
+                                <p className="text-xs text-red-500/80 mt-0.5 mb-2">
+                                    {whatsAtStake ? `You'll lose ${whatsAtStake} when access ends on ${new Date(subscription.renewalDate).toLocaleDateString()}. ` : ""}
+                                    You keep access until then, but auto-renewal stops for good — consider Pause instead if you might come back.
+                                </p>
+                                <button
+                                    onClick={() => runIntent("cancel")}
+                                    disabled={busy !== ""}
+                                    className="text-sm font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
+                                >
+                                    {busy === "cancel" ? "Cancelling…" : "Cancel my plan"}
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowManage(false)}
+                            disabled={busy !== ""}
+                            className="mt-5 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            Never mind
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <h3 className="font-bold text-gray-800 mb-3">Payment history</h3>
             <Card className="overflow-hidden">
