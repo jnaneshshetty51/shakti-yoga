@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes, createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, requireSuperAdmin } from '@/lib/admin-auth';
+import { requireAdmin, requireSuperAdmin, assertUserDeletable } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { hashPassword } from '@/lib/auth';
@@ -261,44 +261,14 @@ export async function DELETE(request: Request) {
 
         const target = await prisma.user.findUnique({
             where: { id },
-            select: {
-                email: true, name: true, role: true, avatarUrl: true,
-                _count: { select: { classesTaught: true, sessionsTaught: true } },
-            },
+            select: { email: true, name: true, role: true, avatarUrl: true },
         });
         if (!target || !(STAFF_ROLES as string[]).includes(target.role)) {
             return NextResponse.json({ error: 'Staff member not found.' }, { status: 404 });
         }
-        if (id === admin.id) {
-            return NextResponse.json({ error: 'You cannot remove your own account here.' }, { status: 400 });
-        }
-        if ((target.role === Role.STAFF_ADMIN || target.role === Role.SUPER_ADMIN) && !(await requireSuperAdmin())) {
-            return NextResponse.json({ error: 'Only a super admin can remove an admin.' }, { status: 403 });
-        }
-        if (target.role === Role.SUPER_ADMIN) {
-            const supers = await prisma.user.count({ where: { role: Role.SUPER_ADMIN } });
-            if (supers <= 1) {
-                return NextResponse.json({ error: 'Cannot remove the only super admin.' }, { status: 400 });
-            }
-        }
-        if (target._count.classesTaught > 0) {
-            return NextResponse.json(
-                { error: `${target.name} is assigned to ${target._count.classesTaught} class batch(es). Reassign those first.` },
-                { status: 409 },
-            );
-        }
 
-        // Detach any therapy sessions (keep the booking history, drop the teacher link is not
-        // possible — teacherId is required — so refuse if there are upcoming ones).
-        const upcoming = await prisma.booking.count({
-            where: { teacherId: id, status: { in: ['PENDING', 'CONFIRMED'] }, date: { gt: new Date() } },
-        });
-        if (upcoming > 0) {
-            return NextResponse.json(
-                { error: `${target.name} has ${upcoming} upcoming session(s). Reassign or cancel them first.` },
-                { status: 409 },
-            );
-        }
+        const denyReason = await assertUserDeletable(admin, { id, role: target.role });
+        if (denyReason) return NextResponse.json({ error: denyReason }, { status: 409 });
 
         await prisma.$transaction([
             prisma.teacherAvailability.deleteMany({ where: { teacherId: id } }),

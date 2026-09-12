@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
+import { toMinutes, rangesOverlap } from '@/lib/timeOverlap';
 import { PlanType } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -71,6 +72,38 @@ function parseDuration(v: number | string): number {
     return n;
 }
 
+/**
+ * Refuses a batch that would double-book a teacher: another active batch for
+ * the same teacher, sharing at least one weekday, whose time window overlaps.
+ * Returns a human-readable conflict message, or null if it's clear.
+ */
+async function assertNoTeacherConflict(params: {
+    teacherId: string;
+    timeSlot: string;
+    durationMin: number;
+    daysOfWeek: string[];
+    excludeId?: string;
+}): Promise<string | null> {
+    const { teacherId, timeSlot, durationMin, daysOfWeek, excludeId } = params;
+    if (!daysOfWeek.length) return null;
+    const start = toMinutes(timeSlot);
+    const end = start + durationMin;
+
+    const others = await prisma.classBatch.findMany({
+        where: { teacherId, active: true, ...(excludeId ? { id: { not: excludeId } } : {}) },
+        select: { name: true, timeSlot: true, durationMin: true, daysOfWeek: true },
+    });
+    for (const other of others) {
+        if (!other.daysOfWeek.some((d) => daysOfWeek.includes(d))) continue;
+        const otherStart = toMinutes(other.timeSlot);
+        const otherEnd = otherStart + other.durationMin;
+        if (rangesOverlap(start, end, otherStart, otherEnd)) {
+            return `This teacher already has "${other.name}" at ${other.timeSlot} (${other.durationMin}min) on an overlapping day.`;
+        }
+    }
+    return null;
+}
+
 function toData(body: BatchInput) {
     const data: Record<string, unknown> = {};
     if (body.name !== undefined) data.name = String(body.name).trim();
@@ -97,7 +130,8 @@ function toData(body: BatchInput) {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireDepartment(['TRAINER']))) return forbidden();
+    const admin = await requireDepartment(['TRAINER']);
+    if (!admin) return forbidden();
     try {
         const body = await request.json().catch(() => ({}));
         if (!body.name || !body.timeSlot || !body.planType || !body.teacherId) {
@@ -108,21 +142,31 @@ export async function POST(request: Request) {
         } catch (e) {
             return NextResponse.json({ error: e instanceof Error ? e.message : 'Invalid plan type' }, { status: 400 });
         }
+        const timeSlot = String(body.timeSlot).trim();
+        const durationMin = body.durationMin === undefined ? 60 : parseDuration(body.durationMin);
+        const daysOfWeek = String(body.daysOfWeek ?? '').split(',').map((d: string) => d.trim()).filter(Boolean);
+        const teacherId = String(body.teacherId);
+
+        const conflict = await assertNoTeacherConflict({ teacherId, timeSlot, durationMin, daysOfWeek });
+        if (conflict) return NextResponse.json({ error: conflict }, { status: 409 });
+
         const batch = await prisma.classBatch.create({
             data: {
                 name: String(body.name).trim(),
-                timeSlot: String(body.timeSlot).trim(),
-                durationMin: body.durationMin === undefined ? 60 : parseDuration(body.durationMin),
+                timeSlot,
+                durationMin,
                 planType: body.planType,
-                teacherId: body.teacherId,
+                teacherId,
                 meetingLink: body.meetingLink || null,
                 capacity: body.capacity && Number(body.capacity) > 0 ? Math.trunc(Number(body.capacity)) : null,
-                daysOfWeek: String(body.daysOfWeek ?? '')
-                    .split(',')
-                    .map((d: string) => d.trim())
-                    .filter(Boolean),
+                daysOfWeek,
                 active: body.active === undefined ? true : body.active === true || body.active === 'true',
             },
+        });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'class.batch.create', entity: 'ClassBatch', entityId: batch.id,
+            after: { name: batch.name, timeSlot, durationMin, teacherId, daysOfWeek },
         });
         return NextResponse.json({ batch: { id: batch.id } });
     } catch (error) {
@@ -139,9 +183,24 @@ export async function PATCH(request: Request) {
         if (!body.id) return NextResponse.json({ error: 'Missing class id' }, { status: 400 });
         const before = await prisma.classBatch.findUnique({
             where: { id: body.id },
-            select: { name: true, meetingLink: true, timeSlot: true, teacherId: true, active: true },
+            select: { name: true, meetingLink: true, timeSlot: true, durationMin: true, daysOfWeek: true, teacherId: true, active: true },
         });
-        const batch = await prisma.classBatch.update({ where: { id: body.id }, data: toData(body) });
+        if (!before) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+
+        const patch = toData(body);
+        const resultingActive = (patch.active as boolean) ?? before.active;
+        if (resultingActive) {
+            const conflict = await assertNoTeacherConflict({
+                teacherId: (patch.teacherId as string) ?? before.teacherId,
+                timeSlot: (patch.timeSlot as string) ?? before.timeSlot,
+                durationMin: (patch.durationMin as number) ?? before.durationMin,
+                daysOfWeek: (patch.daysOfWeek as string[]) ?? before.daysOfWeek,
+                excludeId: body.id,
+            });
+            if (conflict) return NextResponse.json({ error: conflict }, { status: 409 });
+        }
+
+        const batch = await prisma.classBatch.update({ where: { id: body.id }, data: patch });
         await recordAudit({
             actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
             action: 'class.batch.update', entity: 'ClassBatch', entityId: body.id,

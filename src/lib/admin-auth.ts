@@ -1,5 +1,6 @@
 import { readSessionToken, verifyToken, type SessionPayload } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { Role } from '@prisma/client';
 
 async function session(): Promise<SessionPayload | null> {
     const token = await readSessionToken();
@@ -73,6 +74,45 @@ export async function requireDepartment(dept: AdminDept | AdminDept[]): Promise<
     if (!payload.dept) return payload; // full-access staff admin
     const allowed = Array.isArray(dept) ? dept : [dept];
     return allowed.includes(payload.dept as AdminDept) ? payload : null;
+}
+
+const ADMIN_ROLES: Role[] = [Role.SUPER_ADMIN, Role.STAFF_ADMIN];
+
+/**
+ * Shared guard for "can `admin` delete this user" — used by both
+ * /api/admin/users and /api/admin/staff so the two routes can't drift apart
+ * on who's allowed to remove an admin or a teacher with live obligations.
+ * Returns an error message (safe to show the caller) if deletion should be
+ * refused, or null if it's OK to proceed.
+ */
+export async function assertUserDeletable(
+    admin: SessionPayload,
+    target: { id: string; role: Role },
+): Promise<string | null> {
+    if (target.id === admin.id) return 'You cannot delete your own account.';
+
+    if (ADMIN_ROLES.includes(target.role) && !(await requireSuperAdmin())) {
+        return 'Only a super admin can remove an admin.';
+    }
+    if (target.role === Role.SUPER_ADMIN) {
+        const supers = await prisma.user.count({ where: { role: Role.SUPER_ADMIN } });
+        if (supers <= 1) return 'Cannot remove the only super admin.';
+    }
+
+    if (target.role === Role.TEACHER) {
+        const classesTaught = await prisma.classBatch.count({ where: { teacherId: target.id } });
+        if (classesTaught > 0) {
+            return `This teacher is assigned to ${classesTaught} class batch(es). Reassign those first.`;
+        }
+        const upcoming = await prisma.booking.count({
+            where: { teacherId: target.id, status: { in: ['PENDING', 'CONFIRMED'] }, date: { gt: new Date() } },
+        });
+        if (upcoming > 0) {
+            return `This teacher has ${upcoming} upcoming session(s). Reassign or cancel them first.`;
+        }
+    }
+
+    return null;
 }
 
 /** Admin or teacher — for endpoints teachers also operate (class join, session Meet links). */
