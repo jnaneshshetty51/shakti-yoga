@@ -10,7 +10,7 @@ import {
     getPublicKeyId,
     isRazorpayConfigured,
 } from '@/lib/razorpay';
-import { activatePlan } from '@/lib/subscription';
+import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { previewCheckoutDiscount, consumeCheckoutDiscount, markReferralConverted } from '@/lib/referral';
 import { readJson, ValidationError, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
@@ -182,6 +182,9 @@ export async function POST(request: Request) {
         }
     } catch (error) {
         if (error instanceof ValidationError) return handleValidationError(error);
+        if (error instanceof SubscriptionProviderConflictError) {
+            return NextResponse.json({ error: `${error.message} Manage or cancel it first, or contact support.` }, { status: 409 });
+        }
         console.error('Checkout subscribe error:', error);
         return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
     }

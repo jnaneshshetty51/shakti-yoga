@@ -9,6 +9,7 @@ interface Invoice {
     billedTo: { name: string; email: string };
     lineItem: string;
     amount: number;
+    tax: number;
     currency: string;
     reference: string;
     provider: string;
@@ -87,8 +88,14 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 <tbody className="divide-y divide-gray-100">
                     <tr>
                         <td className="py-4">{invoice.lineItem}</td>
-                        <td className="py-4 text-right font-medium">{money(invoice.amount, invoice.currency)}</td>
+                        <td className="py-4 text-right font-medium">{money(invoice.amount - invoice.tax, invoice.currency)}</td>
                     </tr>
+                    {invoice.tax > 0 && (
+                        <tr>
+                            <td className="py-2 text-sm text-gray-500">GST</td>
+                            <td className="py-2 text-right text-sm text-gray-500">{money(invoice.tax, invoice.currency)}</td>
+                        </tr>
+                    )}
                 </tbody>
                 <tfoot className="border-t-2 border-gray-200">
                     <tr>

@@ -22,6 +22,7 @@ export type AppEvent =
     | 'subscription_started'
     | 'subscription_renewed'
     | 'subscription_cancelled'
+    | 'subscription_resumed'
     | 'referral_sent'
     | 'referral_converted'
     | 'family_joined'

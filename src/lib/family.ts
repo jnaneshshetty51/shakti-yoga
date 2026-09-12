@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getPlan, PLANS } from '@/lib/pricing';
-import { activatePlan } from '@/lib/subscription';
+import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { mapDatabaseRole } from '@/lib/auth';
 import { recordEvent } from '@/lib/analytics';
 import { Role, SubscriptionStatus } from '@prisma/client';
@@ -104,13 +104,22 @@ export async function joinFamily(userId: string, rawCode: string): Promise<JoinR
     }
 
     const plan = getPlan('family');
-    const { user } = await activatePlan(userId, plan, {
-        renewalDate: ownerSub.renewalDate,
-        familyOwnerId: ownerSub.userId,
-        amount: 0,
-        currency: ownerSub.currency,
-        provider: ownerSub.provider as 'razorpay' | 'apple' | 'google',
-    });
+    let activated;
+    try {
+        activated = await activatePlan(userId, plan, {
+            renewalDate: ownerSub.renewalDate,
+            familyOwnerId: ownerSub.userId,
+            amount: 0,
+            currency: ownerSub.currency,
+            provider: ownerSub.provider as 'razorpay' | 'apple' | 'google',
+        });
+    } catch (err) {
+        if (err instanceof SubscriptionProviderConflictError) {
+            return { ok: false, error: `You already have an active subscription billed via ${err.existingProvider}. Cancel it first, then join the family plan.`, status: 409 };
+        }
+        throw err;
+    }
+    const { user } = activated;
 
     void recordEvent('subscription_started', {
         userId,

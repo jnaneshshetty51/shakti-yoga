@@ -5,6 +5,17 @@ import { grantCycleCredits } from '@/lib/sessionCredits';
 import { Role, SubscriptionStatus } from '@prisma/client';
 
 /**
+ * Thrown by activatePlan() when a user already has a live subscription on a
+ * different billing provider — see the guard in activatePlan for why.
+ */
+export class SubscriptionProviderConflictError extends Error {
+    constructor(public existingProvider: string) {
+        super(`This account already has an active subscription billed via ${existingProvider}.`);
+        this.name = 'SubscriptionProviderConflictError';
+    }
+}
+
+/**
  * Lazily expire a user's subscription: if it is CANCELLED or already EXPIRED and
  * the renewal date has passed, mark it EXPIRED and drop the user back to VISITOR.
  * Safe to call on every auth check — it only writes when something actually changed.
@@ -39,10 +50,13 @@ export async function syncSubscriptionState(userId: string, currentRole: Role): 
     }
 
     const pastDue = sub.renewalDate.getTime() < Date.now();
-    // A cancelled sub or a lapsed free trial both drop to VISITOR once the
-    // paid-through / trial date passes. EXPIRED means we already did this.
+    // A cancelled, paused, or lapsed-trial subscription all drop to VISITOR
+    // once the paid-through / trial date passes — pausing stops recurring
+    // billing the same as cancelling does, it just offers a Resume button
+    // before the date passes. EXPIRED means we already did this.
     const shouldExpire = pastDue && (
         sub.status === SubscriptionStatus.CANCELLED ||
+        sub.status === SubscriptionStatus.PAUSED ||
         sub.status === SubscriptionStatus.TRIAL
     );
     const alreadyExpiredButStillPaid = sub.status === SubscriptionStatus.EXPIRED;
@@ -108,6 +122,21 @@ export async function activatePlan(
     // the cap immediately.
     const capped = plan.sessionsPerCycle != null;
     const currentCycleStart = capped ? new Date() : null;
+
+    // Subscription.userId is unique — activation always upserts a single row,
+    // unconditionally overwriting provider/store/billingProviderId. A member
+    // switching providers while an existing subscription is still live would
+    // silently clobber the other provider's billing id, breaking that
+    // provider's webhook lookup and clearing any family-seat link. Refuse
+    // instead: the member (or admin) must resolve the existing subscription
+    // first — e.g. cancel it — before activating on a different provider.
+    const incomingProvider = opts.provider ?? 'razorpay';
+    const existing = await prisma.subscription.findUnique({
+        where: { userId }, select: { provider: true, status: true },
+    });
+    if (existing && existing.provider !== incomingProvider && existing.status !== SubscriptionStatus.EXPIRED) {
+        throw new SubscriptionProviderConflictError(existing.provider);
+    }
 
     const user = await prisma.user.update({
         where: { id: userId },
