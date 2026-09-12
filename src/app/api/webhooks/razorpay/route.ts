@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyWebhookSignature } from '@/lib/razorpay';
 import { PLANS, getPlan, regionFor } from '@/lib/pricing';
-import { activatePlan } from '@/lib/subscription';
+import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { issueInvoiceForPayment } from '@/lib/invoice';
+import { confirmAndActivate } from '@/lib/checkoutConfirm';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { markReferralConverted } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
         event: string;
         payload: {
             subscription?: { entity: { id: string; current_end: number | null } };
-            payment?: { entity: { id: string; amount: number; currency: string } };
+            payment?: { entity: { id: string; amount: number; currency: string; order_id?: string | null } };
         };
     };
     try {
@@ -55,6 +56,27 @@ export async function POST(request: Request) {
     try {
         const subEntity = event.payload.subscription?.entity;
         const payEntity = event.payload.payment?.entity;
+
+        // One-time order payments (the discounted-checkout path) have no
+        // subscription entity at all, so they were previously ignored entirely
+        // here — if the client's browser closed before /checkout/verify ran,
+        // a real payment stayed CREATED forever with nothing to reconcile it.
+        // Handle that case before falling into the subscription-only logic below.
+        if (!subEntity && event.event === 'payment.captured' && payEntity?.order_id) {
+            const pending = await prisma.payment.findUnique({ where: { providerOrderId: payEntity.order_id } });
+            if (pending && pending.status === 'CREATED') {
+                const result = await confirmAndActivate({
+                    userId: pending.userId,
+                    paymentRecord: pending,
+                    razorpayPaymentId: payEntity.id,
+                    recurring: false,
+                });
+                if (!result.ok) {
+                    console.error('[razorpay webhook] order payment reconciliation failed', result.error);
+                }
+            }
+            return NextResponse.json({ ok: true, note: 'order payment handled' });
+        }
 
         if (!subEntity) {
             return NextResponse.json({ ok: true, note: 'no subscription entity' });
@@ -126,13 +148,25 @@ export async function POST(request: Request) {
                     subscription?.pendingPlanKey ? getPlan(subscription.pendingPlanKey) : plan;
                 // activatePlan upserts the Subscription, sets role + billingProviderId,
                 // and tops up credits — the same idempotent path /verify uses.
-                await activatePlan(userId, effectivePlan, {
-                    recurring: true,
-                    subscriptionId: subEntity.id,
-                    renewalDate,
-                    region,
-                    ...(payEntity ? { amount: payEntity.amount / 100, currency: payEntity.currency } : {}),
-                });
+                try {
+                    await activatePlan(userId, effectivePlan, {
+                        recurring: true,
+                        subscriptionId: subEntity.id,
+                        renewalDate,
+                        region,
+                        ...(payEntity ? { amount: payEntity.amount / 100, currency: payEntity.currency } : {}),
+                    });
+                } catch (err) {
+                    if (err instanceof SubscriptionProviderConflictError) {
+                        // The Payment row above (if any) already recorded the charge —
+                        // refusing here only blocks overwriting the user's other live
+                        // subscription's billing id. Needs a human to reconcile; don't
+                        // let Razorpay retry a conflict that won't resolve itself.
+                        console.error(`[razorpay webhook] provider conflict for user ${userId}: ${err.message}`);
+                        return NextResponse.json({ ok: true, note: 'provider conflict — not applied' });
+                    }
+                    throw err;
+                }
                 if (subscription?.pendingPlanKey) {
                     await prisma.subscription.update({
                         where: { id: subscription.id },
