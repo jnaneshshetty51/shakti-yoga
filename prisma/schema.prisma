@@ -149,6 +149,7 @@ model User {
   passwordHash String?
   role         Role      @default(VISITOR)
   active       Boolean   @default(true) // false = admin-deactivated; blocked at sign-in
+  emailVerified Boolean  @default(false) // signup doesn't block on this — gates referral-reward payout only, see lib/referral.ts
   phone        String?
   country      String?
   timezone     String    @default("IST")
@@ -188,6 +189,7 @@ model User {
   assignedLeads Lead[]
 
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   contentInteractions ContentInteraction[]
   contentComments     ContentComment[]
@@ -946,6 +948,19 @@ model TeacherAvailability {
 }
 
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)

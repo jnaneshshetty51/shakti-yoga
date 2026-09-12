@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomBytes, createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
@@ -7,6 +8,8 @@ import { recordEvent } from '@/lib/analytics';
 import { redeemReferral } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { SITE_URL } from '@/lib/site';
+
+const VERIFY_TOKEN_TTL_MS = 48 * 60 * 60 * 1000; // 48h — longer than the password-reset window since there's no urgency pressure
 
 const TIMEZONES = ['IST', 'PST', 'EST', 'CST', 'MST', 'GMT', 'CET', 'AEDT', 'AEST', 'NZDT'] as const;
 
@@ -64,12 +67,27 @@ export async function POST(request: Request) {
         const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))
             .catch(() => false);
         recordEvent('SIGNUP', { userId: user.id, metadata: { country: country ?? null, referred: referralApplied } });
+
+        // Signup itself never blocks on this — the account works immediately.
+        // Verifying only unlocks referral-reward payout for whoever referred
+        // this signup (see markReferralConverted in lib/referral.ts).
+        const rawVerifyToken = randomBytes(32).toString('hex');
+        await prisma.emailVerificationToken.create({
+            data: {
+                userId: user.id,
+                tokenHash: createHash('sha256').update(rawVerifyToken).digest('hex'),
+                expiresAt: new Date(Date.now() + VERIFY_TOKEN_TTL_MS),
+            },
+        }).catch(() => { });
+        const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${rawVerifyToken}`;
+
         sendEmail({
             to: user.email,
             subject: 'Welcome to Shakti Yoga',
             html: emailLayout(
                 `<p>Namaste ${firstName},</p>
                  <p>Your account is ready. Start with a <a href="${SITE_URL}/trial" style="color:#4A6741;font-weight:bold">7-day free trial</a> — full access to every live Everyday Yoga class, no card required.</p>
+                 <p><a href="${verifyUrl}" style="color:#4A6741;font-weight:bold">Confirm your email address</a> to make sure you don't miss booking and billing notifications.</p>
                  <p>Questions any time: just reply to this email.</p>`,
             ),
         }).catch(() => { });
