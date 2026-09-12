@@ -12,6 +12,9 @@ export default function AchievementsPage() {
     const { showToast } = useToast();
     const [data, setData] = useState<Data | null>(null);
     const [email, setEmail] = useState("");
+    const [bulkKey, setBulkKey] = useState("");
+    const [bulkEmails, setBulkEmails] = useState("");
+    const [bulkBusy, setBulkBusy] = useState(false);
 
     const load = useCallback(async (lookup?: string) => {
         const qs = lookup ? `?email=${encodeURIComponent(lookup)}` : "";
@@ -25,6 +28,7 @@ export default function AchievementsPage() {
 
     const toggle = async (key: string, grant: boolean) => {
         if (!data?.member) return;
+        if (!grant && !confirm(`Revoke this badge from ${data.member.name}?`)) return;
         const res = await fetch("/api/admin/achievements", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -33,6 +37,30 @@ export default function AchievementsPage() {
         if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Failed");
         showToast("success", grant ? "Badge granted." : "Badge revoked.");
         load(data.member.email);
+    };
+
+    const bulkEmailList = bulkEmails.split(/[\n,]/).map((e) => e.trim()).filter(Boolean);
+
+    const bulkGrant = async () => {
+        if (!bulkKey || bulkEmailList.length === 0) return;
+        if (!confirm(`Grant this badge to ${bulkEmailList.length} member(s)?`)) return;
+        setBulkBusy(true);
+        try {
+            const results = await Promise.all(
+                bulkEmailList.map((memberEmail) =>
+                    fetch("/api/admin/achievements", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: memberEmail, key: bulkKey, grant: true }),
+                    }),
+                ),
+            );
+            const failed = results.filter((r) => !r.ok).length;
+            showToast(failed ? "warning" : "success", failed ? `${failed} of ${bulkEmailList.length} failed (check emails)` : `Granted to ${bulkEmailList.length} member(s).`);
+            setBulkEmails("");
+        } finally {
+            setBulkBusy(false);
+        }
     };
 
     if (!data) return <PageLoading title="Achievements" />;
@@ -53,6 +81,24 @@ export default function AchievementsPage() {
                 </div>
                 {email && !data.member && <p className="text-sm text-red-500 mt-2">No member with that email.</p>}
                 {data.member && <p className="text-sm text-ink-muted mt-2">{data.member.name} — {data.member.earned.length}/{data.achievements.length} earned</p>}
+            </Card>
+
+            <Card padded className="mb-6">
+                <label className={labelClass}>Bulk-grant a badge to a cohort</label>
+                <div className="grid gap-2 sm:grid-cols-[200px_1fr_auto] items-start">
+                    <select className={inputClass} value={bulkKey} onChange={(e) => setBulkKey(e.target.value)}>
+                        <option value="">Choose a badge…</option>
+                        {data.achievements.map((a) => <option key={a.key} value={a.key}>{a.title}</option>)}
+                    </select>
+                    <textarea
+                        className={inputClass} rows={2}
+                        placeholder="Member emails — one per line or comma-separated (e.g. everyone who finished a challenge)"
+                        value={bulkEmails} onChange={(e) => setBulkEmails(e.target.value)}
+                    />
+                    <Button disabled={!bulkKey || bulkEmailList.length === 0 || bulkBusy} onClick={bulkGrant}>
+                        {bulkBusy ? "Granting…" : `Grant to ${bulkEmailList.length || 0}`}
+                    </Button>
+                </div>
             </Card>
 
             <div className="grid gap-3 sm:grid-cols-2">

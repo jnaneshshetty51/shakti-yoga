@@ -50,6 +50,7 @@ export default function AdminCertificatesPage() {
     useEffect(() => { load(); loadUsers(); }, [load, loadUsers]);
 
     const setStatus = async (c: Certificate, status: "APPROVED" | "REVOKED") => {
+        if (status === "REVOKED" && !confirm(`Revoke "${c.title}"? The member will lose access to this certificate.`)) return;
         const res = await fetch(`/api/admin/certificates/${c.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
