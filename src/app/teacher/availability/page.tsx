@@ -78,7 +78,7 @@ export default function TeacherAvailabilityPage() {
                         </button>
                     ))}
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {form.mode === "weekly" ? (
                         <div>
                             <label className={labelClass}>Weekday</label>
@@ -115,7 +115,7 @@ export default function TeacherAvailabilityPage() {
             {loading ? (
                 <p className="text-gray-500">Loading…</p>
             ) : (
-                <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
                     <section>
                         <h3 className="font-bold text-gray-800 mb-3">Weekly</h3>
                         {weekly.length === 0 ? <p className="text-sm text-gray-400 italic">None set.</p> : (

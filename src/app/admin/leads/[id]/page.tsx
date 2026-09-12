@@ -43,7 +43,7 @@ export default function LeadDetailPage() {
                 eyebrow={<span className="flex gap-2"><Badge tone="gray">{lead.status.toLowerCase()}</Badge><Badge tone="blue">{lead.source.replace(/_/g, " ").toLowerCase()}</Badge></span>}
             />
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Card padded>
                     <h3 className="font-semibold text-ink mb-3 text-sm">Details</h3>
                     <dl className="text-sm grid grid-cols-2 gap-y-1.5">

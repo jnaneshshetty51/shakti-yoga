@@ -128,7 +128,7 @@ export default function AdminReferralsPage() {
 
             <Card padded className="mb-6">
                 <h3 className="font-bold text-ink mb-3">Reward settings</h3>
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <label className={labelClass}>Referrer reward (₹)</label>
                         <input type="number" min={0} className={inputClass} value={form.referrerReward}

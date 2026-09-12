@@ -60,7 +60,7 @@ export default function EnquiryDetailPage() {
                 ))}
             </PageHeader>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Card padded>
                     <h3 className="font-semibold text-ink mb-3 text-sm">Enquiry</h3>
                     <dl className="text-sm grid grid-cols-2 gap-y-1.5">

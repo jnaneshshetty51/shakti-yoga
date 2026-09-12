@@ -101,7 +101,7 @@ export default function AdminCommunityPage() {
 
             {creating && (
                 <Card padded className="mb-6">
-                    <form onSubmit={create} className="grid gap-3 sm:grid-cols-2">
+                    <form onSubmit={create} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <input required placeholder="Group name" value={newForm.name} onChange={(e) => setNewForm({ ...newForm, name: e.target.value })} className={inputClass} />
                         <select value={newForm.role} onChange={(e) => setNewForm({ ...newForm, role: e.target.value })} className={inputClass}>
                             {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
@@ -123,7 +123,7 @@ export default function AdminCommunityPage() {
                         <Card key={g.id} padded className={g.active ? "" : "opacity-60"}>
                             {editingId === g.id ? (
                                 <div className="space-y-3">
-                                    <div className="grid sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={inputClass} placeholder="Name" />
                                         <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className={inputClass}>
                                             {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}

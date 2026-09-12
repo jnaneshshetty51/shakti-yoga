@@ -4,7 +4,7 @@ export default function TargetAudience() {
             <div className="max-w-4xl mx-auto">
                 <h2 className="font-serif text-3xl md:text-4xl text-primary mb-8 sm:mb-12">Who This Is For</h2>
 
-                <div className="grid md:grid-cols-2 gap-6 sm:gap-12 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-12 text-left">
                     <div className="bg-accent p-6 sm:p-8 rounded-lg shadow-sm border border-primary/10">
                         <h3 className="font-serif text-xl sm:text-2xl text-secondary mb-4">For NRIs Dealing With...</h3>
                         <ul className="space-y-3 font-sans text-text opacity-90 text-sm sm:text-base">

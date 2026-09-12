@@ -11,7 +11,7 @@ export default function TherapyStartPage() {
                     <p className="text-xl text-text/70">Choose how you'd like to start your personalized yoga therapy.</p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Option 1: Consultation */}
                     <div className="bg-white p-8 rounded-lg shadow-lg border border-gray-100 hover:border-primary/30 transition-all transform hover:-translate-y-1">
                         <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mb-6">

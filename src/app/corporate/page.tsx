@@ -47,7 +47,7 @@ export default function CorporatePage() {
             ) : (
                 <form onSubmit={submit} className="space-y-4 bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-6">
                     {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
-                    <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <input required placeholder="Company name" value={form.companyName}
                             onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />

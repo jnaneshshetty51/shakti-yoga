@@ -98,7 +98,7 @@ export default function MemberDetailPage() {
                 <Button variant={m.active ? "ghost" : "primary"} onClick={toggleActive}>{m.active ? "Deactivate" : "Reactivate"}</Button>
             </PageHeader>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Section title="Profile">
                     <dl className="text-sm grid grid-cols-2 gap-y-1.5">
                         <dt className="text-ink-subtle">Phone</dt><dd>{m.phone || "—"}</dd>

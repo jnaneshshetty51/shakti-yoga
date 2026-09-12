@@ -55,7 +55,7 @@ export default function AchievementsPage() {
                 {data.member && <p className="text-sm text-ink-muted mt-2">{data.member.name} — {data.member.earned.length}/{data.achievements.length} earned</p>}
             </Card>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {data.achievements.map((a) => {
                     const has = data.member?.earned.includes(a.key);
                     const pct = data.totalMembers ? Math.round((a.earnedBy / data.totalMembers) * 100) : 0;

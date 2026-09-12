@@ -190,7 +190,7 @@ export default function AdminStaffPage() {
                             current={newPhotoPreview}
                             onFile={(f) => { setNewPhoto(f); setNewPhotoPreview(URL.createObjectURL(f)); }}
                         />
-                        <div className="grid sm:grid-cols-2 gap-3 flex-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
                             <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
                             <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
                             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputClass}>
@@ -231,7 +231,7 @@ export default function AdminStaffPage() {
                         <div key={s.id} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-5">
                             {editingId === s.id ? (
                                 <div className="space-y-3">
-                                    <div className="grid sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className={inputClass} placeholder="Name" />
                                         <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })} className={inputClass}>
                                             {["TEACHER", "STAFF_ADMIN", "SUPER_ADMIN"].map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}

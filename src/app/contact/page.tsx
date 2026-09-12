@@ -21,7 +21,7 @@ export default async function ContactPage() {
             />
 
             <section className="py-20 px-8 bg-background">
-                <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16">
                     <div>
                         <h2 className="font-serif text-3xl text-primary mb-8">Contact Information</h2>
                         <div className="space-y-6 font-sans text-text/80">

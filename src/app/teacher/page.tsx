@@ -123,7 +123,7 @@ export default function TeacherTodayPage() {
                 </Link>
             )}
 
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card padded>
                     <h2 className="font-bold text-gray-800 mb-4">Group classes</h2>
                     {data.classes.length === 0 ? (
