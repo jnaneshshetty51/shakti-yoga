@@ -8,7 +8,12 @@ import { colors, spacing } from "@/theme";
 
 function Row({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
       <Ionicons name={icon} size={20} color={colors.primary} style={{ width: 28 }} />
       <BodyText style={{ flex: 1 }}>{label}</BodyText>
       <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -42,6 +47,7 @@ export default function MoreScreen() {
 
         <Card style={styles.section}>
           <Row icon="notifications-outline" label="Notifications" onPress={() => router.push("/activity")} />
+          <Row icon="chatbubbles-outline" label="Community Feed" onPress={() => router.push("/community")} />
           <Row icon="leaf-outline" label="Practices" onPress={() => router.push("/practices")} />
           <Row icon="trophy-outline" label="Challenges" onPress={() => router.push("/challenges")} />
           <Row icon="calendar-clear-outline" label="Calendar" onPress={() => router.push("/calendar")} />
@@ -82,6 +88,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#0001",
+    borderBottomColor: colors.border,
   },
 });
