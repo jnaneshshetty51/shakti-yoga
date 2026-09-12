@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
-import { computeProgress, GOAL_LABEL } from '@/lib/challenges';
+import { computeProgress, GOAL_LABEL, markParticipantComplete } from '@/lib/challenges';
 
 export const dynamic = 'force-dynamic';
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -58,13 +58,20 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     const participantId = String(body.participantId || '');
     const completed = body.completed === true;
 
-    const part = await prisma.challengeParticipant.findFirst({ where: { id: participantId, challengeId: id } });
+    const part = await prisma.challengeParticipant.findFirst({
+        where: { id: participantId, challengeId: id },
+        include: { challenge: true },
+    });
     if (!part) return NextResponse.json({ error: 'Participant not found' }, { status: 404 });
 
-    const updated = await prisma.challengeParticipant.update({
-        where: { id: participantId },
-        data: { completedAt: completed ? (part.completedAt ?? new Date()) : null },
-    });
+    let nowComplete: boolean;
+    if (completed) {
+        await markParticipantComplete(part, part.challenge, `Marked complete by ${admin.email}.`);
+        nowComplete = true;
+    } else {
+        await prisma.challengeParticipant.update({ where: { id: participantId }, data: { completedAt: null } });
+        nowComplete = false;
+    }
 
     await auditAs({ id: admin.id, email: admin.email }, request)({
         action: completed ? 'challenge.participant.complete' : 'challenge.participant.uncomplete',
@@ -72,7 +79,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         after: { challengeId: id, userId: part.userId },
     });
 
-    return NextResponse.json({ ok: true, completed: !!updated.completedAt });
+    return NextResponse.json({ ok: true, completed: nowComplete });
 }
 
 /** DELETE — remove a participant.  ?participantId= */
