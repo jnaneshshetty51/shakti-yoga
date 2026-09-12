@@ -5,7 +5,7 @@ import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFor
 import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button, ActionButton } from "@/components/admin/ui";
 import { AttendanceModal } from "@/components/admin/AttendanceModal";
 import { useToast } from "@/components/admin/Toast";
-import { LuCalendarClock } from "react-icons/lu";
+import { LuCalendarClock, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 
 type ScheduleItem = {
     id: string;
@@ -22,9 +22,13 @@ type ScheduleItem = {
 type Batch = { id: string; name: string; timeSlot: string; daysOfWeek: string[]; teacher: string };
 
 type ScheduleData = {
+    windowStart: string;
     schedule: Record<string, ScheduleItem[]>;
     batches: Batch[];
 };
+
+const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+const todayStr = () => toDateStr(new Date());
 
 const STATUS_OPTIONS = [
     { label: "Scheduled", value: "Scheduled" },
@@ -35,6 +39,7 @@ const STATUS_OPTIONS = [
 export default function AdminSchedulePage() {
     const { showToast } = useToast();
     const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
+    const [weekStart, setWeekStart] = useState(todayStr());
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<ScheduleItem | null>(null);
@@ -42,18 +47,24 @@ export default function AdminSchedulePage() {
 
     const fetchSchedule = useCallback(async () => {
         try {
-            const response = await fetch('/api/admin/schedule');
+            const response = await fetch(`/api/admin/schedule?start=${weekStart}`);
             if (response.ok) setScheduleData(await response.json());
         } catch (error) {
             console.error('Failed to fetch schedule:', error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [weekStart]);
 
     useEffect(() => {
         fetchSchedule();
     }, [fetchSchedule]);
+
+    const shiftWeek = (days: number) => {
+        const d = new Date(`${weekStart}T00:00:00.000Z`);
+        d.setUTCDate(d.getUTCDate() + days);
+        setWeekStart(toDateStr(d));
+    };
 
     const addClass = async (values: EntityValues) => {
         const res = await fetch('/api/admin/schedule', {
@@ -88,8 +99,20 @@ export default function AdminSchedulePage() {
         fetchSchedule();
     };
 
+    const cancelClass = async (item: ScheduleItem) => {
+        if (!confirm(`Cancel ${item.batchName} on ${item.timeSlot}? Members who'd have joined are notified.`)) return;
+        const res = await fetch("/api/admin/schedule", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id, status: "Cancelled" }),
+        });
+        if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Could not cancel");
+        showToast("success", "Class cancelled.");
+        fetchSchedule();
+    };
+
     const deleteClass = async (item: ScheduleItem) => {
-        if (!confirm(`Delete ${item.batchName} on ${item.timeSlot}? (Prefer Cancel to keep the record.)`)) return;
+        if (!confirm(`Permanently delete ${item.batchName} on ${item.timeSlot}? This removes the record entirely — prefer Cancel above to keep it for history.`)) return;
         const res = await fetch(`/api/admin/schedule?id=${item.id}`, { method: "DELETE" });
         if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Could not delete");
         showToast("success", "Class deleted.");
@@ -104,7 +127,17 @@ export default function AdminSchedulePage() {
 
     return (
         <div>
-            <PageHeader title="Class Schedule" subtitle="Group-class instances for the next 7 days.">
+            <PageHeader
+                title="Class Schedule"
+                subtitle={`Group-class instances from ${new Date(`${weekStart}T00:00:00.000Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}, 7 days.`}
+            >
+                <div className="flex items-center gap-1.5">
+                    <Button variant="secondary" size="sm" icon={LuChevronLeft} onClick={() => shiftWeek(-7)}>Prev</Button>
+                    {weekStart !== todayStr() && (
+                        <Button variant="secondary" size="sm" onClick={() => setWeekStart(todayStr())}>Today</Button>
+                    )}
+                    <Button variant="secondary" size="sm" icon={LuChevronRight} onClick={() => shiftWeek(7)}>Next</Button>
+                </div>
                 <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class</Button>
             </PageHeader>
 
@@ -144,6 +177,9 @@ export default function AdminSchedulePage() {
                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
                                     <ActionButton onClick={() => setAttendanceFor(item.id)}>Attendance</ActionButton>
                                     <Button variant="secondary" size="sm" onClick={() => setEditing(item)}>Edit</Button>
+                                    {item.status !== 'Cancelled' && item.status !== 'Completed' && (
+                                        <ActionButton onClick={() => cancelClass(item)}>Cancel</ActionButton>
+                                    )}
                                     <ActionButton tone="danger" onClick={() => deleteClass(item)}>Delete</ActionButton>
                                 </div>
                             </div>
