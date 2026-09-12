@@ -156,7 +156,7 @@ export default function ProfilePage() {
                 </div>
             )}
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card padded className="text-center h-fit">
                     <div className="w-28 h-28 rounded-full mx-auto mb-3 overflow-hidden bg-secondary flex items-center justify-center text-3xl text-white font-bold font-serif">
                         {avatarUrl ? (

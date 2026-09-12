@@ -167,7 +167,7 @@ function CheckoutContent() {
                 onLoad={() => setScriptReady(true)}
                 onReady={() => setScriptReady(true)}
             />
-            <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Order Summary */}
                 <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 h-fit">
                     <h2 className="font-serif text-2xl text-primary mb-6">Order Summary</h2>

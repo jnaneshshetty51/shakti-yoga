@@ -89,7 +89,7 @@ export default function BroadcastPage() {
 
                         <div>
                             <label className={labelClass}>Audience</label>
-                            <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 {data.segments.map((s) => (
                                     <label key={s.key}
                                         className={`flex items-center justify-between gap-2 rounded-control border px-3 py-2 text-sm cursor-pointer

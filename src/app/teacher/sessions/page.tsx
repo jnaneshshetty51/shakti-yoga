@@ -121,7 +121,7 @@ export default function TeacherSessionsPage() {
             ) : rows.length === 0 ? (
                 <Card><EmptyState icon={LuMessageSquare} title={`No ${tab} sessions`} /></Card>
             ) : (
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {rows.map((s) => <Row key={s.id} s={s} onSaved={load} />)}
                 </div>
             )}

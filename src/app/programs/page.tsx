@@ -52,7 +52,7 @@ export default async function ProgramsPage() {
                         </p>
                     </div>
 
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         {TIERS.map(({ key, annualKey, blurb, cta, href }) => {
                             const plan = PLANS[key];
                             const featured = key === "everyday";
@@ -138,7 +138,7 @@ export default async function ProgramsPage() {
             <section className="bg-background px-4 py-16 sm:px-8">
                 <div className="mx-auto max-w-4xl text-center">
                     <h2 className="mb-10 font-serif text-3xl text-primary">In every plan</h2>
-                    <div className="grid gap-6 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         {[
                             ["Community", "A WhatsApp group for daily class links, reminders and encouragement."],
                             ["Teacher support", "Real teachers who know your name and answer your questions."],

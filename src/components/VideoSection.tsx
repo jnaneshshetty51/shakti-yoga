@@ -112,7 +112,7 @@ export default function VideoSection() {
                 </div>
 
                 {/* Main Video Showcase */}
-                <div className="grid lg:grid-cols-12 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     {/* Video Player Box (7 cols) */}
                     <div className="lg:col-span-7 flex flex-col">
                         <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black/60 border border-white/10 shadow-2xl group">

@@ -42,7 +42,7 @@ export default function RetreatsPage() {
             ) : retreats.length === 0 ? (
                 <p className="text-gray-400">Nothing scheduled right now — check back soon.</p>
             ) : (
-                <div className="grid sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {retreats.map((r) => (
                         <Link
                             key={r.id}

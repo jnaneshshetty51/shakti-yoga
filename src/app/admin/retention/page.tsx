@@ -27,7 +27,7 @@ export default function RetentionPage() {
         <div>
             <PageHeader title="Retention" subtitle="Members who need attention. Message a whole segment from Broadcast." />
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
                 {segs.map((s) => (
                     <Card key={s.key} padded interactive className="cursor-pointer" >
                         <button className="text-left w-full" onClick={() => setOpen(open === s.key ? null : s.key)}>

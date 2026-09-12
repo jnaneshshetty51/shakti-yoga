@@ -67,7 +67,7 @@ export default function OnboardingPage() {
                         <h2 className="font-serif text-3xl text-primary mb-6">What brings you to Shakti Yoga?</h2>
                         <p className="text-text/70 mb-8">Select all that apply.</p>
 
-                        <div className="grid md:grid-cols-2 gap-4 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                             {["Stress Relief", "Flexibility", "Weight Loss", "Therapy/Healing", "Strength", "Mental Peace"].map((goal) => (
                                 <button
                                     key={goal}

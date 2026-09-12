@@ -156,7 +156,7 @@ function SettingsInner() {
                             </select>
                         </div>
 
-                        <div className="pt-5 border-t border-gray-100 grid sm:grid-cols-2 gap-4">
+                        <div className="pt-5 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="sm:col-span-2">
                                 <h3 className="font-bold text-gray-800">Teacher payout rates (₹)</h3>
                                 <p className="text-xs text-gray-500 mt-0.5">Used for the estimate on each teacher&rsquo;s Earnings screen.</p>
@@ -216,7 +216,7 @@ function SettingsInner() {
                         <div className="pt-5 border-t border-gray-100 space-y-3">
                             <h3 className="font-bold text-gray-800">Social Links</h3>
                             <p className="text-xs text-gray-500">Shown in the website footer. Leave blank to hide an icon.</p>
-                            <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {SOCIAL_META.map((f) => (
                                     <div key={f.key}>
                                         <label className={labelClass}>{f.label}</label>

@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
                         />
                     </div>
 
-                    <div className="grid lg:grid-cols-3 gap-6 mb-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         <div className="lg:col-span-2">
                             <Card title="Revenue" subtitle="Collected payments over the selected range">
                                 {data.revenueSeries.some((p) => p.value > 0) ? (
@@ -189,7 +189,7 @@ export default function AnalyticsPage() {
                         </Card>
                     </div>
 
-                    <div className="grid lg:grid-cols-3 gap-8 mb-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                         <div className="lg:col-span-2">
                             <Card title="Signups" subtitle="New accounts over the selected range">
                                 {data.signupSeries.some((p) => p.value > 0) ? (
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
                         </Card>
                     </div>
 
-                    <div className="grid lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <Card title="Trial Funnel" subtitle="Trial requests → conversions in this range">
                             <div className="flex items-stretch gap-2 mb-3">
                                 {[

@@ -102,7 +102,7 @@ export default function AdminReportsPage() {
                 </div>
             </Card>
 
-            <div className="grid lg:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
                     <CardHeader title="Revenue by month" subtitle="Collected payments" />
                     <div className="p-5 sm:p-6">
@@ -125,7 +125,7 @@ export default function AdminReportsPage() {
                 </Card>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="overflow-hidden">
                     <CardHeader title="Cohort retention" subtitle="Of members who joined that month, how many still hold a live subscription" />
                     <div className="overflow-x-auto">

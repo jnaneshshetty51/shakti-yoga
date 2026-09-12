@@ -20,7 +20,7 @@ export default function AboutPage() {
 
             <section className="py-20 px-8 bg-background">
                 <div className="max-w-6xl mx-auto">
-                    <div className="grid md:grid-cols-2 gap-16 items-center mb-20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center mb-20">
                         <div>
                             <h2 className="font-serif text-3xl text-primary mb-6">Our Story</h2>
                             <p className="font-sans text-text/80 leading-relaxed mb-6">
@@ -53,7 +53,7 @@ export default function AboutPage() {
                         </p>
                     </div>
 
-                    <div id="founder" className="grid md:grid-cols-2 gap-16 items-center scroll-mt-24">
+                    <div id="founder" className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center scroll-mt-24">
                         <div>
                             <h2 className="font-serif text-3xl text-primary mb-6">Meet Acharya Swastik</h2>
                             <p className="font-serif italic text-lg text-text/70 mb-6 leading-relaxed">

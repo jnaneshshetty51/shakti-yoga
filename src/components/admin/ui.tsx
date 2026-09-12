@@ -256,6 +256,7 @@ export function Tabs<T extends string>({
     onChange: (key: T) => void;
 }) {
     return (
+        <div className="max-w-full overflow-x-auto">
         <div className="inline-flex gap-1 p-1 bg-black/[0.04] rounded-full">
             {tabs.map((t) => {
                 const on = t.key === active;
@@ -263,7 +264,7 @@ export function Tabs<T extends string>({
                     <button
                         key={t.key}
                         onClick={() => onChange(t.key)}
-                        className={`inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                        className={`inline-flex shrink-0 items-center gap-2 px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors ${
                             on ? "bg-surface text-ink shadow-raised" : "text-ink-subtle hover:text-ink-muted"
                         }`}
                     >
@@ -280,6 +281,7 @@ export function Tabs<T extends string>({
                     </button>
                 );
             })}
+        </div>
         </div>
     );
 }

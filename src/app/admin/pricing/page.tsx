@@ -83,7 +83,7 @@ function Inner() {
                 <Button loading={saving} onClick={save}>Save pricing</Button>
             </PageHeader>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {plans.map((p) => {
                     const dr = draft[p.key];
                     if (!dr) return null;
