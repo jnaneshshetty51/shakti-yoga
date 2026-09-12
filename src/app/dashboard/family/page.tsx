@@ -122,7 +122,11 @@ export default function FamilyPage() {
                             <Badge tone="green">Owner</Badge>
                         </div>
 
-                        {view.code && (
+                        {view.seatsUsed >= view.seatsTotal ? (
+                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                                All seats are taken — the invite code won&rsquo;t work for anyone new until a seat frees up.
+                            </p>
+                        ) : view.code && (
                             <>
                                 <p className="text-sm text-gray-500 mb-2">Invite code — share it with family members</p>
                                 <div className="flex flex-wrap items-center gap-3">

@@ -34,6 +34,7 @@ export default function TherapyBookingPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState<string | null>(null);
     const [msg, setMsg] = useState("");
+    const [confirmingCancel, setConfirmingCancel] = useState<string | null>(null);
 
     const dates = Array.from({ length: 10 }, (_, i) => {
         const d = new Date();
@@ -93,7 +94,7 @@ export default function TherapyBookingPage() {
     };
 
     const cancel = async (s: Session) => {
-        if (!confirm("Cancel this session? Cancelling at least 24h ahead returns your credit.")) return;
+        setConfirmingCancel(null);
         setBusy(s.id);
         try {
             const res = await fetch(`/api/bookings/${s.id}`, { method: "DELETE" });
@@ -202,10 +203,18 @@ export default function TherapyBookingPage() {
                                                         {s.type === "THERAPY_SESSION" ? "1:1 Therapy" : "Consultation"} · {s.teacher} · <span className="capitalize">{s.status.toLowerCase()}</span>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => join(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50">Join</button>
-                                                    <button onClick={() => cancel(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
-                                                </div>
+                                                {confirmingCancel === s.id ? (
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        <span className="text-gray-500">Cancel? 24h+ ahead returns your credit.</span>
+                                                        <button onClick={() => cancel(s)} disabled={busy === s.id} className="px-3 py-1.5 font-semibold rounded-full bg-red-500 text-white hover:bg-red-600 disabled:opacity-50">Yes, cancel</button>
+                                                        <button onClick={() => setConfirmingCancel(null)} className="px-3 py-1.5 font-semibold rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50">Never mind</button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => join(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50">Join</button>
+                                                        <button onClick={() => setConfirmingCancel(s.id)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                                                    </div>
+                                                )}
                                             </Card>
                                         ))}
                                     </div>

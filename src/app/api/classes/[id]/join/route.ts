@@ -30,7 +30,7 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
         }
 
         if (!isStaff) {
-            const access = await canJoinGroupClass(session.id);
+            const access = await canJoinGroupClass(session.id, instance.id);
             if (!access.ok) {
                 return NextResponse.json(
                     { error: access.reason, paywall: access.paywall, outOfSessions: access.outOfSessions ?? false },

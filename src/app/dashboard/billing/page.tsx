@@ -29,6 +29,8 @@ interface Subscription {
 const PLAN_LABEL: Record<string, string> = {
     EVERYDAY_YOGA: "Everyday Yoga",
     YOGA_THERAPY: "Yoga Therapy",
+    STARTER: "Starter",
+    FAMILY: "Family",
     TRIAL: "Free Trial",
 };
 
