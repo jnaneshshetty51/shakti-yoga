@@ -8,6 +8,7 @@ import {
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/jwt';
 import { adminTier } from '@/lib/permissions';
+import { prisma } from '@/lib/prisma';
 import type { Role } from '@prisma/client';
 
 export { signToken, verifyToken, SESSION_MAX_AGE, SESSION_MAX_AGE_REMEMBER };
@@ -61,10 +62,28 @@ export async function readSessionToken(): Promise<string | null> {
     return cookieStore.get('token')?.value ?? null;
 }
 
+/**
+ * The current request's session, or null if there isn't one or it's been
+ * revoked. Checks the token's `tokenVersion` claim against the DB so a
+ * password reset or admin deactivation ("log out everywhere") takes effect
+ * immediately, not just on routes that happen to re-check separately. A
+ * token that predates the `tv` claim (undefined) is allowed through.
+ */
 export async function getSession(): Promise<SessionPayload | null> {
     const token = await readSessionToken();
     if (!token) return null;
-    return await verifyToken(token);
+    const payload = await verifyToken(token);
+    if (!payload) return null;
+
+    if (typeof payload.tv === 'number') {
+        const user = await prisma.user.findUnique({
+            where: { id: payload.id },
+            select: { tokenVersion: true },
+        });
+        if (!user || user.tokenVersion !== payload.tv) return null;
+    }
+
+    return payload;
 }
 
 /** Issue the session cookie. Single source of truth for the cookie's options. */

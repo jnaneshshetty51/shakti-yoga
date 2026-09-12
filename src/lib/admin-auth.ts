@@ -1,26 +1,9 @@
-import { readSessionToken, verifyToken, type SessionPayload } from '@/lib/auth';
+import { getSession, type SessionPayload } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-async function session(): Promise<SessionPayload | null> {
-    const token = await readSessionToken();
-    if (!token) return null;
-    const payload = await verifyToken(token);
-    if (!payload) return null;
-
-    // Enforce session revocation (password reset / "log out everywhere") for
-    // privileged routes — middleware can't do this DB check on the edge, and
-    // these endpoints are the ones worth the extra query. A token that predates
-    // the `tv` claim (undefined) is allowed through, same as elsewhere.
-    if (typeof payload.tv === 'number') {
-        const user = await prisma.user.findUnique({
-            where: { id: payload.id },
-            select: { tokenVersion: true },
-        });
-        if (!user || user.tokenVersion !== payload.tv) return null;
-    }
-
-    return payload;
-}
+// getSession() already enforces tokenVersion-based revocation for every
+// caller; admin/teacher routes just need the role/tier checks below.
+const session = getSession;
 
 /** Any admin session (super or staff), regardless of department scoping. Internal — routes should call requireAdmin() or requireDepartment() instead. */
 async function adminSession(): Promise<SessionPayload | null> {
