@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, requireSuperAdmin } from '@/lib/admin-auth';
+import { requireAdmin, requireSuperAdmin, assertUserDeletable } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { Role } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+// Full-table scans don't scale — matches the cap already used by the
+// invoices/subscriptions admin routes. Most-recently-joined first, so this
+// stays useful even once the member base exceeds the cap.
+const USER_LIST_CAP = 500;
 
 export async function GET() {
     try {
@@ -19,6 +24,7 @@ export async function GET() {
             orderBy: {
                 createdAt: 'desc',
             },
+            take: USER_LIST_CAP,
         });
 
         const formattedUsers = users.map(user => {
@@ -128,22 +134,26 @@ export async function DELETE(request: Request) {
     try {
         const id = new URL(request.url).searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
-        if (id === admin.id) {
-            return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
-        }
 
         const target = await prisma.user.findUnique({
             where: { id }, select: { email: true, name: true, role: true },
         });
         if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Clear dependent rows that have no cascade, then delete.
+        const denyReason = await assertUserDeletable(admin, { id, role: target.role });
+        if (denyReason) return NextResponse.json({ error: denyReason }, { status: 409 });
+
+        // Clear dependent rows that have no cascade, then delete. A teacher's
+        // availability rules have no cascade either — assertUserDeletable
+        // already confirmed they have no live class batches or upcoming
+        // sessions, so this is safe to clear alongside everything else.
         await prisma.$transaction([
             prisma.subscription.deleteMany({ where: { userId: id } }),
             prisma.payment.deleteMany({ where: { userId: id } }),
             prisma.booking.deleteMany({ where: { OR: [{ userId: id }, { teacherId: id }] } }),
             prisma.classAttendance.deleteMany({ where: { userId: id } }),
             prisma.story.deleteMany({ where: { userId: id } }),
+            prisma.teacherAvailability.deleteMany({ where: { teacherId: id } }),
             prisma.user.delete({ where: { id } }),
         ]);
 
