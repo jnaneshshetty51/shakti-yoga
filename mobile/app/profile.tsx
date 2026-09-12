@@ -218,6 +218,6 @@ const styles = StyleSheet.create({
   avatarEmpty: { backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
   linkRow: {
     flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#0001",
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
 });

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { FlatList, View, StyleSheet, RefreshControl } from "react-native";
+import { FlatList, View, StyleSheet, RefreshControl, Alert } from "react-native";
 import { Screen, Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { colors, spacing, radius } from "@/theme";
 import type { ChallengeView } from "@/lib/types";
@@ -21,8 +21,8 @@ export default function ChallengesScreen() {
       await api.post(`/api/challenges/${id}/join`);
       setJoinedIds((prev) => new Set(prev).add(id));
       await reload();
-    } catch {
-      /* ignore */
+    } catch (err) {
+      Alert.alert("Couldn't join", err instanceof ApiError ? err.message : "Please check your connection and try again.");
     } finally {
       setJoiningId(null);
     }

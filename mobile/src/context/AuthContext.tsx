@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
-import { api, getToken, setToken, ApiError } from "@/lib/api";
+import { api, getToken, setToken, setUnauthorizedHandler, ApiError } from "@/lib/api";
 import { registerForPush, unregisterForPush } from "@/lib/push";
 
 export type UserRole =
@@ -94,6 +94,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await unregisterForPush(); // needs the bearer token — must run before setToken(null)
     await setToken(null);
     setUser(null);
+  }, []);
+
+  // Fires on a 401 from an already-authenticated request — the token itself
+  // was rejected (revoked, not just "this one call happened to fail"), so
+  // there's no live session left to call unregisterForPush with. AuthGate
+  // (app/_layout.tsx) reacts to user becoming null and routes to login.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void setToken(null);
+      setUser(null);
+    });
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const refreshUser = useCallback(async () => {

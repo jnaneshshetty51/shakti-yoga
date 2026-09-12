@@ -188,6 +188,7 @@ model User {
   assignedLeads Lead[]
 
   passwordResetTokens PasswordResetToken[]
+  webHandoffTokens WebHandoffToken[]
 
   contentInteractions ContentInteraction[]
   contentComments     ContentComment[]
@@ -946,6 +947,23 @@ model TeacherAvailability {
 }
 
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// One-time handoff from the mobile app's bearer-token session into a web
+/// cookie session, so "Change plan" / "Resume" opening the web checkout in
+/// the system browser doesn't force a second login — the web session has no
+/// idea about the app's bearer token otherwise. Single-use, short-lived.
+model WebHandoffToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
