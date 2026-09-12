@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 interface IntakeData {
     status: "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "RECOMMENDED" | "RECOMMENDED_WITH_CONDITIONS";
@@ -256,6 +257,7 @@ export default function TherapyIntakePage() {
     return (
         <main className="min-h-screen bg-accent/30 py-16 px-4">
             <div className="max-w-2xl mx-auto">
+                <Breadcrumbs items={[{ label: "Yoga Therapy", href: "/yoga-therapy" }, { label: "Assessment" }]} />
                 <div className="text-center mb-10">
                     <h1 className="font-serif text-4xl text-primary mb-3">Yoga Therapy Assessment</h1>
                     <p className="text-text/70">
