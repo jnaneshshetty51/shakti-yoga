@@ -28,6 +28,7 @@ export default function ClassesPage() {
     const [data, setData] = useState<ClassesResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [joiningId, setJoiningId] = useState<string | null>(null);
+    const [joinError, setJoinError] = useState("");
 
     useEffect(() => {
         (async () => {
@@ -44,16 +45,17 @@ export default function ClassesPage() {
 
     const join = async (cls: ClassView) => {
         setJoiningId(cls.id);
+        setJoinError("");
         try {
             const res = await fetch(`/api/classes/${cls.id}/join`, { method: "POST" });
             const body = await res.json();
             if (res.ok && body.meetingLink) {
                 window.open(body.meetingLink, "_blank", "noopener,noreferrer");
             } else {
-                alert(body.error || "Could not join the class.");
+                setJoinError(body.error || "Could not join the class.");
             }
         } catch {
-            alert("Could not join the class. Please try again.");
+            setJoinError("Could not join the class. Please try again.");
         } finally {
             setJoiningId(null);
         }
@@ -62,6 +64,10 @@ export default function ClassesPage() {
     return (
         <div>
             <PageHeader title="My Classes" subtitle="Your live group-class schedule, in IST." />
+
+            {joinError && (
+                <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl">{joinError}</div>
+            )}
 
             {loading ? (
                 <Card><EmptyState icon={LuHeart} title="Loading your classes…" /></Card>
