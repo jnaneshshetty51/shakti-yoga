@@ -205,7 +205,10 @@ function CheckoutContent() {
 
                     {error && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
-                            {error}
+                            {error} Trouble paying?{" "}
+                            <Link href="/dashboard/support" className="font-semibold underline hover:text-red-900">
+                                Contact support
+                            </Link>.
                         </div>
                     )}
 

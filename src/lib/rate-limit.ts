@@ -1,5 +1,13 @@
 // In-memory sliding-window rate limiter. Fine for this app's single PM2
 // instance; would need a shared store (e.g. Redis) behind multiple instances.
+//
+// TODO(scale-out): every caller of rateLimit() below (auth, contact, checkout,
+// corporate/retreat enquiries, etc.) silently stops throttling the moment this
+// runs behind more than one instance — each process gets its own independent
+// bucket, so a limit of N requests becomes N-per-instance with no warning.
+// Before deploying more than one instance, replace the Map below with a
+// shared store (Redis INCR + TTL is the standard pattern) behind the same
+// rateLimit() signature so call sites don't need to change.
 
 interface Bucket {
     count: number;
@@ -17,6 +25,15 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000).unref();
 
+/**
+ * Sliding-window rate limit, keyed by caller-supplied string (e.g. `login:${ip}`).
+ *
+ * ⚠️ In-memory only — the limit is per-process. Behind more than one server
+ * instance, each instance enforces its own independent copy of `limit`,
+ * silently multiplying the real effective limit by the instance count with
+ * no error or log line to notice it by. Safe today (single PM2 instance);
+ * revisit before horizontal scaling — see the TODO above this function.
+ */
 export function rateLimit(
     key: string,
     limit: number,
