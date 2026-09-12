@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { LuLifeBuoy, LuSend } from "react-icons/lu";
+import { LuLifeBuoy, LuSend, LuSearch } from "react-icons/lu";
 import {
     PageHeader, PageLoading, Card, StatusBadge, EmptyState,
     SegmentedControl, Button,
@@ -36,6 +36,7 @@ function when(iso: string) {
 export default function AdminSupportPage() {
     const [filter, setFilter] = useState<"OPEN" | "CLOSED">("OPEN");
     const [rows, setRows] = useState<Row[] | null>(null);
+    const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<Detail | null>(null);
     const [reply, setReply] = useState("");
     const [busy, setBusy] = useState(false);
@@ -87,6 +88,15 @@ export default function AdminSupportPage() {
 
     if (!rows) return <PageLoading title="Support" />;
 
+    const q = search.trim().toLowerCase();
+    const visibleRows = q
+        ? rows.filter((r) =>
+            r.userName.toLowerCase().includes(q) ||
+            r.userEmail.toLowerCase().includes(q) ||
+            (r.subject ?? "").toLowerCase().includes(q),
+        )
+        : rows;
+
     return (
         <div>
             <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment.">
@@ -98,13 +108,22 @@ export default function AdminSupportPage() {
                 />
             </PageHeader>
 
+            <div className="relative w-full sm:w-72 mb-4">
+                <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-sm" />
+                <input
+                    type="text" placeholder="Search name, email, subject…"
+                    value={search} onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-control border border-hairline text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-brand/25"
+                />
+            </div>
+
             <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4">
                 <Card>
-                    {rows.length === 0 ? (
-                        <EmptyState icon={LuLifeBuoy} title={`No ${filter.toLowerCase()} conversations`} />
+                    {visibleRows.length === 0 ? (
+                        <EmptyState icon={LuLifeBuoy} title={q ? "No matching conversations" : `No ${filter.toLowerCase()} conversations`} />
                     ) : (
                         <div className="divide-y divide-hairline">
-                            {rows.map((r) => (
+                            {visibleRows.map((r) => (
                                 <button
                                     key={r.id}
                                     onClick={() => open(r.id)}

@@ -89,7 +89,7 @@ export default function AdminCommunityPage() {
     return (
         <div className="max-w-4xl">
             <PageHeader
-                title="Community Groups"
+                title="WhatsApp Groups"
                 subtitle="WhatsApp groups shown on each member's dashboard by their plan."
             >
                 <Button variant={creating ? "secondary" : "primary"} onClick={() => setCreating((c) => !c)}>

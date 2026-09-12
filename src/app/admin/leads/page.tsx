@@ -160,6 +160,14 @@ function LeadsDashboard() {
     const statusTone = (status: string) =>
         ({ NEW: "blue", CONTACTED: "amber", TRIAL: "purple", CONVERTED: "green", LOST: "red" } as const)[status] ?? "gray";
 
+    const STATUS_FILTER = [
+        { label: "New", value: "NEW" },
+        { label: "Contacted", value: "CONTACTED" },
+        { label: "Trial", value: "TRIAL" },
+        { label: "Converted", value: "CONVERTED" },
+        { label: "Lost", value: "LOST" },
+    ];
+
     const columns = [
         {
             header: "Contact Info",
@@ -207,6 +215,7 @@ function LeadsDashboard() {
                 data={leads}
                 columns={columns}
                 title="All Leads"
+                filters={[{ key: "status", label: "Status", options: STATUS_FILTER }]}
                 onCreate={handleCreate}
                 actions={(lead) => (
                     <TableActions>

@@ -19,6 +19,8 @@ interface Staff {
     bio: string;
     specialties: string[];
     yearsExperience: number | null;
+    classRate: number | null;
+    sessionRate: number | null;
     displayOrder: number;
     publicVisible: boolean;
     classesTaught: number;
@@ -34,7 +36,8 @@ const ROLE_LABEL: Record<string, string> = {
 
 const BLANK = {
     name: "", email: "", role: "TEACHER", phone: "", adminDepartment: "",
-    title: "", bio: "", specialties: "", yearsExperience: "", displayOrder: "0", publicVisible: true,
+    title: "", bio: "", specialties: "", yearsExperience: "", classRate: "", sessionRate: "",
+    displayOrder: "0", publicVisible: true,
 };
 
 function PhotoInput({ current, onFile }: { current: string | null; onFile: (f: File) => void }) {
@@ -132,7 +135,9 @@ export default function AdminStaffPage() {
         setEditForm({
             name: s.name, email: s.email, role: s.role, phone: s.phone, adminDepartment: s.department ?? "",
             title: s.title, bio: s.bio, specialties: s.specialties.join(", "),
-            yearsExperience: s.yearsExperience?.toString() ?? "", displayOrder: s.displayOrder.toString(),
+            yearsExperience: s.yearsExperience?.toString() ?? "",
+            classRate: s.classRate?.toString() ?? "", sessionRate: s.sessionRate?.toString() ?? "",
+            displayOrder: s.displayOrder.toString(),
             publicVisible: s.publicVisible,
         });
     };
@@ -209,6 +214,12 @@ export default function AdminStaffPage() {
                             <input placeholder='Title, e.g. "Senior Yoga Therapist"' value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
                             <input placeholder="Specialties, comma separated" value={form.specialties} onChange={(e) => setForm({ ...form, specialties: e.target.value })} className={`sm:col-span-2 ${inputClass}`} />
                             <input type="number" min={0} max={80} placeholder="Years of experience" value={form.yearsExperience} onChange={(e) => setForm({ ...form, yearsExperience: e.target.value })} className={inputClass} />
+                            {form.role === "TEACHER" && (
+                                <>
+                                    <input type="number" min={0} step="1" placeholder="₹/class rate (blank = studio default)" value={form.classRate} onChange={(e) => setForm({ ...form, classRate: e.target.value })} className={inputClass} />
+                                    <input type="number" min={0} step="1" placeholder="₹/session rate (blank = studio default)" value={form.sessionRate} onChange={(e) => setForm({ ...form, sessionRate: e.target.value })} className={inputClass} />
+                                </>
+                            )}
                             <label className="flex items-center gap-2 text-sm text-gray-600">
                                 <input type="checkbox" checked={form.publicVisible} onChange={(e) => setForm({ ...form, publicVisible: e.target.checked })} /> Show on public site
                             </label>
@@ -250,6 +261,12 @@ export default function AdminStaffPage() {
                                         <input value={editForm.specialties} onChange={(e) => setEditForm({ ...editForm, specialties: e.target.value })} className={`sm:col-span-2 ${inputClass}`} placeholder="Specialties (comma separated)" />
                                         <input type="number" min={0} max={80} value={editForm.yearsExperience} onChange={(e) => setEditForm({ ...editForm, yearsExperience: e.target.value })} className={inputClass} placeholder="Years experience" />
                                         <input type="number" value={editForm.displayOrder} onChange={(e) => setEditForm({ ...editForm, displayOrder: e.target.value })} className={inputClass} placeholder="Display order" />
+                                        {editForm.role === "TEACHER" && (
+                                            <>
+                                                <input type="number" min={0} step="1" value={editForm.classRate} onChange={(e) => setEditForm({ ...editForm, classRate: e.target.value })} className={inputClass} placeholder="₹/class rate (blank = studio default)" />
+                                                <input type="number" min={0} step="1" value={editForm.sessionRate} onChange={(e) => setEditForm({ ...editForm, sessionRate: e.target.value })} className={inputClass} placeholder="₹/session rate (blank = studio default)" />
+                                            </>
+                                        )}
                                     </div>
                                     <textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} className={`h-24 ${inputClass}`} placeholder="Bio" />
                                     <label className="flex items-center gap-2 text-sm text-gray-600">

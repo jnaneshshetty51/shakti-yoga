@@ -58,6 +58,14 @@ export async function POST(request: Request) {
 
         const mappedRole = mapDatabaseRole(user.role);
 
+        // Link any CRM lead for this email to the account it actually became —
+        // otherwise "Converted" is just a status label with no way to trace
+        // which lead became which member.
+        await prisma.lead.updateMany({
+            where: { email: { equals: email, mode: 'insensitive' }, convertedToUserId: null },
+            data: { status: 'CONVERTED', convertedToUserId: user.id, convertedAt: new Date() },
+        }).catch(() => { });
+
         const token = await signToken(sessionClaims(user));
 
         await setSessionCookie(token);

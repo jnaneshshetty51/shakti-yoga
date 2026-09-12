@@ -49,7 +49,13 @@ export default function CorporateDetailPage() {
                         <dt className="text-ink-subtle">Phone</dt><dd>{lead.contactPhone || "—"}</dd>
                         <dt className="text-ink-subtle">Employees</dt><dd>{lead.employeeCount ?? "—"}</dd>
                         <dt className="text-ink-subtle">Programme</dt><dd>{lead.programInterest || "—"}</dd>
-                        <dt className="text-ink-subtle">Deal value</dt><dd>{money(lead.dealValue)}</dd>
+                        <dt className="text-ink-subtle">Deal value</dt>
+                        <dd>
+                            {money(lead.dealValue)}
+                            {lead.dealValue != null && (
+                                <span className="text-ink-subtle text-xs ml-1" title="Entered by an admin — not reconciled against an actual payment or invoice.">(unverified)</span>
+                            )}
+                        </dd>
                         <dt className="text-ink-subtle">Assigned to</dt><dd>{lead.assignedTo?.name || "—"}</dd>
                         <dt className="text-ink-subtle">Created</dt><dd>{new Date(lead.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</dd>
                     </dl>

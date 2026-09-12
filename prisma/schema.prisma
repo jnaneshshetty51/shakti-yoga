@@ -268,6 +268,8 @@ model StaffProfile {
   bio             String? // longer description
   specialties     String[] // ["Prenatal", "Back pain", "Pranayama"]
   yearsExperience Int?
+  classRate       Float? // ₹/class taught — overrides the studio-wide `teacher_rate_class` Setting when set
+  sessionRate     Float? // ₹/1:1 session taught — overrides `teacher_rate_session` when set
   displayOrder    Int      @default(0)
   publicVisible   Boolean  @default(true)
   createdAt       DateTime @default(now())

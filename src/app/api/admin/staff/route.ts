@@ -20,7 +20,10 @@ const DEPARTMENTS: AdminDepartment[] = [AdminDepartment.CONTENT, AdminDepartment
 function serialize(u: {
     id: string; name: string; email: string; phone: string | null; role: Role; avatarUrl: string | null;
     adminDepartment?: AdminDepartment | null;
-    staffProfile: { title: string | null; bio: string | null; specialties: string[]; yearsExperience: number | null; displayOrder: number; publicVisible: boolean } | null;
+    staffProfile: {
+        title: string | null; bio: string | null; specialties: string[]; yearsExperience: number | null;
+        classRate: number | null; sessionRate: number | null; displayOrder: number; publicVisible: boolean;
+    } | null;
     _count?: { classesTaught: number; sessionsTaught: number; availability: number };
 }) {
     return {
@@ -35,6 +38,8 @@ function serialize(u: {
         bio: u.staffProfile?.bio ?? '',
         specialties: u.staffProfile?.specialties ?? [],
         yearsExperience: u.staffProfile?.yearsExperience ?? null,
+        classRate: u.staffProfile?.classRate ?? null,
+        sessionRate: u.staffProfile?.sessionRate ?? null,
         displayOrder: u.staffProfile?.displayOrder ?? 0,
         publicVisible: u.staffProfile?.publicVisible ?? true,
         classesTaught: u._count?.classesTaught ?? 0,
@@ -46,10 +51,20 @@ function serialize(u: {
 const staffSelect = {
     id: true, name: true, email: true, phone: true, role: true, avatarUrl: true, adminDepartment: true,
     staffProfile: {
-        select: { title: true, bio: true, specialties: true, yearsExperience: true, displayOrder: true, publicVisible: true },
+        select: {
+            title: true, bio: true, specialties: true, yearsExperience: true,
+            classRate: true, sessionRate: true, displayOrder: true, publicVisible: true,
+        },
     },
     _count: { select: { classesTaught: true, sessionsTaught: true, availability: true } },
 } as const;
+
+function parseRate(v: unknown): number | null | undefined {
+    if (v === undefined) return undefined;
+    if (v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+}
 
 export async function GET() {
     if (!(await requireAdmin())) return forbidden();
@@ -127,6 +142,8 @@ export async function POST(request: Request) {
                         bio: bio ?? null,
                         specialties,
                         yearsExperience,
+                        classRate: parseRate(body.classRate) ?? null,
+                        sessionRate: parseRate(body.sessionRate) ?? null,
                         publicVisible: body.publicVisible === undefined ? true : Boolean(body.publicVisible),
                         displayOrder: Math.trunc(Number(body.displayOrder) || 0),
                     },
@@ -225,6 +242,8 @@ export async function PATCH(request: Request) {
         }
         if (body.displayOrder !== undefined) profileData.displayOrder = Math.trunc(Number(body.displayOrder) || 0);
         if (body.publicVisible !== undefined) profileData.publicVisible = Boolean(body.publicVisible);
+        if (body.classRate !== undefined) profileData.classRate = parseRate(body.classRate);
+        if (body.sessionRate !== undefined) profileData.sessionRate = parseRate(body.sessionRate);
 
         const updated = await prisma.user.update({
             where: { id },
