@@ -21,6 +21,12 @@ type FilterConfig = {
     options: FilterOption[];
 };
 
+type BulkAction = {
+    label: string;
+    tone?: "danger" | "default";
+    onClick: (selectedIds: string[]) => void;
+};
+
 type DTableProps<T> = {
     data: T[];
     columns: Column<T>[];
@@ -31,6 +37,8 @@ type DTableProps<T> = {
     actions?: (item: T) => React.ReactNode;
     onCreate?: () => void;
     onBulkDelete?: (selectedIds: string[]) => void;
+    /** One or more bulk actions on the selection toolbar. Falls back to a single "Delete" action wired to onBulkDelete when omitted. */
+    bulkActions?: BulkAction[];
 };
 
 export default function DTable<T extends { id: string | number;[key: string]: unknown }>({
@@ -42,7 +50,8 @@ export default function DTable<T extends { id: string | number;[key: string]: un
     enableBulkActions = false,
     actions,
     onCreate,
-    onBulkDelete
+    onBulkDelete,
+    bulkActions,
 }: DTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -174,17 +183,20 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                 {(filters || (enableBulkActions && selectedItems.length > 0)) && (
                     <div className="flex flex-wrap items-center gap-3">
                         {enableBulkActions && selectedItems.length > 0 && (
-                            <div className="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-full border border-red-100">
+                            <div className="flex items-center gap-3 bg-red-50 px-3 py-1.5 rounded-full border border-red-100">
                                 <span className="text-xs font-bold text-red-700">{selectedItems.length} selected</span>
-                                <button
-                                    onClick={() => {
-                                        if (onBulkDelete) onBulkDelete(selectedItems);
-                                        setSelectedItems([]);
-                                    }}
-                                    className="text-xs text-red-600 hover:text-red-800 underline"
-                                >
-                                    Delete
-                                </button>
+                                {(bulkActions ?? (onBulkDelete ? [{ label: "Delete", tone: "danger" as const, onClick: onBulkDelete }] : [])).map((a) => (
+                                    <button
+                                        key={a.label}
+                                        onClick={() => {
+                                            a.onClick(selectedItems);
+                                            setSelectedItems([]);
+                                        }}
+                                        className={`text-xs underline ${a.tone === "danger" ? "text-red-600 hover:text-red-800" : "text-gray-600 hover:text-gray-800"}`}
+                                    >
+                                        {a.label}
+                                    </button>
+                                ))}
                             </div>
                         )}
                         {filters?.map(filter => (

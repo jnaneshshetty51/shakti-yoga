@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
-import { PageHeader, PageLoading, StatusBadge, TableActions } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type Invoice = {
     id: string; number: string; member: string; email: string;
@@ -20,6 +21,7 @@ const money = (n: number, currency: string) => {
 const d = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 export default function InvoicesPage() {
+    const { showToast } = useToast();
     const [rows, setRows] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -32,6 +34,20 @@ export default function InvoicesPage() {
         }
     }, []);
     useEffect(() => { load(); }, [load]);
+
+    const voidInvoice = async (invoice: Invoice) => {
+        const reason = prompt(`Void invoice ${invoice.number}? This doesn't refund the payment. Reason:`, "");
+        if (reason === null) return;
+        if (!reason.trim()) return showToast("error", "A reason is required.");
+        const res = await fetch(`/api/admin/invoices/${invoice.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason: reason.trim() }),
+        });
+        if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Could not void invoice");
+        showToast("success", `${invoice.number} voided.`);
+        load();
+    };
 
     if (loading) return <PageLoading title="Invoices" />;
 
@@ -54,6 +70,9 @@ export default function InvoicesPage() {
                     <TableActions>
                         <a href={`/api/admin/invoices/${i.id}`} target="_blank" rel="noreferrer"
                             className="text-xs font-semibold text-brand hover:text-brand-strong">Download</a>
+                        {i.status !== "VOID" && (
+                            <ActionButton tone="danger" onClick={() => voidInvoice(i)}>Void</ActionButton>
+                        )}
                     </TableActions>
                 )}
             />

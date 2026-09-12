@@ -7,15 +7,19 @@ import { eligibleEverydayMembers } from '@/lib/class-access';
 import { sendEmail, emailLayout } from '@/lib/email';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+const INSTANCE_STATUSES = ['Scheduled', 'Completed', 'Cancelled'];
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const payload = await requireDepartment(['TRAINER']);
         if (!payload) return forbidden();
 
-        // Get upcoming class instances for the next 7 days
-        const startDate = new Date();
-        const endDate = new Date();
+        // A 7-day window starting from ?start= (YYYY-MM-DD), defaulting to today,
+        // so the page can page backward/forward instead of only ever showing
+        // "the next 7 days from right now."
+        const startParam = new URL(request.url).searchParams.get('start');
+        const startDate = startParam && !Number.isNaN(Date.parse(startParam)) ? new Date(startParam) : new Date();
+        const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + 7);
 
         const instances = await prisma.classInstance.findMany({
@@ -97,6 +101,7 @@ export async function GET() {
         });
 
         return NextResponse.json({
+            windowStart: startDate.toISOString().slice(0, 10),
             schedule: scheduleByDay,
             batches: batches.map(b => ({
                 id: b.id,
@@ -135,6 +140,9 @@ export async function PATCH(request: Request) {
     try {
         const { id, status, attendanceCount, recordingUrl, meetingLink } = await request.json().catch(() => ({}));
         if (!id) return NextResponse.json({ error: 'Missing instance id' }, { status: 400 });
+        if (status !== undefined && !INSTANCE_STATUSES.includes(status)) {
+            return NextResponse.json({ error: `Status must be one of: ${INSTANCE_STATUSES.join(', ')}` }, { status: 400 });
+        }
         const before = await prisma.classInstance.findUnique({
             where: { id },
             select: { status: true, meetingLink: true, attendanceCount: true, date: true, batch: { select: { name: true } } },
