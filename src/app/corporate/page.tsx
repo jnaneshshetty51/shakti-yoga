@@ -42,7 +42,7 @@ export default function CorporatePage() {
 
             {done ? (
                 <div className="p-6 bg-green-50 border border-green-200 rounded-2xl text-green-700">
-                    Thank you — our team will reach out shortly.
+                    Thank you — our team will reach out within 1 business day.
                 </div>
             ) : (
                 <form onSubmit={submit} className="space-y-4 bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-6">

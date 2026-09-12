@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { notifyAdmin, emailLayout } from '@/lib/email';
+
+function escapeHtml(s: string) {
+    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 /** POST /api/retreats/[id]/enquire — public enquiry for a published retreat/workshop/event. */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -26,6 +31,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const enquiry = await prisma.retreatEnquiry.create({
         data: { retreatId: id, name, email, phone, message, participantsCount },
     });
+
+    notifyAdmin(
+        `New retreat enquiry: ${retreat.name} — ${name}`,
+        emailLayout(
+            `<p><strong>${escapeHtml(name)}</strong> (${escapeHtml(email)}${phone ? `, ${escapeHtml(phone)}` : ''}) — ${participantsCount} participant${participantsCount === 1 ? '' : 's'}</p>
+             <p>Retreat: ${escapeHtml(retreat.name)}</p>
+             ${message ? `<p style="white-space:pre-wrap;background:#f6f5f2;padding:12px;border-radius:6px">${escapeHtml(message)}</p>` : ''}`,
+        ),
+        email,
+    ).catch(() => { });
 
     return NextResponse.json({ enquiry: { id: enquiry.id } });
 }

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { notifyAdmin, emailLayout } from '@/lib/email';
+
+function escapeHtml(s: string) {
+    return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 /** POST /api/corporate/enquiry — public corporate wellness intake. */
 export async function POST(request: Request) {
@@ -30,6 +35,18 @@ export async function POST(request: Request) {
             message,
         },
     });
+
+    notifyAdmin(
+        `New corporate enquiry: ${companyName}`,
+        emailLayout(
+            `<p><strong>${escapeHtml(companyName)}</strong> — ${escapeHtml(contactName)} (${escapeHtml(contactEmail)}${contactPhone ? `, ${escapeHtml(contactPhone)}` : ''})</p>
+             ${employeeCount ? `<p>Employees: ${employeeCount}</p>` : ''}
+             ${programInterest ? `<p>Interested in: ${escapeHtml(programInterest)}</p>` : ''}
+             ${requirement ? `<p>Requirement: ${escapeHtml(requirement)}</p>` : ''}
+             ${message ? `<p style="white-space:pre-wrap;background:#f6f5f2;padding:12px;border-radius:6px">${escapeHtml(message)}</p>` : ''}`,
+        ),
+        contactEmail,
+    ).catch(() => { });
 
     return NextResponse.json({ success: true });
 }
