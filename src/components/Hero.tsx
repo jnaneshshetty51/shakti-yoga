@@ -5,8 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import VideoModal from "./VideoModal";
 
-export default function Hero() {
+import type { HomePageContent } from "@/lib/cms";
+
+export default function Hero({ content }: { content?: HomePageContent }) {
     const [isVideoOpen, setIsVideoOpen] = useState(false);
+    const headline = content?.hero_headline || "Authentic Yoga & Personalized Therapy, Guided Live from India to the World";
+    const subtext = content?.hero_subtext || "Daily live classes across global time zones + dedicated 1:1 clinical yoga therapy.";
+    const badge = content?.hero_badge || "Live from India · Batches for US, UK, Europe & Asia · Direct teacher corrections";
 
     return (
         <section className="relative min-h-[85vh] py-16 sm:py-20 w-full flex items-center justify-center text-center text-white overflow-hidden">
@@ -25,10 +30,10 @@ export default function Hero() {
 
             <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center gap-5 px-5 sm:gap-6 sm:px-8">
                 <h1 className="w-full font-serif text-[2rem] font-bold leading-[1.15] tracking-wide drop-shadow-lg sm:text-4xl md:text-6xl md:leading-tight">
-                    Authentic Yoga &amp; Personalized Therapy, Guided Live from India to the World
+                    {headline}
                 </h1>
                 <p className="w-full max-w-2xl font-sans text-base font-light leading-relaxed tracking-wide drop-shadow-md text-white/90 sm:text-lg md:text-xl">
-                    Daily live classes across global time zones + dedicated 1:1 clinical yoga therapy.
+                    {subtext}
                 </p>
 
                 <div className="mt-2 flex w-full flex-col gap-3 sm:mt-4 sm:w-auto sm:flex-row sm:gap-4 items-center">
@@ -58,7 +63,7 @@ export default function Hero() {
                 </div>
 
                 <div className="mt-4 max-w-full whitespace-normal rounded-2xl border border-white/20 bg-black/30 px-4 py-2.5 text-center text-[11px] font-light uppercase leading-relaxed tracking-wider backdrop-blur-sm sm:mt-8 sm:rounded-full sm:px-6 sm:text-sm">
-                    Live from India · Batches for US, UK, Europe &amp; Asia · Direct teacher corrections
+                    {badge}
                 </div>
             </div>
 

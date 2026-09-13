@@ -212,6 +212,12 @@ export default function AdminContentPage() {
     }, []);
 
     useEffect(() => {
+        if (typeof window !== "undefined") {
+            const tabParam = new URLSearchParams(window.location.search).get("tab") as ContentTab | null;
+            if (tabParam && ["content", "story", "blog", "comments", "community"].includes(tabParam)) {
+                setActiveTab(tabParam);
+            }
+        }
         fetchContent();
         fetchComments();
         fetchCommunity();

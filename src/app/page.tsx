@@ -18,11 +18,14 @@ import WorkshopsRetreats from "@/components/WorkshopsRetreats";
 import ForOrganizations from "@/components/ForOrganizations";
 import FAQ from "@/components/FAQ";
 import FinalCTA from "@/components/FinalCTA";
+import { getHomePageContent } from "@/lib/cms";
 
-export default function Home() {
+export default async function Home() {
+  const homeCms = await getHomePageContent();
+
   return (
     <main className="flex flex-col w-full">
-      <Hero />
+      <Hero content={homeCms} />
       <TargetAudience />
       <VideoSection />
       <Programs />

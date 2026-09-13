@@ -42,6 +42,7 @@ const commandItems: CommandItem[] = [
   { id: "challenges", name: "Challenges", description: "Time-boxed member goals", icon: <FaTrophy />, href: "/admin/challenges", category: "Content & Programs" },
   { id: "achievements", name: "Achievements", description: "Badge earn rates + grant/revoke", icon: <FaAward />, href: "/admin/achievements", category: "Content & Programs" },
   { id: "faqs", name: "FAQ Knowledge Base", description: "Website + app FAQs", icon: <FaComments />, href: "/admin/faqs", category: "Content & Programs" },
+  { id: "pages", name: "Edit Pages (CMS)", description: "Edit About, Home, Corporate copy", icon: <FaEdit />, href: "/admin/pages", category: "Content & Programs" },
   { id: "site-content", name: "Site Content", description: "Why-us benefits + homepage stats", icon: <FaEdit />, href: "/admin/site-content", category: "Content & Programs" },
   { id: "certificates", name: "Certificates", description: "Issue & approve certificates", icon: <FaAward />, href: "/admin/certificates", category: "Content & Programs" },
   { id: "corporate", name: "Corporate Wellness", description: "B2B pipeline & proposals", icon: <FaBuilding />, href: "/admin/corporate", category: "Business" },

@@ -10,7 +10,7 @@ import {
     LuCreditCard, LuHeart, LuCalendarDays, LuCalendarClock, LuClock, LuMessageSquare,
     LuFileText, LuInbox, LuArchive, LuSettings, LuSearch, LuCircleHelp, LuMenu, LuX,
     LuChevronDown, LuLogOut, LuUserRound, LuClipboardList, LuUserPlus, LuGift, LuLifeBuoy,
-    LuBuilding2, LuTent, LuAward, LuReceipt, LuMegaphone,
+    LuBuilding2, LuTent, LuAward, LuReceipt, LuMegaphone, LuLayoutTemplate,
 } from "react-icons/lu";
 import { CommandPalette, useCommandPalette } from "@/components/admin/CommandPalette";
 import { NotificationsBell } from "@/components/admin/NotificationsBell";
@@ -77,6 +77,7 @@ const NAV: NavGroup[] = [
             { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
             { name: "Achievements", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
             { name: "FAQ Knowledge Base", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },
+            { name: "Edit Pages (CMS)", href: "/admin/pages", icon: LuLayoutTemplate, departments: ["CONTENT"] },
             { name: "Site Content", href: "/admin/site-content", icon: LuFileText, departments: ["CONTENT"] },
             { name: "Certificates", href: "/admin/certificates", icon: LuAward },
         ],

@@ -3,6 +3,9 @@ import WhyUs from "@/components/WhyUs";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getAboutPageContent } from "@/lib/cms";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
     title: "About Us — The Lineage, Philosophy & Founder",
@@ -33,12 +36,14 @@ const PILLARS = [
     },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+    const cms = await getAboutPageContent();
+
     return (
         <main className="bg-background min-h-screen">
             <PageHeader
-                title="About Shakti Yoga Kendra"
-                subtitle="A sanctuary for authentic yoga, healing, and self-discovery, bridging sacred Indian wisdom with modern daily living."
+                title={cms.header_title}
+                subtitle={cms.header_subtitle}
             />
 
             <section className="py-16 sm:py-20 px-4 sm:px-8">
@@ -47,15 +52,15 @@ export default function AboutPage() {
                     <div className="grid md:grid-cols-2 gap-12 sm:gap-16 items-center mb-20">
                         <div>
                             <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Our Origins</span>
-                            <h2 className="font-serif text-3xl sm:text-4xl text-primary mb-6">Born from Ancient Soil, Guided to the World</h2>
+                            <h2 className="font-serif text-3xl sm:text-4xl text-primary mb-6">{cms.story_title}</h2>
                             <p className="font-sans text-text/80 leading-relaxed mb-5 text-sm sm:text-base">
-                                Shakti Yoga Kendra was founded in Udupi, Karnataka — a sacred coastal land known for its centuries of contemplative tradition, temple architecture, and vibrant yogic heritage.
+                                {cms.story_p1}
                             </p>
                             <p className="font-sans text-text/80 leading-relaxed mb-5 text-sm sm:text-base">
-                                While modern yoga is often reduced to fast-paced physical acrobatics, we created Shakti Yoga to preserve yoga&rsquo;s true essence: a holistic discipline unifying the physical sheath (Annamaya), breath energy (Pranamaya), and contemplative mind (Manomaya).
+                                {cms.story_p2}
                             </p>
                             <p className="font-sans text-text/80 leading-relaxed text-sm sm:text-base">
-                                Today, our teachers broadcast live every day from India to dedicated students, NRIs, and seekers across North America, the UK, Europe, Australia, and the Middle East — cultivating personal connection across continents.
+                                {cms.story_p3}
                             </p>
                         </div>
                         <div className="relative h-[360px] sm:h-[420px] rounded-3xl overflow-hidden shadow-xl border border-primary/10">
@@ -73,7 +78,7 @@ export default function AboutPage() {
                     <div className="text-center max-w-3xl mx-auto my-16 sm:my-24 p-8 sm:p-12 rounded-3xl bg-accent/30 border border-primary/10">
                         <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-3">Our Core Mission</span>
                         <p className="font-serif text-xl sm:text-2xl md:text-3xl text-primary italic leading-relaxed">
-                            &ldquo;To empower seekers worldwide to rediscover their dormant inner vitality (Shakti) through the living science of traditional yoga, bringing balance, healing, and peace to modern life.&rdquo;
+                            &ldquo;{cms.mission_quote}&rdquo;
                         </p>
                     </div>
 
@@ -81,18 +86,18 @@ export default function AboutPage() {
                     <div id="founder" className="grid md:grid-cols-2 gap-12 sm:gap-16 items-center pt-8 mb-20 scroll-mt-24">
                         <div>
                             <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Our Founder &amp; Acharya</span>
-                            <h2 className="font-serif text-3xl sm:text-4xl text-primary mb-5">Meet Acharya Swastik</h2>
+                            <h2 className="font-serif text-3xl sm:text-4xl text-primary mb-5">{cms.founder_title}</h2>
                             <p className="font-serif italic text-base sm:text-lg text-secondary mb-5 leading-relaxed font-medium">
-                                &ldquo;Yoga was not merely a career decision. It completely rewired how I perceive vitality, human suffering, and spiritual freedom.&rdquo;
+                                &ldquo;{cms.founder_tagline}&rdquo;
                             </p>
                             <p className="font-sans text-text/80 leading-relaxed mb-4 text-sm sm:text-base">
-                                Acharya Swastik&rsquo;s path to yoga began far from a mat — in the demanding field of engineering. Experiencing firsthand the cognitive strain, physical stagnation, and inner restlessness of modern work, a deeper calling led him to walk away from corporate life and dedicate himself fully to the traditional yogic sciences.
+                                {cms.founder_bio_p1}
                             </p>
                             <p className="font-sans text-text/80 leading-relaxed mb-4 text-sm sm:text-base">
-                                He earned his Master of Science (M.Sc.) in Yogic Science from Mangalore University, immersing himself in classical texts, human anatomy, therapeutic yoga protocols, and Sanskrit scriptures.
+                                {cms.founder_bio_p2}
                             </p>
                             <p className="font-sans text-text/80 leading-relaxed text-sm sm:text-base">
-                                Steeped in the coastal Devi tradition, Acharya Swastik established Shakti Yoga Kendra as a sanctuary where seekers are recognized, corrected, and nurtured through disciplined, compassionate daily sadhana.
+                                {cms.founder_bio_p3}
                             </p>
                         </div>
                         <div className="relative aspect-[4/5] w-full max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
