@@ -124,7 +124,7 @@ export default function MemberDetailPage() {
                             <dt className="text-ink-subtle">Since</dt><dd>{d(data.subscription.startDate)}</dd>
                         </dl>
                     ) : <p className="text-sm text-ink-subtle">No subscription.</p>}
-                    <div className="mt-3 flex gap-4 text-sm">
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                         <span><b>{data.stats.classesAttended}</b> <span className="text-ink-subtle">classes</span></span>
                         <span><b>{data.stats.sessionsCompleted}</b>/<b>{data.stats.sessionsBooked}</b> <span className="text-ink-subtle">sessions</span></span>
                         <span><b>{m.therapyCredits}</b> <span className="text-ink-subtle">1:1 credits</span></span>
@@ -136,7 +136,7 @@ export default function MemberDetailPage() {
                     {data.payments.length === 0 ? <p className="text-sm text-ink-subtle">None.</p> : (
                         <ul className="text-sm divide-y divide-hairline">
                             {data.payments.map((p) => (
-                                <li key={p.id} className="flex justify-between py-1.5">
+                                <li key={p.id} className="flex flex-wrap justify-between gap-x-2 py-1.5">
                                     <span>{money(p.amount, p.currency)} <span className="text-ink-subtle">· {p.planKey} · {p.provider}</span></span>
                                     <span className="flex items-center gap-2"><StatusBadge status={p.status} /><span className="text-ink-subtle">{d(p.at)}</span></span>
                                 </li>
@@ -149,7 +149,7 @@ export default function MemberDetailPage() {
                     {data.bookings.length === 0 ? <p className="text-sm text-ink-subtle">None.</p> : (
                         <ul className="text-sm divide-y divide-hairline">
                             {data.bookings.map((b) => (
-                                <li key={b.id} className="flex justify-between py-1.5">
+                                <li key={b.id} className="flex flex-wrap justify-between gap-x-2 py-1.5">
                                     <span>{b.type.replace(/_/g, " ").toLowerCase()} <span className="text-ink-subtle">· {b.teacher}</span></span>
                                     <span className="flex items-center gap-2"><StatusBadge status={b.status} /><span className="text-ink-subtle">{d(b.at)}</span></span>
                                 </li>
@@ -162,7 +162,7 @@ export default function MemberDetailPage() {
                     {data.attendance.length === 0 ? <p className="text-sm text-ink-subtle">None.</p> : (
                         <ul className="text-sm divide-y divide-hairline">
                             {data.attendance.map((a) => (
-                                <li key={a.id} className="flex justify-between py-1.5">
+                                <li key={a.id} className="flex flex-wrap justify-between gap-x-2 py-1.5">
                                     <span>{a.batch}</span>
                                     <span className="flex items-center gap-2"><Badge tone={a.status === "PRESENT" ? "green" : a.status === "ABSENT" ? "red" : "gray"}>{a.status}</Badge><span className="text-ink-subtle">{d(a.at)}</span></span>
                                 </li>
@@ -175,7 +175,7 @@ export default function MemberDetailPage() {
                     {data.creditLedger.length === 0 ? <p className="text-sm text-ink-subtle">No capped-plan credit history.</p> : (
                         <ul className="text-sm divide-y divide-hairline">
                             {data.creditLedger.map((e) => (
-                                <li key={e.id} className="flex justify-between py-1.5">
+                                <li key={e.id} className="flex flex-wrap justify-between gap-x-2 py-1.5">
                                     <span className={e.delta < 0 ? "text-red-600" : "text-green-700"}>{e.delta > 0 ? "+" : ""}{e.delta} <span className="text-ink-subtle">{e.reason.replace(/_/g, " ").toLowerCase()}{e.note ? ` — ${e.note}` : ""}</span></span>
                                     <span className="text-ink-subtle">{d(e.at)}</span>
                                 </li>
@@ -190,7 +190,7 @@ export default function MemberDetailPage() {
                     {data.referrals.invited.length > 0 && (
                         <ul className="text-sm mt-2 divide-y divide-hairline">
                             {data.referrals.invited.map((r, i) => (
-                                <li key={i} className="flex justify-between py-1"><span>{r.name}</span><Badge tone="gray">{r.status.toLowerCase()}</Badge></li>
+                                <li key={i} className="flex flex-wrap justify-between gap-x-2 py-1"><span>{r.name}</span><Badge tone="gray">{r.status.toLowerCase()}</Badge></li>
                             ))}
                         </ul>
                     )}
@@ -208,7 +208,7 @@ export default function MemberDetailPage() {
                     {data.certificates.length === 0 ? <p className="text-sm text-ink-subtle">No certificates.</p> : (
                         <ul className="text-sm divide-y divide-hairline">
                             {data.certificates.map((c) => (
-                                <li key={c.id} className="flex justify-between py-1"><span>{c.title}</span><StatusBadge status={c.status} /></li>
+                                <li key={c.id} className="flex flex-wrap justify-between gap-x-2 py-1"><span>{c.title}</span><StatusBadge status={c.status} /></li>
                             ))}
                         </ul>
                     )}
@@ -219,7 +219,7 @@ export default function MemberDetailPage() {
                     {data.audit.length === 0 ? <p className="text-sm text-ink-subtle">None.</p> : (
                         <ul className="text-sm divide-y divide-hairline">
                             {data.audit.map((a) => (
-                                <li key={a.id} className="flex justify-between py-1"><span>{a.action}</span><span className="text-ink-subtle">{a.actor} · {d(a.at)}</span></li>
+                                <li key={a.id} className="flex flex-wrap justify-between gap-x-2 py-1"><span>{a.action}</span><span className="text-ink-subtle">{a.actor} · {d(a.at)}</span></li>
                             ))}
                         </ul>
                     )}

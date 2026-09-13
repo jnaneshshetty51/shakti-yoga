@@ -137,7 +137,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   let globalIndex = -1;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[10vh] sm:pt-[15vh]">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
@@ -145,7 +145,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       />
 
       {/* Command Palette */}
-      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-xl max-h-[80vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up">
         {/* Search Input */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
           <FaSearch className="text-gray-400 text-lg" />
@@ -169,7 +169,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto py-2">
+        <div className="flex-1 min-h-0 overflow-y-auto py-2">
           {filteredItems.length === 0 ? (
             <div className="px-5 py-8 text-center text-gray-500">
               No results found for "{query}"
@@ -196,20 +196,20 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       }`}
                     >
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${
                           isSelected ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"
                         }`}
                       >
                         {item.icon}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900">{item.name}</div>
                         {item.description && (
                           <div className="text-sm text-gray-500">{item.description}</div>
                         )}
                       </div>
                       {isSelected && (
-                        <div className="text-xs text-gray-400">
+                        <div className="hidden sm:block text-xs text-gray-400">
                           <kbd className="px-2 py-1 bg-gray-100 rounded text-gray-500">↵</kbd>
                         </div>
                       )}
@@ -222,7 +222,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+        <div className="hidden sm:flex px-5 py-3 border-t border-gray-100 items-center justify-between text-xs text-gray-400">
           <div className="flex items-center gap-4">
             <span>
               <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">↑</kbd>

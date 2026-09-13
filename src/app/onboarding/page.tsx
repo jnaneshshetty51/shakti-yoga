@@ -89,7 +89,7 @@ export default function OnboardingPage() {
                         <h2 className="font-serif text-3xl text-primary mb-6">Do you have any medical conditions?</h2>
                         <p className="text-text/70 mb-8">This helps us ensure your safety.</p>
 
-                        <div className="flex gap-6 mb-8">
+                        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8">
                             <button
                                 onClick={() => setFormData(prev => ({ ...prev, hasMedicalIssues: false }))}
                                 className={`flex-1 p-6 rounded border text-center transition-all ${!formData.hasMedicalIssues

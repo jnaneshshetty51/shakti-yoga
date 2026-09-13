@@ -162,7 +162,7 @@ function CorporateDashboard() {
                             <button onClick={() => setIsModalOpen(false)} className="p-1.5 -mr-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Company</label>
                                     <input required value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} className={inputClass} />
@@ -172,7 +172,7 @@ function CorporateDashboard() {
                                     <input required value={formData.contactName} onChange={(e) => setFormData({ ...formData, contactName: e.target.value })} className={inputClass} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Email</label>
                                     <input required type="email" value={formData.contactEmail} onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })} className={inputClass} />
@@ -182,7 +182,7 @@ function CorporateDashboard() {
                                     <input value={formData.contactPhone} onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })} className={inputClass} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Employees</label>
                                     <input type="number" min={0} value={formData.employeeCount} onChange={(e) => setFormData({ ...formData, employeeCount: e.target.value })} className={inputClass} />
@@ -192,7 +192,7 @@ function CorporateDashboard() {
                                     <input value={formData.programInterest} onChange={(e) => setFormData({ ...formData, programInterest: e.target.value })} className={inputClass} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Status</label>
                                     <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className={inputClass}>

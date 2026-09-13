@@ -59,9 +59,9 @@ export function AttendanceModal({ instanceId, onClose }: { instanceId: string; o
                 ) : (
                     <ul className="divide-y divide-hairline mb-4">
                         {rows.map((a) => (
-                            <li key={a.userId} className="flex items-center justify-between py-2 text-sm">
-                                <span>{a.name} <span className="text-ink-subtle">· {a.email}</span></span>
-                                <span className="flex gap-1">
+                            <li key={a.userId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm">
+                                <span className="min-w-0 truncate">{a.name} <span className="text-ink-subtle">· {a.email}</span></span>
+                                <span className="flex gap-1 shrink-0">
                                     {(["PRESENT", "ABSENT"] as const).map((v) => (
                                         <button key={v}
                                             onClick={() => setMarks((m) => ({ ...m, [a.userId]: v }))}

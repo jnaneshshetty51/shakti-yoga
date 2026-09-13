@@ -99,9 +99,9 @@ export default function SupportPage() {
 
             {conversation && (
                 <Card padded className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="font-semibold text-gray-800">{conversation.subject || "Your conversation"}</span>
-                        <Badge tone={isOpen ? "blue" : "gray"}>{isOpen ? "Open" : "Closed"}</Badge>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                        <span className="font-semibold text-gray-800 min-w-0 truncate">{conversation.subject || "Your conversation"}</span>
+                        <Badge tone={isOpen ? "blue" : "gray"} className="shrink-0">{isOpen ? "Open" : "Closed"}</Badge>
                     </div>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                         {conversation.messages.map((m) => (

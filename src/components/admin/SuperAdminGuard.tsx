@@ -14,7 +14,7 @@ export function SuperAdminGuard({ children }: { children: React.ReactNode }) {
 
     if (user?.tier !== "super") {
         return (
-            <div className="bg-white rounded-lg border border-gray-100 p-10 text-center max-w-lg mx-auto mt-8">
+            <div className="bg-white rounded-lg border border-gray-100 p-6 sm:p-10 text-center max-w-lg mx-auto mt-8">
                 <div className="text-4xl mb-3">🔒</div>
                 <h1 className="font-serif text-2xl text-gray-800 mb-2">Super admins only</h1>
                 <p className="text-gray-500">This section is restricted to super administrators.</p>

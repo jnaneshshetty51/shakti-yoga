@@ -227,7 +227,7 @@ function LeadsDashboard() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Name</label>
                                     <input type="text" required value={formData.name}
@@ -240,7 +240,7 @@ function LeadsDashboard() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Phone</label>
                                     <input type="text" value={formData.phone}
@@ -253,7 +253,7 @@ function LeadsDashboard() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>Lead Source</label>
                                     <select value={formData.source} onChange={(e) => setFormData({...formData, source: e.target.value})}

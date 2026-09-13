@@ -79,7 +79,7 @@ export default function TeacherEarningsPage() {
                 subtitle={`Estimated from completed classes (${inr(rates.class)} each) and 1:1 sessions (${inr(rates.session)} each). Admin sets the rates.`}
             />
 
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard
                     title="This month (est.)"
                     value={inr(totals.thisMonthPayout)}

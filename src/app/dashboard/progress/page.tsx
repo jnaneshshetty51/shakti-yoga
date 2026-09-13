@@ -65,7 +65,7 @@ export default function ProgressPage() {
                 subtitle={data.memberSince ? `On the mat with Shakti since ${fmtDate(data.memberSince)}.` : "Your practice at a glance."}
             />
 
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard
                     title="Classes this month"
                     value={totals.classesThisMonth}

@@ -80,10 +80,10 @@ export default function AdminMessagesPage() {
                             padded
                             className={m.handled ? "opacity-70" : "border-primary/15"}
                         >
-                            <div className="flex justify-between items-start mb-3 gap-4">
-                                <div>
+                            <div className="flex flex-wrap justify-between items-start mb-3 gap-x-4 gap-y-1">
+                                <div className="min-w-0 break-words">
                                     <div className="font-bold text-gray-800">{m.name}</div>
-                                    <a href={`mailto:${m.email}`} className="text-sm text-primary hover:underline">{m.email}</a>
+                                    <a href={`mailto:${m.email}`} className="text-sm text-primary hover:underline break-all">{m.email}</a>
                                     {m.subject && <span className="ml-3 text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{m.subject}</span>}
                                 </div>
                                 <div className="text-xs text-gray-400 whitespace-nowrap">

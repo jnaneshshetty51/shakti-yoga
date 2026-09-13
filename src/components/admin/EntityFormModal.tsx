@@ -121,7 +121,7 @@ export default function EntityFormModal({
                                     className="h-4 w-4 accent-primary"
                                 />
                             ) : f.type === "image" ? (
-                                <div className="flex items-start gap-3">
+                                <div className="flex flex-wrap items-start gap-3">
                                     <div className="w-24 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 text-xs">
                                         {values[f.name]
                                             // eslint-disable-next-line @next/next/no-img-element
@@ -158,7 +158,7 @@ export default function EntityFormModal({
                                     </div>
                                 </div>
                             ) : f.type === "video" ? (
-                                <div className="flex items-start gap-3">
+                                <div className="flex flex-wrap items-start gap-3">
                                     <div className="w-24 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 text-xs text-center px-1">
                                         {values[f.name] ? "video attached" : "none"}
                                     </div>

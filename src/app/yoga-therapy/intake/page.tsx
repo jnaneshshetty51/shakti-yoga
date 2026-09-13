@@ -287,7 +287,7 @@ export default function TherapyIntakePage() {
                                     <label className={labelCls}>Full name</label>
                                     <input className={inputCls} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className={labelCls}>Age</label>
                                         <input type="number" min={0} className={inputCls} value={form.age} onChange={(e) => set("age", e.target.value)} />
@@ -303,7 +303,7 @@ export default function TherapyIntakePage() {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className={labelCls}>Height (cm)</label>
                                         <input type="number" min={0} className={inputCls} value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
@@ -361,7 +361,7 @@ export default function TherapyIntakePage() {
 
                         {step === 3 && (
                             <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className={labelCls}>Emergency contact name</label>
                                         <input className={inputCls} value={form.emergencyContactName} onChange={(e) => set("emergencyContactName", e.target.value)} />

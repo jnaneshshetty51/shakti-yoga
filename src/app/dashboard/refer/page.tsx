@@ -136,28 +136,30 @@ export default function ReferPage() {
                         No referrals yet — share your code to get started.
                     </p>
                 ) : (
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50/70 text-gray-400 text-[11px] font-semibold uppercase tracking-wider">
-                            <tr>
-                                <th className="px-4 py-3">Person</th>
-                                <th className="px-4 py-3">Status</th>
-                                <th className="px-4 py-3 text-right">Reward</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {stats.referrals.map((r) => (
-                                <tr key={r.id} className="text-gray-600">
-                                    <td className="px-4 py-3">{r.refereeName}</td>
-                                    <td className="px-4 py-3">
-                                        <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-semibold text-gray-800">
-                                        {r.status === "SUCCESSFUL" ? inr(r.rewardAmount) : r.status === "PENDING" ? "Pending" : "—"}
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-50/70 text-gray-400 text-[11px] font-semibold uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-4 py-3">Person</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Reward</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {stats.referrals.map((r) => (
+                                    <tr key={r.id} className="text-gray-600">
+                                        <td className="px-4 py-3">{r.refereeName}</td>
+                                        <td className="px-4 py-3">
+                                            <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
+                                            {r.status === "SUCCESSFUL" ? inr(r.rewardAmount) : r.status === "PENDING" ? "Pending" : "—"}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </Card>
 

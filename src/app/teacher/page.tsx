@@ -106,7 +106,7 @@ export default function TeacherTodayPage() {
                 subtitle="Here's what's on for you today and this week."
             />
 
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Classes today" value={stats.classesToday} icon={<LuCalendarDays />} accent="green" />
                 <StatCard title="Sessions this week" value={stats.sessionsThisWeek} icon={<LuMessageSquare />} accent="blue" />
                 <StatCard title="Attendance (7d)" value={stats.attendanceThisWeek} icon={<LuUsers />} accent="terracotta" />

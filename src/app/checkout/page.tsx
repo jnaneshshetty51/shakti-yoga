@@ -169,7 +169,7 @@ function CheckoutContent() {
             />
             <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
                 {/* Order Summary */}
-                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 h-fit">
+                <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 h-fit">
                     <h2 className="font-serif text-2xl text-primary mb-6">Order Summary</h2>
                     <div className="flex justify-between items-baseline mb-4 pb-4 border-b border-gray-100">
                         <div>
@@ -198,7 +198,7 @@ function CheckoutContent() {
                 </div>
 
                 {/* Payment */}
-                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+                <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200">
                     <h2 className="font-serif text-2xl text-primary mb-6">
                         {isFree ? "Confirm" : "Payment"}
                     </h2>

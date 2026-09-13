@@ -591,6 +591,8 @@ function ContentCalendar({ rows, onOpen }: { rows: ContentRow[]; onOpen: (r: Con
                 </h3>
                 <button onClick={() => setMonth(new Date(y, m + 1, 1))} className="px-2 py-1 rounded hover:bg-gray-100 text-gray-500">→</button>
             </div>
+            <div className="overflow-x-auto">
+            <div className="min-w-[560px]">
             <div className="grid grid-cols-7 gap-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                 {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => <div key={i} className="text-center py-1">{d}</div>)}
             </div>
@@ -618,6 +620,8 @@ function ContentCalendar({ rows, onOpen }: { rows: ContentRow[]; onOpen: (r: Con
                         </div>
                     );
                 })}
+            </div>
+            </div>
             </div>
             <div className="flex gap-4 mt-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-100 inline-block" /> Published</span>

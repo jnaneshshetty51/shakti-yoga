@@ -59,6 +59,7 @@ export function AnalyticalGrid({ data }: { data: Dashboard }) {
                     {teacherLoad.length === 0 ? (
                         <EmptyState icon={LuGraduationCap} title="No teachers yet" />
                     ) : (
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-[11px] text-ink-subtle uppercase tracking-wider">
@@ -83,6 +84,7 @@ export function AnalyticalGrid({ data }: { data: Dashboard }) {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     )}
                 </div>
             </Card>

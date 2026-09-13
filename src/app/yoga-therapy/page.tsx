@@ -47,7 +47,7 @@ export default function TherapyPage() {
                 </div>
             </section>
 
-            <section className="py-20 px-8 bg-accent/30">
+            <section className="py-20 px-4 sm:px-8 bg-accent/30">
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="font-serif text-3xl text-primary mb-8">Conditions We Treat</h2>
                     <div className="flex flex-wrap justify-center gap-4 mb-12">

@@ -109,26 +109,28 @@ export default async function ProgramsPage() {
             <section className="bg-accent/30 px-4 py-16 sm:px-8">
                 <div className="mx-auto max-w-4xl">
                     <h2 className="mb-10 text-center font-serif text-3xl text-primary">Everyday Yoga vs Yoga Therapy</h2>
-                    <div className="overflow-hidden rounded-3xl border border-primary/10 bg-white">
-                        <div className="grid grid-cols-3 bg-primary p-5 font-serif text-base font-bold text-white sm:text-lg">
-                            <div>Feature</div>
-                            <div className="text-center">Everyday</div>
-                            <div className="text-center">Therapy</div>
-                        </div>
-                        <div className="divide-y divide-primary/10 font-sans text-sm text-text/80">
-                            {[
-                                ["Format", "Live group classes", "1:1 private sessions"],
-                                ["Focus", "Fitness, flexibility, calm", "Specific healing & recovery"],
-                                ["Attention", "Group corrections", "100% personalised"],
-                                ["Who it's for", "Beginner to advanced", "Managing a health condition"],
-                                ["Price", `${price("everyday")} / mo`, `${price("therapy")} / mo`],
-                            ].map(([f, a, b], i) => (
-                                <div key={f} className={`grid grid-cols-3 p-5 ${i === 4 ? "bg-accent/20 font-bold" : ""}`}>
-                                    <div className="font-semibold text-primary">{f}</div>
-                                    <div className="text-center">{a}</div>
-                                    <div className="text-center">{b}</div>
-                                </div>
-                            ))}
+                    <div className="overflow-x-auto rounded-3xl border border-primary/10 bg-white">
+                        <div className="min-w-[560px]">
+                            <div className="grid grid-cols-3 bg-primary p-5 font-serif text-base font-bold text-white sm:text-lg">
+                                <div>Feature</div>
+                                <div className="text-center">Everyday</div>
+                                <div className="text-center">Therapy</div>
+                            </div>
+                            <div className="divide-y divide-primary/10 font-sans text-sm text-text/80">
+                                {[
+                                    ["Format", "Live group classes", "1:1 private sessions"],
+                                    ["Focus", "Fitness, flexibility, calm", "Specific healing & recovery"],
+                                    ["Attention", "Group corrections", "100% personalised"],
+                                    ["Who it's for", "Beginner to advanced", "Managing a health condition"],
+                                    ["Price", `${price("everyday")} / mo`, `${price("therapy")} / mo`],
+                                ].map(([f, a, b], i) => (
+                                    <div key={f} className={`grid grid-cols-3 p-5 ${i === 4 ? "bg-accent/20 font-bold" : ""}`}>
+                                        <div className="font-semibold text-primary">{f}</div>
+                                        <div className="text-center">{a}</div>
+                                        <div className="text-center">{b}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

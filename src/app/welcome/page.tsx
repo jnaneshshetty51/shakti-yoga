@@ -5,7 +5,7 @@ export default async function WelcomePage() {
     const social = await getSocialLinks();
     return (
         <main className="min-h-screen flex items-center justify-center bg-primary/5 py-20 px-4">
-            <div className="max-w-2xl w-full bg-white p-12 rounded-lg shadow-xl text-center">
+            <div className="max-w-2xl w-full bg-white p-6 sm:p-12 rounded-lg shadow-xl text-center">
                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
                     ✓
                 </div>

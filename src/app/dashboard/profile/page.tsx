@@ -228,10 +228,10 @@ export default function ProfilePage() {
                                         ["whatsappPref", "WhatsApp"],
                                         ["phonePref", "Phone call"],
                                     ] as const).map(([field, label]) => (
-                                        <label key={field} className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+                                        <label key={field} className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 py-1.5">
                                             <input
                                                 type="checkbox"
-                                                className="accent-primary"
+                                                className="accent-primary w-4 h-4"
                                                 checked={formData[field]}
                                                 onChange={(e) => handleInputChange(field, e.target.checked)}
                                             />

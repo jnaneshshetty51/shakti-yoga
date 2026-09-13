@@ -50,7 +50,7 @@ export function ActivityTimeline({
         <Card padded>
             <h3 className="font-semibold text-ink mb-3 text-sm">Activity</h3>
 
-            <div className="flex gap-2 mb-2">
+            <div className="flex flex-wrap gap-2 mb-2">
                 <select value={type} onChange={(e) => setType(e.target.value)}
                     className="rounded-control border border-hairline px-2 py-1.5 text-sm">
                     {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t[0] + t.slice(1).toLowerCase()}</option>)}
@@ -58,7 +58,7 @@ export function ActivityTimeline({
                 <input value={content} onChange={(e) => setContent(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && log()}
                     placeholder="What happened?"
-                    className="flex-1 rounded-control border border-hairline px-3 py-1.5 text-sm" />
+                    className="flex-1 min-w-[140px] rounded-control border border-hairline px-3 py-1.5 text-sm" />
                 <Button size="sm" loading={busy} onClick={log}>Log</Button>
             </div>
 

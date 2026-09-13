@@ -73,14 +73,14 @@ export function MeasurementsPanel({ memberId }: { memberId: string }) {
             </div>
 
             {adding && (
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
                     <label className="text-xs">Pain 0-10<input className={inputClass} type="number" value={form.painScore ?? ""} onChange={(e) => setForm((f) => ({ ...f, painScore: e.target.value }))} /></label>
                     <label className="text-xs">Mobility 0-10<input className={inputClass} type="number" value={form.mobilityScore ?? ""} onChange={(e) => setForm((f) => ({ ...f, mobilityScore: e.target.value }))} /></label>
                     <label className="text-xs">Sleep 0-10<input className={inputClass} type="number" value={form.sleepScore ?? ""} onChange={(e) => setForm((f) => ({ ...f, sleepScore: e.target.value }))} /></label>
                     <label className="text-xs">Stress 0-10<input className={inputClass} type="number" value={form.stressScore ?? ""} onChange={(e) => setForm((f) => ({ ...f, stressScore: e.target.value }))} /></label>
                     <label className="text-xs">Weight kg<input className={inputClass} type="number" value={form.weightKg ?? ""} onChange={(e) => setForm((f) => ({ ...f, weightKg: e.target.value }))} /></label>
                     <label className="text-xs">Note<input className={inputClass} value={form.note ?? ""} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} /></label>
-                    <div className="col-span-3"><Button size="sm" onClick={add}>Save reading</Button></div>
+                    <div className="col-span-2 sm:col-span-3"><Button size="sm" onClick={add}>Save reading</Button></div>
                 </div>
             )}
 
@@ -88,7 +88,8 @@ export function MeasurementsPanel({ memberId }: { memberId: string }) {
                 <p className="text-sm text-ink-subtle">No readings yet.</p>
             ) : (
                 <>
-                    <table className="w-full text-xs mb-3">
+                    <div className="overflow-x-auto mb-3">
+                    <table className="w-full text-xs">
                         <tbody>
                             {METRICS.map((m) => {
                                 const series = rows.map((r) => r[m.key] as number | null);
@@ -108,9 +109,10 @@ export function MeasurementsPanel({ memberId }: { memberId: string }) {
                             })}
                         </tbody>
                     </table>
+                    </div>
                     <ul className="divide-y divide-hairline text-sm">
                         {[...rows].reverse().slice(0, 8).map((r) => (
-                            <li key={r.id} className="flex items-center justify-between py-1.5">
+                            <li key={r.id} className="flex flex-wrap items-center justify-between gap-x-2 py-1.5">
                                 <span>
                                     {d(r.takenAt)}
                                     <span className="text-ink-subtle"> · P{r.painScore ?? "-"} M{r.mobilityScore ?? "-"} S{r.sleepScore ?? "-"} St{r.stressScore ?? "-"}{r.weightKg ? ` · ${r.weightKg}kg` : ""}</span>

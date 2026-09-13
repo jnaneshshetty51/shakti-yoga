@@ -202,7 +202,7 @@ export default function AdminTherapyIntakesPage() {
                             <div className="p-10 text-center text-gray-400">Loading…</div>
                         ) : (
                             <div className="p-6">
-                                <div className="grid grid-cols-2 gap-x-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                                     <Field label="Email" value={detail.user.email} />
                                     <Field label="Phone" value={detail.user.phone} />
                                     <Field label="Age / Gender" value={`${detail.age ?? "—"} / ${detail.gender ?? "—"}`} />

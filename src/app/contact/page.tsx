@@ -20,7 +20,7 @@ export default async function ContactPage() {
                 subtitle="We are here to answer your questions and guide you on your yoga journey."
             />
 
-            <section className="py-20 px-8 bg-background">
+            <section className="py-20 px-4 sm:px-8 bg-background">
                 <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16">
                     <div>
                         <h2 className="font-serif text-3xl text-primary mb-8">Contact Information</h2>

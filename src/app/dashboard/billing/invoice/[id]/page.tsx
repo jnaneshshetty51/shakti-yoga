@@ -50,26 +50,26 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
     }
 
     return (
-        <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 print:shadow-none print:border-0">
-            <div className="flex justify-between items-start mb-8">
+        <div className="max-w-2xl mx-auto bg-white p-5 sm:p-8 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 print:shadow-none print:border-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                 <div>
                     <h1 className="font-serif text-2xl text-primary mb-2">Shakti Yoga Kendra</h1>
                     <p className="text-sm text-gray-500">LIG 77, Hudco 4th Main Rd, Doddangudde, Udupi, Karnataka 576102</p>
                     <p className="text-sm text-gray-500">contactus@shaktiyoga.in</p>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right shrink-0">
                     <h2 className="text-xl font-bold text-gray-800">INVOICE</h2>
                     <p className="text-sm text-gray-500">{invoice.number}</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-8">
                 <div>
                     <h3 className="text-xs font-bold uppercase text-gray-500 mb-2">Bill To</h3>
                     <p className="font-medium">{invoice.billedTo.name}</p>
-                    <p className="text-sm text-gray-600">{invoice.billedTo.email}</p>
+                    <p className="text-sm text-gray-600 break-words">{invoice.billedTo.email}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                     <h3 className="text-xs font-bold uppercase text-gray-500 mb-2">Date</h3>
                     <p className="font-medium">
                         {new Date(invoice.date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
@@ -77,35 +77,37 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 </div>
             </div>
 
-            <table className="w-full mb-8">
-                <thead>
-                    <tr className="border-b-2 border-gray-200">
-                        <th className="text-left py-3 text-xs font-bold uppercase text-gray-500">Description</th>
-                        <th className="text-right py-3 text-xs font-bold uppercase text-gray-500">Amount</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                    <tr>
-                        <td className="py-4">{invoice.lineItem}</td>
-                        <td className="py-4 text-right font-medium">{money(invoice.amount, invoice.currency)}</td>
-                    </tr>
-                </tbody>
-                <tfoot className="border-t-2 border-gray-200">
-                    <tr>
-                        <td className="py-4 font-bold">Total paid</td>
-                        <td className="py-4 text-right font-bold text-lg">{money(invoice.amount, invoice.currency)}</td>
-                    </tr>
-                </tfoot>
-            </table>
+            <div className="overflow-x-auto mb-8">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b-2 border-gray-200">
+                            <th className="text-left py-3 text-xs font-bold uppercase text-gray-500">Description</th>
+                            <th className="text-right py-3 text-xs font-bold uppercase text-gray-500">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        <tr>
+                            <td className="py-4">{invoice.lineItem}</td>
+                            <td className="py-4 text-right font-medium whitespace-nowrap">{money(invoice.amount, invoice.currency)}</td>
+                        </tr>
+                    </tbody>
+                    <tfoot className="border-t-2 border-gray-200">
+                        <tr>
+                            <td className="py-4 font-bold">Total paid</td>
+                            <td className="py-4 text-right font-bold text-lg whitespace-nowrap">{money(invoice.amount, invoice.currency)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
 
             <p className="text-xs text-gray-400 mb-8">
                 Paid via {invoice.provider} · Reference {invoice.reference}
             </p>
 
-            <div className="flex justify-between items-center print:hidden">
+            <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4 print:hidden">
                 <button
                     onClick={() => window.print()}
-                    className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
                 >
                     Print / Save PDF
                 </button>

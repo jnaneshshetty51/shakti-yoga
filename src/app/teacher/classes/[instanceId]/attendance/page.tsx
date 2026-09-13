@@ -174,8 +174,8 @@ export default function ClassAttendancePage({
                 ) : (
                     <ul className="divide-y divide-gray-50">
                         {data.roster.map((r) => (
-                            <li key={r.attendanceId} className="flex items-center justify-between gap-3 px-4 py-3">
-                                <div className="min-w-0">
+                            <li key={r.attendanceId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5">
+                                <div className="min-w-0 flex-1">
                                     <p className="font-medium text-gray-800 truncate">
                                         {r.name}
                                         {r.addedByTeacher && (
@@ -194,7 +194,7 @@ export default function ClassAttendancePage({
                                     </p>
                                 </div>
                                 <SegmentedControl<Mark>
-                                    size="sm"
+                                    size="md"
                                     aria-label={`Attendance for ${r.name}`}
                                     options={MARK_OPTIONS}
                                     value={marks[r.userId] ?? "UNMARKED"}
