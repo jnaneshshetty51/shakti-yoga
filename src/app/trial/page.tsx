@@ -95,7 +95,8 @@ function TrialContent() {
         );
     }
 
-    const alreadyMember = user.role === "member_everyday" || user.role === "member_therapy" || user.role === "trial";
+    const isAppAdmin = user.role === "admin";
+    const alreadyMember = user.role === "member_everyday" || user.role === "member_therapy" || user.role === "trial" || isAppAdmin;
 
     return (
         <main className="min-h-screen bg-gray-50 py-12 sm:py-16 px-4">
@@ -107,10 +108,15 @@ function TrialContent() {
                     {alreadyMember ? (
                         <div className="text-center">
                             <p className="text-text/80 mb-6">
-                                You already have {user.role === "trial" ? "an active trial" : "an active membership"}. Head to your dashboard for today&apos;s class.
+                                {isAppAdmin
+                                    ? "You are logged in as an Administrator with full platform access."
+                                    : `You already have ${user.role === "trial" ? "an active trial" : "an active membership"}. Head to your dashboard for today's class.`}
                             </p>
-                            <Link href="/dashboard" className="inline-block px-8 py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary transition-colors">
-                                Go to Dashboard
+                            <Link
+                                href={isAppAdmin ? "/admin" : "/dashboard"}
+                                className="inline-block px-8 py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary transition-colors"
+                            >
+                                {isAppAdmin ? "Go to Admin Panel" : "Go to Dashboard"}
                             </Link>
                         </div>
                     ) : (

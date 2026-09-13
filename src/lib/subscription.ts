@@ -109,10 +109,16 @@ export async function activatePlan(
     const capped = plan.sessionsPerCycle != null;
     const currentCycleStart = capped ? new Date() : null;
 
+    const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+    });
+    const isAdmin = existingUser?.role === Role.SUPER_ADMIN || existingUser?.role === Role.STAFF_ADMIN;
+
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
-            role: plan.role,
+            ...(isAdmin ? {} : { role: plan.role }),
             ...(plan.credits > 0 ? { credits: { increment: plan.credits } } : {}),
             ...(isTrial ? { trialStartedAt: new Date() } : {}),
         },

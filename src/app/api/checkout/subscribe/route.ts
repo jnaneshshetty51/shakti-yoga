@@ -51,6 +51,13 @@ export async function POST(request: Request) {
         const user = await prisma.user.findUnique({ where: { id: payload.id } });
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+        if (user.role === 'SUPER_ADMIN' || user.role === 'STAFF_ADMIN') {
+            return NextResponse.json(
+                { error: 'You are an Administrator with full platform access. No trial activation needed.' },
+                { status: 400 },
+            );
+        }
+
         if (plan.interval === 'trial') {
             if (user.trialStartedAt) {
                 return NextResponse.json(
