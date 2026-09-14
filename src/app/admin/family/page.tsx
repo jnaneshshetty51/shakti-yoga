@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LuUserPlus } from "react-icons/lu";
-import { PageHeader, PageLoading, ErrorState, Card, EmptyState, StatusBadge, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, ErrorState, Card, EmptyState, StatusBadge, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 interface Member {
@@ -33,6 +33,7 @@ function fmt(iso: string) {
 
 export default function AdminFamilyPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [groups, setGroups] = useState<Group[] | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +52,15 @@ export default function AdminFamilyPage() {
     useEffect(() => { load(); }, [load]);
 
     const act = async (ownerId: string, action: "resetCode" | "cancel") => {
-        if (action === "cancel" && !confirm("Cancel this family plan? All seats lose access at once.")) return;
+        if (action === "cancel") {
+            const ok = await confirm({
+                title: "Cancel this family plan?",
+                message: "All seats lose access at once.",
+                confirmLabel: "Cancel plan",
+                tone: "danger",
+            });
+            if (!ok) return;
+        }
         const res = await fetch("/api/admin/family", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -63,7 +72,12 @@ export default function AdminFamilyPage() {
     };
 
     const removeSeat = async (seatId: string, name: string) => {
-        if (!confirm(`Remove ${name} from this family plan?`)) return;
+        const ok = await confirm({
+            title: `Remove ${name} from this family plan?`,
+            confirmLabel: "Remove",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/family?seatId=${seatId}`, { method: "DELETE" });
         if (!res.ok) return showToast("error", "Could not remove the seat.");
         showToast("success", `${name} removed.`);
@@ -75,6 +89,7 @@ export default function AdminFamilyPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader
                 title="Family"
                 subtitle="Every family plan and its seats. Members manage their own group from the app; use these controls to intervene."

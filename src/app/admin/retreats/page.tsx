@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import {
-    PageHeader, PageLoading, Tabs, Badge, StatusBadge, TableActions, ActionButton,
+    PageHeader, PageLoading, Tabs, Badge, StatusBadge, TableActions, ActionButton, useConfirmDialog,
 } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
@@ -54,6 +54,7 @@ const ENQUIRY_STATUS_OPTIONS = [
 
 export default function AdminRetreatsPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [tab, setTab] = useState<"retreats" | "enquiries">("retreats");
     const [retreats, setRetreats] = useState<Retreat[] | null>(null);
     const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
@@ -97,7 +98,12 @@ export default function AdminRetreatsPage() {
     };
 
     const deleteRetreat = async (r: Retreat) => {
-        if (!confirm(`Delete "${r.name}"?`)) return;
+        const ok = await confirm({
+            title: `Delete "${r.name}"?`,
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/retreats/${r.id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -142,6 +148,7 @@ export default function AdminRetreatsPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Retreats & Events" subtitle="Retreats, workshops and one-off events — enquiry to manual payment.">
                 <Tabs
                     tabs={[

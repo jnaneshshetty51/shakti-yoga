@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type FAQ = {
@@ -27,6 +27,7 @@ const FIELDS: FieldDef[] = [
 
 export default function AdminFaqsPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [rows, setRows] = useState<FAQ[]>([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState<{ mode: "create" | "edit"; row?: FAQ } | null>(null);
@@ -54,7 +55,12 @@ export default function AdminFaqsPage() {
     };
 
     const remove = async (f: FAQ) => {
-        if (!confirm("Delete this FAQ?")) return;
+        const ok = await confirm({
+            title: "Delete this FAQ?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/faqs?id=${f.id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -69,6 +75,7 @@ export default function AdminFaqsPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="FAQ Knowledge Base" subtitle="Frequently asked questions published across the public website and mobile apps." />
             <DTable
                 data={rows}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type ContentTab = "content" | "story" | "blog" | "comments" | "community";
@@ -156,6 +156,7 @@ function toLocalInput(iso: string): string {
 
 export default function AdminContentPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [activeTab, setActiveTab] = useState<ContentTab>("content");
     const [content, setContent] = useState<ContentRow[]>([]);
     const [blogOptions, setBlogOptions] = useState<{ label: string; value: string }[]>([]);
@@ -226,7 +227,14 @@ export default function AdminContentPage() {
     }, [fetchContent, fetchComments, fetchCommunity]);
 
     const moderateCommunity = async (kind: "post" | "comment", id: string, action: "hide" | "unhide" | "delete") => {
-        if (action === "delete" && !confirm(`Delete this ${kind} permanently?`)) return;
+        if (action === "delete") {
+            const ok = await confirm({
+                title: `Delete this ${kind} permanently?`,
+                confirmLabel: "Delete",
+                tone: "danger",
+            });
+            if (!ok) return;
+        }
         const res = action === "delete"
             ? await fetch(`/api/admin/content/community?kind=${kind}&id=${id}`, { method: "DELETE" })
             : await fetch('/api/admin/content/community', {
@@ -244,7 +252,14 @@ export default function AdminContentPage() {
     };
 
     const moderateComment = async (id: string, action: "hide" | "unhide" | "delete") => {
-        if (action === "delete" && !confirm("Delete this comment permanently?")) return;
+        if (action === "delete") {
+            const ok = await confirm({
+                title: "Delete this comment permanently?",
+                confirmLabel: "Delete",
+                tone: "danger",
+            });
+            if (!ok) return;
+        }
         const res = action === "delete"
             ? await fetch(`/api/admin/content/comments?id=${id}`, { method: "DELETE" })
             : await fetch('/api/admin/content/comments', {
@@ -284,7 +299,12 @@ export default function AdminContentPage() {
     };
 
     const remove = async (id: string) => {
-        if (!confirm("Delete this item?")) return;
+        const ok = await confirm({
+            title: "Delete this item?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/content?type=${activeTab}&id=${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -315,6 +335,7 @@ export default function AdminContentPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Media & Feed" subtitle="Social reels, reflections, announcements, blog articles, stories, and discussions." />
 
             <div className="mb-6">

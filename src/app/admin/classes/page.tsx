@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 export type ClassBatch = {
@@ -32,6 +32,7 @@ const PLAN_OPTIONS = [
 
 export default function AdminClassesPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [batches, setBatches] = useState<ClassBatch[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
@@ -110,7 +111,13 @@ export default function AdminClassesPage() {
     };
 
     const handleDelete = async (batch: ClassBatch) => {
-        if (!confirm(`Delete "${batch.name}"? Its scheduled instances are removed too.`)) return;
+        const ok = await confirm({
+            title: `Delete "${batch.name}"?`,
+            message: "Its scheduled instances are removed too.",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/classes?id=${batch.id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -125,6 +132,7 @@ export default function AdminClassesPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Class Batches" subtitle="Master recurring class batches, timings, teacher assignments, and default Google Meet links.">
                 <a
                     href="/admin/schedule"

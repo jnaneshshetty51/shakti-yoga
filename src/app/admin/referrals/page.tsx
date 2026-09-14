@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { LuGift, LuUsers, LuTrendingUp, LuBadgeCheck } from "react-icons/lu";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
-import { PageHeader, PageLoading, StatusBadge, Badge, Card, Button, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, Badge, Card, Button, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog } from "@/components/admin/ui";
 import { StatCard } from "@/components/admin/StatCard";
 
 type Status = "PENDING" | "SUCCESSFUL" | "EXPIRED" | "REVERSED";
@@ -31,6 +31,7 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export default function AdminReferralsPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [referrals, setReferrals] = useState<Referral[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
@@ -75,7 +76,15 @@ export default function AdminReferralsPage() {
     };
 
     const act = async (r: Referral, action: "reverse" | "flag" | "unflag") => {
-        if (action === "reverse" && !confirm(`Claw back ${inr(r.rewardAmount)} from ${r.referrerName}? This can't be undone.`)) return;
+        if (action === "reverse") {
+            const ok = await confirm({
+                title: `Claw back ${inr(r.rewardAmount)} from ${r.referrerName}?`,
+                message: "This can't be undone.",
+                confirmLabel: "Claw back",
+                tone: "danger",
+            });
+            if (!ok) return;
+        }
         try {
             const res = await fetch(`/api/admin/referrals/${r.id}`, {
                 method: "PATCH",
@@ -115,6 +124,7 @@ export default function AdminReferralsPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Referrals" subtitle="Refer & Earn activity, reward settings and manual review." />
 
             {stats && (

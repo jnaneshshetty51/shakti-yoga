@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
-import { PageHeader, PageLoading, StatusBadge, TableActions, ErrorState, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ErrorState, ActionButton, Button, inputClass, labelClass } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Invoice = {
@@ -25,6 +25,9 @@ export default function InvoicesPage() {
     const [rows, setRows] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
+    const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
+    const [voidReason, setVoidReason] = useState("");
+    const [voiding, setVoiding] = useState(false);
 
     const load = useCallback(async () => {
         setLoadError(false);
@@ -43,18 +46,28 @@ export default function InvoicesPage() {
     }, []);
     useEffect(() => { load(); }, [load]);
 
-    const voidInvoice = async (invoice: Invoice) => {
-        const reason = prompt(`Void invoice ${invoice.number}? This doesn't refund the payment. Reason:`, "");
-        if (reason === null) return;
-        if (!reason.trim()) return showToast("error", "A reason is required.");
-        const res = await fetch(`/api/admin/invoices/${invoice.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reason: reason.trim() }),
-        });
-        if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Could not void invoice");
-        showToast("success", `${invoice.number} voided.`);
-        load();
+    const confirmVoid = async () => {
+        const invoice = voidTarget;
+        if (!invoice) return;
+        if (!voidReason.trim()) return showToast("error", "A reason is required.");
+        setVoiding(true);
+        try {
+            const res = await fetch(`/api/admin/invoices/${invoice.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ reason: voidReason.trim() }),
+            });
+            if (!res.ok) {
+                showToast("error", (await res.json().catch(() => ({}))).error || "Could not void invoice");
+                return;
+            }
+            showToast("success", `${invoice.number} voided.`);
+            setVoidTarget(null);
+            setVoidReason("");
+            load();
+        } finally {
+            setVoiding(false);
+        }
     };
 
     if (loading) return <PageLoading title="Invoices" />;
@@ -82,11 +95,53 @@ export default function InvoicesPage() {
                             <a href={`/api/admin/invoices/${i.id}`} target="_blank" rel="noreferrer"
                                 className="text-xs font-semibold text-brand hover:text-brand-strong">Download</a>
                             {i.status !== "VOID" && (
-                                <ActionButton tone="danger" onClick={() => voidInvoice(i)}>Void</ActionButton>
+                                <ActionButton tone="danger" onClick={() => { setVoidTarget(i); setVoidReason(""); }}>Void</ActionButton>
                             )}
                         </TableActions>
                     )}
                 />
+            )}
+
+            {voidTarget && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+                    onClick={() => !voiding && setVoidTarget(null)}
+                >
+                    <div
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="void-dialog-title"
+                        className="bg-surface border border-hairline rounded-card shadow-overlay w-full max-w-sm p-6 animate-slide-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 id="void-dialog-title" className="font-semibold text-ink text-lg mb-2">
+                            Void invoice {voidTarget.number}?
+                        </h3>
+                        <p className="text-sm text-ink-muted mb-4">
+                            This doesn&apos;t refund the payment.
+                        </p>
+                        <label htmlFor="void-reason" className={labelClass}>
+                            Reason
+                        </label>
+                        <input
+                            id="void-reason"
+                            type="text"
+                            placeholder="e.g. Issued in error"
+                            value={voidReason}
+                            onChange={(e) => setVoidReason(e.target.value)}
+                            className={inputClass}
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-2 mt-6">
+                            <Button variant="secondary" onClick={() => setVoidTarget(null)} disabled={voiding}>
+                                Cancel
+                            </Button>
+                            <Button variant="danger" onClick={confirmVoid} loading={voiding} disabled={!voidReason.trim()}>
+                                Void invoice
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

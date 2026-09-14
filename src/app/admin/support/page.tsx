@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { LuLifeBuoy, LuSend, LuSearch } from "react-icons/lu";
 import {
     PageHeader, PageLoading, Card, StatusBadge, EmptyState,
-    SegmentedControl, Button, ErrorState,
+    SegmentedControl, Button, ErrorState, useConfirmDialog,
 } from "@/components/admin/ui";
 
 interface Row {
@@ -34,6 +34,7 @@ function when(iso: string) {
 }
 
 export default function AdminSupportPage() {
+    const { confirm, dialog } = useConfirmDialog();
     const [filter, setFilter] = useState<"OPEN" | "CLOSED">("OPEN");
     const [rows, setRows] = useState<Row[] | null>(null);
     const [loadError, setLoadError] = useState(false);
@@ -84,7 +85,14 @@ export default function AdminSupportPage() {
     };
 
     const close = async () => {
-        if (!selected || !confirm("Close this conversation? The member will need to start a new one.")) return;
+        if (!selected) return;
+        const ok = await confirm({
+            title: "Close this conversation?",
+            message: "The member will need to start a new one.",
+            confirmLabel: "Close",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/support/${selected.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -118,6 +126,7 @@ export default function AdminSupportPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment.">
                 <SegmentedControl
                     aria-label="Filter"

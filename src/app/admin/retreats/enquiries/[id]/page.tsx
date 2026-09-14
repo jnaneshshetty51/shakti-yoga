@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, Button, StatusBadge, ErrorState } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Button, StatusBadge, ErrorState, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Enquiry = {
@@ -20,6 +20,7 @@ export default function EnquiryDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [e, setE] = useState<Enquiry | null>(null);
     const [loadError, setLoadError] = useState(false);
 
@@ -50,7 +51,12 @@ export default function EnquiryDetailPage() {
     };
 
     const del = async () => {
-        if (!confirm("Delete this enquiry?")) return;
+        const ok = await confirm({
+            title: "Delete this enquiry?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/retreats/enquiries/${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -76,6 +82,7 @@ export default function EnquiryDetailPage() {
 
     return (
         <div>
+            {dialog}
             <Link href="/admin/retreats" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Retreats
             </Link>

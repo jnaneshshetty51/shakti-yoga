@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LuInbox } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, EmptyState, ErrorState, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, EmptyState, ErrorState, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 interface Message {
@@ -17,6 +17,7 @@ interface Message {
 
 export default function AdminMessagesPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
@@ -58,7 +59,12 @@ export default function AdminMessagesPage() {
     };
 
     const remove = async (id: string) => {
-        if (!confirm("Delete this message?")) return;
+        const ok = await confirm({
+            title: "Delete this message?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/contact?id=${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -75,6 +81,7 @@ export default function AdminMessagesPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Contact Inquiries" subtitle="Website contact form submissions, general inquiries, and prospective student questions.">
                 <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full border border-gray-200 bg-white cursor-pointer">
                     <input type="checkbox" className="accent-primary" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />

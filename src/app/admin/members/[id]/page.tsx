@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button, useConfirmDialog } from "@/components/admin/ui";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { MeasurementsPanel } from "@/components/admin/MeasurementsPanel";
 import { useToast } from "@/components/admin/Toast";
@@ -49,6 +49,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
     const [credit, setCredit] = useState(false);
 
@@ -74,7 +75,12 @@ export default function MemberDetailPage() {
     const toggleActive = async () => {
         if (!data) return;
         const next = !data.member.active;
-        if (!confirm(`${next ? "Reactivate" : "Deactivate"} ${data.member.name}?`)) return;
+        const ok = await confirm({
+            title: `${next ? "Reactivate" : "Deactivate"} ${data.member.name}?`,
+            confirmLabel: next ? "Reactivate" : "Deactivate",
+            tone: next ? "primary" : "danger",
+        });
+        if (!ok) return;
         const res = await fetch("/api/admin/users", {
             method: "PATCH", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id, active: next }),
@@ -89,6 +95,7 @@ export default function MemberDetailPage() {
 
     return (
         <div>
+            {dialog}
             <Link href="/admin/members" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Members
             </Link>

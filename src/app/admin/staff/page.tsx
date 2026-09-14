@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass, useConfirmDialog } from "@/components/admin/ui";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/admin/Toast";
 
@@ -68,6 +68,7 @@ function PhotoInput({ current, onFile }: { current: string | null; onFile: (f: F
 export default function AdminStaffPage() {
     const { user } = useAuth();
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const isSuper = user?.tier === "super";
     const [staff, setStaff] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<string[]>(["TEACHER", "STAFF_ADMIN"]);
@@ -187,7 +188,13 @@ export default function AdminStaffPage() {
     };
 
     const remove = async (s: Staff) => {
-        if (!confirm(`Remove ${s.name}? This deletes their account.`)) return;
+        const ok = await confirm({
+            title: `Remove ${s.name}?`,
+            message: "This deletes their account.",
+            confirmLabel: "Remove",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/staff?id=${s.id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -200,6 +207,7 @@ export default function AdminStaffPage() {
 
     return (
         <div className="max-w-4xl">
+            {dialog}
             <PageHeader title="Staff & Teachers" subtitle="Accounts, photos and bios for teachers and admins.">
                 <Button variant={creating ? "secondary" : "primary"} onClick={() => { setCreating((c) => !c); setErr(""); }}>
                     {creating ? "Cancel" : "Add staff"}

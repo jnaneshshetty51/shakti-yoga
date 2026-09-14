@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog } from "@/components/admin/ui";
 
 export type Lead = {
     id: string;
@@ -25,6 +25,7 @@ export type Lead = {
 
 function LeadsDashboard() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -145,15 +146,19 @@ function LeadsDashboard() {
     };
 
     const handleDelete = async (lead: Lead) => {
-        if (confirm(`Are you sure you want to delete lead: ${lead.name}?`)) {
-            try {
-                const res = await fetch(`/api/admin/leads/${lead.id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error('Failed to delete lead');
-                showToast('success', `Lead "${lead.name}" deleted`);
-                fetchLeads();
-            } catch (err) {
-                showToast('error', err instanceof Error ? err.message : 'Something went wrong');
-            }
+        const ok = await confirm({
+            title: `Delete lead: ${lead.name}?`,
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
+        try {
+            const res = await fetch(`/api/admin/leads/${lead.id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete lead');
+            showToast('success', `Lead "${lead.name}" deleted`);
+            fetchLeads();
+        } catch (err) {
+            showToast('error', err instanceof Error ? err.message : 'Something went wrong');
         }
     };
 
@@ -209,6 +214,7 @@ function LeadsDashboard() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Leads CRM" subtitle="Track and manage potential members from inquiry to conversion." />
 
             <DTable

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Benefit = { id: string; icon: string; title: string; description: string; sortOrder: number; status: string; [k: string]: unknown };
@@ -28,6 +28,7 @@ const STAT_FIELDS: FieldDef[] = [
 
 export default function SiteContentPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
     const [tab, setTab] = useState<TabKey>("benefits");
     const [modal, setModal] = useState<{ kind: TabKey; row?: Benefit | Stat } | null>(null);
@@ -53,7 +54,12 @@ export default function SiteContentPage() {
     };
 
     const remove = async (kind: "benefit" | "stat", id: string) => {
-        if (!confirm("Delete this?")) return;
+        const ok = await confirm({
+            title: "Delete this?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/site-content?kind=${kind}&id=${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -68,6 +74,7 @@ export default function SiteContentPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Site content" subtitle="'Why us' benefits and the homepage stat figures." />
             <div className="mb-4">
                 <Tabs

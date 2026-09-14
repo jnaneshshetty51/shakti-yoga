@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader, Card, ActionButton, ErrorState } from "@/components/admin/ui";
+import { PageHeader, Card, ActionButton, ErrorState, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 interface Rule {
@@ -20,6 +20,7 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function AvailabilityPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [rules, setRules] = useState<Rule[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +65,12 @@ export default function AvailabilityPage() {
     };
 
     const remove = async (id: string) => {
-        if (!confirm("Remove this availability window?")) return;
+        const ok = await confirm({
+            title: "Remove this availability window?",
+            confirmLabel: "Remove",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/availability?id=${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -98,6 +104,7 @@ export default function AvailabilityPage() {
 
     return (
         <div className="max-w-4xl">
+            {dialog}
             <PageHeader
                 title="Teacher Availability"
                 subtitle="Weekly windows the 1:1 therapy booking page offers as slots."

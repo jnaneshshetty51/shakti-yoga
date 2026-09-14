@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog } from "@/components/admin/ui";
 
 export type CorporateLead = {
     id: string;
@@ -36,6 +36,7 @@ const BLANK = {
 
 function CorporateDashboard() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [leads, setLeads] = useState<CorporateLead[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -105,7 +106,12 @@ function CorporateDashboard() {
     };
 
     const handleDelete = async (lead: CorporateLead) => {
-        if (!confirm(`Delete corporate lead: ${lead.companyName}?`)) return;
+        const ok = await confirm({
+            title: `Delete corporate lead: ${lead.companyName}?`,
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/corporate/${lead.id}`, { method: 'DELETE' });
         if (!res.ok) { showToast('error', 'Failed to delete'); return; }
         showToast('success', 'Deleted'); fetchLeads();
@@ -137,6 +143,7 @@ function CorporateDashboard() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Corporate Wellness" subtitle="B2B wellness proposals, corporate workshops, and institutional wellness contracts." />
 
             <DTable

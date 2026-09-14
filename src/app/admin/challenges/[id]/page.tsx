@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
 import DTable from "@/components/admin/DTable";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, ErrorState } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, ErrorState, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Participant = {
@@ -21,6 +21,7 @@ type Data = {
 export default function ChallengeParticipantsPage() {
     const { id } = useParams<{ id: string }>();
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
     const [loadError, setLoadError] = useState(false);
 
@@ -52,7 +53,12 @@ export default function ChallengeParticipantsPage() {
     };
 
     const remove = async (p: Participant) => {
-        if (!confirm(`Remove ${p.name} from this challenge?`)) return;
+        const ok = await confirm({
+            title: `Remove ${p.name} from this challenge?`,
+            confirmLabel: "Remove",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/challenges/${id}/participants?participantId=${p.id}`, { method: "DELETE" });
         if (!res.ok) return showToast("error", "Failed");
         showToast("success", `${p.name} removed`);
@@ -77,6 +83,7 @@ export default function ChallengeParticipantsPage() {
 
     return (
         <div>
+            {dialog}
             <Link href="/admin/challenges" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Challenges
             </Link>

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LuSend, LuBell } from "react-icons/lu";
-import { PageHeader, Card, Button, PageLoading, inputClass, labelClass } from "@/components/admin/ui";
+import { PageHeader, Card, Button, PageLoading, inputClass, labelClass, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Segment = { key: string; label: string; total: number; reachable: number };
@@ -15,6 +15,7 @@ type Data = { segments: Segment[]; channels: string[]; history: HistoryRow[] };
 
 function BroadcastForm() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const initialSegment = useSearchParams().get("segment") ?? "";
     const [data, setData] = useState<Data | null>(null);
     const [title, setTitle] = useState("");
@@ -34,7 +35,14 @@ function BroadcastForm() {
         if (!title.trim() || !body.trim()) return showToast("error", "Title and message are required.");
         if (!test && !segment) return showToast("error", "Choose an audience.");
         const seg = data?.segments.find((s) => s.key === segment);
-        if (!test && seg && !confirm(`Send "${title}" to ${seg.reachable} device(s) in "${seg.label}"?`)) return;
+        if (!test && seg) {
+            const ok = await confirm({
+                title: `Send "${title}" to ${seg.reachable} device(s) in "${seg.label}"?`,
+                confirmLabel: "Send",
+                tone: "primary",
+            });
+            if (!ok) return;
+        }
 
         setSending(test ? "test" : "live");
         try {
@@ -58,6 +66,7 @@ function BroadcastForm() {
 
     return (
         <div>
+            {dialog}
             <PageHeader
                 title="Push Broadcast"
                 subtitle="Send mobile push notifications to active, trial, or at-risk member segments. Always test on your own device first."

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Button, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Button, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 export type Booking = {
@@ -43,6 +43,7 @@ const STATUS_FILTER = STATUS_OPTIONS.map((o) => ({ label: o.label, value: o.valu
 
 export default function AdminBookingsPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
@@ -118,7 +119,13 @@ export default function AdminBookingsPage() {
     };
 
     const quickCancel = async (bk: Booking) => {
-        if (!confirm(`Cancel ${bk.userName}'s ${bk.type} booking? Refunds any eligible credit and keeps the record.`)) return;
+        const ok = await confirm({
+            title: `Cancel ${bk.userName}'s ${bk.type} booking?`,
+            message: "Refunds any eligible credit and keeps the record.",
+            confirmLabel: "Cancel booking",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch("/api/admin/bookings", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -133,7 +140,13 @@ export default function AdminBookingsPage() {
     };
 
     const handleDelete = async (bk: Booking) => {
-        if (!confirm(`Delete ${bk.userName}'s ${bk.type} booking? (Prefer Cancel to refund the credit.)`)) return;
+        const ok = await confirm({
+            title: `Delete ${bk.userName}'s ${bk.type} booking?`,
+            message: "Prefer Cancel to refund the credit.",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/bookings?id=${bk.id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -145,7 +158,13 @@ export default function AdminBookingsPage() {
     };
 
     const bulkCancel = async (ids: string[]) => {
-        if (!confirm(`Cancel ${ids.length} booking(s)? Refunds any eligible credit.`)) return;
+        const ok = await confirm({
+            title: `Cancel ${ids.length} booking(s)?`,
+            message: "Refunds any eligible credit.",
+            confirmLabel: "Cancel bookings",
+            tone: "danger",
+        });
+        if (!ok) return;
         const results = await Promise.all(
             ids.map((id) =>
                 fetch("/api/admin/bookings", {
@@ -173,6 +192,7 @@ export default function AdminBookingsPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader
                 title="Bookings"
                 subtitle="1:1 therapy sessions and consultations. Reschedule, reassign the teacher, or create one for a member."

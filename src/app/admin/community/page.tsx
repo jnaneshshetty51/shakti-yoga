@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LuMessageSquare } from "react-icons/lu";
-import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 export type CommunityGroup = {
@@ -23,6 +23,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function AdminCommunityPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [groups, setGroups] = useState<CommunityGroup[]>([]);
     const [roles, setRoles] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -89,7 +90,13 @@ export default function AdminCommunityPage() {
     };
 
     const remove = async (g: CommunityGroup) => {
-        if (!confirm(`Delete the "${g.name}" group? Members mapped to this role will see no group until you add another.`)) return;
+        const ok = await confirm({
+            title: `Delete the "${g.name}" group?`,
+            message: "Members mapped to this role will see no group until you add another.",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/community?id=${g.id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -102,6 +109,7 @@ export default function AdminCommunityPage() {
 
     return (
         <div className="max-w-4xl">
+            {dialog}
             <PageHeader
                 title="WhatsApp Sangha"
                 subtitle="Dedicated WhatsApp community circles surfaced dynamically on member dashboards based on their role and plan."

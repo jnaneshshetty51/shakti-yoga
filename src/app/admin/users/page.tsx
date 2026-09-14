@@ -5,7 +5,7 @@ import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { useToast } from "@/components/admin/Toast";
 import { useAuth } from "@/context/AuthContext";
-import { PageHeader, PageLoading, Badge, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 
 const BASE_ROLE_OPTIONS = [
     { label: "Teacher", value: "TEACHER" },
@@ -41,6 +41,7 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<User | null>(null);
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const { user: viewer } = useAuth();
     const ROLE_OPTIONS = viewer?.tier === "super" ? [...SUPER_ONLY_ROLE_OPTIONS, ...BASE_ROLE_OPTIONS] : BASE_ROLE_OPTIONS;
 
@@ -103,7 +104,13 @@ export default function AdminUsersPage() {
     ];
 
     const handleDelete = async (user: User) => {
-        if (!confirm(`Delete ${user.name}? This removes their bookings, subscription and payments too.`)) return;
+        const ok = await confirm({
+            title: `Delete ${user.name}?`,
+            message: "This removes their bookings, subscription and payments too.",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/users?id=${user.id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -115,7 +122,12 @@ export default function AdminUsersPage() {
     };
 
     const handleBulkDelete = async (ids: string[]) => {
-        if (!confirm(`Delete ${ids.length} users?`)) return;
+        const ok = await confirm({
+            title: `Delete ${ids.length} users?`,
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const results = await Promise.all(ids.map(id => fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' })));
         const failed = results.filter(r => !r.ok).length;
         showToast(failed ? 'warning' : 'success', failed ? `${failed} of ${ids.length} could not be deleted` : `${ids.length} users deleted`);
@@ -145,7 +157,13 @@ export default function AdminUsersPage() {
 
     const toggleActive = async (user: User) => {
         const next = !(user.active ?? true);
-        if (!confirm(`${next ? 'Reactivate' : 'Deactivate'} ${user.name}? ${next ? '' : 'They will be signed out and blocked from logging in.'}`)) return;
+        const ok = await confirm({
+            title: `${next ? 'Reactivate' : 'Deactivate'} ${user.name}?`,
+            message: next ? undefined : "They will be signed out and blocked from logging in.",
+            confirmLabel: next ? "Reactivate" : "Deactivate",
+            tone: next ? "primary" : "danger",
+        });
+        if (!ok) return;
         const res = await fetch('/api/admin/users', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -163,6 +181,7 @@ export default function AdminUsersPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="User Management" subtitle="Manage all registered users, members, and staff." />
 
             <DTable

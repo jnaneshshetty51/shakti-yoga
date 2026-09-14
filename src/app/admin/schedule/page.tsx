@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { AttendanceModal } from "@/components/admin/AttendanceModal";
 import { useToast } from "@/components/admin/Toast";
 import { LuCalendarClock, LuChevronLeft, LuChevronRight } from "react-icons/lu";
@@ -38,6 +38,7 @@ const STATUS_OPTIONS = [
 
 export default function AdminSchedulePage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
     const [weekStart, setWeekStart] = useState(todayStr());
     const [loading, setLoading] = useState(true);
@@ -100,7 +101,13 @@ export default function AdminSchedulePage() {
     };
 
     const cancelClass = async (item: ScheduleItem) => {
-        if (!confirm(`Cancel ${item.batchName} on ${item.timeSlot}? Members who'd have joined are notified.`)) return;
+        const ok = await confirm({
+            title: `Cancel ${item.batchName} on ${item.timeSlot}?`,
+            message: "Members who'd have joined are notified.",
+            confirmLabel: "Cancel class",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch("/api/admin/schedule", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -112,7 +119,13 @@ export default function AdminSchedulePage() {
     };
 
     const deleteClass = async (item: ScheduleItem) => {
-        if (!confirm(`Permanently delete ${item.batchName} on ${item.timeSlot}? This removes the record entirely — prefer Cancel above to keep it for history.`)) return;
+        const ok = await confirm({
+            title: `Permanently delete ${item.batchName} on ${item.timeSlot}?`,
+            message: "This removes the record entirely — prefer Cancel above to keep it for history.",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/schedule?id=${item.id}`, { method: "DELETE" });
         if (!res.ok) return showToast("error", (await res.json().catch(() => ({}))).error || "Could not delete");
         showToast("success", "Class deleted.");
@@ -127,6 +140,7 @@ export default function AdminSchedulePage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader
                 title="Daily Schedule & Attendance"
                 subtitle={`Class instances from ${new Date(`${weekStart}T00:00:00.000Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}, 7 days. Google Meet links and student attendance check-ins.`}

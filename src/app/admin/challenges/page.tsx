@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Challenge = {
@@ -36,6 +36,7 @@ const FIELDS: FieldDef[] = [
 
 export default function AdminChallengesPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [rows, setRows] = useState<Challenge[]>([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState<{ mode: "create" | "edit"; initial?: EntityValues; id?: string } | null>(null);
@@ -63,7 +64,12 @@ export default function AdminChallengesPage() {
     };
 
     const remove = async (id: string) => {
-        if (!confirm("Delete this challenge?")) return;
+        const ok = await confirm({
+            title: "Delete this challenge?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/challenges?id=${id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -78,6 +84,7 @@ export default function AdminChallengesPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Challenges" subtitle="Time-boxed goals members opt into." />
             <DTable
                 data={rows}

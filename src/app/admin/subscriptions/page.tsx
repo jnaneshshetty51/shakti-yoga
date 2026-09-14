@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { formatPrice } from "@/lib/pricing";
-import { PageHeader, PageLoading, Button, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Button, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 export type Subscription = {
@@ -53,6 +53,7 @@ const fmtDate = (iso: string) =>
 
 export default function AdminSubscriptionsPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<Subscription | null>(null);
@@ -121,13 +122,24 @@ export default function AdminSubscriptionsPage() {
 
     const togglePause = async (s: Subscription) => {
         const next = !s.paused;
-        if (!confirm(`${next ? "Pause" : "Resume"} ${s.userName}'s subscription?`)) return;
+        const ok = await confirm({
+            title: `${next ? "Pause" : "Resume"} ${s.userName}'s subscription?`,
+            confirmLabel: next ? "Pause" : "Resume",
+            tone: next ? "danger" : "primary",
+        });
+        if (!ok) return;
         try { await patch({ id: s.id, pause: next }); showToast("success", next ? "Paused." : "Resumed."); }
         catch (e) { showToast("error", e instanceof Error ? e.message : "Failed"); }
     };
 
     const handleDelete = async (s: Subscription) => {
-        if (!confirm(`Delete ${s.userName}'s subscription record? (Does not refund.)`)) return;
+        const ok = await confirm({
+            title: `Delete ${s.userName}'s subscription record?`,
+            message: "This does not refund.",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         const res = await fetch(`/api/admin/subscriptions?id=${s.id}`, { method: "DELETE" });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -139,7 +151,13 @@ export default function AdminSubscriptionsPage() {
     };
 
     const bulkCancel = async (ids: string[]) => {
-        if (!confirm(`Cancel ${ids.length} subscription(s)? Access runs out at each one's current renewal date.`)) return;
+        const ok = await confirm({
+            title: `Cancel ${ids.length} subscription(s)?`,
+            message: "Access runs out at each one's current renewal date.",
+            confirmLabel: "Cancel subscriptions",
+            tone: "danger",
+        });
+        if (!ok) return;
         const results = await Promise.all(
             ids.map((id) =>
                 fetch("/api/admin/subscriptions", {
@@ -167,6 +185,7 @@ export default function AdminSubscriptionsPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Subscriptions" subtitle="Manage member plans, billing state and renewals.">
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search member…"
                     className="rounded-control border border-hairline px-3 py-1.5 text-sm" />

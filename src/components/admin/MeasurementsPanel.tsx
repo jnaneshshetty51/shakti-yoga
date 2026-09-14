@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { Card, Button, ActionButton, inputClass, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type M = {
@@ -34,6 +34,7 @@ function Spark({ values }: { values: (number | null)[] }) {
 
 export function MeasurementsPanel({ memberId }: { memberId: string }) {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [rows, setRows] = useState<M[] | null>(null);
     const [form, setForm] = useState<Record<string, string>>({});
     const [adding, setAdding] = useState(false);
@@ -58,7 +59,12 @@ export function MeasurementsPanel({ memberId }: { memberId: string }) {
     };
 
     const del = async (mid: string) => {
-        if (!confirm("Delete this reading?")) return;
+        const ok = await confirm({
+            title: "Delete this reading?",
+            confirmLabel: "Delete",
+            tone: "danger",
+        });
+        if (!ok) return;
         await fetch(`/api/admin/members/${memberId}/measurements?measurementId=${mid}`, { method: "DELETE" });
         load();
     };
@@ -67,6 +73,7 @@ export function MeasurementsPanel({ memberId }: { memberId: string }) {
 
     return (
         <Card padded>
+            {dialog}
             <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-ink text-sm">Therapy progress</h3>
                 <Button size="sm" variant="ghost" onClick={() => setAdding((v) => !v)}>{adding ? "Cancel" : "Add reading"}</Button>
