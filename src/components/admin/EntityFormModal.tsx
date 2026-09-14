@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "./ui";
 
 export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image" | "video";
 
@@ -27,6 +28,10 @@ interface Props {
     /** Required if any field has type "video". Uploads the file, returns its URL. */
     uploadVideo?: (file: File) => Promise<string>;
 }
+
+const fieldInputClass =
+    "w-full px-3 py-2 rounded-control border border-hairline text-sm bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/40 transition";
+const fieldLabelClass = "block text-xs font-semibold text-ink-subtle uppercase tracking-wider mb-1";
 
 export default function EntityFormModal({
     title,
@@ -74,39 +79,41 @@ export default function EntityFormModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={onCancel}>
             <div
-                className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up"
+                className="bg-surface border border-hairline rounded-card shadow-overlay w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h3 className="font-serif text-xl text-gray-800">{title}</h3>
-                    <button onClick={onCancel} className="p-1.5 -mr-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">✕</button>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-hairline sticky top-0 bg-surface z-10">
+                    <h3 className="font-semibold text-lg text-ink">{title}</h3>
+                    <button onClick={onCancel} className="p-1.5 -mr-1.5 rounded-full text-ink-subtle hover:bg-black/[0.04] hover:text-ink-muted transition-colors">✕</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-control text-sm">{error}</div>
                     )}
 
                     {fields.map((f) => (
                         <div key={f.name}>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                            <label htmlFor={`entity-field-${f.name}`} className={fieldLabelClass}>
                                 {f.label}{f.required && " *"}
                             </label>
 
                             {f.type === "textarea" ? (
                                 <textarea
+                                    id={`entity-field-${f.name}`}
                                     value={String(values[f.name] ?? "")}
                                     onChange={(e) => set(f.name, e.target.value)}
                                     required={f.required}
                                     rows={3}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                    className={fieldInputClass}
                                 />
                             ) : f.type === "select" ? (
                                 <select
+                                    id={`entity-field-${f.name}`}
                                     value={String(values[f.name] ?? "")}
                                     onChange={(e) => set(f.name, e.target.value)}
                                     required={f.required}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                    className={fieldInputClass}
                                 >
                                     <option value="">Select…</option>
                                     {f.options?.map((o) => (
@@ -115,14 +122,15 @@ export default function EntityFormModal({
                                 </select>
                             ) : f.type === "checkbox" ? (
                                 <input
+                                    id={`entity-field-${f.name}`}
                                     type="checkbox"
                                     checked={Boolean(values[f.name])}
                                     onChange={(e) => set(f.name, e.target.checked)}
-                                    className="h-4 w-4 accent-primary"
+                                    className="h-4 w-4 accent-brand"
                                 />
                             ) : f.type === "image" ? (
                                 <div className="flex flex-wrap items-start gap-3">
-                                    <div className="w-24 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 text-xs">
+                                    <div className="w-24 h-16 rounded-control bg-surface-sunken border border-hairline overflow-hidden shrink-0 flex items-center justify-center text-ink-subtle text-xs">
                                         {values[f.name]
                                             // eslint-disable-next-line @next/next/no-img-element
                                             ? <img src={String(values[f.name])} alt="" className="w-full h-full object-cover" />
@@ -130,6 +138,7 @@ export default function EntityFormModal({
                                     </div>
                                     <div className="space-y-1">
                                         <input
+                                            id={`entity-field-${f.name}`}
                                             type="file"
                                             accept="image/jpeg,image/png,image/webp"
                                             disabled={!uploadImage || uploading === f.name}
@@ -149,9 +158,9 @@ export default function EntityFormModal({
                                             }}
                                             className="text-xs"
                                         />
-                                        {uploading === f.name && <p className="text-xs text-gray-400">Uploading…</p>}
+                                        {uploading === f.name && <p className="text-xs text-ink-subtle">Uploading…</p>}
                                         {values[f.name] && (
-                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-gray-400 hover:text-red-500">
+                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-ink-subtle hover:text-red-500">
                                                 remove
                                             </button>
                                         )}
@@ -159,11 +168,12 @@ export default function EntityFormModal({
                                 </div>
                             ) : f.type === "video" ? (
                                 <div className="flex flex-wrap items-start gap-3">
-                                    <div className="w-24 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 text-xs text-center px-1">
+                                    <div className="w-24 h-16 rounded-control bg-surface-sunken border border-hairline overflow-hidden shrink-0 flex items-center justify-center text-ink-subtle text-xs text-center px-1">
                                         {values[f.name] ? "video attached" : "none"}
                                     </div>
                                     <div className="space-y-1">
                                         <input
+                                            id={`entity-field-${f.name}`}
                                             type="file"
                                             accept="video/mp4,video/quicktime"
                                             disabled={!uploadVideo || uploading === f.name}
@@ -183,9 +193,9 @@ export default function EntityFormModal({
                                             }}
                                             className="text-xs"
                                         />
-                                        {uploading === f.name && <p className="text-xs text-gray-400">Uploading…</p>}
+                                        {uploading === f.name && <p className="text-xs text-ink-subtle">Uploading…</p>}
                                         {values[f.name] && (
-                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-gray-400 hover:text-red-500">
+                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-ink-subtle hover:text-red-500">
                                                 remove
                                             </button>
                                         )}
@@ -193,28 +203,25 @@ export default function EntityFormModal({
                                 </div>
                             ) : (
                                 <input
+                                    id={`entity-field-${f.name}`}
                                     type={f.type || "text"}
                                     value={String(values[f.name] ?? "")}
                                     onChange={(e) => set(f.name, e.target.value)}
                                     required={f.required}
                                     placeholder={f.placeholder}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                    className={fieldInputClass}
                                 />
                             )}
                         </div>
                     ))}
 
                     <div className="flex justify-end gap-2 pt-2">
-                        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+                        <Button type="button" variant="secondary" shape="pill" onClick={onCancel}>
                             Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={busy}
-                            className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
-                        >
-                            {busy ? "Saving…" : submitLabel}
-                        </button>
+                        </Button>
+                        <Button type="submit" shape="pill" loading={busy}>
+                            {submitLabel}
+                        </Button>
                     </div>
                 </form>
             </div>

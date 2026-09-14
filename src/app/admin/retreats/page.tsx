@@ -6,6 +6,7 @@ import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFor
 import {
     PageHeader, PageLoading, Tabs, Badge, StatusBadge, TableActions, ActionButton,
 } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type Retreat = {
     id: string;
@@ -52,6 +53,7 @@ const ENQUIRY_STATUS_OPTIONS = [
 ];
 
 export default function AdminRetreatsPage() {
+    const { showToast } = useToast();
     const [tab, setTab] = useState<"retreats" | "enquiries">("retreats");
     const [retreats, setRetreats] = useState<Retreat[] | null>(null);
     const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
@@ -96,7 +98,13 @@ export default function AdminRetreatsPage() {
 
     const deleteRetreat = async (r: Retreat) => {
         if (!confirm(`Delete "${r.name}"?`)) return;
-        await fetch(`/api/admin/retreats/${r.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/retreats/${r.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete.");
+            return;
+        }
+        showToast("success", "Deleted.");
         loadRetreats();
     };
 

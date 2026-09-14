@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader, Card, ActionButton } from "@/components/admin/ui";
+import { PageHeader, Card, ActionButton, ErrorState } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 interface Rule {
     id: string;
@@ -18,15 +19,18 @@ interface Teacher { id: string; name: string }
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function AvailabilityPage() {
+    const { showToast } = useToast();
     const [rules, setRules] = useState<Rule[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [err, setErr] = useState("");
 
     const [form, setForm] = useState({ teacherId: "", dayOfWeek: "Mon", startTime: "09:00", endTime: "17:00", slotMinutes: 45 });
 
     const load = useCallback(async () => {
         setLoading(true);
+        setLoadError(false);
         try {
             const res = await fetch("/api/admin/availability");
             const data = await res.json();
@@ -34,7 +38,11 @@ export default function AvailabilityPage() {
                 setRules(data.rules ?? []);
                 setTeachers(data.teachers ?? []);
                 if (!form.teacherId && data.teachers?.[0]) setForm((f) => ({ ...f, teacherId: data.teachers[0].id }));
+            } else {
+                setLoadError(true);
             }
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -57,14 +65,20 @@ export default function AvailabilityPage() {
 
     const remove = async (id: string) => {
         if (!confirm("Remove this availability window?")) return;
-        await fetch(`/api/admin/availability?id=${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/availability?id=${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not remove.");
+            return;
+        }
+        showToast("success", "Availability window removed.");
         load();
     };
 
     const [editing, setEditing] = useState<Rule | null>(null);
     const saveEdit = async () => {
         if (!editing) return;
-        await fetch("/api/admin/availability", {
+        const res = await fetch("/api/admin/availability", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -72,7 +86,13 @@ export default function AvailabilityPage() {
                 slotMinutes: editing.slotMinutes, dayOfWeek: editing.dayOfWeek, active: editing.active,
             }),
         });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not save.");
+            return;
+        }
         setEditing(null);
+        showToast("success", "Availability window updated.");
         load();
     };
 
@@ -125,7 +145,12 @@ export default function AvailabilityPage() {
                     </thead>
                     <tbody>
                         {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Loading…</td></tr>}
-                        {!loading && rules.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic">No windows yet — the booking page uses default slots until you add some.</td></tr>}
+                        {!loading && loadError && (
+                            <tr><td colSpan={5} className="px-4 py-6">
+                                <ErrorState message="Could not load availability windows." onRetry={load} />
+                            </td></tr>
+                        )}
+                        {!loading && !loadError && rules.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic">No windows yet — the booking page uses default slots until you add some.</td></tr>}
                         {rules.map((r) => {
                             const ed = editing?.id === r.id ? editing : null;
                             return (

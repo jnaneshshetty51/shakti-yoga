@@ -9,7 +9,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { IconType } from "react-icons";
 import { LuArrowRight } from "react-icons/lu";
 
@@ -486,6 +486,120 @@ export function RowLink({ href, children }: { href: string; children: ReactNode 
             <LuArrowRight className="text-sm" />
         </Link>
     );
+}
+
+/* ============================================================ ConfirmDialog */
+
+/**
+ * Styled replacement for `window.confirm`/`window.prompt` on destructive or
+ * irreversible actions (delete, revoke, refund, cancel…). Pair with
+ * `useConfirmDialog` below rather than rendering this directly.
+ */
+export function ConfirmDialog({
+    open,
+    title,
+    message,
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    tone = "danger",
+    onConfirm,
+    onCancel,
+}: {
+    open: boolean;
+    title: string;
+    message?: ReactNode;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    tone?: "danger" | "primary";
+    onConfirm: () => void;
+    onCancel: () => void;
+}) {
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [open, onCancel]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+            onClick={onCancel}
+        >
+            <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="confirm-dialog-title"
+                aria-describedby={message ? "confirm-dialog-message" : undefined}
+                className="bg-surface border border-hairline rounded-card shadow-overlay w-full max-w-sm p-6 animate-slide-up"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h3 id="confirm-dialog-title" className="font-semibold text-ink text-lg mb-2">
+                    {title}
+                </h3>
+                {message && (
+                    <p id="confirm-dialog-message" className="text-sm text-ink-muted mb-6">
+                        {message}
+                    </p>
+                )}
+                <div className="flex justify-end gap-2 mt-2">
+                    <Button variant="secondary" onClick={onCancel}>
+                        {cancelLabel}
+                    </Button>
+                    <Button variant={tone === "danger" ? "danger" : "primary"} onClick={onConfirm} autoFocus>
+                        {confirmLabel}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export interface ConfirmOptions {
+    title: string;
+    message?: ReactNode;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    tone?: "danger" | "primary";
+}
+
+/**
+ * Promise-based replacement for `window.confirm`. Usage:
+ *
+ *   const { confirm, dialog } = useConfirmDialog();
+ *   const ok = await confirm({ title: "Delete user?", tone: "danger" });
+ *   if (!ok) return;
+ *   ...
+ *   return <>{dialog}{...page}</>;
+ */
+export function useConfirmDialog() {
+    const [pending, setPending] = useState<{ options: ConfirmOptions; resolve: (v: boolean) => void } | null>(null);
+
+    const confirm = useCallback((options: ConfirmOptions) => {
+        return new Promise<boolean>((resolve) => setPending({ options, resolve }));
+    }, []);
+
+    const settle = (value: boolean) => {
+        pending?.resolve(value);
+        setPending(null);
+    };
+
+    const dialog = (
+        <ConfirmDialog
+            open={pending !== null}
+            title={pending?.options.title ?? ""}
+            message={pending?.options.message}
+            confirmLabel={pending?.options.confirmLabel}
+            cancelLabel={pending?.options.cancelLabel}
+            tone={pending?.options.tone}
+            onConfirm={() => settle(true)}
+            onCancel={() => settle(false)}
+        />
+    );
+
+    return { confirm, dialog };
 }
 
 /* ============================================================ StaggerItem */

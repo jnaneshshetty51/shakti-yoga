@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, Badge } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Badge, ErrorState } from "@/components/admin/ui";
 import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTimeline";
 
 type Lead = {
@@ -21,13 +21,34 @@ const money = (n: number | null) => (n == null ? "—" : new Intl.NumberFormat("
 export default function CorporateDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [lead, setLead] = useState<Lead | null>(null);
+    const [loadError, setLoadError] = useState(false);
 
     const load = useCallback(async () => {
-        const res = await fetch(`/api/admin/corporate/${id}`);
-        if (res.ok) setLead((await res.json()).lead);
+        setLoadError(false);
+        try {
+            const res = await fetch(`/api/admin/corporate/${id}`);
+            if (res.ok) {
+                setLead((await res.json()).lead);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
+        }
     }, [id]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
+
+    if (loadError) {
+        return (
+            <div>
+                <Link href="/admin/corporate" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+                    <LuArrowLeft /> Corporate
+                </Link>
+                <ErrorState message="Could not load this lead." onRetry={load} />
+            </div>
+        );
+    }
 
     if (!lead) return <PageLoading title="Corporate lead" />;
 

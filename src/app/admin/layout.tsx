@@ -4,100 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
-import type { IconType } from "react-icons";
 import {
-    LuLayoutDashboard, LuChartLine, LuChartColumnBig, LuUsers, LuFlower2, LuTarget, LuGraduationCap,
-    LuCreditCard, LuHeart, LuCalendarDays, LuCalendarClock, LuClock, LuMessageSquare,
-    LuFileText, LuInbox, LuArchive, LuSettings, LuSearch, LuCircleHelp, LuMenu, LuX,
-    LuChevronDown, LuLogOut, LuUserRound, LuClipboardList, LuUserPlus, LuGift, LuLifeBuoy,
-    LuBuilding2, LuTent, LuAward, LuReceipt, LuMegaphone, LuLayoutTemplate,
+    LuSearch, LuMenu, LuX, LuChevronDown, LuLogOut, LuUserRound, LuSettings, LuArchive, LuCircleHelp,
 } from "react-icons/lu";
 import { CommandPalette, useCommandPalette } from "@/components/admin/CommandPalette";
 import { NotificationsBell } from "@/components/admin/NotificationsBell";
 import { ToastProvider } from "@/components/admin/Toast";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/admin/ui";
-
-type Department = "CONTENT" | "SUPPORT" | "TRAINER" | "THERAPIST";
-type NavItem = { name: string; href: string; icon: IconType; superOnly?: boolean; departments?: Department[] };
-type NavGroup = { label: string; items: NavItem[] };
-
-const NAV: NavGroup[] = [
-    {
-        label: "Overview",
-        items: [
-            { name: "Dashboard", href: "/admin", icon: LuLayoutDashboard },
-            { name: "Analytics", href: "/admin/analytics", icon: LuChartLine },
-            { name: "Reports & Exports", href: "/admin/reports", icon: LuChartColumnBig },
-            { name: "Retention", href: "/admin/retention", icon: LuTarget },
-        ],
-    },
-    {
-        label: "People & Growth",
-        items: [
-            { name: "Members", href: "/admin/members", icon: LuFlower2 },
-            { name: "Users", href: "/admin/users", icon: LuUsers },
-            { name: "Leads", href: "/admin/leads", icon: LuTarget },
-            { name: "Staff", href: "/admin/staff", icon: LuGraduationCap },
-            { name: "Family", href: "/admin/family", icon: LuUserPlus },
-            { name: "Referrals", href: "/admin/referrals", icon: LuGift },
-        ],
-    },
-    {
-        label: "Operations",
-        items: [
-            { name: "Daily Schedule", href: "/admin/schedule", icon: LuCalendarDays, departments: ["TRAINER"] },
-            { name: "Class Batches", href: "/admin/classes", icon: LuHeart, departments: ["TRAINER"] },
-            { name: "1:1 Bookings", href: "/admin/bookings", icon: LuCalendarClock, departments: ["THERAPIST"] },
-            { name: "Teacher Availability", href: "/admin/availability", icon: LuClock, departments: ["TRAINER", "THERAPIST"] },
-            { name: "Therapy & Patient Care", href: "/admin/therapy", icon: LuClipboardList, departments: ["THERAPIST"] },
-        ],
-    },
-    {
-        label: "Billing & Revenue",
-        items: [
-            { name: "Subscriptions", href: "/admin/subscriptions", icon: LuCreditCard },
-            { name: "Payments Ledger", href: "/admin/payments", icon: LuReceipt },
-            { name: "Invoices", href: "/admin/invoices", icon: LuFileText },
-        ],
-    },
-    {
-        label: "Communications",
-        items: [
-            { name: "Support Inbox", href: "/admin/support", icon: LuLifeBuoy, departments: ["SUPPORT"] },
-            { name: "Contact Inquiries", href: "/admin/messages", icon: LuInbox },
-            { name: "Push Broadcast", href: "/admin/broadcast", icon: LuMegaphone },
-            { name: "WhatsApp Sangha", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
-        ],
-    },
-    {
-        label: "Content & Programs",
-        items: [
-            { name: "Media & Feed", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "Guided Practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
-            { name: "Challenges", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
-            { name: "Achievements", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
-            { name: "FAQ Knowledge Base", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },
-            { name: "Edit Pages (CMS)", href: "/admin/pages", icon: LuLayoutTemplate, departments: ["CONTENT"] },
-            { name: "Site Content", href: "/admin/site-content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "Certificates", href: "/admin/certificates", icon: LuAward },
-        ],
-    },
-    {
-        label: "Business",
-        items: [
-            { name: "Corporate Wellness", href: "/admin/corporate", icon: LuBuilding2 },
-            { name: "Retreats & Events", href: "/admin/retreats", icon: LuTent },
-        ],
-    },
-    {
-        label: "System",
-        items: [
-            { name: "Pricing Plans", href: "/admin/pricing", icon: LuCreditCard, superOnly: true },
-            { name: "Audit Log", href: "/admin/audit", icon: LuArchive, superOnly: true },
-            { name: "Settings", href: "/admin/settings", icon: LuSettings, superOnly: true },
-        ],
-    },
-];
+import { visibleNavGroups, type NavGroup } from "@/components/admin/nav";
 
 function Avatar({ url, name }: { url?: string | null; name?: string | null }) {
     return (
@@ -212,14 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // own department's items — this is their whole admin experience, not a
     // filtered version of the full one. A full admin (no department) sees
     // everything except superOnly items, as before.
-    const groups = NAV
-        .map((g) => ({
-            ...g,
-            items: g.items.filter((i) =>
-                department ? i.departments?.includes(department) : (!i.superOnly || isSuper)
-            ),
-        }))
-        .filter((g) => g.items.length > 0);
+    const groups = visibleNavGroups(department, isSuper);
 
     return (
         <ToastProvider>
@@ -305,7 +212,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <main className="flex-1 p-4 lg:p-8">{children}</main>
                 </div>
 
-                <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} />
+                <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} department={department} isSuper={isSuper} />
             </div>
         </ToastProvider>
     );

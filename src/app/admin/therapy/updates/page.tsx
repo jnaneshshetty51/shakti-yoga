@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, PageLoading, Card, Badge, SegmentedControl, Button, Tabs } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Badge, SegmentedControl, Button, Tabs, ErrorState } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Update = {
@@ -13,13 +13,23 @@ type Update = {
 export default function PatientUpdatesPage() {
     const { showToast } = useToast();
     const [rows, setRows] = useState<Update[] | null>(null);
+    const [loadError, setLoadError] = useState(false);
     const [filter, setFilter] = useState<"pending" | "reviewed" | "all">("pending");
     const [noteFor, setNoteFor] = useState<string | null>(null);
     const [note, setNote] = useState("");
 
     const load = useCallback(async () => {
-        const res = await fetch(`/api/admin/therapy/updates?status=${filter}`);
-        if (res.ok) setRows((await res.json()).updates);
+        setLoadError(false);
+        try {
+            const res = await fetch(`/api/admin/therapy/updates?status=${filter}`);
+            if (res.ok) {
+                setRows((await res.json()).updates);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
+        }
     }, [filter]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
@@ -35,6 +45,15 @@ export default function PatientUpdatesPage() {
         showToast("success", "Marked reviewed.");
         load();
     };
+
+    if (!rows && loadError) {
+        return (
+            <div>
+                <PageHeader title="Yoga Therapy & Patient Care" subtitle="Between-session medical notes and symptom updates from Yoga Therapy members." />
+                <ErrorState message="Could not load patient updates." onRetry={load} />
+            </div>
+        );
+    }
 
     if (!rows) return <PageLoading title="Patient updates" />;
 

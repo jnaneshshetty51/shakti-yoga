@@ -1,67 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaSearch, FaHome, FaUsers, FaChartBar, FaEdit, FaCog, FaComments, FaCalendar, FaCreditCard, FaBook, FaTimes, FaUserCheck, FaReceipt, FaUserFriends, FaGift, FaHeartbeat, FaBuilding, FaCampground, FaAward, FaLeaf, FaTrophy, FaLifeRing, FaBullhorn } from "react-icons/fa";
+import { LuSearch, LuX } from "react-icons/lu";
+import { NAV, visibleNavGroups, type Department, type NavItem } from "./nav";
 
-interface CommandItem {
-  id: string;
-  name: string;
-  description?: string;
-  icon: React.ReactNode;
-  href: string;
+interface FlatItem extends NavItem {
   category: string;
 }
-
-const commandItems: CommandItem[] = [
-  { id: "dashboard", name: "Dashboard", description: "Overview & attention items", icon: <FaHome />, href: "/admin", category: "Overview" },
-  { id: "analytics", name: "Analytics", description: "Trends, revenue, funnel", icon: <FaChartBar />, href: "/admin/analytics", category: "Overview" },
-  { id: "reports", name: "Reports & Exports", description: "Revenue, cohorts, CSV exports", icon: <FaChartBar />, href: "/admin/reports", category: "Overview" },
-  { id: "retention", name: "Retention", description: "At-risk & lapsed members", icon: <FaHeartbeat />, href: "/admin/retention", category: "Overview" },
-  { id: "members", name: "Members", description: "Active members by track", icon: <FaUsers />, href: "/admin/members", category: "People & Growth" },
-  { id: "users", name: "Users", description: "All system accounts", icon: <FaUsers />, href: "/admin/users", category: "People & Growth" },
-  { id: "leads", name: "Leads", description: "Prospects & trial requests", icon: <FaUserCheck />, href: "/admin/leads", category: "People & Growth" },
-  { id: "staff", name: "Staff", description: "Teachers & admins", icon: <FaUsers />, href: "/admin/staff", category: "People & Growth" },
-  { id: "family", name: "Family", description: "Family plans & seats", icon: <FaUserFriends />, href: "/admin/family", category: "People & Growth" },
-  { id: "referrals", name: "Referrals", description: "Refer & Earn activity", icon: <FaGift />, href: "/admin/referrals", category: "People & Growth" },
-  { id: "schedule", name: "Daily Schedule", description: "Class instances & Meet links", icon: <FaCalendar />, href: "/admin/schedule", category: "Operations" },
-  { id: "classes", name: "Class Batches", description: "Master group class batches", icon: <FaCalendar />, href: "/admin/classes", category: "Operations" },
-  { id: "bookings", name: "1:1 Bookings", description: "1:1 session bookings", icon: <FaCalendar />, href: "/admin/bookings", category: "Operations" },
-  { id: "availability", name: "Teacher Availability", description: "Teacher availability windows", icon: <FaCalendar />, href: "/admin/availability", category: "Operations" },
-  { id: "therapy", name: "Therapy & Patient Care", description: "Yoga therapy intake review & patient updates", icon: <FaHeartbeat />, href: "/admin/therapy", category: "Operations" },
-  { id: "subscriptions", name: "Subscriptions", description: "Plans & billing state", icon: <FaCreditCard />, href: "/admin/subscriptions", category: "Billing & Revenue" },
-  { id: "payments", name: "Payments Ledger", description: "Payment & renewal charge ledger", icon: <FaReceipt />, href: "/admin/payments", category: "Billing & Revenue" },
-  { id: "invoices", name: "Invoices", description: "Tax invoices, PDF download", icon: <FaReceipt />, href: "/admin/invoices", category: "Billing & Revenue" },
-  { id: "support", name: "Support Inbox", description: "Member support threads", icon: <FaLifeRing />, href: "/admin/support", category: "Communications" },
-  { id: "messages", name: "Contact Inquiries", description: "Website contact form submissions", icon: <FaComments />, href: "/admin/messages", category: "Communications" },
-  { id: "broadcast", name: "Push Broadcast", description: "Send a push notification to a segment", icon: <FaBullhorn />, href: "/admin/broadcast", category: "Communications" },
-  { id: "community", name: "WhatsApp Sangha", description: "Community group links & pinned messages", icon: <FaComments />, href: "/admin/community", category: "Communications" },
-  { id: "content", name: "Media & Feed", description: "Reels, reflections, blog, stories", icon: <FaEdit />, href: "/admin/content", category: "Content & Programs" },
-  { id: "practices", name: "Guided Practices", description: "Audio & video guided practices", icon: <FaLeaf />, href: "/admin/practices", category: "Content & Programs" },
-  { id: "challenges", name: "Challenges", description: "Time-boxed member goals", icon: <FaTrophy />, href: "/admin/challenges", category: "Content & Programs" },
-  { id: "achievements", name: "Achievements", description: "Badge earn rates + grant/revoke", icon: <FaAward />, href: "/admin/achievements", category: "Content & Programs" },
-  { id: "faqs", name: "FAQ Knowledge Base", description: "Website + app FAQs", icon: <FaComments />, href: "/admin/faqs", category: "Content & Programs" },
-  { id: "pages", name: "Edit Pages (CMS)", description: "Edit About, Home, Corporate copy", icon: <FaEdit />, href: "/admin/pages", category: "Content & Programs" },
-  { id: "site-content", name: "Site Content", description: "Why-us benefits + homepage stats", icon: <FaEdit />, href: "/admin/site-content", category: "Content & Programs" },
-  { id: "certificates", name: "Certificates", description: "Issue & approve certificates", icon: <FaAward />, href: "/admin/certificates", category: "Content & Programs" },
-  { id: "corporate", name: "Corporate Wellness", description: "B2B pipeline & proposals", icon: <FaBuilding />, href: "/admin/corporate", category: "Business" },
-  { id: "retreats", name: "Retreats & Events", description: "Retreats, workshops, enquiries", icon: <FaCampground />, href: "/admin/retreats", category: "Business" },
-  { id: "pricing", name: "Pricing Plans", description: "Plan prices + features (super only)", icon: <FaCreditCard />, href: "/admin/pricing", category: "System" },
-  { id: "audit", name: "Audit Log", description: "Privileged actions (super only)", icon: <FaBook />, href: "/admin/audit", category: "System" },
-  { id: "settings", name: "Settings", description: "Platform settings (super only)", icon: <FaCog />, href: "/admin/settings", category: "System" },
-];
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Same visibility scoping the sidebar applies — keeps ⌘K from surfacing pages a scoped admin can't actually open. */
+  department: Department | null;
+  isSuper: boolean;
 }
 
-export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, department, isSuper }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  const commandItems: FlatItem[] = useMemo(
+    () =>
+      visibleNavGroups(department, isSuper).flatMap((g) =>
+        g.items.map((item) => ({ ...item, category: g.label }))
+      ),
+    [department, isSuper]
+  );
 
   const filteredItems = commandItems.filter(
     (item) =>
@@ -125,14 +94,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
   if (!isOpen) return null;
 
-  // Group items by category
+  // Group items by category, preserving NAV's own group order.
   const groupedItems = filteredItems.reduce((acc, item) => {
     if (!acc[item.category]) {
       acc[item.category] = [];
     }
     acc[item.category].push(item);
     return acc;
-  }, {} as Record<string, CommandItem[]>);
+  }, {} as Record<string, FlatItem[]>);
+  const orderedCategories = NAV.map((g) => g.label).filter((label) => groupedItems[label]);
 
   let globalIndex = -1;
 
@@ -145,95 +115,99 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       />
 
       {/* Command Palette */}
-      <div className="relative w-full max-w-xl max-h-[80vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-up">
+      <div className="relative w-full max-w-xl max-h-[80vh] flex flex-col bg-surface rounded-card shadow-overlay border border-hairline overflow-hidden animate-slide-up">
         {/* Search Input */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-          <FaSearch className="text-gray-400 text-lg" />
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-hairline">
+          <LuSearch className="text-ink-subtle text-lg" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search pages, actions..."
-            className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400"
+            className="flex-1 bg-transparent border-none outline-none text-ink placeholder-ink-subtle"
           />
           <button
             onClick={() => {
               onClose();
               setQuery("");
             }}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-black/[0.04] rounded-control transition-colors"
           >
-            <FaTimes className="text-gray-400 text-sm" />
+            <LuX className="text-ink-subtle text-sm" />
           </button>
         </div>
 
         {/* Results */}
         <div className="flex-1 min-h-0 overflow-y-auto py-2">
           {filteredItems.length === 0 ? (
-            <div className="px-5 py-8 text-center text-gray-500">
-              No results found for "{query}"
+            <div className="px-5 py-8 text-center text-ink-muted">
+              No results found for &quot;{query}&quot;
             </div>
           ) : (
-            Object.entries(groupedItems).map(([category, items]) => (
-              <div key={category}>
-                <div className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-gray-400">
-                  {category}
-                </div>
-                {items.map((item) => {
-                  globalIndex++;
-                  const isSelected = globalIndex === selectedIndex;
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      onClick={() => {
-                        onClose();
-                        setQuery("");
-                      }}
-                      className={`flex items-center gap-4 px-5 py-3 transition-colors ${
-                        isSelected ? "bg-primary/5" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <div
-                        className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${
-                          isSelected ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"
+            orderedCategories.map((category) => {
+              const items = groupedItems[category];
+              return (
+                <div key={category}>
+                  <div className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-ink-subtle">
+                    {category}
+                  </div>
+                  {items.map((item) => {
+                    globalIndex++;
+                    const isSelected = globalIndex === selectedIndex;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => {
+                          onClose();
+                          setQuery("");
+                        }}
+                        className={`flex items-center gap-4 px-5 py-3 transition-colors ${
+                          isSelected ? "bg-brand/5" : "hover:bg-surface-hover"
                         }`}
                       >
-                        {item.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900">{item.name}</div>
-                        {item.description && (
-                          <div className="text-sm text-gray-500">{item.description}</div>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <div className="hidden sm:block text-xs text-gray-400">
-                          <kbd className="px-2 py-1 bg-gray-100 rounded text-gray-500">↵</kbd>
+                        <div
+                          className={`w-10 h-10 shrink-0 rounded-control flex items-center justify-center ${
+                            isSelected ? "bg-brand/10 text-brand" : "bg-black/[0.04] text-ink-muted"
+                          }`}
+                        >
+                          <Icon />
                         </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-ink">{item.name}</div>
+                          {item.description && (
+                            <div className="text-sm text-ink-muted">{item.description}</div>
+                          )}
+                        </div>
+                        {isSelected && (
+                          <div className="hidden sm:block text-xs text-ink-subtle">
+                            <kbd className="px-2 py-1 bg-black/[0.04] rounded text-ink-muted">↵</kbd>
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            })
           )}
         </div>
 
         {/* Footer */}
-        <div className="hidden sm:flex px-5 py-3 border-t border-gray-100 items-center justify-between text-xs text-gray-400">
+        <div className="hidden sm:flex px-5 py-3 border-t border-hairline items-center justify-between text-xs text-ink-subtle">
           <div className="flex items-center gap-4">
             <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">↑</kbd>
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded ml-1">↓</kbd> to navigate
+              <kbd className="px-1.5 py-0.5 bg-black/[0.04] rounded">↑</kbd>
+              <kbd className="px-1.5 py-0.5 bg-black/[0.04] rounded ml-1">↓</kbd> to navigate
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">↵</kbd> to select
+              <kbd className="px-1.5 py-0.5 bg-black/[0.04] rounded">↵</kbd> to select
             </span>
           </div>
           <span>
-            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">esc</kbd> to close
+            <kbd className="px-1.5 py-0.5 bg-black/[0.04] rounded">esc</kbd> to close
           </span>
         </div>
       </div>

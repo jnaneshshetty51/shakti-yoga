@@ -6,7 +6,7 @@ import { LuFlower2, LuHeart, LuMessageSquare, LuIndianRupee } from "react-icons/
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { StatCard } from "@/components/admin/StatCard";
-import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, ErrorState } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Member = {
@@ -93,15 +93,22 @@ export default function AdminMembersPage() {
     const { showToast } = useToast();
     const [data, setData] = useState<Payload | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [tab, setTab] = useState<TabKey>("active");
     const [creditFor, setCreditFor] = useState<Member | null>(null);
 
     const fetchData = useCallback(async () => {
+        setLoadError(false);
         try {
             const res = await fetch("/api/admin/members");
-            if (res.ok) setData(await res.json());
+            if (res.ok) {
+                setData(await res.json());
+            } else {
+                setLoadError(true);
+            }
         } catch (error) {
             console.error("Failed to load members:", error);
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -185,6 +192,15 @@ export default function AdminMembersPage() {
     const activeTab = TABS.find((t) => t.key === tab)!;
 
     if (loading) return <PageLoading title="Members" />;
+
+    if (loadError) {
+        return (
+            <div>
+                <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy." />
+                <ErrorState message="Could not load members." onRetry={fetchData} />
+            </div>
+        );
+    }
 
     return (
         <div>

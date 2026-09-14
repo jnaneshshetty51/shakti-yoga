@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { LuAward } from "react-icons/lu";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type Certificate = {
     id: string;
@@ -21,6 +22,8 @@ type Certificate = {
 type UserOption = { id: string; name: string; email: string };
 
 export default function AdminCertificatesPage() {
+    const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [certificates, setCertificates] = useState<Certificate[] | null>(null);
     const [users, setUsers] = useState<UserOption[]>([]);
     const [creating, setCreating] = useState(false);
@@ -50,12 +53,27 @@ export default function AdminCertificatesPage() {
     useEffect(() => { load(); loadUsers(); }, [load, loadUsers]);
 
     const setStatus = async (c: Certificate, status: "APPROVED" | "REVOKED") => {
+        if (status === "REVOKED") {
+            const ok = await confirm({
+                title: "Revoke this certificate?",
+                message: `This revokes "${c.title}" for ${c.user.name}. This cannot be undone.`,
+                confirmLabel: "Revoke",
+                tone: "danger",
+            });
+            if (!ok) return;
+        }
         const res = await fetch(`/api/admin/certificates/${c.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status }),
         });
-        if (res.ok) load();
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not update certificate.");
+            return;
+        }
+        showToast("success", status === "REVOKED" ? "Certificate revoked." : "Certificate approved.");
+        load();
     };
 
     const submitCreate = async (values: EntityValues) => {
@@ -87,6 +105,7 @@ export default function AdminCertificatesPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Certificates" subtitle="Approve auto-issued certificates or issue one manually." />
 
             <DTable

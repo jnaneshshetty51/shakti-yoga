@@ -128,7 +128,13 @@ export default function AdminSubscriptionsPage() {
 
     const handleDelete = async (s: Subscription) => {
         if (!confirm(`Delete ${s.userName}'s subscription record? (Does not refund.)`)) return;
-        await fetch(`/api/admin/subscriptions?id=${s.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/subscriptions?id=${s.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete subscription.");
+            return;
+        }
+        showToast("success", "Subscription deleted.");
         fetchSubscriptions();
     };
 

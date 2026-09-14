@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LuMessageSquare } from "react-icons/lu";
-import { PageHeader, Card, EmptyState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 export type CommunityGroup = {
     id: string;
@@ -21,9 +22,11 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function AdminCommunityPage() {
+    const { showToast } = useToast();
     const [groups, setGroups] = useState<CommunityGroup[]>([]);
     const [roles, setRoles] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ name: "", link: "", message: "", role: "", active: true });
     const [creating, setCreating] = useState(false);
@@ -32,13 +35,18 @@ export default function AdminCommunityPage() {
 
     const load = useCallback(async () => {
         setLoading(true);
+        setLoadError(false);
         try {
             const res = await fetch("/api/admin/community");
             const data = await res.json();
             if (res.ok) {
                 setGroups(data.groups || []);
                 setRoles(data.roles || Object.keys(ROLE_LABEL));
+            } else {
+                setLoadError(true);
             }
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -82,7 +90,13 @@ export default function AdminCommunityPage() {
 
     const remove = async (g: CommunityGroup) => {
         if (!confirm(`Delete the "${g.name}" group? Members mapped to this role will see no group until you add another.`)) return;
-        await fetch(`/api/admin/community?id=${g.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/community?id=${g.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete group.");
+            return;
+        }
+        showToast("success", "Group deleted.");
         load();
     };
 
@@ -115,6 +129,8 @@ export default function AdminCommunityPage() {
 
             {loading ? (
                 <p className="text-gray-500">Loading…</p>
+            ) : loadError ? (
+                <ErrorState message="Could not load community groups." onRetry={load} />
             ) : groups.length === 0 ? (
                 <Card><EmptyState icon={LuMessageSquare} title="No groups yet" hint="Create one so members have somewhere to get class links." /></Card>
             ) : (

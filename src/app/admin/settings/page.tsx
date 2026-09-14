@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SuperAdminGuard } from "@/components/admin/SuperAdminGuard";
-import { PageHeader, PageLoading, Card, Badge, labelClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Badge, ErrorState, labelClass } from "@/components/admin/ui";
 
 interface Settings {
     platformName: string;
@@ -60,17 +60,26 @@ function SettingsInner() {
     });
     const [integrations, setIntegrations] = useState<Integrations>({ razorpay: false, minio: false });
     const [loading, setLoading] = useState(true);
+    const [loaded, setLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         try {
             const res = await fetch("/api/admin/settings");
-            if (res.ok) {
-                const data = await res.json();
-                setSettings(data.settings);
-                setIntegrations(data.integrations);
-            }
+            if (!res.ok) throw new Error("Failed to load settings");
+            const data = await res.json();
+            setSettings(data.settings);
+            setIntegrations(data.integrations);
+            setLoaded(true);
+            setLoadError(null);
+        } catch (err) {
+            console.error(err);
+            // Deliberately don't clear `loaded` on a later failed reload — we keep
+            // showing the last-known-good settings rather than reverting to the
+            // hardcoded seed values above, which must never be silently saved.
+            setLoadError("Could not load the current settings. The values below may be out of date — please retry before saving.");
         } finally {
             setLoading(false);
         }
@@ -100,6 +109,7 @@ function SettingsInner() {
     };
 
     if (loading) return <PageLoading title="Platform Settings" />;
+    if (loadError && !loaded) return <ErrorState message={loadError} onRetry={load} />;
 
     const integrationRow = (name: string, connected: boolean, hint: string) => (
         <div className="flex items-center justify-between gap-3 p-4 bg-gray-50 rounded-xl">
@@ -240,7 +250,8 @@ function SettingsInner() {
 
                         <button
                             type="submit"
-                            disabled={saving}
+                            disabled={saving || !loaded}
+                            title={!loaded ? "Settings haven't loaded successfully yet" : undefined}
                             className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                         >
                             {saving ? "Saving…" : "Save Changes"}

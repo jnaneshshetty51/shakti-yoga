@@ -5,10 +5,10 @@ import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { formatPrice } from "@/lib/pricing";
-import { PageHeader, PageLoading, Badge, Button, TableActions, ActionButton, type Tone } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, Button, TableActions, ActionButton, inputClass, labelClass, type Tone } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
-type PaymentStatus = "CREATED" | "PAID" | "FAILED" | "REFUNDED";
+type PaymentStatus = "CREATED" | "PAID" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
 
 type Payment = {
     id: string;
@@ -24,6 +24,7 @@ type Payment = {
     providerPaymentId: string;
     creditApplied: number;
     refereeDiscountApplied: number;
+    refundedAmount: number;
     createdAt: string;
     // DTable's generic requires an index signature.
     [key: string]: unknown;
@@ -34,6 +35,7 @@ const STATUS_TONE: Record<Payment["status"], Tone> = {
     CREATED: "amber",
     FAILED: "red",
     REFUNDED: "blue",
+    PARTIALLY_REFUNDED: "purple",
 };
 
 const STATUS_FILTER = [
@@ -41,6 +43,7 @@ const STATUS_FILTER = [
     { label: "Created", value: "CREATED" },
     { label: "Failed", value: "FAILED" },
     { label: "Refunded", value: "REFUNDED" },
+    { label: "Partially refunded", value: "PARTIALLY_REFUNDED" },
 ];
 
 const fmtDate = (iso: string) =>
@@ -71,6 +74,9 @@ function PaymentsTable() {
     const [capped, setCapped] = useState(false);
     const [manualOpen, setManualOpen] = useState(false);
     const [busyId, setBusyId] = useState<string | null>(null);
+    const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
+    const [refundAmount, setRefundAmount] = useState("");
+    const [refunding, setRefunding] = useState(false);
 
     const fetchPayments = useCallback(async () => {
         try {
@@ -104,14 +110,13 @@ function PaymentsTable() {
         fetchPayments();
     };
 
-    const refund = async (p: Payment) => {
-        const partial = prompt(
-            `Refund amount for ${p.member} (max ${p.amount} ${p.currency}). Leave blank for a full refund.`,
-            "",
-        );
-        if (partial === null) return;
-        const amount = partial.trim() ? Number(partial) : undefined;
-        setBusyId(p.id);
+    const remainingOf = (p: Payment) => Math.round((p.amount - (p.refundedAmount || 0)) * 100) / 100;
+
+    const confirmRefund = async () => {
+        const p = refundTarget;
+        if (!p) return;
+        const amount = refundAmount.trim() ? Number(refundAmount) : undefined;
+        setRefunding(true);
         try {
             const res = await fetch(`/api/admin/payments/${p.id}`, {
                 method: "POST",
@@ -121,11 +126,13 @@ function PaymentsTable() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error || "Refund failed");
             showToast("success", json.partial ? "Partial refund issued." : "Payment refunded.");
+            setRefundTarget(null);
+            setRefundAmount("");
             fetchPayments();
         } catch (e) {
             showToast("error", e instanceof Error ? e.message : "Refund failed");
         } finally {
-            setBusyId(null);
+            setRefunding(false);
         }
     };
 
@@ -150,6 +157,11 @@ function PaymentsTable() {
                         {discount > 0 && (
                             <span className="ml-1 text-xs text-gray-400">
                                 (−{formatPrice(discount, p.currency)})
+                            </span>
+                        )}
+                        {p.refundedAmount > 0 && (
+                            <span className="block text-xs text-purple-500">
+                                {formatPrice(p.refundedAmount, p.currency)} refunded
                             </span>
                         )}
                     </span>
@@ -197,9 +209,13 @@ function PaymentsTable() {
                 title="Payments"
                 filters={initialStatus ? undefined : [{ key: "status", label: "Status", options: STATUS_FILTER }]}
                 actions={(p: Payment) =>
-                    p.status === "PAID" ? (
+                    p.status === "PAID" || p.status === "PARTIALLY_REFUNDED" ? (
                         <TableActions>
-                            <ActionButton tone="danger" disabled={busyId === p.id} onClick={() => refund(p)}>
+                            <ActionButton
+                                tone="danger"
+                                disabled={busyId === p.id}
+                                onClick={() => { setRefundTarget(p); setRefundAmount(""); }}
+                            >
                                 Refund
                             </ActionButton>
                         </TableActions>
@@ -216,6 +232,55 @@ function PaymentsTable() {
                     onCancel={() => setManualOpen(false)}
                     onSubmit={recordManual}
                 />
+            )}
+
+            {refundTarget && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+                    onClick={() => !refunding && setRefundTarget(null)}
+                >
+                    <div
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="refund-dialog-title"
+                        className="bg-surface border border-hairline rounded-card shadow-overlay w-full max-w-sm p-6 animate-slide-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 id="refund-dialog-title" className="font-semibold text-ink text-lg mb-2">
+                            Refund {refundTarget.member}
+                        </h3>
+                        <p className="text-sm text-ink-muted mb-4">
+                            {formatPrice(remainingOf(refundTarget), refundTarget.currency)} of{" "}
+                            {formatPrice(refundTarget.amount, refundTarget.currency)} remains refundable
+                            {refundTarget.refundedAmount > 0 &&
+                                ` (${formatPrice(refundTarget.refundedAmount, refundTarget.currency)} already refunded)`}
+                            . This cannot be undone.
+                        </p>
+                        <label htmlFor="refund-amount" className={labelClass}>
+                            Amount to refund (leave blank for the full remaining amount)
+                        </label>
+                        <input
+                            id="refund-amount"
+                            type="number"
+                            min={0}
+                            max={remainingOf(refundTarget)}
+                            step="0.01"
+                            placeholder={String(remainingOf(refundTarget))}
+                            value={refundAmount}
+                            onChange={(e) => setRefundAmount(e.target.value)}
+                            className={inputClass}
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-2 mt-6">
+                            <Button variant="secondary" onClick={() => setRefundTarget(null)} disabled={refunding}>
+                                Cancel
+                            </Button>
+                            <Button variant="danger" onClick={confirmRefund} loading={refunding}>
+                                Issue refund
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

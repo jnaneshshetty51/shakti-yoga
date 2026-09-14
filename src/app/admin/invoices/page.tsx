@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
-import { PageHeader, PageLoading, StatusBadge, TableActions } from "@/components/admin/ui";
+import { PageHeader, PageLoading, StatusBadge, TableActions, ErrorState } from "@/components/admin/ui";
 
 type Invoice = {
     id: string; number: string; member: string; email: string;
@@ -22,11 +22,19 @@ const d = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "num
 export default function InvoicesPage() {
     const [rows, setRows] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
 
     const load = useCallback(async () => {
+        setLoadError(false);
         try {
             const res = await fetch("/api/admin/invoices");
-            if (res.ok) setRows((await res.json()).invoices || []);
+            if (res.ok) {
+                setRows((await res.json()).invoices || []);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -38,25 +46,29 @@ export default function InvoicesPage() {
     return (
         <div>
             <PageHeader title="Invoices" subtitle="Auto-issued on every successful payment. Download a copy here." />
-            <DTable
-                data={rows}
-                columns={[
-                    { header: "Number", accessor: "number", className: "font-mono text-sm" },
-                    { header: "Member", accessor: (i: Invoice) => (
-                        <div><div className="font-medium">{i.member}</div><div className="text-xs text-gray-400">{i.email}</div></div>
-                    ) },
-                    { header: "Amount", accessor: (i: Invoice) => money(i.amountInr, i.currency || "INR") },
-                    { header: "Status", accessor: (i: Invoice) => <StatusBadge status={i.status} /> },
-                    { header: "Issued", accessor: (i: Invoice) => d(i.issuedAt) },
-                ]}
-                title="Invoices"
-                actions={(i: Invoice) => (
-                    <TableActions>
-                        <a href={`/api/admin/invoices/${i.id}`} target="_blank" rel="noreferrer"
-                            className="text-xs font-semibold text-brand hover:text-brand-strong">Download</a>
-                    </TableActions>
-                )}
-            />
+            {loadError ? (
+                <ErrorState message="Could not load invoices." onRetry={load} />
+            ) : (
+                <DTable
+                    data={rows}
+                    columns={[
+                        { header: "Number", accessor: "number", className: "font-mono text-sm" },
+                        { header: "Member", accessor: (i: Invoice) => (
+                            <div><div className="font-medium">{i.member}</div><div className="text-xs text-gray-400">{i.email}</div></div>
+                        ) },
+                        { header: "Amount", accessor: (i: Invoice) => money(i.amountInr, i.currency || "INR") },
+                        { header: "Status", accessor: (i: Invoice) => <StatusBadge status={i.status} /> },
+                        { header: "Issued", accessor: (i: Invoice) => d(i.issuedAt) },
+                    ]}
+                    title="Invoices"
+                    actions={(i: Invoice) => (
+                        <TableActions>
+                            <a href={`/api/admin/invoices/${i.id}`} target="_blank" rel="noreferrer"
+                                className="text-xs font-semibold text-brand hover:text-brand-strong">Download</a>
+                        </TableActions>
+                    )}
+                />
+            )}
         </div>
     );
 }

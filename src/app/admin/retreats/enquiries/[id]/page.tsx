@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, Button, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, Button, StatusBadge, ErrorState } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Enquiry = {
@@ -21,10 +21,20 @@ export default function EnquiryDetailPage() {
     const router = useRouter();
     const { showToast } = useToast();
     const [e, setE] = useState<Enquiry | null>(null);
+    const [loadError, setLoadError] = useState(false);
 
     const load = useCallback(async () => {
-        const res = await fetch(`/api/admin/retreats/enquiries/${id}`);
-        if (res.ok) setE((await res.json()).enquiry);
+        setLoadError(false);
+        try {
+            const res = await fetch(`/api/admin/retreats/enquiries/${id}`);
+            if (res.ok) {
+                setE((await res.json()).enquiry);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
+        }
     }, [id]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
@@ -41,9 +51,26 @@ export default function EnquiryDetailPage() {
 
     const del = async () => {
         if (!confirm("Delete this enquiry?")) return;
-        await fetch(`/api/admin/retreats/enquiries/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/retreats/enquiries/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete enquiry.");
+            return;
+        }
+        showToast("success", "Enquiry deleted.");
         router.push("/admin/retreats");
     };
+
+    if (loadError) {
+        return (
+            <div>
+                <Link href="/admin/retreats" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+                    <LuArrowLeft /> Retreats
+                </Link>
+                <ErrorState message="Could not load this enquiry." onRetry={load} />
+            </div>
+        );
+    }
 
     if (!e) return <PageLoading title="Enquiry" />;
 

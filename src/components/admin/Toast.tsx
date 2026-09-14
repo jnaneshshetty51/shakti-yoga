@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
+import { LuCircleCheck, LuCircleAlert, LuInfo, LuX } from "react-icons/lu";
 
 type ToastType = "success" | "error" | "info" | "warning";
 
@@ -68,31 +68,31 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const icons: Record<ToastType, React.ReactNode> = {
-    success: <FaCheckCircle className="w-5 h-5 text-green-500" />,
-    error: <FaExclamationCircle className="w-5 h-5 text-red-500" />,
-    info: <FaInfoCircle className="w-5 h-5 text-blue-500" />,
-    warning: <FaExclamationCircle className="w-5 h-5 text-yellow-500" />,
+    success: <LuCircleCheck className="w-5 h-5 text-green-600" />,
+    error: <LuCircleAlert className="w-5 h-5 text-red-600" />,
+    info: <LuInfo className="w-5 h-5 text-blue-600" />,
+    warning: <LuCircleAlert className="w-5 h-5 text-amber-600" />,
   };
 
   const bgColors: Record<ToastType, string> = {
     success: "bg-green-50 border-green-200",
     error: "bg-red-50 border-red-200",
     info: "bg-blue-50 border-blue-200",
-    warning: "bg-yellow-50 border-yellow-200",
+    warning: "bg-amber-50 border-amber-200",
   };
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${bgColors[toast.type]} animate-slide-in`}
+      className={`flex items-start gap-3 p-4 rounded-card border shadow-overlay ${bgColors[toast.type]} animate-slide-in`}
     >
       {icons[toast.type]}
-      <p className="flex-1 text-sm text-gray-800">{toast.message}</p>
+      <p className="flex-1 text-sm text-ink">{toast.message}</p>
       <button
         onClick={onDismiss}
         className="p-1 hover:bg-black/5 rounded transition-colors"
         aria-label="Dismiss"
       >
-        <FaTimes className="w-4 h-4 text-gray-400" />
+        <LuX className="w-4 h-4 text-ink-subtle" />
       </button>
     </div>
   );

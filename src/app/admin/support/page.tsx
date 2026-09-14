@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { LuLifeBuoy, LuSend } from "react-icons/lu";
 import {
     PageHeader, PageLoading, Card, StatusBadge, EmptyState,
-    SegmentedControl, Button,
+    SegmentedControl, Button, ErrorState,
 } from "@/components/admin/ui";
 
 interface Row {
@@ -36,13 +36,23 @@ function when(iso: string) {
 export default function AdminSupportPage() {
     const [filter, setFilter] = useState<"OPEN" | "CLOSED">("OPEN");
     const [rows, setRows] = useState<Row[] | null>(null);
+    const [loadError, setLoadError] = useState(false);
     const [selected, setSelected] = useState<Detail | null>(null);
     const [reply, setReply] = useState("");
     const [busy, setBusy] = useState(false);
 
     const load = useCallback(async () => {
-        const res = await fetch(`/api/admin/support?status=${filter}`);
-        if (res.ok) setRows((await res.json()).conversations);
+        setLoadError(false);
+        try {
+            const res = await fetch(`/api/admin/support?status=${filter}`);
+            if (res.ok) {
+                setRows((await res.json()).conversations);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
+        }
     }, [filter]);
 
     useEffect(() => { load(); }, [load]);
@@ -84,6 +94,15 @@ export default function AdminSupportPage() {
             load();
         }
     };
+
+    if (!rows && loadError) {
+        return (
+            <div>
+                <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment." />
+                <ErrorState message="Could not load conversations." onRetry={load} />
+            </div>
+        );
+    }
 
     if (!rows) return <PageLoading title="Support" />;
 

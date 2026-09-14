@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, Badge, TableActions, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 export type ClassBatch = {
     id: string;
@@ -30,6 +31,7 @@ const PLAN_OPTIONS = [
 ];
 
 export default function AdminClassesPage() {
+    const { showToast } = useToast();
     const [batches, setBatches] = useState<ClassBatch[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
@@ -109,7 +111,13 @@ export default function AdminClassesPage() {
 
     const handleDelete = async (batch: ClassBatch) => {
         if (!confirm(`Delete "${batch.name}"? Its scheduled instances are removed too.`)) return;
-        await fetch(`/api/admin/classes?id=${batch.id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/admin/classes?id=${batch.id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete class batch.");
+            return;
+        }
+        showToast("success", "Class batch deleted.");
         fetchBatches();
     };
 

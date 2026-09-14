@@ -54,7 +54,13 @@ export default function SiteContentPage() {
 
     const remove = async (kind: "benefit" | "stat", id: string) => {
         if (!confirm("Delete this?")) return;
-        await fetch(`/api/admin/site-content?kind=${kind}&id=${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/site-content?kind=${kind}&id=${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete.");
+            return;
+        }
+        showToast("success", "Deleted.");
         load();
     };
 

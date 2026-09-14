@@ -119,7 +119,13 @@ export default function AdminBookingsPage() {
 
     const handleDelete = async (bk: Booking) => {
         if (!confirm(`Delete ${bk.userName}'s ${bk.type} booking? (Prefer Cancel to refund the credit.)`)) return;
-        await fetch(`/api/admin/bookings?id=${bk.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/bookings?id=${bk.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete booking.");
+            return;
+        }
+        showToast("success", "Booking deleted.");
         fetchBookings();
     };
 

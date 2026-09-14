@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type ContentTab = "content" | "story" | "blog" | "comments" | "community";
 type Subtype = "REEL" | "POST" | "ANNOUNCEMENT";
@@ -154,6 +155,7 @@ function toLocalInput(iso: string): string {
 }
 
 export default function AdminContentPage() {
+    const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<ContentTab>("content");
     const [content, setContent] = useState<ContentRow[]>([]);
     const [blogOptions, setBlogOptions] = useState<{ label: string; value: string }[]>([]);
@@ -224,30 +226,38 @@ export default function AdminContentPage() {
     }, [fetchContent, fetchComments, fetchCommunity]);
 
     const moderateCommunity = async (kind: "post" | "comment", id: string, action: "hide" | "unhide" | "delete") => {
-        if (action === "delete") {
-            if (!confirm(`Delete this ${kind} permanently?`)) return;
-            await fetch(`/api/admin/content/community?kind=${kind}&id=${id}`, { method: "DELETE" });
-        } else {
-            await fetch('/api/admin/content/community', {
+        if (action === "delete" && !confirm(`Delete this ${kind} permanently?`)) return;
+        const res = action === "delete"
+            ? await fetch(`/api/admin/content/community?kind=${kind}&id=${id}`, { method: "DELETE" })
+            : await fetch('/api/admin/content/community', {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ kind, id, hidden: action === "hide" }),
             });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Action failed.");
+            return;
         }
+        showToast("success", action === "delete" ? `${kind === "post" ? "Post" : "Comment"} deleted.` : action === "hide" ? "Hidden." : "Unhidden.");
         fetchCommunity();
     };
 
     const moderateComment = async (id: string, action: "hide" | "unhide" | "delete") => {
-        if (action === "delete") {
-            if (!confirm("Delete this comment permanently?")) return;
-            await fetch(`/api/admin/content/comments?id=${id}`, { method: "DELETE" });
-        } else {
-            await fetch('/api/admin/content/comments', {
+        if (action === "delete" && !confirm("Delete this comment permanently?")) return;
+        const res = action === "delete"
+            ? await fetch(`/api/admin/content/comments?id=${id}`, { method: "DELETE" })
+            : await fetch('/api/admin/content/comments', {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, hidden: action === "hide" }),
             });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Action failed.");
+            return;
         }
+        showToast("success", action === "delete" ? "Comment deleted." : action === "hide" ? "Hidden." : "Unhidden.");
         fetchComments();
     };
 
@@ -275,7 +285,13 @@ export default function AdminContentPage() {
 
     const remove = async (id: string) => {
         if (!confirm("Delete this item?")) return;
-        await fetch(`/api/admin/content?type=${activeTab}&id=${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/content?type=${activeTab}&id=${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Delete failed.");
+            return;
+        }
+        showToast("success", "Deleted.");
         fetchContent();
     };
 

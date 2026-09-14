@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader, Card, Button, PageLoading, inputClass, labelClass } from "@/components/admin/ui";
+import { PageHeader, Card, Button, PageLoading, inputClass, labelClass, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Badge = { key: string; title: string; description: string; icon: string; earnedBy: number };
@@ -10,6 +10,7 @@ type Data = { achievements: Badge[]; totalMembers: number; member: Member | null
 
 export default function AchievementsPage() {
     const { showToast } = useToast();
+    const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
     const [email, setEmail] = useState("");
 
@@ -25,6 +26,15 @@ export default function AchievementsPage() {
 
     const toggle = async (key: string, grant: boolean) => {
         if (!data?.member) return;
+        if (!grant) {
+            const ok = await confirm({
+                title: "Revoke this badge?",
+                message: `Remove this achievement from ${data.member.name}?`,
+                confirmLabel: "Revoke",
+                tone: "danger",
+            });
+            if (!ok) return;
+        }
         const res = await fetch("/api/admin/achievements", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -39,6 +49,7 @@ export default function AchievementsPage() {
 
     return (
         <div>
+            {dialog}
             <PageHeader
                 title="Achievements"
                 subtitle="The badge catalogue is defined in code. Here you can see earn rates and grant or revoke a badge for one member."

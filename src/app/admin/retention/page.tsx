@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, PageLoading, Card } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, ErrorState } from "@/components/admin/ui";
 
 type Member = { id: string; name: string; email: string; lastLogin: string | null; plan: string | null; renewal: string | null };
 type Seg = { key: string; label: string; total: number; members: Member[] };
@@ -12,14 +12,30 @@ const BROADCAST_SEG: Record<string, string> = { inactive: "inactive", at_risk: "
 
 export default function RetentionPage() {
     const [segs, setSegs] = useState<Seg[] | null>(null);
+    const [loadError, setLoadError] = useState(false);
     const [open, setOpen] = useState<string | null>(null);
 
-    useEffect(() => {
-        (async () => {
+    const load = useCallback(async () => {
+        try {
             const res = await fetch("/api/admin/retention");
-            if (res.ok) setSegs((await res.json()).segments);
-        })();
+            if (!res.ok) throw new Error("Failed to load retention data");
+            setSegs((await res.json()).segments);
+            setLoadError(false);
+        } catch {
+            setLoadError(true);
+        }
     }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    if (loadError) {
+        return (
+            <div>
+                <PageHeader title="Retention" subtitle="Members who need attention. Message a whole segment from Broadcast." />
+                <ErrorState message="Could not load retention data." onRetry={load} />
+            </div>
+        );
+    }
 
     if (!segs) return <PageLoading title="Retention" />;
 

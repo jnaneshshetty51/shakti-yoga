@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { LuSearch, LuDownload, LuPlus, LuChevronLeft, LuChevronRight, LuArrowUpDown } from "react-icons/lu";
+import { Button } from "./ui";
 
 type Column<T> = {
     header: string;
@@ -132,40 +133,34 @@ export default function DTable<T extends { id: string | number;[key: string]: un
         document.body.removeChild(link);
     };
 
-    const ctrlBtn =
-        "inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors";
-
     return (
-        <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] border border-gray-100 overflow-hidden">
+        <div className="bg-surface rounded-card shadow-raised border border-hairline overflow-hidden">
             {/* Header & Controls */}
-            <div className="p-4 sm:p-5 border-b border-gray-100 space-y-4">
+            <div className="p-4 sm:p-5 border-b border-hairline space-y-4">
                 <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
-                    {title && <h2 className="font-bold text-gray-800">{title}</h2>}
+                    {title && <h2 className="font-semibold text-ink">{title}</h2>}
 
                     <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         {searchable && (
                             <div className="relative w-full md:w-72">
-                                <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                                <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-sm" />
                                 <input
                                     type="text"
                                     placeholder="Search…"
-                                    className="w-full pl-9 pr-3 py-2 rounded-full border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                    className="w-full pl-9 pr-3 py-2 rounded-control border border-hairline text-sm bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/40 transition"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         )}
                         <div className="flex gap-2 w-full sm:w-auto">
-                            <button onClick={handleExportCSV} className={`${ctrlBtn} flex-1 sm:flex-none justify-center`}>
-                                <LuDownload className="text-sm" /> Export
-                            </button>
+                            <Button variant="secondary" size="sm" icon={LuDownload} onClick={handleExportCSV} className="flex-1 sm:flex-none justify-center">
+                                Export
+                            </Button>
                             {onCreate && (
-                                <button
-                                    onClick={onCreate}
-                                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors whitespace-nowrap flex-1 sm:flex-none"
-                                >
-                                    <LuPlus className="text-sm" /> New
-                                </button>
+                                <Button size="sm" icon={LuPlus} onClick={onCreate} className="flex-1 sm:flex-none justify-center whitespace-nowrap">
+                                    New
+                                </Button>
                             )}
                         </div>
                     </div>
@@ -190,7 +185,7 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                         {filters?.map(filter => (
                             <select
                                 key={filter.key}
-                                className="px-3 py-1.5 border border-gray-200 rounded-full text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="px-3 py-1.5 border border-hairline rounded-control text-sm bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-brand/25"
                                 onChange={(e) => handleFilterChange(filter.key, e.target.value)}
                                 value={activeFilters[filter.key] || ''}
                             >
@@ -207,13 +202,13 @@ export default function DTable<T extends { id: string | number;[key: string]: un
             {/* Table */}
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-left text-sm">
-                    <thead className="bg-gray-50/70 text-gray-400 font-semibold uppercase tracking-wider text-[11px]">
+                    <thead className="bg-black/[0.02] text-ink-subtle font-semibold uppercase tracking-wider text-[11px]">
                         <tr>
                             {enableBulkActions && (
                                 <th className="px-4 py-3 w-10">
                                     <input
                                         type="checkbox"
-                                        className="accent-primary"
+                                        className="accent-brand"
                                         onChange={handleSelectAll}
                                         checked={paginatedData.length > 0 && selectedItems.length === paginatedData.length}
                                     />
@@ -222,14 +217,14 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                             {columns.map((col, idx) => (
                                 <th
                                     key={idx}
-                                    className={`px-4 py-3 ${col.className || ''} ${col.sortable ? 'cursor-pointer hover:text-gray-600 select-none' : ''}`}
+                                    className={`px-4 py-3 ${col.className || ''} ${col.sortable ? 'cursor-pointer hover:text-ink-muted select-none' : ''}`}
                                     onClick={() => col.sortable && typeof col.accessor === 'string' && handleSort(col.accessor as string)}
                                 >
                                     <div className="flex items-center gap-1">
                                         {col.header}
                                         {col.sortable && (
                                             sortConfig?.key === col.accessor
-                                                ? <span className="text-primary">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                                ? <span className="text-brand">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                                                 : <LuArrowUpDown className="text-[11px] opacity-40" />
                                         )}
                                     </div>
@@ -238,22 +233,22 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                             {actions && <th className="px-4 py-3 text-right">Actions</th>}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-hairline">
                         {paginatedData.length > 0 ? (
                             paginatedData.map((item) => (
-                                <tr key={item.id} className={`hover:bg-gray-50/60 transition-colors ${selectedItems.includes(String(item.id)) ? 'bg-primary/[0.03]' : ''}`}>
+                                <tr key={item.id} className={`hover:bg-surface-hover transition-colors ${selectedItems.includes(String(item.id)) ? 'bg-brand/[0.04]' : ''}`}>
                                     {enableBulkActions && (
                                         <td className="px-4 py-3">
                                             <input
                                                 type="checkbox"
-                                                className="accent-primary"
+                                                className="accent-brand"
                                                 checked={selectedItems.includes(String(item.id))}
                                                 onChange={() => handleSelectItem(String(item.id))}
                                             />
                                         </td>
                                     )}
                                     {columns.map((col, idx) => (
-                                        <td key={idx} className="px-4 py-3 text-gray-600 align-middle">
+                                        <td key={idx} className="px-4 py-3 text-ink-muted align-middle">
                                             {typeof col.accessor === 'function'
                                                 ? col.accessor(item)
                                                 : (item[col.accessor] as React.ReactNode)}
@@ -268,7 +263,7 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={columns.length + (actions ? 1 : 0) + (enableBulkActions ? 1 : 0)} className="px-4 py-12 text-center text-gray-400">
+                                <td colSpan={columns.length + (actions ? 1 : 0) + (enableBulkActions ? 1 : 0)} className="px-4 py-12 text-center text-ink-subtle">
                                     Nothing to show yet.
                                 </td>
                             </tr>
@@ -278,13 +273,13 @@ export default function DTable<T extends { id: string | number;[key: string]: un
             </div>
 
             {/* Footer / Pagination */}
-            <div className="px-4 py-3 border-t border-gray-100 flex flex-wrap justify-between items-center gap-3 text-xs text-gray-500">
+            <div className="px-4 py-3 border-t border-hairline flex flex-wrap justify-between items-center gap-3 text-xs text-ink-muted">
                 <span>Showing {paginatedData.length} of {sortedData.length}</span>
                 <div className="flex gap-1.5 items-center">
                     <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="p-1.5 rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded-control border border-hairline hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label="Previous page"
                     >
                         <LuChevronLeft className="text-sm" />
@@ -293,7 +288,7 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                     <button
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage === totalPages || totalPages === 0}
-                        className="p-1.5 rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="p-1.5 rounded-control border border-hairline hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label="Next page"
                     >
                         <LuChevronRight className="text-sm" />

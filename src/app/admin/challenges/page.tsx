@@ -5,6 +5,7 @@ import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, StatusBadge, TableActions, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 type Challenge = {
     id: string; title: string; description: string; goalType: string; goalTarget: number;
@@ -34,6 +35,7 @@ const FIELDS: FieldDef[] = [
 ];
 
 export default function AdminChallengesPage() {
+    const { showToast } = useToast();
     const [rows, setRows] = useState<Challenge[]>([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState<{ mode: "create" | "edit"; initial?: EntityValues; id?: string } | null>(null);
@@ -62,7 +64,13 @@ export default function AdminChallengesPage() {
 
     const remove = async (id: string) => {
         if (!confirm("Delete this challenge?")) return;
-        await fetch(`/api/admin/challenges?id=${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/challenges?id=${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete challenge.");
+            return;
+        }
+        showToast("success", "Challenge deleted.");
         fetchRows();
     };
 

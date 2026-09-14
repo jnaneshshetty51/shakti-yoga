@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { PageHeader, Card, EmptyState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
+import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass } from "@/components/admin/ui";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/admin/Toast";
 
 const DEPARTMENT_LABEL: Record<string, string> = { CONTENT: "Content Team", SUPPORT: "Support Staff", TRAINER: "Everyday Trainer", THERAPIST: "Yoga Therapist" };
 
@@ -63,10 +64,12 @@ function PhotoInput({ current, onFile }: { current: string | null; onFile: (f: F
 
 export default function AdminStaffPage() {
     const { user } = useAuth();
+    const { showToast } = useToast();
     const isSuper = user?.tier === "super";
     const [staff, setStaff] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<string[]>(["TEACHER", "STAFF_ADMIN"]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [msg, setMsg] = useState("");
     const [err, setErr] = useState("");
 
@@ -81,10 +84,18 @@ export default function AdminStaffPage() {
 
     const load = useCallback(async () => {
         setLoading(true);
+        setLoadError(false);
         try {
             const res = await fetch("/api/admin/staff");
             const data = await res.json();
-            if (res.ok) { setStaff(data.staff || []); setRoles(data.roles || roles); }
+            if (res.ok) {
+                setStaff(data.staff || []);
+                setRoles(data.roles || roles);
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
@@ -160,15 +171,25 @@ export default function AdminStaffPage() {
     };
 
     const removePhoto = async (s: Staff) => {
-        await fetch(`/api/admin/staff/photo?staffId=${s.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/staff/photo?staffId=${s.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not remove photo.");
+            return;
+        }
+        showToast("success", "Photo removed.");
         load();
     };
 
     const remove = async (s: Staff) => {
         if (!confirm(`Remove ${s.name}? This deletes their account.`)) return;
         const res = await fetch(`/api/admin/staff?id=${s.id}`, { method: "DELETE" });
-        const data = await res.json();
-        if (!res.ok) { setErr(data.error || "Could not remove"); return; }
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not remove staff member.");
+            return;
+        }
+        showToast("success", `${s.name} removed.`);
         load();
     };
 
@@ -223,6 +244,8 @@ export default function AdminStaffPage() {
 
             {loading ? (
                 <p className="text-gray-500">Loading…</p>
+            ) : loadError ? (
+                <ErrorState message="Could not load staff." onRetry={load} />
             ) : staff.length === 0 ? (
                 <Card><EmptyState icon={LuGraduationCap} title="No staff yet" hint="Add teachers and admins so they show on the public site and can be scheduled." /></Card>
             ) : (

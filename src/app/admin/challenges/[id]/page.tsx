@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
 import DTable from "@/components/admin/DTable";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, ErrorState } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
 type Participant = {
@@ -22,10 +22,20 @@ export default function ChallengeParticipantsPage() {
     const { id } = useParams<{ id: string }>();
     const { showToast } = useToast();
     const [data, setData] = useState<Data | null>(null);
+    const [loadError, setLoadError] = useState(false);
 
     const load = useCallback(async () => {
-        const res = await fetch(`/api/admin/challenges/${id}/participants`);
-        if (res.ok) setData(await res.json());
+        setLoadError(false);
+        try {
+            const res = await fetch(`/api/admin/challenges/${id}/participants`);
+            if (res.ok) {
+                setData(await res.json());
+            } else {
+                setLoadError(true);
+            }
+        } catch {
+            setLoadError(true);
+        }
     }, [id]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
@@ -48,6 +58,17 @@ export default function ChallengeParticipantsPage() {
         showToast("success", `${p.name} removed`);
         load();
     };
+
+    if (loadError) {
+        return (
+            <div>
+                <Link href="/admin/challenges" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+                    <LuArrowLeft /> Challenges
+                </Link>
+                <ErrorState message="Could not load this challenge." onRetry={load} />
+            </div>
+        );
+    }
 
     if (!data) return <PageLoading title="Challenge" />;
 

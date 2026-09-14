@@ -55,7 +55,13 @@ export default function AdminFaqsPage() {
 
     const remove = async (f: FAQ) => {
         if (!confirm("Delete this FAQ?")) return;
-        await fetch(`/api/admin/faqs?id=${f.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/faqs?id=${f.id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete FAQ.");
+            return;
+        }
+        showToast("success", "FAQ deleted.");
         load();
     };
 

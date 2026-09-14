@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LuInbox } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, EmptyState, ErrorState, ActionButton } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/Toast";
 
 interface Message {
     id: string;
@@ -15,6 +16,7 @@ interface Message {
 }
 
 export default function AdminMessagesPage() {
+    const { showToast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
@@ -41,17 +43,29 @@ export default function AdminMessagesPage() {
     }, [load]);
 
     const setHandled = async (id: string, handled: boolean) => {
-        await fetch("/api/admin/contact", {
+        const res = await fetch("/api/admin/contact", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id, handled }),
         });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not update.");
+            return;
+        }
+        showToast("success", handled ? "Marked handled." : "Marked unhandled.");
         load();
     };
 
     const remove = async (id: string) => {
         if (!confirm("Delete this message?")) return;
-        await fetch(`/api/admin/contact?id=${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/contact?id=${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete.");
+            return;
+        }
+        showToast("success", "Message deleted.");
         load();
     };
 
