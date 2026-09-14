@@ -28,7 +28,7 @@ function Stars({ n }: { n: number }) {
 }
 
 export default function TestimonialsScreen() {
-  const { data, loading, error } = useResource(() => api.get<Testimonial[]>("/api/content/testimonials"), []);
+  const { data, loading, error, reload } = useResource(() => api.get<Testimonial[]>("/api/content/testimonials"), []);
 
   return (
     <Screen>
@@ -36,7 +36,7 @@ export default function TestimonialsScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load stories" subtitle={error} />
+        <EmptyState title="Couldn't load stories" subtitle={error} onRetry={reload} />
       ) : !data || data.length === 0 ? (
         <EmptyState title="No stories yet" />
       ) : (

@@ -11,7 +11,9 @@
       "bundleIdentifier": "com.shaktiyoga.app",
       "buildNumber": "1",
       "supportsTablet": true,
-      "associatedDomains": ["applinks:shaktiyoga.in"],
+      "associatedDomains": [
+        "applinks:shaktiyoga.in"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Shakti Yoga uses your photo library so you can set a profile picture.",
@@ -42,11 +44,26 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "shaktiyoga.in", "pathPrefix": "/content" },
-            { "scheme": "https", "host": "shaktiyoga.in", "pathPrefix": "/r" },
-            { "scheme": "https", "host": "shaktiyoga.in", "pathPrefix": "/reset-password" }
+            {
+              "scheme": "https",
+              "host": "shaktiyoga.in",
+              "pathPrefix": "/content"
+            },
+            {
+              "scheme": "https",
+              "host": "shaktiyoga.in",
+              "pathPrefix": "/r"
+            },
+            {
+              "scheme": "https",
+              "host": "shaktiyoga.in",
+              "pathPrefix": "/reset-password"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -93,7 +110,8 @@
         }
       ],
       "expo-sharing",
-      "expo-video"
+      "expo-video",
+      "expo-secure-store"
     ],
     "extra": {
       "router": {},

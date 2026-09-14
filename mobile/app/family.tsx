@@ -50,7 +50,7 @@ export default function FamilyScreen() {
       {loading ? (
         <LoadingView />
       ) : error || !data ? (
-        <EmptyState title="Couldn't load family plan" subtitle={error ?? undefined} />
+        <EmptyState title="Couldn't load family plan" subtitle={error ?? undefined} onRetry={reload} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
           {!data.isFamily ? (

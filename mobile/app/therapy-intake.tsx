@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, View, TextInput, Pressable, StyleSheet } from "react-native";
+import { router } from "expo-router";
 import { Screen, Heading, BodyText, Card, Button, LoadingView } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { api, ApiError } from "@/lib/api";
@@ -183,7 +184,10 @@ export default function TherapyIntakeScreen() {
               {intake.status === "RECOMMENDED" && intake.reviewNotes && (
                 <BodyText style={styles.notes}>{intake.reviewNotes}</BodyText>
               )}
-              <BodyText muted style={{ fontSize: 12, marginTop: spacing.md }}>
+              <Button style={{ marginTop: spacing.md }} onPress={() => router.push("/book-consult")}>
+                Book Your Free Consultation
+              </Button>
+              <BodyText muted style={{ fontSize: 12, marginTop: spacing.sm }}>
                 To start your plan, open shaktiyoga.in on the web to complete payment.
               </BodyText>
             </Card>

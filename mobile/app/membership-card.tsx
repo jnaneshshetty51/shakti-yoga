@@ -22,7 +22,7 @@ const PLAN_LABEL: Record<string, string> = {
 
 export default function MembershipCardScreen() {
   const { user } = useAuth();
-  const { data, loading, error } = useResource(() => api.get<BillingResponse>("/api/billing"), []);
+  const { data, loading, error, reload } = useResource(() => api.get<BillingResponse>("/api/billing"), []);
   const sub = data?.subscription;
 
   return (
@@ -31,7 +31,7 @@ export default function MembershipCardScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load your card" subtitle={error} />
+        <EmptyState title="Couldn't load your card" subtitle={error} onRetry={reload} />
       ) : (
         <View style={{ padding: spacing.lg }}>
           <View style={styles.card}>

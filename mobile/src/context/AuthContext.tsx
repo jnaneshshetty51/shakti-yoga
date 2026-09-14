@@ -32,6 +32,10 @@ interface AuthResponse {
 interface AuthContextValue {
   user: AppUser | null;
   isLoading: boolean;
+  /** Set when `restore()` found a genuine 401 (expired/invalid token) — the login
+   *  screen surfaces this once, then clears it via `clearSessionMessage`. */
+  sessionMessage: string | null;
+  clearSessionMessage: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (fields: {
     firstName: string;
@@ -51,6 +55,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+
+  const clearSessionMessage = useCallback(() => setSessionMessage(null), []);
 
   const restore = useCallback(async () => {
     const token = await getToken();
@@ -64,9 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       if (data.user) void registerForPush();
       else await setToken(null);
-    } catch {
-      // Network hiccup — keep the token, try again next launch rather than
-      // logging the user out for a flaky connection.
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        // Genuine session invalidation (expired/invalid token) — unlike a
+        // network hiccup, there's no point retrying with the same token.
+        await setToken(null);
+        setUser(null);
+        setSessionMessage("Your session expired — please log in again.");
+      }
+      // Any other failure (network hiccup, 5xx, etc.) — keep the token, try
+      // again next launch rather than logging the user out for a flaky
+      // connection.
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, sessionMessage, clearSessionMessage, login, register, logout, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

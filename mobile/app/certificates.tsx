@@ -18,7 +18,7 @@ interface Certificate {
 }
 
 export default function CertificatesScreen() {
-  const { data, loading, error } = useResource(
+  const { data, loading, error, reload } = useResource(
     () => api.get<{ certificates: Certificate[] }>("/api/certificates"),
     [],
   );
@@ -51,7 +51,7 @@ export default function CertificatesScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load certificates" subtitle={error} />
+        <EmptyState title="Couldn't load certificates" subtitle={error} onRetry={reload} />
       ) : !data || data.certificates.length === 0 ? (
         <EmptyState title="No certificates yet" subtitle="Complete a challenge to earn your first one." />
       ) : (

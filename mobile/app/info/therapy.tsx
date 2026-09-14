@@ -25,7 +25,10 @@ export default function TherapyInfoScreen() {
         <Heading size="sm" style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}>Plans</Heading>
         {loading ? <LoadingView /> : <PlanList plans={plans} />}
 
-        <Button style={{ marginTop: spacing.lg }} onPress={() => router.push("/therapy-intake")}>
+        <Button variant="outline" style={{ marginTop: spacing.lg }} onPress={() => router.push("/book-consult")}>
+          Book a Free Consultation
+        </Button>
+        <Button style={{ marginTop: spacing.sm }} onPress={() => router.push("/therapy-intake")}>
           Begin Yoga Therapy Assessment
         </Button>
       </ScrollView>

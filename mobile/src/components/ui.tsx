@@ -95,11 +95,26 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
   );
 }
 
-export function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
+export function EmptyState({
+  title,
+  subtitle,
+  onRetry,
+  retryLabel = "Try again",
+}: {
+  title: string;
+  subtitle?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <View style={styles.empty}>
       <Heading size="sm" style={{ textAlign: "center" }}>{title}</Heading>
       {subtitle && <BodyText muted style={{ textAlign: "center", marginTop: spacing.xs }}>{subtitle}</BodyText>}
+      {onRetry && (
+        <Button variant="outline" onPress={onRetry} style={{ marginTop: spacing.lg }}>
+          {retryLabel}
+        </Button>
+      )}
     </View>
   );
 }

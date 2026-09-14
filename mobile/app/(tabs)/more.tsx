@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Heading, BodyText, Card } from "@/components/ui";
@@ -23,6 +23,12 @@ export default function MoreScreen() {
     user?.role === "member_starter" ||
     user?.role === "member_therapy" ||
     user?.role === "trial";
+
+  const confirmLogout = () =>
+    Alert.alert("Log out?", undefined, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Log out", style: "destructive", onPress: logout },
+    ]);
 
   return (
     <Screen>
@@ -66,7 +72,7 @@ export default function MoreScreen() {
         </Card>
 
         <Card style={styles.section}>
-          <Row icon="log-out-outline" label="Log out" onPress={logout} />
+          <Row icon="log-out-outline" label="Log out" onPress={confirmLogout} />
         </Card>
       </ScrollView>
     </Screen>

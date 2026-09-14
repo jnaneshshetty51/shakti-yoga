@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, View, StyleSheet } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
+import NetInfo from "@react-native-community/netinfo";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { isAppLockOn, authenticateIfLocked } from "@/lib/appLock";
 import { resolveNotificationPath, resolveIncomingUrl } from "@/lib/deepLink";
-import { spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -71,7 +72,10 @@ function UrlRouter() {
     handled.current = url;
     const path = resolveIncomingUrl(url);
     if (path === "/(tabs)") return; // nothing meaningful to route to
-    if (user) setTimeout(() => router.push(path), 0);
+    // Auth-group destinations (e.g. the password-reset screen from a mailed
+    // link) must be reachable without an existing session — that's the whole
+    // point of a reset link. Everything else waits for login as before.
+    if (user || path.startsWith("/(auth)")) setTimeout(() => router.push(path), 0);
     else pending.current = path;
   }, [url, user, isLoading, router]);
 
@@ -148,19 +152,84 @@ function LockGate({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Top-level error boundary — catches any render/lifecycle error thrown by the
+ * provider tree below it and shows a friendly recovery screen instead of a
+ * hard crash. "Try again" just resets the boundary's own state, which is
+ * usually enough (a transient bad state); if the same screen keeps throwing,
+ * that's a real bug that needs a code fix, not a reload button.
+ */
+class ErrorBoundary extends React.Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("Unhandled error in app tree:", error, info.componentStack);
+  }
+
+  reset = () => this.setState({ error: null });
+
+  render() {
+    if (this.state.error) {
+      return (
+        <Screen style={styles.crash}>
+          <Heading size="md" style={{ textAlign: "center" }}>Something went wrong</Heading>
+          <BodyText muted style={{ marginTop: spacing.sm, textAlign: "center" }}>
+            An unexpected error occurred. You can try again — if it keeps happening, close and reopen the app.
+          </BodyText>
+          <Button style={{ marginTop: spacing.lg }} onPress={this.reset}>Try again</Button>
+        </Screen>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/** App-wide "you're offline" banner — shown whenever connectivity drops, hidden once it returns. */
+function OfflineBanner() {
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setOffline(state.isConnected === false || state.isInternetReachable === false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (!offline) return null;
+
+  return (
+    <View style={styles.offlineBanner}>
+      <BodyText style={styles.offlineText}>You&rsquo;re offline — some features may not work.</BodyText>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <AuthGate>
-          <LockGate>
-            <StatusBar style="dark" />
-            <NotificationRouter />
-            <UrlRouter />
-            <Stack screenOptions={{ headerShown: false }} />
-          </LockGate>
-        </AuthGate>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AuthGate>
+            <LockGate>
+              <StatusBar style="dark" />
+              <NotificationRouter />
+              <UrlRouter />
+              <OfflineBanner />
+              <Stack screenOptions={{ headerShown: false }} />
+            </LockGate>
+          </AuthGate>
+        </AuthProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  crash: { alignItems: "center", justifyContent: "center", padding: spacing.xl },
+  offlineBanner: { backgroundColor: colors.text, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
+  offlineText: { color: colors.white, textAlign: "center", fontSize: 12, fontWeight: "700" },
+});

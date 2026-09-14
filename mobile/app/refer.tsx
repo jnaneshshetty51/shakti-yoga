@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<ReferralRow["status"], string> = {
 };
 
 export default function ReferScreen() {
-  const { data, loading, error } = useResource(() => api.get<ReferralStats>("/api/referral"), []);
+  const { data, loading, error, reload } = useResource(() => api.get<ReferralStats>("/api/referral"), []);
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -49,7 +49,7 @@ export default function ReferScreen() {
       {loading ? (
         <LoadingView />
       ) : error || !data ? (
-        <EmptyState title="Couldn't load your referral code" subtitle={error ?? undefined} />
+        <EmptyState title="Couldn't load your referral code" subtitle={error ?? undefined} onRetry={reload} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
           <Card style={{ marginBottom: spacing.md }}>

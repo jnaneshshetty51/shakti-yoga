@@ -14,7 +14,7 @@ interface Faq {
 }
 
 export default function FaqScreen() {
-  const { data, loading, error } = useResource(() => api.get<Faq[]>("/api/content/faqs"), []);
+  const { data, loading, error, reload } = useResource(() => api.get<Faq[]>("/api/content/faqs"), []);
   const [open, setOpen] = useState<string | null>(null);
 
   return (
@@ -23,7 +23,7 @@ export default function FaqScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load FAQ" subtitle={error} />
+        <EmptyState title="Couldn't load FAQ" subtitle={error} onRetry={reload} />
       ) : !data || data.length === 0 ? (
         <EmptyState title="No questions yet" />
       ) : (

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { FlatList, View, Pressable, StyleSheet, RefreshControl } from "react-native";
+import { FlatList, View, Pressable, StyleSheet, RefreshControl, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, BodyText, Card, LoadingView, EmptyState } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { resolveNotificationPath } from "@/lib/deepLink";
 import { colors, spacing } from "@/theme";
@@ -55,8 +55,8 @@ export default function ActivityScreen() {
     try {
       await api.post("/api/activity", { action: "markAllRead" });
       await reload();
-    } catch {
-      /* ignore */
+    } catch (err) {
+      Alert.alert("Couldn't update", err instanceof ApiError ? err.message : "Please check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -66,8 +66,14 @@ export default function ActivityScreen() {
     setDismissed((prev) => new Set(prev).add(id));
     try {
       await api.post("/api/activity", { action: "dismiss", id });
-    } catch {
-      /* ignore */
+    } catch (err) {
+      // Roll back the optimistic hide — it wasn't actually dismissed server-side.
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      Alert.alert("Couldn't dismiss", err instanceof ApiError ? err.message : "Please check your connection and try again.");
     }
   };
 

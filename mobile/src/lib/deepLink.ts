@@ -24,11 +24,12 @@ export function resolveNotificationPath(url?: string | null): string {
     "/dashboard/certificates": "/certificates",
     "/dashboard/activity": "/activity",
     "/dashboard/therapy": "/therapy",
-    "/dashboard/therapy/book": "/therapy",
+    "/dashboard/therapy/book": "/book-consult",
     "/dashboard/therapy/notes": "/therapy",
     "/dashboard/refer": "/refer",
     "/dashboard/family": "/family",
     "/activity": "/activity",
+    "/reset-password": "/(auth)/reset-password",
   };
   return map[clean] ?? "/(tabs)";
 }
@@ -37,12 +38,23 @@ export function resolveNotificationPath(url?: string | null): string {
  * Map an incoming URL the OS handed the app — a Universal/App Link tap
  * (https://shaktiyoga.in/...) or the custom shaktiyoga:// scheme — to a route
  * in this app. `Linking.parse` normalises both forms to the same `path`
- * shape, so this just reuses `resolveNotificationPath`'s path-matching.
+ * shape, so this mostly reuses `resolveNotificationPath`'s path-matching —
+ * except the password-reset link mailed to users, whose `token` query param
+ * must survive the trip, so it's re-attached onto the resolved path here
+ * (the caller in _layout.tsx just does `router.push(path)` with the result).
  */
 export function resolveIncomingUrl(url: string): string {
   try {
-    const { path } = Linking.parse(url);
-    return resolveNotificationPath(path ? `/${path}` : null);
+    const { path, queryParams } = Linking.parse(url);
+    const resolved = resolveNotificationPath(path ? `/${path}` : null);
+
+    if (resolved === "/(auth)/reset-password") {
+      const token = queryParams?.token;
+      const raw = Array.isArray(token) ? token[0] : token;
+      if (raw) return `${resolved}?token=${encodeURIComponent(raw)}`;
+    }
+
+    return resolved;
   } catch {
     return "/(tabs)";
   }

@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 /**
  * Base URL for the Shakti Yoga backend (the same Next.js app the website runs
@@ -14,14 +14,14 @@ let cachedToken: string | null | undefined;
 
 export async function getToken(): Promise<string | null> {
   if (cachedToken !== undefined) return cachedToken;
-  cachedToken = await AsyncStorage.getItem(TOKEN_KEY);
+  cachedToken = await SecureStore.getItemAsync(TOKEN_KEY);
   return cachedToken;
 }
 
 export async function setToken(token: string | null): Promise<void> {
   cachedToken = token;
-  if (token) await AsyncStorage.setItem(TOKEN_KEY, token);
-  else await AsyncStorage.removeItem(TOKEN_KEY);
+  if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
+  else await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
 export class ApiError extends Error {

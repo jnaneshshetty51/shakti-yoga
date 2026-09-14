@@ -23,7 +23,7 @@ const STATUS: Record<AttendanceStatus, { label: string; tone: "success" | "warni
 };
 
 export default function SessionHistoryScreen() {
-  const { data, loading, error } = useResource(
+  const { data, loading, error, reload } = useResource(
     () => api.get<{ sessionCredits: SessionBalance | null; history: HistoryRow[] }>("/api/sessions/history"),
     [],
   );
@@ -34,7 +34,7 @@ export default function SessionHistoryScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load your history" subtitle={error} />
+        <EmptyState title="Couldn't load your history" subtitle={error} onRetry={reload} />
       ) : !data || data.history.length === 0 ? (
         <EmptyState title="No classes yet" subtitle="Your attended and checked-in classes will show here." />
       ) : (

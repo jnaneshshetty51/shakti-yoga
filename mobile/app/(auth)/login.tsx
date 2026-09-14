@@ -6,11 +6,18 @@ import { useAuth, ApiError } from "@/context/AuthContext";
 import { colors, spacing, radius } from "@/theme";
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, sessionMessage, clearSessionMessage } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(sessionMessage);
+
+  // Show the session-expiry notice once, then clear it so it doesn't
+  // reappear after a subsequent unrelated login error or re-visit.
+  React.useEffect(() => {
+    if (sessionMessage) clearSessionMessage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async () => {
     setError(null);
@@ -62,6 +69,10 @@ export default function LoginScreen() {
         Log In
       </Button>
 
+      <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
+        <BodyText style={{ color: colors.primary, fontWeight: "700" }}>Forgot password?</BodyText>
+      </Link>
+
       <Link href="/(auth)/signup" style={styles.switchLink}>
         <BodyText muted>Don&rsquo;t have an account? <BodyText style={{ color: colors.primary, fontWeight: "700" }}>Sign up</BodyText></BodyText>
       </Link>
@@ -84,5 +95,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   error: { color: colors.danger, marginBottom: spacing.md },
+  forgotLink: { marginTop: spacing.md, alignSelf: "center" },
   switchLink: { marginTop: spacing.lg, alignSelf: "center" },
 });
