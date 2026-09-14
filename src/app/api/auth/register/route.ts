@@ -16,7 +16,7 @@ const TIMEZONES = ['IST', 'PST', 'EST', 'CST', 'MST', 'GMT', 'CET', 'AEDT', 'AES
 export async function POST(request: Request) {
     try {
         const ip = getClientIp(request);
-        const { allowed, retryAfterSeconds } = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
+        const { allowed, retryAfterSeconds } = await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000);
         if (!allowed) {
             return NextResponse.json(
                 { error: 'Too many signup attempts. Please try again later.' },

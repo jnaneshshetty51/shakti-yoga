@@ -60,7 +60,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { allowed, retryAfterSeconds } = rateLimit(`comment:${session.id}`, 10, 5 * 60 * 1000);
+    const { allowed, retryAfterSeconds } = await rateLimit(`comment:${session.id}`, 10, 5 * 60 * 1000);
     if (!allowed) {
         return NextResponse.json(
             { error: 'You are commenting too fast. Try again shortly.' },

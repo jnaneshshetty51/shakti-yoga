@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { allowed } = rateLimit(`family-join:${session.id}`, 8, 60 * 60 * 1000);
+    const { allowed } = await rateLimit(`family-join:${session.id}`, 8, 60 * 60 * 1000);
     if (!allowed) return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
 
     try {

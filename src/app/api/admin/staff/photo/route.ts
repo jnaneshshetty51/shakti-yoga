@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const admin = await requireAdmin();
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const { allowed, retryAfterSeconds } = rateLimit(`staff-photo:${admin.id}`, 20, 60 * 60 * 1000);
+    const { allowed, retryAfterSeconds } = await rateLimit(`staff-photo:${admin.id}`, 20, 60 * 60 * 1000);
     if (!allowed) {
         return NextResponse.json(
             { error: 'Too many uploads. Try again later.' },

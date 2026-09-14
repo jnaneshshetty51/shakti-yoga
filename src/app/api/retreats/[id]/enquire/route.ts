@@ -11,7 +11,7 @@ function escapeHtml(s: string) {
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     const { id } = await context.params;
     const ip = getClientIp(request);
-    const { allowed } = rateLimit(`retreat-enquiry:${ip}`, 5, 60 * 60 * 1000);
+    const { allowed } = await rateLimit(`retreat-enquiry:${ip}`, 5, 60 * 60 * 1000);
     if (!allowed) return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
 
     try {

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const gate = rateLimit(`therapy-update:${session.id}`, 5, 60 * 60 * 1000);
+    const gate = await rateLimit(`therapy-update:${session.id}`, 5, 60 * 60 * 1000);
     if (!gate.allowed) {
         return NextResponse.json(
             { error: 'You have sent a few updates already. Try again a little later.' },

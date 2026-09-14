@@ -18,7 +18,7 @@ function genericResponse() {
 export async function POST(request: Request) {
     try {
         const ip = getClientIp(request);
-        const { allowed, retryAfterSeconds } = rateLimit(`forgot-password:${ip}`, 5, 60 * 60 * 1000);
+        const { allowed, retryAfterSeconds } = await rateLimit(`forgot-password:${ip}`, 5, 60 * 60 * 1000);
         if (!allowed) {
             return NextResponse.json(
                 { error: 'Too many requests. Please try again later.' },

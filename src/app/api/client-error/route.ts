@@ -3,7 +3,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 /** Minimal client-error sink — logs to the server so PM2 logs capture front-end crashes. */
 export async function POST(request: Request) {
-    const { allowed } = rateLimit(`client-error:${getClientIp(request)}`, 20, 60 * 1000);
+    const { allowed } = await rateLimit(`client-error:${getClientIp(request)}`, 20, 60 * 1000);
     if (!allowed) return NextResponse.json({ ok: true });
 
     try {

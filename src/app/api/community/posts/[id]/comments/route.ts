@@ -39,7 +39,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { allowed } = rateLimit(`community-comment:${session.id}`, 15, 5 * 60 * 1000);
+    const { allowed } = await rateLimit(`community-comment:${session.id}`, 15, 5 * 60 * 1000);
     if (!allowed) return NextResponse.json({ error: 'Slow down a moment.' }, { status: 429 });
 
     const body = String((await request.json().catch(() => ({}))).body ?? '').trim().slice(0, MAX_COMMENT_LEN);

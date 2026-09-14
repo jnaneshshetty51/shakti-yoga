@@ -10,7 +10,7 @@ export async function POST(request: Request) {
         const payload = await getSession();
         if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { allowed, retryAfterSeconds } = rateLimit(`avatar:${payload.id}`, 10, 60 * 60 * 1000);
+        const { allowed, retryAfterSeconds } = await rateLimit(`avatar:${payload.id}`, 10, 60 * 60 * 1000);
         if (!allowed) {
             return NextResponse.json(
                 { error: 'Too many uploads. Please try again later.' },

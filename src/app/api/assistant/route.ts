@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'The assistant is not available.' }, { status: 503 });
     }
 
-    const { allowed, retryAfterSeconds } = rateLimit(`assistant:${session.id}`, 30, 60 * 60 * 1000);
+    const { allowed, retryAfterSeconds } = await rateLimit(`assistant:${session.id}`, 30, 60 * 60 * 1000);
     if (!allowed) {
         return NextResponse.json(
             { error: 'You’ve reached the hourly limit for the assistant. Try again later.' },

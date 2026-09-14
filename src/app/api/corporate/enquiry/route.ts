@@ -11,7 +11,7 @@ function escapeHtml(s: string) {
 /** POST /api/corporate/enquiry — public corporate wellness intake. */
 export async function POST(request: Request) {
     const ip = getClientIp(request);
-    const { allowed } = rateLimit(`corporate-enquiry:${ip}`, 5, 60 * 60 * 1000);
+    const { allowed } = await rateLimit(`corporate-enquiry:${ip}`, 5, 60 * 60 * 1000);
     if (!allowed) return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
 
     try {

@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const admin = await requireDepartment('CONTENT');
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const { allowed, retryAfterSeconds } = rateLimit(`content-video:${admin.id}`, 10, 60 * 60 * 1000);
+    const { allowed, retryAfterSeconds } = await rateLimit(`content-video:${admin.id}`, 10, 60 * 60 * 1000);
     if (!allowed) {
         return NextResponse.json(
             { error: 'Too many uploads. Try again later.' },

@@ -21,7 +21,7 @@ const DUMMY_HASH = '$2b$10$0S48M5ziT7bDXCqOziuTZ.Ep36snEw6Fhzj37duUF1DMLmiD0nYWy
 export async function POST(request: Request) {
     try {
         const ip = getClientIp(request);
-        const { allowed, retryAfterSeconds } = rateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+        const { allowed, retryAfterSeconds } = await rateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
         if (!allowed) {
             return NextResponse.json(
                 { error: 'Too many login attempts. Please try again later.' },

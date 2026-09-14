@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { allowed, retryAfterSeconds } = rateLimit(`community-post:${session.id}`, 6, 10 * 60 * 1000);
+    const { allowed, retryAfterSeconds } = await rateLimit(`community-post:${session.id}`, 6, 10 * 60 * 1000);
     if (!allowed) {
         return NextResponse.json(
             { error: 'You are posting too fast. Try again shortly.' },

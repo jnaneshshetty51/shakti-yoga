@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const anonId = typeof body.anonId === 'string' ? body.anonId.slice(0, 64) : null;
     const distinctId = session?.id ?? anonId ?? 'anonymous';
 
-    const { allowed } = rateLimit(`track:${distinctId}`, 120, 60 * 1000);
+    const { allowed } = await rateLimit(`track:${distinctId}`, 120, 60 * 1000);
     if (!allowed) return NextResponse.json({ ok: true, dropped: true });
 
     const events = Array.isArray(body.events) ? body.events.slice(0, 50) : [];
