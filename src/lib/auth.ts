@@ -8,6 +8,7 @@ import {
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/jwt';
 import { adminTier } from '@/lib/permissions';
+import { prisma } from '@/lib/prisma';
 import type { Role } from '@prisma/client';
 
 export { signToken, verifyToken, SESSION_MAX_AGE, SESSION_MAX_AGE_REMEMBER };
@@ -64,7 +65,22 @@ export async function readSessionToken(): Promise<string | null> {
 export async function getSession(): Promise<SessionPayload | null> {
     const token = await readSessionToken();
     if (!token) return null;
-    return await verifyToken(token);
+    const payload = await verifyToken(token);
+    if (!payload) return null;
+
+    // Enforce session revocation (password reset / account deactivation) —
+    // without this, a still-valid JWT keeps working for up to
+    // SESSION_MAX_AGE_REMEMBER after either event. A token that predates the
+    // `tv` claim (undefined) is allowed through, same as admin-auth.ts.
+    if (typeof payload.tv === 'number') {
+        const user = await prisma.user.findUnique({
+            where: { id: payload.id },
+            select: { tokenVersion: true, active: true },
+        });
+        if (!user || !user.active || user.tokenVersion !== payload.tv) return null;
+    }
+
+    return payload;
 }
 
 /** Issue the session cookie. Single source of truth for the cookie's options. */

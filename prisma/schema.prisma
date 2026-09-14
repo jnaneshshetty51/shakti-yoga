@@ -106,6 +106,7 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+  PARTIALLY_REFUNDED
 }
 
 enum LeadSource {
@@ -313,6 +314,12 @@ model ContactMessage {
   createdAt DateTime @default(now())
 }
 
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Payment {
   id                     String        @id @default(cuid())
   userId                 String
@@ -329,6 +336,7 @@ model Payment {
   providerSignature      String?
   creditApplied          Float         @default(0) // ₹ of the payer's own referral-credit wallet spent on this payment
   refereeDiscountApplied Float         @default(0) // ₹ one-time new-referee discount spent on this payment
+  refundedAmount         Float         @default(0) // ₹ refunded so far (cumulative across possibly multiple partial refunds)
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 }
@@ -800,7 +808,7 @@ model Lead {
 
   // Assignment
   assignedToId String?
-  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1000,7 +1008,7 @@ model Certificate {
   issuedAt         DateTime          @default(now())
   approvedAt       DateTime?
   approvedById     String?
-  approvedBy       User?             @relation("CertificateApprover", fields: [approvedById], references: [id])
+  approvedBy       User?             @relation("CertificateApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   sourceType       String? // e.g. "Challenge"
   sourceId         String?
 
@@ -1035,7 +1043,7 @@ model CorporateLead {
   dealValue       Float?
   notes           String?
   assignedToId    String?
-  assignedTo      User?               @relation(fields: [assignedToId], references: [id])
+  assignedTo      User?               @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -1130,7 +1138,7 @@ model SupportConversation {
   subject       String?
   status        SupportConversationStatus @default(OPEN)
   assignedToId  String?
-  assignedTo    User?                     @relation("SupportAssignee", fields: [assignedToId], references: [id])
+  assignedTo    User?                     @relation("SupportAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
   lastMessageAt DateTime                  @default(now())
@@ -1145,8 +1153,8 @@ model SupportMessage {
   id             String              @id @default(cuid())
   conversationId String
   conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User                @relation(fields: [senderId], references: [id])
+  senderId       String?
+  sender         User?               @relation(fields: [senderId], references: [id], onDelete: SetNull)
   senderRole     String // "member" | "staff"
   body           String
   createdAt      DateTime            @default(now())

@@ -137,6 +137,19 @@ export async function DELETE(request: Request) {
         });
         if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+        // Class batches need a real, intentional new owner — deleting the
+        // teacher account can't silently null this out or cascade-delete the
+        // batch (that would orphan every student's schedule and attendance
+        // history), so block with a clear, actionable message instead of
+        // hitting an unhandled FK violation below.
+        const ownedBatches = await prisma.classBatch.count({ where: { teacherId: id } });
+        if (ownedBatches > 0) {
+            return NextResponse.json(
+                { error: `This teacher owns ${ownedBatches} class batch${ownedBatches === 1 ? '' : 'es'}. Reassign or delete ${ownedBatches === 1 ? 'it' : 'them'} first, then delete this user.` },
+                { status: 409 },
+            );
+        }
+
         // Clear dependent rows that have no cascade, then delete.
         await prisma.$transaction([
             prisma.subscription.deleteMany({ where: { userId: id } }),
@@ -154,7 +167,14 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin users DELETE error:', error);
-        return NextResponse.json({ error: 'Could not delete user' }, { status: 500 });
+        // Prisma P2003 = foreign key constraint violation — some other
+        // relation still references this user. Surface a clearer message
+        // than the generic fallback rather than a bare 500.
+        const isFkViolation = typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2003';
+        return NextResponse.json(
+            { error: isFkViolation ? 'This user still has related records elsewhere that need to be reassigned or removed first.' : 'Could not delete user' },
+            { status: isFkViolation ? 409 : 500 },
+        );
     }
 }
 

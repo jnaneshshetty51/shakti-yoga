@@ -11,20 +11,38 @@ import { Readable } from "node:stream";
 
 // Internal endpoint the server talks S3 to (localhost inside the box).
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "http://localhost:9000";
+const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY;
+const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY;
+
+// The "minioadmin"/"minioadmin" fallback below is a well-known credential
+// pair — fine for a local dev bucket, never acceptable in production. Fail
+// closed rather than silently serving the object store behind a public
+// default password.
+if (process.env.NODE_ENV === "production" && (!MINIO_ACCESS_KEY || !MINIO_SECRET_KEY)) {
+    throw new Error("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set in production.");
+}
 
 const s3Client = new S3Client({
     region: "us-east-1",
     endpoint: MINIO_ENDPOINT,
     credentials: {
-        accessKeyId: process.env.MINIO_ACCESS_KEY || "minioadmin",
-        secretAccessKey: process.env.MINIO_SECRET_KEY || "minioadmin",
+        accessKeyId: MINIO_ACCESS_KEY || "minioadmin",
+        secretAccessKey: MINIO_SECRET_KEY || "minioadmin",
     },
     forcePathStyle: true, // MinIO
 });
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || "shakti-yoga-assets";
 
-/** Object-key prefixes the app is allowed to read/write. */
+/**
+ * Object-key prefixes the app is allowed to read/write. Every one of these is
+ * served by /api/media with NO auth check (see PUBLIC_MEDIA_PREFIXES there) —
+ * they're all meant to be publicly visible (avatars, blog/story images,
+ * community content, ...). If a genuinely private prefix is ever added here
+ * (invoices, therapy attachments, ...), it must NOT be added to
+ * PUBLIC_MEDIA_PREFIXES in src/app/api/media/[...key]/route.ts, or it will be
+ * served to anyone who knows/guesses the key.
+ */
 export const MEDIA_PREFIXES = ["avatars", "staff", "blog", "stories", "content", "practices", "challenges", "community"] as const;
 const KEY_RE = new RegExp(`^(${MEDIA_PREFIXES.join("|")})/[A-Za-z0-9][A-Za-z0-9._-]{0,200}$`);
 

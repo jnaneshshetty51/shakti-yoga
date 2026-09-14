@@ -1,5 +1,16 @@
 import { NextResponse } from 'next/server';
-import { toStorageKey, getObjectStream } from '@/lib/storage';
+import { toStorageKey, getObjectStream, MEDIA_PREFIXES } from '@/lib/storage';
+import { getSession } from '@/lib/auth';
+
+/**
+ * Every prefix currently in MEDIA_PREFIXES is meant to be publicly visible
+ * (avatars, blog/story images, community content, ...), so this route serves
+ * them with no auth check. Anything NOT in this explicit list requires a
+ * session — a deliberate opt-in, so a future private prefix (invoices,
+ * therapy attachments, ...) added to MEDIA_PREFIXES for upload/validation
+ * purposes doesn't automatically become publicly readable here too.
+ */
+const PUBLIC_MEDIA_PREFIXES = new Set<string>(MEDIA_PREFIXES);
 
 /**
  * Media proxy. Serves a private MinIO object at a stable path
@@ -11,6 +22,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ key: string[] }
     const { key: parts } = await ctx.params;
     const key = toStorageKey(parts.join('/'));
     if (!key) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const prefix = key.split('/')[0];
+    if (!PUBLIC_MEDIA_PREFIXES.has(prefix)) {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
     // Range requests matter for video: without them native/HTML5 players can
     // refuse to play at all, or can't seek past the first buffered chunk.

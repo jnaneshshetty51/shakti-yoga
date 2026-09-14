@@ -21,39 +21,49 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
     const payment = await prisma.payment.findUnique({ where: { id } });
     if (!payment) return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
-    if (payment.status !== PaymentStatus.PAID) {
-        return NextResponse.json({ error: `Only PAID payments can be refunded (this one is ${payment.status}).` }, { status: 409 });
+    if (payment.status !== PaymentStatus.PAID && payment.status !== PaymentStatus.PARTIALLY_REFUNDED) {
+        return NextResponse.json({ error: `Only paid payments can be refunded (this one is ${payment.status}).` }, { status: 409 });
+    }
+
+    const remaining = Math.round((payment.amount - payment.refundedAmount) * 100) / 100;
+    if (remaining <= 0) {
+        return NextResponse.json({ error: 'This payment has already been fully refunded.' }, { status: 409 });
     }
 
     const amount = body.amount != null ? Number(body.amount) : undefined;
-    if (amount != null && (!Number.isFinite(amount) || amount <= 0 || amount > payment.amount)) {
-        return NextResponse.json({ error: 'Invalid refund amount.' }, { status: 400 });
+    if (amount != null && (!Number.isFinite(amount) || amount <= 0 || amount > remaining)) {
+        return NextResponse.json({ error: `Invalid refund amount. At most ₹${remaining} remains refundable.` }, { status: 400 });
     }
-    const full = amount == null || amount >= payment.amount;
+    const refundNow = amount ?? remaining;
+    const full = refundNow >= remaining;
 
     try {
         if (payment.provider === 'razorpay' && payment.providerPaymentId) {
             if (!isRazorpayConfigured()) {
                 return NextResponse.json({ error: 'Razorpay is not configured on this server.' }, { status: 503 });
             }
-            await refundPayment(payment.providerPaymentId, full ? undefined : amount);
+            await refundPayment(payment.providerPaymentId, full ? undefined : refundNow);
         }
         // manual / store payments: no external call — just record the state change.
 
+        const newRefundedAmount = Math.round((payment.refundedAmount + refundNow) * 100) / 100;
         const updated = await prisma.payment.update({
             where: { id },
-            data: full ? { status: PaymentStatus.REFUNDED } : {},
+            data: {
+                refundedAmount: newRefundedAmount,
+                status: full ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
+            },
         });
 
         await auditAs({ id: admin.id, email: admin.email }, request)({
             action: 'payment.refund',
             entity: 'Payment',
             entityId: id,
-            before: { status: payment.status, amount: payment.amount },
-            after: { refunded: full ? payment.amount : amount, partial: !full },
+            before: { status: payment.status, amount: payment.amount, refundedAmount: payment.refundedAmount },
+            after: { status: updated.status, refundedAmount: newRefundedAmount, refundedNow: refundNow },
         });
 
-        return NextResponse.json({ ok: true, status: updated.status, partial: !full });
+        return NextResponse.json({ ok: true, status: updated.status, refundedAmount: newRefundedAmount, partial: !full });
     } catch (error) {
         console.error('Refund error:', error);
         const message = error instanceof Error && error.message.length < 200 ? error.message : 'Refund failed at the payment provider.';

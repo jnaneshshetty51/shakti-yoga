@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "PaymentStatus" ADD VALUE 'PARTIALLY_REFUNDED';
+
+-- AlterTable
+ALTER TABLE "Payment" ADD COLUMN "refundedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0;
