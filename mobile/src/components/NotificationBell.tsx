@@ -7,7 +7,13 @@ import { colors } from "@/theme";
 /** Header bell that opens the activity screen, with an unread-count badge. */
 export function NotificationBell({ count = 0 }: { count?: number }) {
   return (
-    <Pressable onPress={() => router.push("/activity")} hitSlop={12} style={styles.wrap}>
+    <Pressable
+      onPress={() => router.push("/activity")}
+      hitSlop={12}
+      style={styles.wrap}
+      accessibilityRole="button"
+      accessibilityLabel={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
+    >
       <Ionicons name="notifications-outline" size={24} color={colors.primary} />
       {count > 0 && (
         <View style={styles.badge}>

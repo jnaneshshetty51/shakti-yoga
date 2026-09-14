@@ -5,7 +5,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { SessionBalanceCard } from "@/components/SessionBalanceCard";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
-import { spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 import type { SessionBalance } from "@/lib/types";
 
 type AttendanceStatus = "CHECKED_IN" | "PRESENT" | "ABSENT";
@@ -67,6 +67,6 @@ export default function SessionHistoryScreen() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#0002" },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   note: { fontSize: 12, marginTop: spacing.md, textAlign: "center" },
 });

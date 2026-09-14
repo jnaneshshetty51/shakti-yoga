@@ -35,6 +35,21 @@ export class ApiError extends Error {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Called on a 401 from an authenticated request — i.e. the token this app is
+ * holding has been revoked server-side (password reset, admin deactivation)
+ * mid-session, not just "this login attempt had the wrong password." Set by
+ * AuthContext so it can clear the session; without this, every screen using
+ * this token just showed the raw "Unauthorized" error string forever instead
+ * of routing back to login.
+ */
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
+
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
@@ -47,17 +62,45 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method: opts.method ?? "GET",
-    headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: opts.method ?? "GET",
+      headers,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError("The request timed out. Check your connection and try again.", 0);
+    }
+    throw new ApiError("You appear to be offline. Check your connection and try again.", 0);
+  } finally {
+    clearTimeout(timer);
+  }
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  // A gateway/proxy error (502, etc.) or an HTML error page isn't JSON — don't
+  // let JSON.parse's exception replace a clear "server error" with a raw
+  // parser message.
+  let data: Record<string, unknown> = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new ApiError(
+        res.ok ? "Unexpected response from the server." : `Something went wrong (${res.status}). Please try again.`,
+        res.status,
+      );
+    }
+  }
 
   if (!res.ok) {
-    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data);
+    if (res.status === 401 && !opts.anonymous) onUnauthorized?.();
+    throw new ApiError((data?.error as string) || `Request failed (${res.status})`, res.status, data);
   }
 
   // Some routes (e.g. /api/auth/me) roll the session forward and hand back a

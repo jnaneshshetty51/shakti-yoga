@@ -69,8 +69,8 @@ export default function LoginScreen() {
         Log In
       </Button>
 
-      <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
-        <BodyText style={{ color: colors.primary, fontWeight: "700" }}>Forgot password?</BodyText>
+      <Link href="/(auth)/forgot-password" style={styles.switchLink}>
+        <BodyText muted style={{ fontSize: 13 }}>Forgot password?</BodyText>
       </Link>
 
       <Link href="/(auth)/signup" style={styles.switchLink}>
@@ -95,6 +95,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   error: { color: colors.danger, marginBottom: spacing.md },
-  forgotLink: { marginTop: spacing.md, alignSelf: "center" },
   switchLink: { marginTop: spacing.lg, alignSelf: "center" },
 });

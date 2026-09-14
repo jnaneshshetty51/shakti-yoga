@@ -169,14 +169,31 @@ function Interactions({ item, contentId }: { item: Extract<FeedItem, { kind: "re
   return (
     <View style={{ marginTop: spacing.lg }}>
       <View style={styles.actionRow}>
-        <Pressable onPress={() => toggle("like")} style={styles.action}>
+        <Pressable
+          onPress={() => toggle("like")}
+          style={styles.action}
+          accessibilityRole="button"
+          accessibilityLabel={liked ? "Unlike" : "Like"}
+          accessibilityState={{ selected: liked }}
+        >
           <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? colors.danger : colors.muted} />
           <BodyText muted>{likeCount}</BodyText>
         </Pressable>
-        <Pressable onPress={() => toggle("save")} style={styles.action}>
+        <Pressable
+          onPress={() => toggle("save")}
+          style={styles.action}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? "Remove from saved" : "Save"}
+          accessibilityState={{ selected: saved }}
+        >
           <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={20} color={saved ? colors.primary : colors.muted} />
         </Pressable>
-        <Pressable onPress={() => Share.share({ message: `${item.title} — shaktiyoga.in`, url: `${API_URL}/content/${contentId}` })} style={styles.action}>
+        <Pressable
+          onPress={() => Share.share({ message: `${item.title} — shaktiyoga.in`, url: `${API_URL}/content/${contentId}` })}
+          style={styles.action}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
+        >
           <Ionicons name="share-outline" size={20} color={colors.muted} />
         </Pressable>
       </View>

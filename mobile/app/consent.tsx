@@ -80,6 +80,6 @@ export default function ConsentScreen() {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#0001",
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
 });

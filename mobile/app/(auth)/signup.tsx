@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, TextInput, StyleSheet, ScrollView } from "react-native";
-import { router, Link } from "expo-router";
+import { router, Link, useLocalSearchParams } from "expo-router";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { useAuth, ApiError } from "@/context/AuthContext";
 import { colors, spacing, radius } from "@/theme";
@@ -16,6 +16,8 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 
 export default function SignupScreen() {
   const { register } = useAuth();
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
+  const referralCode = typeof ref === "string" ? ref.trim().toUpperCase().slice(0, 24) : "";
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,6 +40,7 @@ export default function SignupScreen() {
         password,
         country: country || undefined,
         phone: phone || undefined,
+        referralCode: referralCode || undefined,
       });
       router.replace("/(tabs)");
     } catch (err) {
@@ -56,6 +59,14 @@ export default function SignupScreen() {
         </BodyText>
 
         {error && <BodyText style={styles.error}>{error}</BodyText>}
+
+        {referralCode ? (
+          <View style={styles.referralBanner}>
+            <BodyText style={{ color: colors.primary, fontSize: 13 }}>
+              Referral code <BodyText style={{ fontWeight: "700" }}>{referralCode}</BodyText> applied — you&rsquo;ll get a discount on your first month at checkout.
+            </BodyText>
+          </View>
+        ) : null}
 
         <View style={styles.row}>
           <Field label="First name" value={firstName} onChangeText={setFirstName} style={{ flex: 1 }} />
@@ -99,4 +110,10 @@ const styles = StyleSheet.create({
   },
   error: { color: colors.danger, marginBottom: spacing.md },
   switchLink: { marginTop: spacing.lg, alignSelf: "center" },
+  referralBanner: {
+    backgroundColor: colors.primary + "1A",
+    borderRadius: radius.control,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
 });

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { verifyToken } from '@/lib/jwt';
+import { signToken, sessionClaims, SESSION_MAX_AGE } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { countryForIp } from '@/lib/geoip';
 
 const REGION_COOKIE = 'sy_region';
@@ -19,6 +22,39 @@ export async function middleware(request: NextRequest) {
     const needsTeacher = pathname === '/teacher' || pathname.startsWith('/teacher/') || pathname.startsWith('/api/teacher');
     const needsMember = pathname.startsWith('/dashboard');
     const needsAuth = needsAdmin || needsTeacher || needsMember;
+
+    // ---- Mobile → web session handoff (?handoff=) -------------------------
+    // Exchanges a one-time token (minted by /api/auth/web-handoff for a
+    // bearer-token mobile session) for a real cookie session, then redirects
+    // to the same path with the token stripped. Lets "Change plan" open the
+    // web checkout from the app without forcing a second login.
+    const handoffToken = request.nextUrl.searchParams.get('handoff');
+    if (handoffToken) {
+        const clean = new URL(pathname + request.nextUrl.search, request.url);
+        clean.searchParams.delete('handoff');
+
+        const tokenHash = createHash('sha256').update(handoffToken).digest('hex');
+        const row = await prisma.webHandoffToken.findUnique({ where: { tokenHash } });
+        if (row && !row.usedAt && row.expiresAt.getTime() > Date.now()) {
+            const user = await prisma.user.findUnique({ where: { id: row.userId } });
+            if (user) {
+                await prisma.webHandoffToken.update({ where: { id: row.id }, data: { usedAt: new Date() } });
+                const jwt = await signToken(sessionClaims(user));
+                const res = NextResponse.redirect(clean);
+                res.cookies.set('token', jwt, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: SESSION_MAX_AGE,
+                    path: '/',
+                });
+                return res;
+            }
+        }
+        // Invalid/expired/already-used — fall through as a plain anonymous
+        // request to the clean URL rather than surfacing a dead token.
+        return NextResponse.redirect(clean);
+    }
 
     // ---- Pricing region (every route) -------------------------------------
     // Precedence: ?region= override → existing cookie → GeoIP header → IN.

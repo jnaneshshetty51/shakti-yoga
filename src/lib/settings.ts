@@ -8,6 +8,7 @@ const DEFAULTS = {
     social_youtube_url: '',
     social_facebook_url: '',
     social_whatsapp_url: 'https://wa.me/917760222478', // matches the site's previous hardcoded link
+    min_supported_mobile_version: '1.0.0', // /api/version — app.json's "version"; bump to force-upgrade older installs
 } as const;
 
 export type SettingKey = keyof typeof DEFAULTS;

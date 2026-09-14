@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { useJoin } from "@/lib/useJoin";
 import { formatClassTime, formatDay } from "@/lib/format";
-import { spacing } from "@/theme";
+import { colors, spacing } from "@/theme";
 import type { ClassesResponse, ClassView } from "@/lib/types";
 
 function ClassCard({ item }: { item: ClassView }) {
@@ -107,5 +107,5 @@ export default function ClassesScreen() {
 const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
   card: { marginBottom: spacing.sm },
-  upcomingRow: { paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#0002" },
+  upcomingRow: { paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
 });
