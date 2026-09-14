@@ -32,6 +32,35 @@ export async function computeProgress(challenge: Challenge, userId: string): Pro
 }
 
 /**
+ * Mark one participant complete and issue the same certificate the automatic
+ * path would have — shared by updateChallengeProgress (goal reached) and the
+ * admin "mark complete" override, so a manually-completed participant isn't
+ * missing the certificate the certificates page's own copy promises.
+ * No-op if already complete.
+ */
+export async function markParticipantComplete(
+    participant: ChallengeParticipant,
+    challenge: Challenge,
+    reason: string,
+): Promise<void> {
+    if (participant.completedAt) return;
+    await prisma.challengeParticipant.update({
+        where: { id: participant.id },
+        data: { completedAt: new Date() },
+    });
+    await prisma.certificate.create({
+        data: {
+            userId: participant.userId,
+            title: `Completed: ${challenge.title}`,
+            reason,
+            sourceType: 'Challenge',
+            sourceId: participant.id,
+        },
+    }).catch(() => {});
+    await checkAchievements(participant.userId).catch(() => {});
+}
+
+/**
  * Recompute the member's progress across the challenges they've joined and mark
  * any newly finished. Call after a class join / practice completion.
  */
@@ -42,28 +71,15 @@ export async function updateChallengeProgress(userId: string): Promise<void> {
         include: { challenge: true },
     });
 
-    let anyCompleted = false;
     for (const p of parts) {
         const progress = await computeProgress(p.challenge, userId);
         if (progress >= p.challenge.goalTarget) {
-            await prisma.challengeParticipant.update({
-                where: { id: p.id },
-                data: { completedAt: new Date() },
-            });
-            // Predefined criterion met — auto-issue a certificate, pending Founder/Admin approval.
-            await prisma.certificate.create({
-                data: {
-                    userId,
-                    title: `Completed: ${p.challenge.title}`,
-                    reason: `Reached the ${p.challenge.goalTarget} ${GOAL_LABEL[p.challenge.goalType]} goal.`,
-                    sourceType: 'Challenge',
-                    sourceId: p.id,
-                },
-            }).catch(() => {});
-            anyCompleted = true;
+            await markParticipantComplete(
+                p, p.challenge,
+                `Reached the ${p.challenge.goalTarget} ${GOAL_LABEL[p.challenge.goalType]} goal.`,
+            );
         }
     }
-    if (anyCompleted) await checkAchievements(userId).catch(() => {});
 }
 
 export interface ChallengeView {

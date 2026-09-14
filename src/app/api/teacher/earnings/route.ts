@@ -26,8 +26,9 @@ export async function GET() {
     const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1)); // start of 6-month window
 
     try {
-        const [rateRows, classInstances, bookings, attendance, teacherBookingUsers] = await Promise.all([
+        const [rateRows, staffProfile, classInstances, bookings, attendance, teacherBookingUsers] = await Promise.all([
             prisma.setting.findMany({ where: { key: { in: [RATE_KEYS.class, RATE_KEYS.session] } } }),
+            prisma.staffProfile.findUnique({ where: { userId: teacherId }, select: { classRate: true, sessionRate: true } }),
             prisma.classInstance.findMany({
                 where: { batch: { teacherId }, status: 'Completed', date: { gte: since } },
                 select: { date: true },
@@ -46,7 +47,11 @@ export async function GET() {
             }),
         ]);
 
+        // A teacher's own StaffProfile.classRate/sessionRate override the studio-wide
+        // Setting when present, so differentiated pay is possible per teacher.
         const rateFor = (which: keyof typeof RATE_DEFAULTS) => {
+            const override = which === 'class' ? staffProfile?.classRate : staffProfile?.sessionRate;
+            if (typeof override === 'number' && override >= 0) return override;
             const row = rateRows.find((r) => r.key === RATE_KEYS[which]);
             const n = row ? Number(row.value) : NaN;
             return Number.isFinite(n) && n >= 0 ? n : RATE_DEFAULTS[which];
