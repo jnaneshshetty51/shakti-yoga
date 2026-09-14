@@ -138,6 +138,22 @@ export default function AdminSubscriptionsPage() {
         fetchSubscriptions();
     };
 
+    const bulkCancel = async (ids: string[]) => {
+        if (!confirm(`Cancel ${ids.length} subscription(s)? Access runs out at each one's current renewal date.`)) return;
+        const results = await Promise.all(
+            ids.map((id) =>
+                fetch("/api/admin/subscriptions", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id, status: "CANCELLED" }),
+                }),
+            ),
+        );
+        const failed = results.filter((r) => !r.ok).length;
+        showToast(failed ? "warning" : "success", failed ? `${failed} of ${ids.length} could not be cancelled` : `${ids.length} subscription(s) cancelled`);
+        fetchSubscriptions();
+    };
+
     if (loading) return <PageLoading title="Subscriptions" />;
 
     const editFields: FieldDef[] = [
@@ -161,6 +177,8 @@ export default function AdminSubscriptionsPage() {
                 data={subscriptions}
                 columns={columns}
                 title="Subscriptions"
+                enableBulkActions
+                bulkActions={[{ label: "Cancel selected", tone: "danger", onClick: bulkCancel }]}
                 actions={(s) => (
                     <TableActions>
                         <ActionButton onClick={() => setEditing(s)}>Edit</ActionButton>
