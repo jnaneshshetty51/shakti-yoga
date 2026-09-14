@@ -22,6 +22,12 @@ export const colors = {
   warningLight: "#FBF3EA",
   success: "#2D4739",
   successLight: "#EAF1E8",
+  // Vivid accent reserved for "live now" indicators — deliberately distinct
+  // from the muted brand `success` green, which would barely register as a
+  // pulsing live cue. Named here instead of inlined so it stays a single
+  // source of truth.
+  live: "#10B981",
+  liveText: "#059669",
 } as const;
 
 export const spacing = {

@@ -24,7 +24,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
           borderTopColor: colors.border,
-          backgroundColor: "#FAF8F5",
+          backgroundColor: colors.background,
           ...(isTablet
             ? {
                 height: 68,

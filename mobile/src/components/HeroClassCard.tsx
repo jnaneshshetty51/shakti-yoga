@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary,
   },
   pulseDotLive: {
-    backgroundColor: "#10B981",
+    backgroundColor: colors.live,
   },
   eyebrow: {
     fontSize: 11,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     color: colors.secondary,
   },
   eyebrowLive: {
-    color: "#059669",
+    color: colors.liveText,
   },
   classTitle: {
     fontSize: 20,
