@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { renderMarkdown } from "@/lib/markdown";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import type { Metadata } from "next";
 
 // Rendered once then served from cache, refreshed at most every 5 min.
@@ -60,6 +62,8 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
     return (
         <main className="min-h-screen bg-white pt-24 pb-20">
             <article className="max-w-3xl mx-auto px-4">
+                <Breadcrumbs items={[{ label: "Blog", href: "/blog" }, { label: post.title }]} />
+
                 {/* Header */}
                 <header className="mb-12 text-center">
                     <div className="flex justify-center gap-4 text-xs font-bold uppercase tracking-widest text-gray-500 mb-6">
@@ -81,18 +85,10 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                 )}
 
                 {/* Content */}
-                <div className="prose prose-lg prose-headings:font-serif prose-headings:text-primary prose-a:text-secondary mx-auto">
-                    {/* 
-                In a real app, we'd use a proper markdown renderer. 
-                For now, we'll just render the text with simple whitespace handling 
-                or use a basic replacement since we don't have 'react-markdown' installed yet.
-                Let's just display it as pre-wrap for simplicity in this prototype 
-                or do a simple split.
-            */}
-                    <div className="whitespace-pre-wrap font-sans text-text/80 leading-relaxed">
-                        {post.content}
-                    </div>
-                </div>
+                <div
+                    className="prose prose-lg prose-headings:font-serif prose-headings:text-primary prose-a:text-secondary mx-auto"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
+                />
 
                 {/* Footer / Share */}
                 <div className="mt-16 pt-8 border-t border-gray-100 text-center">

@@ -8,7 +8,10 @@ function RecommendationContent() {
     const searchParams = useSearchParams();
     const plan = searchParams.get("plan");
     const isTherapy = plan === "therapy";
-    const [priceLabel, setPriceLabel] = useState(isTherapy ? "₹5,000" : "₹2,000");
+    // No hardcoded placeholder — a stale guess here has drifted from the real
+    // price before (₹5,000 shown vs. an actual ₹4,999), so show nothing until
+    // the live price loads rather than risk showing the wrong number.
+    const [priceLabel, setPriceLabel] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -51,7 +54,8 @@ function RecommendationContent() {
                     </p>
 
                     <div className="text-5xl font-serif text-primary mb-6">
-                        {priceLabel}<span className="text-lg text-text/50 font-sans">/month</span>
+                        {priceLabel ?? <span className="text-3xl text-text/30 align-middle">Loading price…</span>}
+                        {priceLabel && <span className="text-lg text-text/50 font-sans">/month</span>}
                     </div>
 
                     <p className="font-sans text-text/80 mb-8 leading-relaxed">

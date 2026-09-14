@@ -1,34 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Fallback testimonials for when DB is unavailable
-const FALLBACK_TESTIMONIALS = [
-    {
-        id: 'fallback-1',
-        authorName: 'Priya Sharma',
-        location: 'London, UK',
-        planType: 'NRI',
-        quote: "I never thought online yoga could be this effective. My back pain is gone after 3 months of therapy.",
-        rating: 5
-    },
-    {
-        id: 'fallback-2',
-        authorName: 'Rahul Mehta',
-        location: 'California, USA',
-        planType: 'Everyday Yoga',
-        quote: "The everyday classes help me stay grounded despite my hectic work schedule. It's my daily sanctuary.",
-        rating: 5
-    },
-    {
-        id: 'fallback-3',
-        authorName: 'Sarah Jenkins',
-        location: 'Dubai, UAE',
-        planType: 'NRI',
-        quote: "Authentic, traditional, yet so accessible. The teachers really care about your progress.",
-        rating: 4
-    }
-];
-
 export async function GET() {
     try {
         const stories = await prisma.story.findMany({
@@ -47,9 +19,12 @@ export async function GET() {
             imageUrl: story.imageUrl
         }));
 
-        return NextResponse.json(testimonials.length > 0 ? testimonials : FALLBACK_TESTIMONIALS);
+        // No invented fallback here — an empty list is an honest "no published
+        // stories yet," unlike three fabricated named customers that used to
+        // stand in for real testimonials with no disclosure.
+        return NextResponse.json(testimonials);
     } catch (error) {
         console.error('Error fetching testimonials:', error);
-        return NextResponse.json(FALLBACK_TESTIMONIALS);
+        return NextResponse.json({ error: 'Could not load testimonials' }, { status: 500 });
     }
 }

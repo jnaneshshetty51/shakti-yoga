@@ -161,6 +161,9 @@ export async function markReferralConverted(refereeId: string, planDbType?: Plan
     const status = await expireIfNeeded(ref);
     if (status !== ReferralStatus.PENDING) return;
 
+    const referee = await prisma.user.findUnique({ where: { id: refereeId }, select: { emailVerified: true } });
+    if (!referee?.emailVerified) return; // leave PENDING — reward once they verify their email
+
     if (planDbType === 'YOGA_THERAPY') {
         const intake = await prisma.therapyIntake.findUnique({ where: { userId: refereeId }, select: { status: true } });
         const recommended =

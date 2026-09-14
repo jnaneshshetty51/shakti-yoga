@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
     const { login } = useAuth();
+    const verify = useSearchParams().get("verify");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(false);
@@ -72,6 +74,17 @@ export default function LoginPage() {
                     </Link>
                     <h2 className="mt-3 text-lg text-gray-500">Welcome back</h2>
                 </div>
+
+                {verify === "done" && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+                        Email confirmed — thanks!
+                    </div>
+                )}
+                {verify === "invalid" && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm">
+                        That confirmation link has expired or was already used.
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
@@ -152,5 +165,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
     );
 }

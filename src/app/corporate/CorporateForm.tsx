@@ -54,7 +54,7 @@ export default function CorporateForm() {
                     <span className="text-5xl block">🎉</span>
                     <h3 className="font-serif text-2xl text-primary">Proposal Request Received</h3>
                     <p className="text-text/80 text-sm max-w-md mx-auto">
-                        Thank you, {form.contactName}. We have received your inquiry for <strong>{form.companyName}</strong>. Our enterprise lead will contact you shortly with program details and pilot booking slots.
+                        Thank you, {form.contactName}. We have received your inquiry for <strong>{form.companyName}</strong>. Our enterprise lead will contact you within 1 business day with program details and pilot booking slots.
                     </p>
                     <button
                         onClick={() => { setDone(false); setForm({ ...BLANK }); }}
