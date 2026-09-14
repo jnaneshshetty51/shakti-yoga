@@ -14,9 +14,12 @@ import { isAppLockOn, authenticateIfLocked } from "@/lib/appLock";
 import { resolveNotificationPath, resolveIncomingUrl, isPublicAuthPath } from "@/lib/deepLink";
 import { isVersionBelow } from "@/lib/version";
 import { api } from "@/lib/api";
+import { initPurchases } from "@/lib/purchases";
 import { colors, spacing } from "@/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+// A no-op until EXPO_PUBLIC_REVENUECAT_*_KEY is set — see src/lib/purchases.ts.
+initPurchases();
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({

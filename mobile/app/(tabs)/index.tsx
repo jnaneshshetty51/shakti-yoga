@@ -196,8 +196,8 @@ function EverydayHome({
               <Button>Contact Support</Button>
             </Link>
           ) : paywall ? (
-            <Button onPress={() => router.push(isTrial ? "/info/everyday" : "/membership")}>
-              {isTrial ? "Choose a Plan to Continue" : "Renew Membership"}
+            <Button onPress={() => router.push("/subscribe")}>
+              {isTrial ? "See plans" : "Renew Membership"}
             </Button>
           ) : null}
         </Card>
