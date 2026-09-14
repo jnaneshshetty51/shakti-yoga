@@ -159,7 +159,7 @@ model User {
   trialStartedAt DateTime? // set once, the first time the user activates a free trial
   tokenVersion Int       @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
   referralCode      String?  @unique // this user's own shareable code
-  referralCreditBalance Float @default(0) // ₹ wallet, redeemable at checkout (any plan, any renewal)
+  referralCreditBalance Decimal @default(0) @db.Decimal(10, 2) // ₹ wallet, redeemable at checkout (any plan, any renewal) — Decimal, not Float: repeatedly incremented/decremented over the account's lifetime, and binary float arithmetic drifts under repeated addition
   adminDepartment AdminDepartment? // null = full admin access; set = scoped to one admin department
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -342,7 +342,7 @@ model Payment {
   providerSignature      String?
   creditApplied          Float         @default(0) // ₹ of the payer's own referral-credit wallet spent on this payment
   refereeDiscountApplied Float         @default(0) // ₹ one-time new-referee discount spent on this payment
-  refundedAmount         Float         @default(0) // ₹ refunded so far (cumulative across possibly multiple partial refunds)
+  refundedAmount         Decimal       @default(0) @db.Decimal(10, 2) // ₹ refunded so far (cumulative across possibly multiple partial refunds) — Decimal, not Float, for the same reason as User.referralCreditBalance
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 }

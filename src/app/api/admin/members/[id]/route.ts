@@ -64,7 +64,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
             active: user.active,
             therapyCredits: user.credits,
             referralCode: user.referralCode,
-            referralCreditBalance: user.referralCreditBalance,
+            referralCreditBalance: Number(user.referralCreditBalance),
             createdAt: user.createdAt.toISOString(),
             lastLogin: user.lastLogin?.toISOString() ?? null,
             trialStartedAt: user.trialStartedAt?.toISOString() ?? null,

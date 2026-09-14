@@ -124,7 +124,7 @@ export async function previewCheckoutDiscount(
         }
     }
 
-    const creditApplied = Math.min(user?.referralCreditBalance ?? 0, remaining);
+    const creditApplied = Math.min(user ? Number(user.referralCreditBalance) : 0, remaining);
 
     return { creditApplied, refereeDiscountApplied };
 }
@@ -282,7 +282,7 @@ export async function referralStats(userId: string): Promise<ReferralStats> {
         message:
             `I've been practising with Shakti Yoga — live classes every day + 1:1 yoga therapy. ` +
             `Use my code ${code} and get ₹${settings.refereeDiscount} off your first membership: ${APP_URL}/r/${code}`,
-        creditBalance: me?.referralCreditBalance ?? 0,
+        creditBalance: me ? Number(me.referralCreditBalance) : 0,
         referrerReward: settings.referrerReward,
         refereeDiscount: settings.refereeDiscount,
         referrals,

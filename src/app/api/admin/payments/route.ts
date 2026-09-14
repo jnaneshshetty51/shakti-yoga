@@ -68,7 +68,7 @@ export async function GET(request: Request) {
                 providerPaymentId: p.providerPaymentId ?? p.providerOrderId ?? '',
                 creditApplied: p.creditApplied,
                 refereeDiscountApplied: p.refereeDiscountApplied,
-                refundedAmount: p.refundedAmount,
+                refundedAmount: Number(p.refundedAmount),
                 createdAt: p.createdAt.toISOString(),
             })),
             capped: rows.length === limit,

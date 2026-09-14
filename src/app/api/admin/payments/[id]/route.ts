@@ -25,7 +25,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         return NextResponse.json({ error: `Only paid payments can be refunded (this one is ${payment.status}).` }, { status: 409 });
     }
 
-    const remaining = Math.round((payment.amount - payment.refundedAmount) * 100) / 100;
+    const alreadyRefunded = Number(payment.refundedAmount);
+    const remaining = Math.round((payment.amount - alreadyRefunded) * 100) / 100;
     if (remaining <= 0) {
         return NextResponse.json({ error: 'This payment has already been fully refunded.' }, { status: 409 });
     }
@@ -46,7 +47,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         }
         // manual / store payments: no external call — just record the state change.
 
-        const newRefundedAmount = Math.round((payment.refundedAmount + refundNow) * 100) / 100;
+        const newRefundedAmount = Math.round((alreadyRefunded + refundNow) * 100) / 100;
         const updated = await prisma.payment.update({
             where: { id },
             data: {
@@ -59,7 +60,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
             action: 'payment.refund',
             entity: 'Payment',
             entityId: id,
-            before: { status: payment.status, amount: payment.amount, refundedAmount: payment.refundedAmount },
+            before: { status: payment.status, amount: payment.amount, refundedAmount: alreadyRefunded },
             after: { status: updated.status, refundedAmount: newRefundedAmount, refundedNow: refundNow },
         });
 
