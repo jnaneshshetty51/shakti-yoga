@@ -36,10 +36,18 @@ export type User = {
     joinedAt: string;
 };
 
+const PAGE_SIZE = 25;
+
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<User | null>(null);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+    const [roleFilter, setRoleFilter] = useState("");
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const { user: viewer } = useAuth();
@@ -47,21 +55,33 @@ export default function AdminUsersPage() {
 
     const fetchUsers = useCallback(async () => {
         try {
-            const response = await fetch('/api/admin/users');
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('q', search);
+            if (statusFilter) params.set('status', statusFilter);
+            if (roleFilter) params.set('role', roleFilter);
+            if (sort) { params.set('sortKey', sort.key); params.set('sortDir', sort.direction); }
+            const response = await fetch(`/api/admin/users?${params}`);
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data.users || []);
+                setTotalCount(data.totalCount ?? 0);
             }
         } catch (error) {
             console.error('Failed to fetch users:', error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [page, search, statusFilter, roleFilter, sort]);
 
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
+    // Only Name/Email map to a real, directly-sortable column server-side —
+    // Role/Status render a derived Badge (never wired to sort even before
+    // this page went server-paginated, since DTable only calls handleSort
+    // for string accessors) and Last Login is a formatted relative-time
+    // string, not the raw sortable date, so neither offers a sort control.
     const columns = [
         { header: "Name", accessor: "name" as keyof User, className: "font-bold text-gray-800", sortable: true },
         { header: "Email", accessor: "email" as keyof User, sortable: true },
@@ -72,14 +92,12 @@ export default function AdminUsersPage() {
                     {user.role.replace('member_', '').replace('_', ' ').toLowerCase()}
                 </Badge>
             ),
-            sortable: true
         },
         {
             header: "Status",
             accessor: (user: User) => <StatusBadge status={user.status} />,
-            sortable: true
         },
-        { header: "Last Login", accessor: "lastLogin" as keyof User, sortable: true },
+        { header: "Last Login", accessor: "lastLogin" as keyof User },
     ];
 
     const filters = [
@@ -118,7 +136,10 @@ export default function AdminUsersPage() {
             return;
         }
         showToast('success', `${user.name} deleted`);
-        fetchUsers();
+        // Removing the last row on a page beyond the first would otherwise
+        // leave the admin looking at a page that no longer exists.
+        if (users.length === 1 && page > 1) setPage((p) => p - 1);
+        else fetchUsers();
     };
 
     const handleBulkDelete = async (ids: string[]) => {
@@ -130,8 +151,10 @@ export default function AdminUsersPage() {
         if (!ok) return;
         const results = await Promise.all(ids.map(id => fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' })));
         const failed = results.filter(r => !r.ok).length;
+        const succeeded = ids.length - failed;
         showToast(failed ? 'warning' : 'success', failed ? `${failed} of ${ids.length} could not be deleted` : `${ids.length} users deleted`);
-        fetchUsers();
+        if (succeeded >= users.length && page > 1) setPage((p) => p - 1);
+        else fetchUsers();
     };
 
     const submitEdit = async (values: EntityValues) => {
@@ -192,6 +215,19 @@ export default function AdminUsersPage() {
                 filters={filters}
                 enableBulkActions={true}
                 onBulkDelete={handleBulkDelete}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === 'status') setStatusFilter(value);
+                        else if (key === 'role') setRoleFilter(value);
+                        setPage(1);
+                    },
+                    onSortChange: (key, direction) => setSort({ key, direction }),
+                }}
                 actions={(user) => (
                     <TableActions>
                         <ActionButton onClick={() => setEditing(user)}>Edit</ActionButton>

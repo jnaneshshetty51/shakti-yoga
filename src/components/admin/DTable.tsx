@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { LuSearch, LuDownload, LuPlus, LuChevronLeft, LuChevronRight, LuArrowUpDown } from "react-icons/lu";
 import { Button } from "./ui";
 
@@ -28,6 +28,26 @@ type BulkAction = {
     onClick: (selectedIds: string[]) => void;
 };
 
+/**
+ * Opt-in server-driven mode: `data` is assumed to already be just the
+ * current page's rows (fetched by the parent from the server), so DTable
+ * skips its own client-side filter/sort/paginate entirely and instead
+ * forwards every search/filter/sort/page change up to the parent, which owns
+ * fetching the right slice. Without this prop DTable behaves exactly as
+ * before — client-side over whatever's in `data`.
+ */
+type ServerMode = {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    onPageChange: (page: number) => void;
+    /** Debounced ~300ms by DTable before calling. Reset to page 1 is the caller's responsibility. */
+    onSearchChange?: (q: string) => void;
+    /** Reset to page 1 is the caller's responsibility. */
+    onFilterChange?: (key: string, value: string) => void;
+    onSortChange?: (key: string, direction: 'asc' | 'desc') => void;
+};
+
 type DTableProps<T> = {
     data: T[];
     columns: Column<T>[];
@@ -40,6 +60,7 @@ type DTableProps<T> = {
     onBulkDelete?: (selectedIds: string[]) => void;
     /** One or more bulk actions on the selection toolbar. Falls back to a single "Delete" action wired to onBulkDelete when omitted. */
     bulkActions?: BulkAction[];
+    server?: ServerMode;
 };
 
 export default function DTable<T extends { id: string | number;[key: string]: unknown }>({
@@ -53,6 +74,7 @@ export default function DTable<T extends { id: string | number;[key: string]: un
     onCreate,
     onBulkDelete,
     bulkActions,
+    server,
 }: DTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -61,8 +83,18 @@ export default function DTable<T extends { id: string | number;[key: string]: un
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
-    // 1. Filter & Search
+    // Debounce search -> server.onSearchChange. Local searchTerm state still
+    // drives the input's own display regardless of mode.
+    useEffect(() => {
+        if (!server?.onSearchChange) return;
+        const t = setTimeout(() => server.onSearchChange!(searchTerm), 300);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on searchTerm; server.onSearchChange is expected to be referentially stable enough for this
+    }, [searchTerm]);
+
+    // 1. Filter & Search — skipped entirely in server mode; `data` is already the right slice.
     const filteredData = useMemo(() => {
+        if (server) return data;
         return data.filter((item) => {
             const matchesSearch = !searchTerm || Object.values(item).some((val) =>
                 String(val).toLowerCase().includes(searchTerm.toLowerCase())
@@ -73,11 +105,11 @@ export default function DTable<T extends { id: string | number;[key: string]: un
             });
             return matchesSearch && matchesFilters;
         });
-    }, [data, searchTerm, activeFilters]);
+    }, [data, searchTerm, activeFilters, server]);
 
-    // 2. Sorting
+    // 2. Sorting — skipped in server mode (the fetched page is already sorted server-side).
     const sortedData = useMemo(() => {
-        if (!sortConfig) return filteredData;
+        if (server || !sortConfig) return filteredData;
         return [...filteredData].sort((a, b) => {
             const aValue = a[sortConfig.key] as string | number;
             const bValue = b[sortConfig.key] as string | number;
@@ -85,28 +117,40 @@ export default function DTable<T extends { id: string | number;[key: string]: un
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [filteredData, sortConfig]);
+    }, [filteredData, sortConfig, server]);
 
-    // 3. Pagination
+    // 3. Pagination — skipped in server mode (`data` is already one page).
     const paginatedData = useMemo(() => {
+        if (server) return sortedData;
         const startIndex = (currentPage - 1) * itemsPerPage;
         return sortedData.slice(startIndex, startIndex + itemsPerPage);
-    }, [sortedData, currentPage, itemsPerPage]);
+    }, [sortedData, currentPage, itemsPerPage, server]);
 
-    const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+    const totalPages = server
+        ? Math.max(1, Math.ceil(server.totalCount / server.pageSize))
+        : Math.ceil(sortedData.length / itemsPerPage);
+    const currentPageNum = server ? server.page : currentPage;
 
     const handleSort = (key: string) => {
         setSortConfig(current => {
-            if (current?.key === key) {
-                return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
-            }
-            return { key, direction: 'asc' };
+            const next: { key: string; direction: 'asc' | 'desc' } =
+                current?.key === key
+                    ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+                    : { key, direction: 'asc' };
+            server?.onSortChange?.(next.key, next.direction);
+            return next;
         });
     };
 
     const handleFilterChange = (key: string, value: string) => {
         setActiveFilters(prev => ({ ...prev, [key]: value }));
-        setCurrentPage(1);
+        if (server) server.onFilterChange?.(key, value);
+        else setCurrentPage(1);
+    };
+
+    const goToPage = (updater: (p: number) => number) => {
+        if (server) server.onPageChange(updater(server.page));
+        else setCurrentPage(updater);
     };
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,22 +270,29 @@ export default function DTable<T extends { id: string | number;[key: string]: un
                                     />
                                 </th>
                             )}
-                            {columns.map((col, idx) => (
+                            {columns.map((col, idx) => {
+                                // A sortable column with no way to actually sort the full,
+                                // server-side dataset would silently only sort the current
+                                // page — misleading. Only honor `sortable` in server mode
+                                // when the parent gave us a way to ask for a real re-sort.
+                                const canSort = col.sortable && (!server || server.onSortChange);
+                                return (
                                 <th
                                     key={idx}
-                                    className={`px-4 py-3 ${col.className || ''} ${col.sortable ? 'cursor-pointer hover:text-ink-muted select-none' : ''}`}
-                                    onClick={() => col.sortable && typeof col.accessor === 'string' && handleSort(col.accessor as string)}
+                                    className={`px-4 py-3 ${col.className || ''} ${canSort ? 'cursor-pointer hover:text-ink-muted select-none' : ''}`}
+                                    onClick={() => canSort && typeof col.accessor === 'string' && handleSort(col.accessor as string)}
                                 >
                                     <div className="flex items-center gap-1">
                                         {col.header}
-                                        {col.sortable && (
+                                        {canSort && (
                                             sortConfig?.key === col.accessor
                                                 ? <span className="text-brand">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                                                 : <LuArrowUpDown className="text-[11px] opacity-40" />
                                         )}
                                     </div>
                                 </th>
-                            ))}
+                                );
+                            })}
                             {actions && <th className="px-4 py-3 text-right">Actions</th>}
                         </tr>
                     </thead>
@@ -286,20 +337,20 @@ export default function DTable<T extends { id: string | number;[key: string]: un
 
             {/* Footer / Pagination */}
             <div className="px-4 py-3 border-t border-hairline flex flex-wrap justify-between items-center gap-3 text-xs text-ink-muted">
-                <span>Showing {paginatedData.length} of {sortedData.length}</span>
+                <span>Showing {paginatedData.length} of {server ? server.totalCount : sortedData.length}</span>
                 <div className="flex gap-1.5 items-center">
                     <button
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
+                        onClick={() => goToPage(p => Math.max(1, p - 1))}
+                        disabled={currentPageNum === 1}
                         className="p-1.5 rounded-control border border-hairline hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label="Previous page"
                     >
                         <LuChevronLeft className="text-sm" />
                     </button>
-                    <span className="tabular-nums px-1">Page {currentPage} / {totalPages || 1}</span>
+                    <span className="tabular-nums px-1">Page {currentPageNum} / {totalPages || 1}</span>
                     <button
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages || totalPages === 0}
+                        onClick={() => goToPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPageNum === totalPages || totalPages === 0}
                         className="p-1.5 rounded-control border border-hairline hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed"
                         aria-label="Next page"
                     >

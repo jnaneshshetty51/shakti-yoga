@@ -3,29 +3,65 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin, requireSuperAdmin, assertUserDeletable } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
-import { Role } from '@prisma/client';
+import { Role, Prisma } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-// Full-table scans don't scale — matches the cap already used by the
-// invoices/subscriptions admin routes. Most-recently-joined first, so this
-// stays useful even once the member base exceeds the cap.
-const USER_LIST_CAP = 500;
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
-export async function GET() {
+// role/status columns as exposed to the client (lowercase role, derived
+// Active/Trial/Inactive status) don't exist as literal DB columns — map
+// back to the real query shape they're standing in for.
+const ROLE_FILTER: Record<string, Role> = {
+    member_everyday: 'MEMBER_EVERYDAY',
+    member_therapy: 'MEMBER_THERAPY',
+    trial: 'TRIAL',
+};
+
+export async function GET(request: Request) {
     try {
         const payload = await requireAdmin();
         if (!payload) return forbidden();
 
-        const users = await prisma.user.findMany({
-            include: {
-                subscription: true,
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-            take: USER_LIST_CAP,
-        });
+        const url = new URL(request.url);
+        const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+        const q = url.searchParams.get('q')?.trim();
+        const statusFilter = url.searchParams.get('status'); // 'Active' | 'Trial' | 'Inactive'
+        const roleFilter = url.searchParams.get('role');
+        const sortKey = url.searchParams.get('sortKey');
+        const sortDir: Prisma.SortOrder = url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
+
+        const where: Prisma.UserWhereInput = {
+            ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] } : {}),
+            ...(roleFilter && ROLE_FILTER[roleFilter] ? { role: ROLE_FILTER[roleFilter] } : {}),
+            ...(statusFilter === 'Active' ? { subscription: { status: 'ACTIVE' } }
+                : statusFilter === 'Trial' ? { OR: [{ subscription: { status: 'TRIAL' } }, { role: 'TRIAL', subscription: null }] }
+                    : statusFilter === 'Inactive' ? { AND: [{ subscription: { is: null } }, { role: { not: 'TRIAL' } }] }
+                        : {}),
+        };
+
+        // Only "name"/"email"/"joinedAt" map to a real, directly-sortable
+        // column — status/role/lastLogin are derived/formatted for display
+        // (see the map below), so a raw orderBy on them wouldn't mean what
+        // the column header implies. Fall back to createdAt desc otherwise.
+        const orderBy: Prisma.UserOrderByWithRelationInput =
+            sortKey === 'name' ? { name: sortDir }
+                : sortKey === 'email' ? { email: sortDir }
+                    : sortKey === 'joinedAt' ? { createdAt: sortDir }
+                        : { createdAt: 'desc' };
+
+        const [users, totalCount] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                include: { subscription: true },
+                orderBy,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.user.count({ where }),
+        ]);
 
         const formattedUsers = users.map(user => {
             const subscription = user.subscription;
@@ -59,7 +95,7 @@ export async function GET() {
             };
         });
 
-        return NextResponse.json({ users: formattedUsers });
+        return NextResponse.json({ users: formattedUsers, page, pageSize, totalCount });
     } catch (error) {
         console.error('Admin users API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
