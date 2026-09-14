@@ -153,7 +153,7 @@ export default function SupportPage() {
                         onChange={(e) => setDraft(e.target.value)}
                         className="flex-1 px-3 py-2 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                    <Button type="submit" disabled={busy || !draft.trim()} icon={LuSend} />
+                    <Button type="submit" disabled={busy || !draft.trim()} icon={LuSend} aria-label="Send message" />
                 </form>
             )}
         </div>

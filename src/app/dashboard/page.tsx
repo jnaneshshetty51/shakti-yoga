@@ -7,6 +7,7 @@ import {
     LuMessageSquare, LuCalendarClock, LuArrowRight, LuExternalLink, LuTriangleAlert,
 } from "react-icons/lu";
 import { Card, Badge } from "@/components/ui";
+import { useToast } from "@/components/admin/Toast";
 import type { ClassView, ClassesResponse, ClassAccessInfo } from "@/types/class";
 
 interface CommunityGroup {
@@ -29,6 +30,7 @@ function formatWhen(iso: string) {
 
 export default function DashboardPage() {
     const { user, isLoading } = useAuth();
+    const { showToast } = useToast();
     const [group, setGroup] = useState<CommunityGroup | null>(null);
     const [nextClass, setNextClass] = useState<ClassView | null>(null);
     const [access, setAccess] = useState<ClassAccessInfo | null>(null);
@@ -88,10 +90,10 @@ export default function DashboardPage() {
             if (res.ok && data.meetingLink) {
                 window.open(data.meetingLink, "_blank", "noopener,noreferrer");
             } else {
-                alert(data.error || "Could not join the class.");
+                showToast("error", data.error || "Could not join the class.");
             }
         } catch {
-            alert("Could not join the class. Please try again.");
+            showToast("error", "Could not join the class. Please try again.");
         } finally {
             setJoining(false);
         }

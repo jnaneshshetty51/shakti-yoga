@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/admin/Toast";
-import { PageHeader, Card, Badge, EmptyState, Tabs, inputClass, statusTone } from "@/components/ui";
+import { PageHeader, PageLoading, ErrorState, Card, Badge, EmptyState, Tabs, inputClass, statusTone } from "@/components/ui";
 import { LuMessageSquare } from "react-icons/lu";
 
 type Session = {
@@ -87,17 +87,26 @@ export default function TeacherSessionsPage() {
     const [data, setData] = useState<{ upcoming: Session[]; past: Session[] } | null>(null);
     const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         try {
             const res = await fetch("/api/teacher/sessions", { cache: "no-store" });
-            if (res.ok) setData(await res.json());
+            if (!res.ok) throw new Error("Failed to load sessions");
+            setData(await res.json());
+            setLoadError(null);
+        } catch (err) {
+            console.error(err);
+            setLoadError("Could not load your sessions.");
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    if (loading) return <PageLoading title="My Sessions" />;
+    if (loadError && !data) return <ErrorState message={loadError} onRetry={load} />;
 
     const rows = data ? data[tab] : [];
 
@@ -116,9 +125,7 @@ export default function TeacherSessionsPage() {
                 />
             </div>
 
-            {loading ? (
-                <p className="text-gray-500">Loading…</p>
-            ) : rows.length === 0 ? (
+            {rows.length === 0 ? (
                 <Card><EmptyState icon={LuMessageSquare} title={`No ${tab} sessions`} /></Card>
             ) : (
                 <div className="grid md:grid-cols-2 gap-4">

@@ -93,9 +93,10 @@ export default function FamilyPage() {
                         </Link>
                     </div>
                     <form onSubmit={handleJoin} className="max-w-sm">
-                        <label className={labelClass}>Have an invite code?</label>
+                        <label htmlFor="family-inviteCode" className={labelClass}>Have an invite code?</label>
                         <div className="flex gap-2">
                             <input
+                                id="family-inviteCode"
                                 className={inputClass}
                                 value={joinCode}
                                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}

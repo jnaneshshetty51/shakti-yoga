@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/pricing";
-import { PageHeader, PageLoading, Card, Badge, statusTone } from "@/components/ui";
+import { PageHeader, PageLoading, Card, Badge, statusTone, ErrorState, useConfirmDialog } from "@/components/ui";
+import { useToast } from "@/components/admin/Toast";
 
 interface PaymentRow {
     id: string;
@@ -37,7 +38,10 @@ export default function BillingPage() {
     const [payments, setPayments] = useState<PaymentRow[]>([]);
     const [credits, setCredits] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [cancelling, setCancelling] = useState(false);
+    const { confirm, dialog } = useConfirmDialog();
+    const { showToast } = useToast();
 
     const load = useCallback(async () => {
         try {
@@ -47,8 +51,10 @@ export default function BillingPage() {
             setSubscription(data.subscription);
             setPayments(data.payments || []);
             setCredits(data.credits || 0);
+            setLoadError(null);
         } catch (error) {
             console.error(error);
+            setLoadError("Could not load your billing details.");
         } finally {
             setLoading(false);
         }
@@ -59,7 +65,13 @@ export default function BillingPage() {
     }, [load]);
 
     const handleCancel = async () => {
-        if (!confirm("Cancel your subscription? You'll keep access until the end of the current period.")) return;
+        const ok = await confirm({
+            title: "Cancel your subscription?",
+            message: "You'll keep access until the end of the current billing period.",
+            confirmLabel: "Cancel subscription",
+            tone: "danger",
+        });
+        if (!ok) return;
         setCancelling(true);
         try {
             const res = await fetch("/api/billing/cancel", { method: "POST" });
@@ -68,17 +80,22 @@ export default function BillingPage() {
                 throw new Error(data.error || "Could not cancel");
             }
             await load();
+            showToast("success", "Your subscription has been cancelled.");
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Could not cancel");
+            showToast("error", error instanceof Error ? error.message : "Could not cancel your subscription.");
         } finally {
             setCancelling(false);
         }
     };
 
     if (loading) return <PageLoading title="Plan & Billing" />;
+    if (loadError && !subscription && payments.length === 0) {
+        return <ErrorState message={loadError} onRetry={load} />;
+    }
 
     return (
         <div>
+            {dialog}
             <PageHeader title="Plan & Billing" subtitle="Your subscription, renewals and payment history." />
 
             <Card padded className="mb-8">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuCalendarDays, LuMessageSquare, LuUsers, LuNotebookPen, LuTriangleAlert } from "react-icons/lu";
 import { useToast } from "@/components/admin/Toast";
-import { PageHeader, PageLoading, Card, Badge, EmptyState, ErrorState } from "@/components/ui";
+import { PageHeader, PageLoading, Card, Badge, EmptyState, ErrorState, Button, inputClass } from "@/components/ui";
 import { StatCard } from "@/components/admin/StatCard";
 
 interface Dash {
@@ -43,6 +43,9 @@ export default function TeacherTodayPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const abortRef = useRef<AbortController | null>(null);
+    const [linkModal, setLinkModal] = useState<{ kind: "class" | "session"; id: string } | null>(null);
+    const [linkValue, setLinkValue] = useState("");
+    const [savingLink, setSavingLink] = useState(false);
 
     const load = useCallback(async () => {
         abortRef.current?.abort();
@@ -73,22 +76,39 @@ export default function TeacherTodayPage() {
         };
     }, [load]);
 
-    const setLink = async (kind: "class" | "session", id: string, current: string | null) => {
-        const url = window.prompt("Google Meet link (https://meet.google.com/xxx-xxxx-xxx). Leave blank to clear.", current ?? "");
-        if (url === null) return;
-        const res = await fetch("/api/teacher/meeting-link", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ kind, id, url }),
-        });
-        if (!res.ok) {
-            const d = await res.json().catch(() => ({}));
-            showToast("error", d.error || "Could not update the link");
-            return;
-        }
-        showToast("success", url ? "Meet link saved" : "Meet link cleared");
-        load();
+    const openLinkModal = (kind: "class" | "session", id: string, current: string | null) => {
+        setLinkModal({ kind, id });
+        setLinkValue(current ?? "");
     };
+
+    const saveLink = async () => {
+        if (!linkModal) return;
+        setSavingLink(true);
+        try {
+            const res = await fetch("/api/teacher/meeting-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ kind: linkModal.kind, id: linkModal.id, url: linkValue }),
+            });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                showToast("error", d.error || "Could not update the link");
+                return;
+            }
+            showToast("success", linkValue ? "Meet link saved" : "Meet link cleared");
+            setLinkModal(null);
+            load();
+        } finally {
+            setSavingLink(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!linkModal) return;
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setLinkModal(null);
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [linkModal]);
 
     if (loading && !data) return <PageLoading />;
     if (error && !data) return <ErrorState message={error} onRetry={load} />;
@@ -136,7 +156,7 @@ export default function TeacherTodayPage() {
                                         <p className="font-medium text-gray-800">{c.name}</p>
                                         <p className="text-xs text-gray-500">{when(c.at)} · {c.attendanceCount} joined</p>
                                         <div className="flex flex-wrap gap-3 mt-1">
-                                            <button onClick={() => setLink("class", c.id, c.ownLink ? c.meetingLink : "")} className="text-xs font-semibold text-primary hover:text-secondary">
+                                            <button onClick={() => openLinkModal("class", c.id, c.ownLink ? c.meetingLink : "")} className="text-xs font-semibold text-primary hover:text-secondary">
                                                 {c.ownLink ? "Change my link" : c.meetingLink ? "Override link" : "Set Meet link"}
                                             </button>
                                             {new Date(c.at).getTime() < Date.now() && (
@@ -178,7 +198,7 @@ export default function TeacherTodayPage() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium text-gray-800 truncate">{s.member}</p>
                                         <p className="text-xs text-gray-500 capitalize">{when(s.at)} · {s.type} · {s.status.toLowerCase()}</p>
-                                        <button onClick={() => setLink("session", s.id, "")} className="text-xs font-semibold text-primary hover:text-secondary mt-1">
+                                        <button onClick={() => openLinkModal("session", s.id, "")} className="text-xs font-semibold text-primary hover:text-secondary mt-1">
                                             {s.hasLink ? "Change link" : "Set Meet link"}
                                         </button>
                                     </div>
@@ -189,6 +209,44 @@ export default function TeacherTodayPage() {
                     )}
                 </Card>
             </div>
+
+            {linkModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+                    onClick={() => !savingLink && setLinkModal(null)}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="meet-link-title"
+                        className="bg-surface border border-hairline rounded-card shadow-overlay w-full max-w-sm p-6 animate-slide-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 id="meet-link-title" className="font-semibold text-ink text-lg mb-2">
+                            Google Meet link
+                        </h3>
+                        <p className="text-sm text-ink-muted mb-4">
+                            Paste the Meet link for this {linkModal.kind === "class" ? "class" : "session"}. Leave blank to clear it.
+                        </p>
+                        <input
+                            autoFocus
+                            type="text"
+                            value={linkValue}
+                            onChange={(e) => setLinkValue(e.target.value)}
+                            placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                            className={inputClass}
+                        />
+                        <div className="flex justify-end gap-2 mt-6">
+                            <Button variant="secondary" onClick={() => setLinkModal(null)} disabled={savingLink}>
+                                Cancel
+                            </Button>
+                            <Button onClick={saveLink} loading={savingLink}>
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -192,28 +192,28 @@ export default function ProfilePage() {
                         <h3 className="font-bold text-gray-800 mb-5">Personal details</h3>
                         <form onSubmit={handleSaveChanges} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className={labelClass}>First name</label>
-                                <input type="text" value={formData.firstName} onChange={(e) => handleInputChange("firstName", e.target.value)} className={inputClass} />
+                                <label htmlFor="profile-firstName" className={labelClass}>First name</label>
+                                <input id="profile-firstName" type="text" value={formData.firstName} onChange={(e) => handleInputChange("firstName", e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>Last name</label>
-                                <input type="text" value={formData.lastName} onChange={(e) => handleInputChange("lastName", e.target.value)} className={inputClass} />
+                                <label htmlFor="profile-lastName" className={labelClass}>Last name</label>
+                                <input id="profile-lastName" type="text" value={formData.lastName} onChange={(e) => handleInputChange("lastName", e.target.value)} className={inputClass} />
                             </div>
                             <div className="sm:col-span-2">
-                                <label className={labelClass}>Email</label>
-                                <input type="email" value={formData.email} disabled className={`${inputClass} bg-gray-50 text-gray-500`} />
+                                <label htmlFor="profile-email" className={labelClass}>Email</label>
+                                <input id="profile-email" type="email" value={formData.email} disabled className={`${inputClass} bg-gray-50 text-gray-500`} />
                             </div>
                             <div>
-                                <label className={labelClass}>Phone</label>
-                                <input type="tel" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className={inputClass} />
+                                <label htmlFor="profile-phone" className={labelClass}>Phone</label>
+                                <input id="profile-phone" type="tel" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>Location</label>
-                                <input type="text" value={formData.location} onChange={(e) => handleInputChange("location", e.target.value)} className={inputClass} />
+                                <label htmlFor="profile-location" className={labelClass}>Location</label>
+                                <input id="profile-location" type="text" value={formData.location} onChange={(e) => handleInputChange("location", e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>Timezone</label>
-                                <select value={formData.timezone} onChange={(e) => handleInputChange("timezone", e.target.value)} className={inputClass}>
+                                <label htmlFor="profile-timezone" className={labelClass}>Timezone</label>
+                                <select id="profile-timezone" value={formData.timezone} onChange={(e) => handleInputChange("timezone", e.target.value)} className={inputClass}>
                                     <option value="IST">IST (India Standard Time)</option>
                                     <option value="GMT">GMT (Greenwich Mean Time)</option>
                                     <option value="EST">EST (Eastern Standard Time)</option>
@@ -256,8 +256,8 @@ export default function ProfilePage() {
                         <h3 className="font-bold text-gray-800 mb-5">Health profile</h3>
                         <div className="space-y-4">
                             <div>
-                                <label className={labelClass}>Primary goal</label>
-                                <select value={formData.goal} onChange={(e) => handleInputChange("goal", e.target.value)} className={inputClass}>
+                                <label htmlFor="profile-goal" className={labelClass}>Primary goal</label>
+                                <select id="profile-goal" value={formData.goal} onChange={(e) => handleInputChange("goal", e.target.value)} className={inputClass}>
                                     <option value="Stress Relief">Stress Relief</option>
                                     <option value="Flexibility">Flexibility</option>
                                     <option value="Strength">Strength</option>
@@ -265,8 +265,9 @@ export default function ProfilePage() {
                                 </select>
                             </div>
                             <div>
-                                <label className={labelClass}>Injuries / conditions</label>
+                                <label htmlFor="profile-conditions" className={labelClass}>Injuries / conditions</label>
                                 <textarea
+                                    id="profile-conditions"
                                     value={formData.conditions}
                                     onChange={(e) => handleInputChange("conditions", e.target.value)}
                                     className={inputClass}

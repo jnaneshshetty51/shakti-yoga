@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { PageHeader, Card, Badge, statusTone } from "@/components/ui";
+import { PageHeader, Card, Badge, statusTone, useConfirmDialog } from "@/components/ui";
 import { LuLock } from "react-icons/lu";
 
 interface Session {
@@ -32,8 +32,10 @@ export default function TherapyBookingPage() {
 
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sessionsError, setSessionsError] = useState<string | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
     const [msg, setMsg] = useState("");
+    const { confirm, dialog } = useConfirmDialog();
 
     const dates = Array.from({ length: 10 }, (_, i) => {
         const d = new Date();
@@ -49,8 +51,13 @@ export default function TherapyBookingPage() {
         setLoading(true);
         try {
             const res = await fetch("/api/bookings");
+            if (!res.ok) throw new Error("Failed to load sessions");
             const data = await res.json();
-            if (res.ok) setSessions(data.bookings ?? []);
+            setSessions(data.bookings ?? []);
+            setSessionsError(null);
+        } catch (err) {
+            console.error(err);
+            setSessionsError("Could not load your sessions.");
         } finally {
             setLoading(false);
         }
@@ -93,7 +100,13 @@ export default function TherapyBookingPage() {
     };
 
     const cancel = async (s: Session) => {
-        if (!confirm("Cancel this session? Cancelling at least 24h ahead returns your credit.")) return;
+        const ok = await confirm({
+            title: "Cancel this session?",
+            message: "Cancelling at least 24h ahead returns your credit.",
+            confirmLabel: "Cancel session",
+            tone: "danger",
+        });
+        if (!ok) return;
         setBusy(s.id);
         try {
             const res = await fetch(`/api/bookings/${s.id}`, { method: "DELETE" });
@@ -124,6 +137,7 @@ export default function TherapyBookingPage() {
 
     return (
         <div className="max-w-4xl">
+            {dialog}
             <PageHeader title="Therapy Sessions" subtitle="Book, join and manage your 1:1 sessions.">
                 <Badge tone="amber">{credits} credit{credits === 1 ? "" : "s"}</Badge>
                 <Link href="/dashboard/therapy/notes" className="text-xs font-semibold text-primary hover:text-secondary">Session notes →</Link>
@@ -191,7 +205,13 @@ export default function TherapyBookingPage() {
                     <section className="mb-8">
                         <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Upcoming</h2>
                         {loading ? <p className="text-sm text-gray-400">Loading…</p>
-                            : upcoming.length === 0 ? <Card padded className="text-sm text-gray-500">No upcoming sessions.</Card>
+                            : sessionsError ? (
+                                <Card padded className="text-sm text-gray-500 flex items-center justify-between gap-3">
+                                    <span>{sessionsError}</span>
+                                    <button onClick={loadSessions} className="text-xs font-semibold text-primary hover:text-secondary shrink-0">Retry</button>
+                                </Card>
+                            )
+                                : upcoming.length === 0 ? <Card padded className="text-sm text-gray-500">No upcoming sessions.</Card>
                                 : (
                                     <div className="space-y-3">
                                         {upcoming.map((s) => (

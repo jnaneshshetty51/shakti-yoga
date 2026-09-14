@@ -48,16 +48,16 @@ function TrialContent() {
         }
     };
 
-    if (isLoading) {
-        return <div className="p-20 text-center text-text/60">Loading…</div>;
-    }
-
     // Consultations are a therapy-prospect conversation, not a trial — route directly to contact.
     useEffect(() => {
         if (isConsult) {
             router.replace("/contact?type=therapy");
         }
     }, [isConsult, router]);
+
+    if (isLoading) {
+        return <div className="p-20 text-center text-text/60">Loading…</div>;
+    }
 
     if (isConsult) {
         return (

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { LuHeart } from "react-icons/lu";
-import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
+import { useToast } from "@/components/admin/Toast";
+import { PageHeader, PageLoading, ErrorState, Card, Badge } from "@/components/ui";
 import type { ClassView, ClassesResponse, ClassAccessInfo } from "@/types/class";
 
 function fmtTime(iso: string) {
@@ -25,22 +25,27 @@ function fmtDay(iso: string) {
 }
 
 export default function ClassesPage() {
+    const { showToast } = useToast();
     const [data, setData] = useState<ClassesResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [joiningId, setJoiningId] = useState<string | null>(null);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetch("/api/classes");
-                if (res.ok) setData(await res.json());
-            } catch (error) {
-                console.error("Failed to load classes:", error);
-            } finally {
-                setLoading(false);
-            }
-        })();
+    const load = useCallback(async () => {
+        try {
+            const res = await fetch("/api/classes");
+            if (!res.ok) throw new Error("Failed to load classes");
+            setData(await res.json());
+            setLoadError(null);
+        } catch (error) {
+            console.error("Failed to load classes:", error);
+            setLoadError("Could not load your classes.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { load(); }, [load]);
 
     const join = async (cls: ClassView) => {
         setJoiningId(cls.id);
@@ -50,24 +55,23 @@ export default function ClassesPage() {
             if (res.ok && body.meetingLink) {
                 window.open(body.meetingLink, "_blank", "noopener,noreferrer");
             } else {
-                alert(body.error || "Could not join the class.");
+                showToast("error", body.error || "Could not join the class.");
             }
         } catch {
-            alert("Could not join the class. Please try again.");
+            showToast("error", "Could not join the class. Please try again.");
         } finally {
             setJoiningId(null);
         }
     };
 
+    if (loading) return <PageLoading title="My Classes" />;
+    if (loadError && !data) return <ErrorState message={loadError} onRetry={load} />;
+
     return (
         <div>
             <PageHeader title="My Classes" subtitle="Your live group-class schedule, in IST." />
 
-            {loading ? (
-                <Card><EmptyState icon={LuHeart} title="Loading your classes…" /></Card>
-            ) : !data ? (
-                <Card><EmptyState icon={LuHeart} title="Couldn't load your classes" hint="Please refresh the page." /></Card>
-            ) : !data.access.ok ? (
+            {!data ? null : !data.access.ok ? (
                 <AccessNotice access={data.access} />
             ) : (
                 <>

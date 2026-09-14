@@ -284,17 +284,17 @@ export default function TherapyIntakePage() {
                         {step === 0 && (
                             <div className="space-y-4">
                                 <div>
-                                    <label className={labelCls}>Full name</label>
-                                    <input className={inputCls} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
+                                    <label htmlFor="intake-fullName" className={labelCls}>Full name</label>
+                                    <input id="intake-fullName" className={inputCls} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className={labelCls}>Age</label>
-                                        <input type="number" min={0} className={inputCls} value={form.age} onChange={(e) => set("age", e.target.value)} />
+                                        <label htmlFor="intake-age" className={labelCls}>Age</label>
+                                        <input id="intake-age" type="number" min={0} className={inputCls} value={form.age} onChange={(e) => set("age", e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Gender</label>
-                                        <select className={inputCls} value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+                                        <label htmlFor="intake-gender" className={labelCls}>Gender</label>
+                                        <select id="intake-gender" className={inputCls} value={form.gender} onChange={(e) => set("gender", e.target.value)}>
                                             <option value="">Select…</option>
                                             <option>Female</option>
                                             <option>Male</option>
@@ -305,12 +305,12 @@ export default function TherapyIntakePage() {
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className={labelCls}>Height (cm)</label>
-                                        <input type="number" min={0} className={inputCls} value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
+                                        <label htmlFor="intake-height" className={labelCls}>Height (cm)</label>
+                                        <input id="intake-height" type="number" min={0} className={inputCls} value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Weight (kg)</label>
-                                        <input type="number" min={0} className={inputCls} value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} />
+                                        <label htmlFor="intake-weight" className={labelCls}>Weight (kg)</label>
+                                        <input id="intake-weight" type="number" min={0} className={inputCls} value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} />
                                     </div>
                                 </div>
                                 {bmi && <p className="text-xs text-text/50">Approximate BMI: {bmi}</p>}
@@ -320,16 +320,16 @@ export default function TherapyIntakePage() {
                         {step === 1 && (
                             <div className="space-y-4">
                                 <div>
-                                    <label className={labelCls}>What&rsquo;s the main concern you&rsquo;d like help with?</label>
-                                    <input className={inputCls} placeholder="e.g. Lower back pain" value={form.primaryConcern} onChange={(e) => set("primaryConcern", e.target.value)} />
+                                    <label htmlFor="intake-concern" className={labelCls}>What&rsquo;s the main concern you&rsquo;d like help with?</label>
+                                    <input id="intake-concern" className={inputCls} placeholder="e.g. Lower back pain" value={form.primaryConcern} onChange={(e) => set("primaryConcern", e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>How long have you had this concern?</label>
-                                    <input className={inputCls} placeholder="e.g. 6 months" value={form.concernDuration} onChange={(e) => set("concernDuration", e.target.value)} />
+                                    <label htmlFor="intake-duration" className={labelCls}>How long have you had this concern?</label>
+                                    <input id="intake-duration" className={inputCls} placeholder="e.g. 6 months" value={form.concernDuration} onChange={(e) => set("concernDuration", e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Tell us more about it</label>
-                                    <textarea rows={5} className={inputCls} value={form.concernDescription} onChange={(e) => set("concernDescription", e.target.value)} />
+                                    <label htmlFor="intake-concern-desc" className={labelCls}>Tell us more about it</label>
+                                    <textarea id="intake-concern-desc" rows={5} className={inputCls} value={form.concernDescription} onChange={(e) => set("concernDescription", e.target.value)} />
                                 </div>
                             </div>
                         )}
@@ -337,24 +337,24 @@ export default function TherapyIntakePage() {
                         {step === 2 && (
                             <div className="space-y-4">
                                 <div>
-                                    <label className={labelCls}>Past injuries or surgeries (optional)</label>
-                                    <textarea rows={2} className={inputCls} value={form.injuriesSurgeries} onChange={(e) => set("injuriesSurgeries", e.target.value)} />
+                                    <label htmlFor="intake-injuries" className={labelCls}>Past injuries or surgeries (optional)</label>
+                                    <textarea id="intake-injuries" rows={2} className={inputCls} value={form.injuriesSurgeries} onChange={(e) => set("injuriesSurgeries", e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Existing medical conditions (optional)</label>
-                                    <textarea rows={2} className={inputCls} value={form.medicalConditions} onChange={(e) => set("medicalConditions", e.target.value)} />
+                                    <label htmlFor="intake-conditions" className={labelCls}>Existing medical conditions (optional)</label>
+                                    <textarea id="intake-conditions" rows={2} className={inputCls} value={form.medicalConditions} onChange={(e) => set("medicalConditions", e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Current medications (optional)</label>
-                                    <textarea rows={2} className={inputCls} value={form.medications} onChange={(e) => set("medications", e.target.value)} />
+                                    <label htmlFor="intake-medications" className={labelCls}>Current medications (optional)</label>
+                                    <textarea id="intake-medications" rows={2} className={inputCls} value={form.medications} onChange={(e) => set("medications", e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Relevant family medical history (optional)</label>
-                                    <textarea rows={2} className={inputCls} value={form.familyHistory} onChange={(e) => set("familyHistory", e.target.value)} />
+                                    <label htmlFor="intake-family-history" className={labelCls}>Relevant family medical history (optional)</label>
+                                    <textarea id="intake-family-history" rows={2} className={inputCls} value={form.familyHistory} onChange={(e) => set("familyHistory", e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Have you tried Yoga Therapy before? (optional)</label>
-                                    <textarea rows={2} className={inputCls} value={form.priorYogaTherapy} onChange={(e) => set("priorYogaTherapy", e.target.value)} />
+                                    <label htmlFor="intake-prior-therapy" className={labelCls}>Have you tried Yoga Therapy before? (optional)</label>
+                                    <textarea id="intake-prior-therapy" rows={2} className={inputCls} value={form.priorYogaTherapy} onChange={(e) => set("priorYogaTherapy", e.target.value)} />
                                 </div>
                             </div>
                         )}
@@ -363,12 +363,12 @@ export default function TherapyIntakePage() {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className={labelCls}>Emergency contact name</label>
-                                        <input className={inputCls} value={form.emergencyContactName} onChange={(e) => set("emergencyContactName", e.target.value)} />
+                                        <label htmlFor="intake-emergency-name" className={labelCls}>Emergency contact name</label>
+                                        <input id="intake-emergency-name" className={inputCls} value={form.emergencyContactName} onChange={(e) => set("emergencyContactName", e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Emergency contact phone</label>
-                                        <input className={inputCls} value={form.emergencyContactPhone} onChange={(e) => set("emergencyContactPhone", e.target.value)} />
+                                        <label htmlFor="intake-emergency-phone" className={labelCls}>Emergency contact phone</label>
+                                        <input id="intake-emergency-phone" className={inputCls} value={form.emergencyContactPhone} onChange={(e) => set("emergencyContactPhone", e.target.value)} />
                                     </div>
                                 </div>
                                 <label className="flex items-start gap-3 text-sm text-text/70 pt-2">
