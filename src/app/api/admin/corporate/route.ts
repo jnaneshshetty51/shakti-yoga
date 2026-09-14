@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
-import { CorporateLeadStatus } from '@prisma/client';
+import { CorporateLeadStatus, Prisma } from '@prisma/client';
+
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
 export async function GET(request: Request) {
     try {
@@ -11,27 +14,41 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
-        const search = searchParams.get('search');
+        const q = searchParams.get('q')?.trim();
+        const page = Math.max(1, Number(searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
 
-        const where: Record<string, unknown> = {};
-        if (status && status !== 'all') where.status = status.toUpperCase();
-        if (search) {
-            where.OR = [
-                { companyName: { contains: search, mode: 'insensitive' } },
-                { contactEmail: { contains: search, mode: 'insensitive' } },
-            ];
-        }
+        const statusKey = status?.toUpperCase();
+        const where: Prisma.CorporateLeadWhereInput = {
+            ...(statusKey && statusKey !== 'ALL' && statusKey in CorporateLeadStatus
+                ? { status: statusKey as CorporateLeadStatus }
+                : {}),
+            ...(q
+                ? {
+                      OR: [
+                          { companyName: { contains: q, mode: 'insensitive' } },
+                          { contactName: { contains: q, mode: 'insensitive' } },
+                          { contactEmail: { contains: q, mode: 'insensitive' } },
+                      ],
+                  }
+                : {}),
+        };
 
-        const leads = await prisma.corporateLead.findMany({
-            where,
-            include: {
-                assignedTo: { select: { id: true, name: true } },
-                _count: { select: { activities: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+        const [leads, totalCount] = await Promise.all([
+            prisma.corporateLead.findMany({
+                where,
+                include: {
+                    assignedTo: { select: { id: true, name: true } },
+                    _count: { select: { activities: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.corporateLead.count({ where }),
+        ]);
 
-        return NextResponse.json(leads);
+        return NextResponse.json({ leads, page, pageSize, totalCount });
     } catch (error) {
         console.error('Admin corporate leads API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

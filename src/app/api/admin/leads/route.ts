@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
-import { LeadSource } from '@prisma/client';
+import { LeadSource, LeadStatus, Prisma } from '@prisma/client';
+
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
 export async function GET(request: Request) {
     try {
@@ -10,12 +13,14 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
-        const search = searchParams.get('search');
+        const search = searchParams.get('search')?.trim();
+        const page = Math.max(1, Number(searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
 
-        const whereClause: Record<string, unknown> = {};
-        
-        if (status && status !== 'all') {
-            whereClause.status = status.toUpperCase();
+        const whereClause: Prisma.LeadWhereInput = {};
+
+        if (status && status !== 'all' && status.toUpperCase() in LeadStatus) {
+            whereClause.status = status.toUpperCase() as LeadStatus;
         }
 
         if (search) {
@@ -25,16 +30,21 @@ export async function GET(request: Request) {
             ];
         }
 
-        const dbLeads = await prisma.lead.findMany({
-            where: whereClause,
-            include: {
-                assignedTo: { select: { id: true, name: true } },
-                _count: { select: { activities: true } }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
+        const [leads, totalCount] = await Promise.all([
+            prisma.lead.findMany({
+                where: whereClause,
+                include: {
+                    assignedTo: { select: { id: true, name: true } },
+                    _count: { select: { activities: true } }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.lead.count({ where: whereClause }),
+        ]);
 
-        return NextResponse.json(dbLeads);
+        return NextResponse.json({ leads, page, pageSize, totalCount });
     } catch (error) {
         console.error('Admin leads API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

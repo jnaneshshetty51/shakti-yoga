@@ -21,21 +21,34 @@ type Certificate = {
 
 type UserOption = { id: string; name: string; email: string };
 
+const PAGE_SIZE = 25;
+
 export default function AdminCertificatesPage() {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [certificates, setCertificates] = useState<Certificate[] | null>(null);
     const [users, setUsers] = useState<UserOption[]>([]);
     const [creating, setCreating] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
     const load = useCallback(async () => {
         try {
-            const res = await fetch("/api/admin/certificates");
-            if (res.ok) setCertificates((await res.json()).certificates || []);
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('q', search);
+            if (statusFilter) params.set('status', statusFilter);
+            const res = await fetch(`/api/admin/certificates?${params}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCertificates(data.certificates || []);
+                setTotalCount(data.totalCount ?? 0);
+            }
         } catch {
             /* keep showing whatever we last had */
         }
-    }, []);
+    }, [page, search, statusFilter]);
 
     const loadUsers = useCallback(async () => {
         try {
@@ -118,6 +131,17 @@ export default function AdminCertificatesPage() {
                     { label: "Approved", value: "APPROVED" },
                     { label: "Revoked", value: "REVOKED" },
                 ] }]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === 'status') setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(c) => (
                     <TableActions>
                         {c.status === "PENDING" && <ActionButton onClick={() => setStatus(c, "APPROVED")}>Approve</ActionButton>}
@@ -139,7 +163,7 @@ export default function AdminCertificatesPage() {
                 />
             )}
 
-            {certificates.length === 0 && (
+            {totalCount === 0 && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-ink-subtle">
                     <LuAward /> No certificates yet — they appear automatically when a member completes a challenge, or you can issue one above.
                 </div>

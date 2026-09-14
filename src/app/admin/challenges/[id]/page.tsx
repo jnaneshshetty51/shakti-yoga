@@ -16,7 +16,11 @@ type Participant = {
 type Data = {
     challenge: { id: string; title: string; goalTarget: number; goalLabel: string; startDate: string; endDate: string };
     participants: Participant[];
+    totalCount: number;
+    completedCount: number;
 };
+
+const PAGE_SIZE = 25;
 
 export default function ChallengeParticipantsPage() {
     const { id } = useParams<{ id: string }>();
@@ -24,11 +28,15 @@ export default function ChallengeParticipantsPage() {
     const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
     const [loadError, setLoadError] = useState(false);
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
 
     const load = useCallback(async () => {
         setLoadError(false);
         try {
-            const res = await fetch(`/api/admin/challenges/${id}/participants`);
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set("q", search);
+            const res = await fetch(`/api/admin/challenges/${id}/participants?${params}`);
             if (res.ok) {
                 setData(await res.json());
             } else {
@@ -37,7 +45,7 @@ export default function ChallengeParticipantsPage() {
         } catch {
             setLoadError(true);
         }
-    }, [id]);
+    }, [id, page, search]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
 
@@ -62,7 +70,10 @@ export default function ChallengeParticipantsPage() {
         const res = await fetch(`/api/admin/challenges/${id}/participants?participantId=${p.id}`, { method: "DELETE" });
         if (!res.ok) return showToast("error", "Failed");
         showToast("success", `${p.name} removed`);
-        load();
+        // Removing the last row on a page beyond the first would otherwise
+        // leave the admin looking at a page that no longer exists.
+        if (data && data.participants.length === 1 && page > 1) setPage((pg) => pg - 1);
+        else load();
     };
 
     if (loadError) {
@@ -78,8 +89,7 @@ export default function ChallengeParticipantsPage() {
 
     if (!data) return <PageLoading title="Challenge" />;
 
-    const { challenge, participants } = data;
-    const done = participants.filter((p) => p.completed).length;
+    const { challenge, participants, totalCount, completedCount } = data;
 
     return (
         <div>
@@ -89,7 +99,7 @@ export default function ChallengeParticipantsPage() {
             </Link>
             <PageHeader
                 title={challenge.title}
-                subtitle={`Goal: ${challenge.goalTarget} ${challenge.goalLabel} · ${participants.length} joined · ${done} completed`}
+                subtitle={`Goal: ${challenge.goalTarget} ${challenge.goalLabel} · ${totalCount} joined · ${completedCount} completed`}
             />
             <DTable
                 data={participants}
@@ -107,6 +117,13 @@ export default function ChallengeParticipantsPage() {
                         p.completed ? <Badge tone="green">Completed</Badge> : <Badge tone="gray">In progress</Badge> },
                 ]}
                 title="Participants"
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                }}
                 actions={(p: Participant) => (
                     <TableActions>
                         <ActionButton onClick={() => setComplete(p, !p.completed)}>

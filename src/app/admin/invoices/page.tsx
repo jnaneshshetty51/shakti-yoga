@@ -20,6 +20,8 @@ const money = (n: number, currency: string) => {
 };
 const d = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
+const PAGE_SIZE = 25;
+
 export default function InvoicesPage() {
     const { showToast } = useToast();
     const [rows, setRows] = useState<Invoice[]>([]);
@@ -28,13 +30,20 @@ export default function InvoicesPage() {
     const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
     const [voidReason, setVoidReason] = useState("");
     const [voiding, setVoiding] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
 
     const load = useCallback(async () => {
         setLoadError(false);
         try {
-            const res = await fetch("/api/admin/invoices");
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set("q", search);
+            const res = await fetch(`/api/admin/invoices?${params}`);
             if (res.ok) {
-                setRows((await res.json()).invoices || []);
+                const data = await res.json();
+                setRows(data.invoices || []);
+                setTotalCount(data.totalCount ?? 0);
             } else {
                 setLoadError(true);
             }
@@ -43,7 +52,7 @@ export default function InvoicesPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [page, search]);
     useEffect(() => { load(); }, [load]);
 
     const confirmVoid = async () => {
@@ -90,6 +99,13 @@ export default function InvoicesPage() {
                         { header: "Issued", accessor: (i: Invoice) => d(i.issuedAt) },
                     ]}
                     title="Invoices"
+                    server={{
+                        page,
+                        pageSize: PAGE_SIZE,
+                        totalCount,
+                        onPageChange: setPage,
+                        onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    }}
                     actions={(i: Invoice) => (
                         <TableActions>
                             <a href={`/api/admin/invoices/${i.id}`} target="_blank" rel="noreferrer"

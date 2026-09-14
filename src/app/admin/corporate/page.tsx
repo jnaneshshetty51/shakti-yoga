@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
@@ -34,11 +34,17 @@ const BLANK = {
     dealValue: "", notes: "", assignedToId: "",
 };
 
+const PAGE_SIZE = 25;
+
 function CorporateDashboard() {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [leads, setLeads] = useState<CorporateLead[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -47,26 +53,34 @@ function CorporateDashboard() {
     const [formData, setFormData] = useState({ ...BLANK });
     const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
 
-    useEffect(() => { fetchLeads(); fetchStaffList(); }, []);
-
-    async function fetchLeads() {
+    const fetchLeads = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/corporate');
-            if (res.ok) setLeads((await res.json()) || []);
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('q', search);
+            if (statusFilter) params.set('status', statusFilter);
+            const res = await fetch(`/api/admin/corporate?${params}`);
+            if (res.ok) {
+                const data = await res.json();
+                setLeads(data.leads || []);
+                setTotalCount(data.totalCount ?? 0);
+            }
         } finally {
             setLoading(false);
         }
-    }
+    }, [page, search, statusFilter]);
 
-    async function fetchStaffList() {
+    const fetchStaffList = useCallback(async () => {
         const res = await fetch('/api/admin/users');
         if (res.ok) {
             const data = await res.json();
             setStaffList((data.users || []).filter((u: { role: string }) =>
                 ['SUPER_ADMIN', 'STAFF_ADMIN'].includes(String(u.role).toUpperCase())));
         }
-    }
+    }, []);
+
+    useEffect(() => { fetchLeads(); }, [fetchLeads]);
+    useEffect(() => { fetchStaffList(); }, [fetchStaffList]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -114,7 +128,11 @@ function CorporateDashboard() {
         if (!ok) return;
         const res = await fetch(`/api/admin/corporate/${lead.id}`, { method: 'DELETE' });
         if (!res.ok) { showToast('error', 'Failed to delete'); return; }
-        showToast('success', 'Deleted'); fetchLeads();
+        showToast('success', 'Deleted');
+        // Removing the last row on a page beyond the first would otherwise
+        // leave the admin looking at a page that no longer exists.
+        if (leads.length === 1 && page > 1) setPage((p) => p - 1);
+        else fetchLeads();
     };
 
     const columns = [
@@ -127,7 +145,12 @@ function CorporateDashboard() {
             ),
         },
         { header: "Employees", accessor: (l: CorporateLead) => l.employeeCount ?? "—" },
-        { header: "Status", accessor: (l: CorporateLead) => <Badge tone={STATUS_TONE[l.status]}>{l.status}</Badge>, sortable: true },
+        {
+            // Renders a derived Badge, not a raw sortable field — see the
+            // note on the reference Users page conversion for why this
+            // deliberately isn't marked sortable.
+            header: "Status", accessor: (l: CorporateLead) => <Badge tone={STATUS_TONE[l.status]}>{l.status}</Badge>,
+        },
         { header: "Assigned To", accessor: (l: CorporateLead) => l.assignedTo?.name || <span className="text-gray-400 italic">Unassigned</span> },
         {
             header: "Last Activity", accessor: (l: CorporateLead) => (
@@ -152,6 +175,17 @@ function CorporateDashboard() {
                 title="Corporate Leads"
                 onCreate={handleCreate}
                 filters={[{ key: "status", label: "Status", options: Object.keys(STATUS_TONE).map((s) => ({ label: s, value: s })) }]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === "status") setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(lead) => (
                     <TableActions>
                         <a href={`/admin/corporate/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>

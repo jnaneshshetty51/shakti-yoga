@@ -5,9 +5,12 @@ import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { cancelBooking, bookingInstant } from '@/lib/booking';
 import { sendPush } from '@/lib/push';
-import { BookingStatus, BookingType } from '@prisma/client';
+import { BookingStatus, BookingType, Prisma } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
 /** Accept either an ISO datetime or a "YYYY-MM-DD" + "HH:MM" IST pair. */
 function resolveWhen(body: { date?: string; dateStr?: string; slot?: string }): Date | null {
@@ -21,19 +24,43 @@ function resolveWhen(body: { date?: string; dateStr?: string; slot?: string }): 
     return null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const payload = await requireDepartment(['THERAPIST']);
         if (!payload) return forbidden();
 
-        const [bookings, teachers] = await Promise.all([
+        const url = new URL(request.url);
+        const q = url.searchParams.get('q')?.trim();
+        const statusFilter = url.searchParams.get('status');
+        const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+
+        const where: Prisma.BookingWhereInput = {
+            ...(statusFilter && statusFilter in BookingStatus ? { status: statusFilter as BookingStatus } : {}),
+            ...(q
+                ? {
+                      OR: [
+                          { user: { name: { contains: q, mode: 'insensitive' } } },
+                          { user: { email: { contains: q, mode: 'insensitive' } } },
+                          { teacher: { name: { contains: q, mode: 'insensitive' } } },
+                          { notes: { contains: q, mode: 'insensitive' } },
+                      ],
+                  }
+                : {}),
+        };
+
+        const [bookings, totalCount, teachers] = await Promise.all([
             prisma.booking.findMany({
+                where,
                 include: {
                     user: { select: { id: true, name: true, email: true } },
                     teacher: { select: { id: true, name: true } },
                 },
                 orderBy: { date: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
             }),
+            prisma.booking.count({ where }),
             prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
         ]);
 
@@ -59,7 +86,7 @@ export async function GET() {
             notes: booking.notes ?? '',
         }));
 
-        return NextResponse.json({ bookings: formattedBookings, teachers });
+        return NextResponse.json({ bookings: formattedBookings, teachers, page, pageSize, totalCount });
     } catch (error) {
         console.error('Admin bookings API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

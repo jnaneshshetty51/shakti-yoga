@@ -132,6 +132,12 @@ function contentFields(subtype: Subtype, blogOptions: { label: string; value: st
 
 const SUBTYPE_LABEL: Record<Subtype, string> = { REEL: "Reel", POST: "Post", ANNOUNCEMENT: "Announcement" };
 
+// Only the "Media Feed" (content posts) list is a bounded resource
+// collection that keeps growing over time — worth real server-side
+// pagination. Stories, the blog, comments and community moderation are
+// small staff-curated sets or queues and stay as they were.
+const PAGE_SIZE = 25;
+
 function contentInitial(r: ContentRow): EntityValues {
     return {
         title: r.title, category: r.category, body: r.body, caption: r.caption,
@@ -159,6 +165,15 @@ export default function AdminContentPage() {
     const { confirm, dialog } = useConfirmDialog();
     const [activeTab, setActiveTab] = useState<ContentTab>("content");
     const [content, setContent] = useState<ContentRow[]>([]);
+    const [contentPage, setContentPage] = useState(1);
+    const [contentTotalCount, setContentTotalCount] = useState(0);
+    const [contentSearch, setContentSearch] = useState("");
+    const [contentSort, setContentSort] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+    // The calendar view needs a fuller cross-month picture than one 25-row
+    // page of the (now server-paginated) list — kept as its own snapshot
+    // (capped at the route's page-size ceiling) so switching to "calendar"
+    // doesn't only show whatever page the list last landed on.
+    const [calendarContent, setCalendarContent] = useState<ContentRow[]>([]);
     const [blogOptions, setBlogOptions] = useState<{ label: string; value: string }[]>([]);
     const [classBatchOptions, setClassBatchOptions] = useState<{ label: string; value: string }[]>([]);
     const [counts, setCounts] = useState({ drafts: 0, published: 0, scheduled: 0 });
@@ -175,12 +190,16 @@ export default function AdminContentPage() {
 
     const fetchContent = useCallback(async () => {
         try {
-            const response = await fetch('/api/admin/content');
+            const params = new URLSearchParams({ page: String(contentPage), pageSize: String(PAGE_SIZE) });
+            if (contentSearch) params.set('q', contentSearch);
+            if (contentSort) { params.set('sortKey', contentSort.key); params.set('sortDir', contentSort.direction); }
+            const response = await fetch(`/api/admin/content?${params}`);
             if (response.ok) {
                 const data = await response.json();
                 setStories(data.stories || []);
                 setBlogPosts(data.blogPosts || []);
                 setContent(data.content || []);
+                setContentTotalCount(data.totalCount ?? 0);
                 setBlogOptions(data.blogOptions || []);
                 setClassBatchOptions(data.classBatchOptions || []);
                 setCounts(data.counts || { drafts: 0, published: 0, scheduled: 0 });
@@ -189,6 +208,18 @@ export default function AdminContentPage() {
             console.error('Failed to fetch content:', error);
         } finally {
             setLoading(false);
+        }
+    }, [contentPage, contentSearch, contentSort]);
+
+    const fetchCalendarContent = useCallback(async () => {
+        try {
+            const response = await fetch('/api/admin/content?page=1&pageSize=100');
+            if (response.ok) {
+                const data = await response.json();
+                setCalendarContent(data.content || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch content calendar:', error);
         }
     }, []);
 
@@ -221,10 +252,18 @@ export default function AdminContentPage() {
                 setActiveTab(tabParam);
             }
         }
-        fetchContent();
         fetchComments();
         fetchCommunity();
-    }, [fetchContent, fetchComments, fetchCommunity]);
+        fetchCalendarContent();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; fetchContent has its own effect below since it also reacts to content-tab paging/search/sort
+    }, [fetchComments, fetchCommunity, fetchCalendarContent]);
+
+    // The Media Feed list's own pagination/search/sort — separate from the
+    // mount-only effect above so paging the "content" tab doesn't refetch
+    // comments/community every time.
+    useEffect(() => {
+        fetchContent();
+    }, [fetchContent]);
 
     const moderateCommunity = async (kind: "post" | "comment", id: string, action: "hide" | "unhide" | "delete") => {
         if (action === "delete") {
@@ -296,6 +335,7 @@ export default function AdminContentPage() {
         }
         setModal(null);
         fetchContent();
+        if (activeTab === "content") fetchCalendarContent();
     };
 
     const remove = async (id: string) => {
@@ -312,7 +352,12 @@ export default function AdminContentPage() {
             return;
         }
         showToast("success", "Deleted.");
-        fetchContent();
+        // Removing the last row on a page beyond the first would otherwise
+        // leave the admin looking at a page that no longer exists — only the
+        // "content" (Media Feed) list is server-paginated.
+        if (activeTab === "content" && content.length === 1 && contentPage > 1) setContentPage((p) => p - 1);
+        else fetchContent();
+        if (activeTab === "content") fetchCalendarContent();
     };
 
     const rowActions = (id: string, initial: EntityValues, subtype?: Subtype) => (
@@ -343,7 +388,7 @@ export default function AdminContentPage() {
                     active={activeTab}
                     onChange={(k) => setActiveTab(k as ContentTab)}
                     tabs={[
-                        { key: "content", label: "Media Feed", count: content.length },
+                        { key: "content", label: "Media Feed", count: contentTotalCount },
                         { key: "story", label: "Stories & Testimonials", count: stories.length },
                         { key: "blog", label: "Articles & Blog", count: blogPosts.length },
                         { key: "comments", label: "Comments", count: comments.filter((c) => c.reportCount > 0).length || comments.length },
@@ -383,14 +428,14 @@ export default function AdminContentPage() {
                         </div>
                     </div>
                     {contentView === "calendar" ? (
-                        <ContentCalendar rows={content} onOpen={(r) => setModal({
+                        <ContentCalendar rows={calendarContent} onOpen={(r) => setModal({
                             mode: "edit", id: r.id, subtype: r.contentType, initial: contentInitial(r),
                         })} />
                     ) : (
                         <DTable
                             data={content}
                             columns={[
-                                { header: "Title", accessor: "title", className: "font-bold" },
+                                { header: "Title", accessor: "title", className: "font-bold", sortable: true },
                                 { header: "Type", accessor: (r: ContentRow) => SUBTYPE_LABEL[r.contentType] },
                                 { header: "Category", accessor: (r: ContentRow) => r.category[0] + r.category.slice(1).toLowerCase() },
                                 { header: "Pinned", accessor: (r: ContentRow) => (r.pinned ? "📌" : "") },
@@ -407,6 +452,14 @@ export default function AdminContentPage() {
                                 },
                             ]}
                             title="Feed content"
+                            server={{
+                                page: contentPage,
+                                pageSize: PAGE_SIZE,
+                                totalCount: contentTotalCount,
+                                onPageChange: setContentPage,
+                                onSearchChange: (q) => { setContentSearch(q); setContentPage(1); },
+                                onSortChange: (key, direction) => setContentSort({ key, direction }),
+                            }}
                             actions={(r: ContentRow) => rowActions(r.id, contentInitial(r), r.contentType)}
                         />
                     )}

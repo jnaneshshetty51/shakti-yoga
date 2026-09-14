@@ -3,24 +3,45 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
-import { CertificateStatus } from '@prisma/client';
+import { CertificateStatus, Prisma } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
+
 export async function GET(request: Request) {
     if (!(await requireAdmin())) return forbidden();
-    const status = new URL(request.url).searchParams.get('status');
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const q = url.searchParams.get('q')?.trim();
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
 
-    const certificates = await prisma.certificate.findMany({
-        where: status && status !== 'all' ? { status: status.toUpperCase() as CertificateStatus } : undefined,
-        include: {
-            user: { select: { id: true, name: true, email: true } },
-            approvedBy: { select: { id: true, name: true } },
-        },
-        orderBy: { issuedAt: 'desc' },
-    });
+    const where: Prisma.CertificateWhereInput = {
+        ...(status && status !== 'all' ? { status: status.toUpperCase() as CertificateStatus } : {}),
+        ...(q ? { OR: [
+            { title: { contains: q, mode: 'insensitive' } },
+            { user: { name: { contains: q, mode: 'insensitive' } } },
+            { user: { email: { contains: q, mode: 'insensitive' } } },
+        ] } : {}),
+    };
 
-    return NextResponse.json({ certificates });
+    const [certificates, totalCount] = await Promise.all([
+        prisma.certificate.findMany({
+            where,
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                approvedBy: { select: { id: true, name: true } },
+            },
+            orderBy: { issuedAt: 'desc' },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+        }),
+        prisma.certificate.count({ where }),
+    ]);
+
+    return NextResponse.json({ certificates, page, pageSize, totalCount });
 }
 
 /** POST /api/admin/certificates — manual issuance by Founder/Admin. */

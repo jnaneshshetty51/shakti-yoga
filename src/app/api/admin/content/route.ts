@@ -3,13 +3,16 @@ import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
-import { Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
+import { Prisma, Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
 import { isCtaType, toContentCategory, serializeContent } from '@/lib/content';
 import { notifyContentPublished } from '@/lib/content-notify';
 import { truncate as cap } from '@/lib/validation';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 type ContentType = 'story' | 'blog' | 'whatsapp' | 'content';
+
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
 const INSTAGRAM_RE = /^https:\/\/(www\.)?instagram\.com\/(reel|p|tv)\/[A-Za-z0-9_-]+\/?/i;
 
@@ -50,12 +53,39 @@ function slugify(s: string) {
     return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const payload = await requireDepartment('CONTENT');
         if (!payload) return forbidden();
 
-        const [stories, blogPosts, groups, contentRows, classBatches] = await Promise.all([
+        // Only the "Media Feed" (content) list is a bounded, ever-growing
+        // resource collection worth paginating server-side — stories, the
+        // blog and the WhatsApp groups are small, staff-curated sets that
+        // stay client-paginated, so they're still fetched here in full.
+        const url = new URL(request.url);
+        const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+        const q = url.searchParams.get('q')?.trim();
+        const sortKey = url.searchParams.get('sortKey');
+        const sortDir: Prisma.SortOrder = url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
+
+        const contentWhere: Prisma.ContentWhereInput = q ? {
+            OR: [
+                { title: { contains: q, mode: 'insensitive' } },
+                { body: { contains: q, mode: 'insensitive' } },
+                { caption: { contains: q, mode: 'insensitive' } },
+                { author: { contains: q, mode: 'insensitive' } },
+            ],
+        } : {};
+
+        // Only "title" maps to a real, directly-sortable column — Type,
+        // Category, Pinned and Status all render through a function accessor
+        // on the page (derived/formatted), so none of them offer a sort
+        // control. Falls back to the original pinned-then-recent default.
+        const contentOrderBy: Prisma.ContentOrderByWithRelationInput[] =
+            sortKey === 'title' ? [{ title: sortDir }] : [{ pinned: 'desc' }, { createdAt: 'desc' }];
+
+        const [stories, blogPosts, groups, contentRows, contentTotalCount, draftsCount, publishedCount, scheduledCount, classBatches] = await Promise.all([
             prisma.story.findMany({
                 include: {
                     user: {
@@ -79,8 +109,18 @@ export async function GET() {
                 },
             }),
             prisma.content.findMany({
-                orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
+                where: contentWhere,
+                orderBy: contentOrderBy,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
             }),
+            prisma.content.count({ where: contentWhere }),
+            // The published/draft/scheduled counters are a dashboard-wide
+            // summary, not scoped to the current search — computed
+            // independently of contentWhere/pagination, same as before.
+            prisma.content.count({ where: { status: 'DRAFT' } }),
+            prisma.content.count({ where: { status: 'PUBLISHED' } }),
+            prisma.content.count({ where: { status: { not: 'PUBLISHED' }, scheduledAt: { gt: new Date() } } }),
             prisma.classBatch.findMany({
                 where: { active: true },
                 select: { id: true, name: true },
@@ -161,12 +201,15 @@ export async function GET() {
             blogPosts: formattedBlogPosts,
             groups: formattedGroups,
             content,
+            page,
+            pageSize,
+            totalCount: contentTotalCount,
             blogOptions: blogPosts.map((b) => ({ label: b.title, value: b.id })),
             classBatchOptions: classBatches.map((b) => ({ label: b.name, value: b.id })),
             counts: {
-                drafts: contentRows.filter((r) => r.status === 'DRAFT').length,
-                published: contentRows.filter((r) => r.status === 'PUBLISHED').length,
-                scheduled: contentRows.filter((r) => r.status !== 'PUBLISHED' && r.scheduledAt && r.scheduledAt > new Date()).length,
+                drafts: draftsCount,
+                published: publishedCount,
+                scheduled: scheduledCount,
             },
         });
     } catch (error) {

@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-const MAX_ROWS = 1000;
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
 /** GET /api/admin/payments — row-level payment ledger, newest first. Read-only. */
 export async function GET(request: Request) {
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
         const q = url.searchParams.get('q')?.trim();
         const from = url.searchParams.get('from');
         const to = url.searchParams.get('to');
-        const limit = Math.min(MAX_ROWS, Math.max(1, Number(url.searchParams.get('limit')) || MAX_ROWS));
+        const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
 
         const createdAt: Prisma.DateTimeFilter = {};
         if (from && !Number.isNaN(Date.parse(from))) createdAt.gte = new Date(from);
@@ -46,12 +48,16 @@ export async function GET(request: Request) {
                 : {}),
         };
 
-        const rows = await prisma.payment.findMany({
-            where,
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-            include: { user: { select: { id: true, name: true, email: true } } },
-        });
+        const [rows, totalCount] = await Promise.all([
+            prisma.payment.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+                include: { user: { select: { id: true, name: true, email: true } } },
+            }),
+            prisma.payment.count({ where }),
+        ]);
 
         return NextResponse.json({
             payments: rows.map((p) => ({
@@ -71,7 +77,9 @@ export async function GET(request: Request) {
                 refundedAmount: Number(p.refundedAmount),
                 createdAt: p.createdAt.toISOString(),
             })),
-            capped: rows.length === limit,
+            page,
+            pageSize,
+            totalCount,
         });
     } catch (error) {
         console.error('Admin payments GET error:', error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { PageHeader, PageLoading, Badge, TableActions, ActionButton, Tabs, labelClass, inputClass } from "@/components/admin/ui";
@@ -53,6 +53,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
+const PAGE_SIZE = 25;
+
 export default function AdminTherapyIntakesPage() {
     const { showToast } = useToast();
     const [rows, setRows] = useState<IntakeRow[]>([]);
@@ -61,24 +63,31 @@ export default function AdminTherapyIntakesPage() {
     const [detailLoading, setDetailLoading] = useState(false);
     const [notes, setNotes] = useState("");
     const [deciding, setDeciding] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
-    const fetchRows = async () => {
+    const fetchRows = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/admin/therapy/intakes");
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('q', search);
+            if (statusFilter) params.set('status', statusFilter);
+            const res = await fetch(`/api/admin/therapy/intakes?${params}`);
             const data = await res.json();
             setRows(data.intakes || []);
+            setTotalCount(data.totalCount ?? 0);
         } catch {
             showToast("error", "Failed to load assessments");
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, search, statusFilter, showToast]);
 
     useEffect(() => {
         fetchRows();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [fetchRows]);
 
     const openDetail = async (row: IntakeRow) => {
         setDetailLoading(true);
@@ -159,7 +168,7 @@ export default function AdminTherapyIntakesPage() {
                         if (k === "updates") window.location.href = "/admin/therapy/updates";
                     }}
                     tabs={[
-                        { key: "intakes", label: "Intake Assessments", count: rows.length },
+                        { key: "intakes", label: "Intake Assessments", count: totalCount },
                         { key: "updates", label: "Patient Progress Updates" },
                     ]}
                 />
@@ -183,6 +192,17 @@ export default function AdminTherapyIntakesPage() {
                         ],
                     },
                 ]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === 'status') setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(r) => (
                     <TableActions>
                         <ActionButton onClick={() => openDetail(r)}>Review</ActionButton>

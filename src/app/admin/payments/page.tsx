@@ -66,33 +66,40 @@ const MANUAL_FIELDS: FieldDef[] = [
     { name: "note", label: "Note (e.g. bank transfer ref)", type: "textarea" },
 ];
 
+const PAGE_SIZE = 25;
+
 function PaymentsTable() {
     const initialStatus = useSearchParams().get("status");
     const { showToast } = useToast();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
-    const [capped, setCapped] = useState(false);
     const [manualOpen, setManualOpen] = useState(false);
     const [busyId, setBusyId] = useState<string | null>(null);
     const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
     const [refundAmount, setRefundAmount] = useState("");
     const [refunding, setRefunding] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState(initialStatus ?? "");
 
     const fetchPayments = useCallback(async () => {
         try {
-            const qs = initialStatus ? `?status=${encodeURIComponent(initialStatus)}` : "";
-            const res = await fetch(`/api/admin/payments${qs}`);
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set("q", search);
+            if (statusFilter) params.set("status", statusFilter);
+            const res = await fetch(`/api/admin/payments?${params}`);
             if (res.ok) {
                 const data = await res.json();
                 setPayments(data.payments || []);
-                setCapped(!!data.capped);
+                setTotalCount(data.totalCount ?? 0);
             }
         } catch (error) {
             console.error("Failed to fetch payments:", error);
         } finally {
             setLoading(false);
         }
-    }, [initialStatus]);
+    }, [page, search, statusFilter]);
 
     useEffect(() => {
         fetchPayments();
@@ -198,16 +205,22 @@ function PaymentsTable() {
                     <a href="/admin/payments" className="text-brand font-semibold">Show all</a>
                 </p>
             )}
-            {capped && (
-                <p className="mb-4 text-xs text-amber-600">
-                    Showing the most recent 1,000 payments. Use search or a status filter to narrow older records.
-                </p>
-            )}
             <DTable
                 data={payments}
                 columns={columns}
                 title="Payments"
                 filters={initialStatus ? undefined : [{ key: "status", label: "Status", options: STATUS_FILTER }]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === "status") setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(p: Payment) =>
                     p.status === "PAID" || p.status === "PARTIALLY_REFUNDED" ? (
                         <TableActions>

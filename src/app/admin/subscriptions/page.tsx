@@ -51,6 +51,8 @@ const PLAN_KEY_OPTIONS = [
 const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
+const PAGE_SIZE = 25;
+
 export default function AdminSubscriptionsPage() {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
@@ -58,17 +60,24 @@ export default function AdminSubscriptionsPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<Subscription | null>(null);
     const [creating, setCreating] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
 
     const fetchSubscriptions = useCallback(async () => {
         try {
-            const qs = search ? `?q=${encodeURIComponent(search)}` : "";
-            const response = await fetch(`/api/admin/subscriptions${qs}`);
-            if (response.ok) setSubscriptions((await response.json()).subscriptions || []);
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('q', search);
+            const response = await fetch(`/api/admin/subscriptions?${params}`);
+            if (response.ok) {
+                const data = await response.json();
+                setSubscriptions(data.subscriptions || []);
+                setTotalCount(data.totalCount ?? 0);
+            }
         } finally {
             setLoading(false);
         }
-    }, [search]);
+    }, [page, search]);
 
     useEffect(() => { fetchSubscriptions(); }, [fetchSubscriptions]);
 
@@ -147,7 +156,10 @@ export default function AdminSubscriptionsPage() {
             return;
         }
         showToast("success", "Subscription deleted.");
-        fetchSubscriptions();
+        // Removing the last row on a page beyond the first would otherwise
+        // leave the admin looking at a page that no longer exists.
+        if (subscriptions.length === 1 && page > 1) setPage((p) => p - 1);
+        else fetchSubscriptions();
     };
 
     const bulkCancel = async (ids: string[]) => {
@@ -187,8 +199,6 @@ export default function AdminSubscriptionsPage() {
         <div>
             {dialog}
             <PageHeader title="Subscriptions" subtitle="Manage member plans, billing state and renewals.">
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search member…"
-                    className="rounded-control border border-hairline px-3 py-1.5 text-sm" />
                 <Button onClick={() => setCreating(true)}>Activate a plan</Button>
             </PageHeader>
 
@@ -198,6 +208,13 @@ export default function AdminSubscriptionsPage() {
                 title="Subscriptions"
                 enableBulkActions
                 bulkActions={[{ label: "Cancel selected", tone: "danger", onClick: bulkCancel }]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                }}
                 actions={(s) => (
                     <TableActions>
                         <ActionButton onClick={() => setEditing(s)}>Edit</ActionButton>

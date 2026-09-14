@@ -34,13 +34,16 @@ type Member = {
 };
 
 type Payload = {
-    active: Member[];
-    group: Member[];
-    therapy: Member[];
+    members: Member[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
     counts: { active: number; group: number; therapy: number; mrr: number };
 };
 
 type TabKey = "active" | "group" | "therapy";
+
+const PAGE_SIZE = 25;
 
 const TABS: { key: TabKey; label: string; blurb: string }[] = [
     { key: "active", label: "All Active", blurb: "Everyone on a live membership or trial." },
@@ -96,11 +99,17 @@ export default function AdminMembersPage() {
     const [loadError, setLoadError] = useState(false);
     const [tab, setTab] = useState<TabKey>("active");
     const [creditFor, setCreditFor] = useState<Member | null>(null);
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoadError(false);
         try {
-            const res = await fetch("/api/admin/members");
+            const params = new URLSearchParams({ tab, page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('q', search);
+            if (sort) { params.set('sortKey', sort.key); params.set('sortDir', sort.direction); }
+            const res = await fetch(`/api/admin/members?${params}`);
             if (res.ok) {
                 setData(await res.json());
             } else {
@@ -112,11 +121,20 @@ export default function AdminMembersPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [tab, page, search, sort]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    // Tab switch changes both the underlying dataset and which columns/sort
+    // keys are valid — start that new view on page 1 with a clean slate.
+    const changeTab = (k: TabKey) => {
+        setTab(k);
+        setPage(1);
+        setSearch("");
+        setSort(null);
+    };
 
     const adjustCredits = async (values: EntityValues) => {
         if (!creditFor) return;
@@ -169,13 +187,15 @@ export default function AdminMembersPage() {
                 { header: "Credits", accessor: "credits" as const, sortable: true },
                 {
                     header: "Upcoming",
+                    // A derived (function) accessor — not a real sortable column,
+                    // so no `sortable` here (it would silently only sort the
+                    // current page).
                     accessor: (m: Member) =>
                         m.upcomingSessions > 0 ? (
                             <span className="font-bold text-gray-800">{m.upcomingSessions}</span>
                         ) : (
                             <span className="text-gray-300">0</span>
                         ),
-                    sortable: true,
                 },
                 {
                     header: "Next session",
@@ -188,7 +208,8 @@ export default function AdminMembersPage() {
         return [name, plan, status, phone, renewal, { header: "Last login", accessor: "lastLogin" as const, sortable: true }];
     }, [tab]);
 
-    const rows = data ? data[tab] : [];
+    const rows = data ? data.members : [];
+    const totalCount = data?.totalCount ?? 0;
     const activeTab = TABS.find((t) => t.key === tab)!;
 
     if (loading) return <PageLoading title="Members" />;
@@ -216,8 +237,8 @@ export default function AdminMembersPage() {
             <div className="mb-3">
                 <Tabs
                     active={tab}
-                    onChange={(k) => setTab(k)}
-                    tabs={TABS.map((t) => ({ key: t.key, label: t.label, count: data?.[t.key].length ?? 0 }))}
+                    onChange={changeTab}
+                    tabs={TABS.map((t) => ({ key: t.key, label: t.label, count: data?.counts[t.key] ?? 0 }))}
                 />
             </div>
             <p className="text-sm text-gray-500 mb-4">{activeTab.blurb}</p>
@@ -229,6 +250,14 @@ export default function AdminMembersPage() {
                 title={activeTab.label}
                 searchable
                 actions={rowActions}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onSortChange: (key, direction) => setSort({ key, direction }),
+                }}
             />
 
             {creditFor && (

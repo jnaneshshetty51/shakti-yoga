@@ -41,6 +41,8 @@ const TYPE_OPTIONS = [
 
 const STATUS_FILTER = STATUS_OPTIONS.map((o) => ({ label: o.label, value: o.value }));
 
+const PAGE_SIZE = 25;
+
 export default function AdminBookingsPage() {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
@@ -49,19 +51,27 @@ export default function AdminBookingsPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<Booking | null>(null);
     const [creating, setCreating] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
     const fetchBookings = useCallback(async () => {
         try {
-            const response = await fetch("/api/admin/bookings");
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set("q", search);
+            if (statusFilter) params.set("status", statusFilter);
+            const response = await fetch(`/api/admin/bookings?${params}`);
             if (response.ok) {
                 const data = await response.json();
                 setBookings(data.bookings || []);
                 setTeachers(data.teachers || []);
+                setTotalCount(data.totalCount ?? 0);
             }
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [page, search, statusFilter]);
 
     useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
@@ -154,7 +164,10 @@ export default function AdminBookingsPage() {
             return;
         }
         showToast("success", "Booking deleted.");
-        fetchBookings();
+        // Removing the last row on a page beyond the first would otherwise
+        // leave the admin looking at a page that no longer exists.
+        if (bookings.length === 1 && page > 1) setPage((p) => p - 1);
+        else fetchBookings();
     };
 
     const bulkCancel = async (ids: string[]) => {
@@ -207,6 +220,17 @@ export default function AdminBookingsPage() {
                 filters={[{ key: "status", label: "Status", options: STATUS_FILTER }]}
                 enableBulkActions
                 bulkActions={[{ label: "Cancel selected", tone: "danger", onClick: bulkCancel }]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === "status") setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(bk) => (
                     <TableActions>
                         <ActionButton onClick={() => setEditing(bk)}>Edit</ActionButton>

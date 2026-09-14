@@ -3,21 +3,46 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { issueInvoiceForPayment } from '@/lib/invoice';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-/** GET ?email= — invoices, newest first. */
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
+
+/** GET ?email=&q=&page=&pageSize= — invoices, newest first. */
 export async function GET(request: Request) {
     if (!(await requireAdmin())) return forbidden();
-    const email = new URL(request.url).searchParams.get('email')?.trim().toLowerCase();
+    const url = new URL(request.url);
+    const email = url.searchParams.get('email')?.trim().toLowerCase();
+    const q = url.searchParams.get('q')?.trim();
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
 
-    const rows = await prisma.invoice.findMany({
-        where: email ? { user: { email } } : {},
-        include: { user: { select: { name: true, email: true } } },
-        orderBy: { issuedAt: 'desc' },
-        take: 200,
-    });
+    const where: Prisma.InvoiceWhereInput = {
+        ...(email ? { user: { email } } : {}),
+        ...(q
+            ? {
+                  OR: [
+                      { number: { contains: q, mode: 'insensitive' } },
+                      { user: { name: { contains: q, mode: 'insensitive' } } },
+                      { user: { email: { contains: q, mode: 'insensitive' } } },
+                  ],
+              }
+            : {}),
+    };
+
+    const [rows, totalCount] = await Promise.all([
+        prisma.invoice.findMany({
+            where,
+            include: { user: { select: { name: true, email: true } } },
+            orderBy: { issuedAt: 'desc' },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+        }),
+        prisma.invoice.count({ where }),
+    ]);
 
     return NextResponse.json({
         invoices: rows.map((i) => ({
@@ -31,6 +56,9 @@ export async function GET(request: Request) {
             status: i.status,
             issuedAt: i.issuedAt.toISOString(),
         })),
+        page,
+        pageSize,
+        totalCount,
     });
 }
 

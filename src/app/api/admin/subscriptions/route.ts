@@ -6,9 +6,12 @@ import { getClientIp } from '@/lib/rate-limit';
 import { PLANS, isPlanKey } from '@/lib/pricing';
 import { resolvedPlan } from '@/lib/plans';
 import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
-import { SubscriptionStatus, PlanType, Role } from '@prisma/client';
+import { SubscriptionStatus, PlanType, Role, Prisma } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
 
 /** The user role that should follow from a subscription's plan + status. */
 function roleForSubscription(planType: PlanType, status: SubscriptionStatus): Role {
@@ -23,25 +26,34 @@ export async function GET(request: Request) {
         const payload = await requireAdmin();
         if (!payload) return forbidden();
 
-        const q = new URL(request.url).searchParams.get('q')?.trim();
-        const statusFilter = new URL(request.url).searchParams.get('status');
+        const url = new URL(request.url);
+        const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+        const q = url.searchParams.get('q')?.trim();
+        const statusFilter = url.searchParams.get('status');
 
-        const subscriptions = await prisma.subscription.findMany({
-            where: {
-                ...(statusFilter && statusFilter in SubscriptionStatus
-                    ? { status: statusFilter as SubscriptionStatus }
-                    : {}),
-                ...(q
-                    ? { user: { OR: [
-                        { name: { contains: q, mode: 'insensitive' } },
-                        { email: { contains: q, mode: 'insensitive' } },
-                    ] } }
-                    : {}),
-            },
-            include: { user: { select: { id: true, name: true, email: true } } },
-            orderBy: { renewalDate: 'asc' },
-            take: 200, // matches the invoices route's cap — full-table scans don't scale
-        });
+        const where: Prisma.SubscriptionWhereInput = {
+            ...(statusFilter && statusFilter in SubscriptionStatus
+                ? { status: statusFilter as SubscriptionStatus }
+                : {}),
+            ...(q
+                ? { user: { OR: [
+                    { name: { contains: q, mode: 'insensitive' } },
+                    { email: { contains: q, mode: 'insensitive' } },
+                ] } }
+                : {}),
+        };
+
+        const [subscriptions, totalCount] = await Promise.all([
+            prisma.subscription.findMany({
+                where,
+                include: { user: { select: { id: true, name: true, email: true } } },
+                orderBy: { renewalDate: 'asc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.subscription.count({ where }),
+        ]);
 
         return NextResponse.json({
             subscriptions: subscriptions.map((sub) => ({
@@ -59,6 +71,9 @@ export async function GET(request: Request) {
                 paused: !!sub.pausedAt,
                 renewalDate: sub.renewalDate.toISOString(),
             })),
+            page,
+            pageSize,
+            totalCount,
         });
     } catch (error) {
         console.error('Admin subscriptions API error:', error);

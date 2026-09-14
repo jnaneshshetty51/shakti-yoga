@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
 import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog } from "@/components/admin/ui";
+
+const PAGE_SIZE = 25;
 
 export type Lead = {
     id: string;
@@ -28,7 +30,11 @@ function LeadsDashboard() {
     const { confirm, dialog } = useConfirmDialog();
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
-    
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -48,26 +54,32 @@ function LeadsDashboard() {
     
     const [staffList, setStaffList] = useState<{id: string, name: string}[]>([]);
 
-    useEffect(() => {
-        fetchLeads();
-        fetchStaffList();
-    }, []);
-
-    async function fetchLeads() {
-        setLoading(true);
+    const fetchLeads = useCallback(async () => {
         try {
-            const response = await fetch('/api/admin/leads');
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set('search', search);
+            if (statusFilter) params.set('status', statusFilter);
+            const response = await fetch(`/api/admin/leads?${params}`);
             if (response.ok) {
                 const data = await response.json();
-                setLeads(data || []);
+                setLeads(data.leads || []);
+                setTotalCount(data.totalCount ?? 0);
             }
         } catch (error) {
             console.error('Failed to fetch leads:', error);
         } finally {
             setLoading(false);
         }
-    }
-    
+    }, [page, search, statusFilter]);
+
+    useEffect(() => {
+        fetchLeads();
+    }, [fetchLeads]);
+
+    useEffect(() => {
+        fetchStaffList();
+    }, []);
+
     async function fetchStaffList() {
         try {
             const response = await fetch('/api/admin/users');
@@ -156,7 +168,10 @@ function LeadsDashboard() {
             const res = await fetch(`/api/admin/leads/${lead.id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete lead');
             showToast('success', `Lead "${lead.name}" deleted`);
-            fetchLeads();
+            // Removing the last row on a page beyond the first would otherwise
+            // leave the admin looking at a page that no longer exists.
+            if (leads.length === 1 && page > 1) setPage((p) => p - 1);
+            else fetchLeads();
         } catch (err) {
             showToast('error', err instanceof Error ? err.message : 'Something went wrong');
         }
@@ -191,9 +206,12 @@ function LeadsDashboard() {
             )
         },
         {
+            // Status renders a derived Badge (function accessor) — DTable only
+            // honors sort clicks on a string accessor, so a `sortable: true`
+            // here was already inert; leave it off rather than imply a control
+            // that doesn't (and, server-side, couldn't) work.
             header: "Status",
             accessor: (lead: Lead) => <Badge tone={statusTone(lead.status)}>{lead.status}</Badge>,
-            sortable: true
         },
         {
             header: "Assigned To",
@@ -223,6 +241,17 @@ function LeadsDashboard() {
                 title="All Leads"
                 filters={[{ key: "status", label: "Status", options: STATUS_FILTER }]}
                 onCreate={handleCreate}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === 'status') setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(lead) => (
                     <TableActions>
                         <a href={`/admin/leads/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>

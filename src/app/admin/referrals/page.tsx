@@ -29,6 +29,8 @@ type Stats = { total: number; successful: number; conversionRate: number; credit
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
+const PAGE_SIZE = 25;
+
 export default function AdminReferralsPage() {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
@@ -38,13 +40,21 @@ export default function AdminReferralsPage() {
     const [form, setForm] = useState<Settings>({ referrerReward: 500, refereeDiscount: 250, validityDays: 90 });
     const [loading, setLoading] = useState(true);
     const [savingSettings, setSavingSettings] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
     const load = useCallback(async () => {
         try {
-            const res = await fetch("/api/admin/referrals");
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (search) params.set("q", search);
+            if (statusFilter) params.set("status", statusFilter);
+            const res = await fetch(`/api/admin/referrals?${params}`);
             if (res.ok) {
                 const data = await res.json();
                 setReferrals(data.referrals || []);
+                setTotalCount(data.totalCount ?? 0);
                 setStats(data.stats || null);
                 setSettings(data.settings || null);
                 if (data.settings) setForm(data.settings);
@@ -52,7 +62,7 @@ export default function AdminReferralsPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [page, search, statusFilter]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -174,6 +184,17 @@ export default function AdminReferralsPage() {
                     { label: "Expired", value: "EXPIRED" },
                     { label: "Reversed", value: "REVERSED" },
                 ] }]}
+                server={{
+                    page,
+                    pageSize: PAGE_SIZE,
+                    totalCount,
+                    onPageChange: setPage,
+                    onSearchChange: (q) => { setSearch(q); setPage(1); },
+                    onFilterChange: (key, value) => {
+                        if (key === "status") setStatusFilter(value);
+                        setPage(1);
+                    },
+                }}
                 actions={(r) => (
                     <TableActions>
                         <ActionButton onClick={() => act(r, r.flagged ? "unflag" : "flag")}>

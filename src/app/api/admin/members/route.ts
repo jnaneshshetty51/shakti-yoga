@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
+import { Prisma } from '@prisma/client';
 
 const IST = 'Asia/Kolkata';
 
@@ -19,36 +20,119 @@ const PLAN_LABEL: Record<string, string> = {
 
 const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
+
+type TabKey = 'active' | 'group' | 'therapy';
+const TAB_KEYS: TabKey[] = ['active', 'group', 'therapy'];
+
 /**
  * Segmented member roster for the admin.
  *   active  — anyone on a live subscription (ACTIVE or TRIAL, not past renewal)
  *   group   — active members entitled to the daily group class (Everyday + Trial)
  *   therapy — active members on the 1:1 track (Yoga Therapy, or holding credits)
+ *
+ * `tab` picks which segment is paginated/searched/sorted server-side; `counts`
+ * (and `mrr`) always reflect the full, unfiltered totals for all three
+ * segments — they back the page's StatCards, which show every segment's
+ * number regardless of which tab/page/search is currently in view.
  */
-export async function GET() {
+export async function GET(request: Request) {
     if (!(await requireAdmin())) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     try {
+        const url = new URL(request.url);
+        const tabParam = url.searchParams.get('tab');
+        const tab: TabKey = TAB_KEYS.includes(tabParam as TabKey) ? (tabParam as TabKey) : 'active';
+        const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+        const q = url.searchParams.get('q')?.trim();
+        const sortKey = url.searchParams.get('sortKey');
+        const sortDir: Prisma.SortOrder = url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
+
         const now = new Date();
 
-        const [users, upcoming] = await Promise.all([
+        // "live" = on a subscription that's currently ACTIVE/TRIAL and not past
+        // its renewal date. All three tabs are drawn from this same base set.
+        const liveWhere: Prisma.UserWhereInput = {
+            role: { not: 'VISITOR' },
+            subscription: { status: { in: ['ACTIVE', 'TRIAL'] }, renewalDate: { gt: now } },
+        };
+        // group/therapy narrow the live set to a track — mirrors the derived
+        // in-memory filters the old client-side version applied to `active`.
+        const tabWhere: Record<TabKey, Prisma.UserWhereInput> = {
+            active: {},
+            group: { OR: [
+                { subscription: { planType: 'EVERYDAY_YOGA' } },
+                { subscription: { planType: 'TRIAL' } },
+                { role: 'TRIAL' },
+            ] },
+            therapy: { OR: [
+                { subscription: { planType: 'YOGA_THERAPY' } },
+                { role: 'MEMBER_THERAPY' },
+                { credits: { gt: 0 } },
+            ] },
+        };
+
+        const where: Prisma.UserWhereInput = {
+            AND: [
+                liveWhere,
+                tabWhere[tab],
+                ...(q ? [{
+                    OR: [
+                        { name: { contains: q, mode: 'insensitive' as const } },
+                        { email: { contains: q, mode: 'insensitive' as const } },
+                        { phone: { contains: q, mode: 'insensitive' as const } },
+                    ],
+                }] : []),
+            ],
+        };
+
+        // Only credits/classesAttended/totalSessions/joinedAt/lastLogin map to
+        // real, directly-sortable fields (a plain column, or a relation count
+        // Prisma can order by) — Plan/Status/Phone/Renewal/Next-session/Upcoming
+        // render a derived Badge or formatted/computed value, so none of those
+        // offer a sort control from the client.
+        const orderBy: Prisma.UserOrderByWithRelationInput =
+            sortKey === 'lastLogin' ? { lastLogin: sortDir }
+                : sortKey === 'joinedAt' ? { createdAt: sortDir }
+                    : sortKey === 'credits' ? { credits: sortDir }
+                        : sortKey === 'classesAttended' ? { classAttendance: { _count: sortDir } }
+                            : sortKey === 'totalSessions' ? { bookings: { _count: sortDir } }
+                                : { createdAt: 'desc' };
+
+        const [users, totalCount, activeCount, groupCount, therapyCount, mrrAgg] = await Promise.all([
             prisma.user.findMany({
-                where: { role: { not: 'VISITOR' } },
+                where,
                 include: {
                     subscription: true,
                     _count: { select: { bookings: true, classAttendance: true } },
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy,
+                skip: (page - 1) * pageSize,
+                take: pageSize,
             }),
-            prisma.booking.groupBy({
-                by: ['userId'],
-                where: { status: { in: ['PENDING', 'CONFIRMED'] }, date: { gte: now } },
-                _count: true,
-                _min: { date: true },
+            prisma.user.count({ where }),
+            prisma.user.count({ where: liveWhere }),
+            prisma.user.count({ where: { AND: [liveWhere, tabWhere.group] } }),
+            prisma.user.count({ where: { AND: [liveWhere, tabWhere.therapy] } }),
+            prisma.subscription.aggregate({
+                where: { status: 'ACTIVE', renewalDate: { gt: now }, user: { role: { not: 'VISITOR' } } },
+                _sum: { amount: true },
             }),
         ]);
+
+        const ids = users.map((u) => u.id);
+        const upcoming = ids.length
+            ? await prisma.booking.groupBy({
+                by: ['userId'],
+                where: { userId: { in: ids }, status: { in: ['PENDING', 'CONFIRMED'] }, date: { gte: now } },
+                _count: true,
+                _min: { date: true },
+            })
+            : [];
 
         const upMap = new Map(
             upcoming.map((u) => [u.userId, { count: u._count, next: u._min.date as Date | null }]),
@@ -89,27 +173,16 @@ export async function GET() {
             };
         });
 
-        const active = rows.filter((r) => r.live);
-        const group = active.filter(
-            (r) => r.planType === 'EVERYDAY_YOGA' || r.planType === 'TRIAL' || r.role === 'TRIAL',
-        );
-        const therapy = active.filter(
-            (r) => r.planType === 'YOGA_THERAPY' || r.role === 'MEMBER_THERAPY' || r.credits > 0,
-        );
-
-        const mrr = active
-            .filter((r) => r.subStatus === 'ACTIVE')
-            .reduce((sum, r) => sum + r.amount, 0);
-
         return NextResponse.json({
-            active,
-            group,
-            therapy,
+            members: rows,
+            page,
+            pageSize,
+            totalCount,
             counts: {
-                active: active.length,
-                group: group.length,
-                therapy: therapy.length,
-                mrr,
+                active: activeCount,
+                group: groupCount,
+                therapy: therapyCount,
+                mrr: mrrAgg._sum.amount ?? 0,
             },
         });
     } catch (error) {
