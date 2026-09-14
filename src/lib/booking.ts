@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { parseTimeSlot, istToUtc, istParts } from '@/lib/class-schedule';
 import { recordEvent } from '@/lib/analytics';
+import { sendEmail, emailLayout } from '@/lib/email';
 
 /** "08:00 AM - 08:45 AM" or "08:00 AM" -> minutes-from-midnight of the start. */
 export function slotStartMinutes(slot: string): number {
@@ -98,15 +99,18 @@ export async function cancelBooking(
     bookingId: string,
     opts: { actorUserId: string; byStaff: boolean },
 ): Promise<CancelResult> {
-    return prisma.$transaction(async (tx) => {
-        const booking = await tx.booking.findUnique({ where: { id: bookingId } });
-        if (!booking) return { ok: false, status: 404, error: 'Booking not found' };
+    const result = await prisma.$transaction(async (tx) => {
+        const booking = await tx.booking.findUnique({
+            where: { id: bookingId },
+            include: { user: { select: { email: true, name: true } } },
+        });
+        if (!booking) return { ok: false as const, status: 404, error: 'Booking not found' };
 
         if (!opts.byStaff && booking.userId !== opts.actorUserId) {
-            return { ok: false, status: 403, error: 'Not your booking' };
+            return { ok: false as const, status: 403, error: 'Not your booking' };
         }
         if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') {
-            return { ok: false, status: 409, error: `Booking is already ${booking.status.toLowerCase()}.` };
+            return { ok: false as const, status: 409, error: `Booking is already ${booking.status.toLowerCase()}.` };
         }
 
         const isTherapy = booking.type === 'THERAPY_SESSION';
@@ -134,6 +138,33 @@ export async function cancelBooking(
             metadata: { byStaff: opts.byStaff, refunded: refund },
         });
 
-        return { ok: true, status: 200, creditsRestored };
+        return { ok: true as const, status: 200, creditsRestored, booking };
     });
+
+    // Send after the transaction commits — a confirmation email is created on
+    // booking (see api/bookings POST) but cancellation never sent one, leaving
+    // members with no record of the cancellation or credit refund.
+    if (result.ok) {
+        const { booking, creditsRestored } = result;
+        const whenLabel = booking.date.toLocaleString('en-IN', {
+            weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
+            timeZone: 'Asia/Kolkata',
+        });
+        const sessionLabel = booking.type === 'THERAPY_SESSION' ? '1:1 therapy session' : 'consultation';
+        sendEmail({
+            to: booking.user.email,
+            subject: `Session cancelled — ${whenLabel} IST`,
+            html: emailLayout(
+                opts.byStaff
+                    ? `<p>Hi ${booking.user.name.split(' ')[0] || 'there'},</p>
+                       <p>We've had to cancel your ${sessionLabel} on <strong>${whenLabel} IST</strong>.</p>
+                       ${creditsRestored ? '<p>Your session credit has been returned — please rebook a time that works for you.</p>' : ''}`
+                    : `<p>Hi ${booking.user.name.split(' ')[0] || 'there'},</p>
+                       <p>Your ${sessionLabel} on <strong>${whenLabel} IST</strong> has been cancelled.</p>
+                       ${creditsRestored ? '<p>Your session credit has been returned.</p>' : ''}`,
+            ),
+        }).catch(() => { });
+    }
+
+    return result;
 }

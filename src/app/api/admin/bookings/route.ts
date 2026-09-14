@@ -4,7 +4,6 @@ import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { cancelBooking, bookingInstant } from '@/lib/booking';
-import { sendEmail, emailLayout } from '@/lib/email';
 import { sendPush } from '@/lib/push';
 import { BookingStatus, BookingType } from '@prisma/client';
 
@@ -133,27 +132,18 @@ export async function PATCH(request: Request) {
             if (!t) return NextResponse.json({ error: 'Unknown teacher.' }, { status: 400 });
         }
 
-        const before = await prisma.booking.findUnique({
-            where: { id },
-            include: { user: { select: { email: true, name: true } } },
-        });
+        const before = await prisma.booking.findUnique({ where: { id } });
         if (!before) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
         // A staff cancel always refunds the credit (via the shared helper).
+        // cancelBooking() itself sends the member's cancellation email now
+        // (with staff-cancelled copy when byStaff is set), so this route
+        // doesn't send its own — that would double-email the member.
         let creditsRestored = 0;
         if (status === 'CANCELLED' && (before.status === 'PENDING' || before.status === 'CONFIRMED')) {
             const r = await cancelBooking(id, { actorUserId: admin.id, byStaff: true });
             if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
             creditsRestored = r.creditsRestored ?? 0;
-            sendEmail({
-                to: before.user.email,
-                subject: 'Your Shakti Yoga session was cancelled',
-                html: emailLayout(
-                    `<p>Hi ${before.user.name.split(' ')[0] || 'there'},</p>
-                     <p>We've had to cancel your session on ${before.date.toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Kolkata' })} IST.</p>
-                     ${creditsRestored ? '<p>Your session credit has been returned — please rebook a time that works for you.</p>' : ''}`,
-                ),
-            }).catch(() => { });
         }
 
         const data: Record<string, unknown> = {};

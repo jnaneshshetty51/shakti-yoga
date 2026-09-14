@@ -93,14 +93,21 @@ export async function joinFamily(userId: string, rawCode: string): Promise<JoinR
         ownerSub.renewalDate.getTime() > Date.now();
     if (!live) return { ok: false, error: 'This family plan isn’t active.', status: 409 };
 
-    const seatCount = await prisma.subscription.count({ where: { familyOwnerId: ownerSub.userId } });
-    if (seatCount >= PLANS.family.extraSeats) {
-        return { ok: false, error: 'This family plan is full.', status: 409 };
-    }
-
     const me = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
     if (me && ['MEMBER_EVERYDAY', 'MEMBER_THERAPY', 'MEMBER_STARTER'].includes(me.role)) {
         return { ok: false, error: 'You already have a membership. Cancel it first to join a family plan.', status: 409 };
+    }
+
+    // Atomically claim a seat: a single conditional UPDATE is race-free at the
+    // database level regardless of connection pooling, unlike the count-then-
+    // create pattern this replaced (two concurrent joins could both read the
+    // same under-capacity count and both proceed, overselling the plan).
+    const claimed = await prisma.$executeRaw`
+        UPDATE "Subscription" SET "seatsClaimed" = "seatsClaimed" + 1
+        WHERE id = ${ownerSub.id} AND "seatsClaimed" < ${PLANS.family.extraSeats}
+    `;
+    if (claimed === 0) {
+        return { ok: false, error: 'This family plan is full.', status: 409 };
     }
 
     const plan = getPlan('family');
@@ -114,6 +121,8 @@ export async function joinFamily(userId: string, rawCode: string): Promise<JoinR
             provider: ownerSub.provider as 'razorpay' | 'apple' | 'google',
         });
     } catch (err) {
+        // Release the claimed seat — activation didn't actually happen.
+        await prisma.subscription.update({ where: { id: ownerSub.id }, data: { seatsClaimed: { decrement: 1 } } }).catch(() => {});
         if (err instanceof SubscriptionProviderConflictError) {
             return { ok: false, error: `You already have an active subscription billed via ${err.existingProvider}. Cancel it first, then join the family plan.`, status: 409 };
         }

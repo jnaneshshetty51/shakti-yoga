@@ -49,6 +49,7 @@ export default function ClassesPage() {
 
     const join = async (cls: ClassView) => {
         setJoiningId(cls.id);
+        setJoinError("");
         try {
             const res = await fetch(`/api/classes/${cls.id}/join`, { method: "POST" });
             const body = await res.json();

@@ -6,7 +6,10 @@ import { readJson, str, optStr, ValidationError, handleValidationError } from '@
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { recordEvent } from '@/lib/analytics';
 import { bookingInstant, availableSlots } from '@/lib/booking';
+import { getIntake } from '@/lib/therapy-intake';
 import { Prisma } from '@prisma/client';
+
+const INTAKE_ELIGIBLE = new Set(['RECOMMENDED', 'RECOMMENDED_WITH_CONDITIONS']);
 
 export async function GET() {
     const session = await getSession();
@@ -82,6 +85,23 @@ export async function POST(request: Request) {
         }
 
         const isTherapy = user.role === 'MEMBER_THERAPY';
+
+        // A therapist's recommendation is what a Yoga Therapy plan is actually
+        // gated on — credits alone don't mean the member has been cleared for
+        // 1:1 sessions yet (or was cleared "with conditions" that still apply).
+        if (isTherapy) {
+            const intake = await getIntake(user.id);
+            if (!intake || !INTAKE_ELIGIBLE.has(intake.status)) {
+                return NextResponse.json(
+                    {
+                        error: intake && intake.status === 'NOT_RECOMMENDED'
+                            ? 'Your therapist has not recommended 1:1 sessions at this time. Please reach out to discuss next steps.'
+                            : 'Complete your therapy intake and wait for your therapist’s recommendation before booking a session.',
+                    },
+                    { status: 403 },
+                );
+            }
+        }
 
         // Trial users get a single consultation.
         if (!isTherapy) {
