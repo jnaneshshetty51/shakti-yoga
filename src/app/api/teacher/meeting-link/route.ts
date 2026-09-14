@@ -4,6 +4,7 @@ import { requireTeacher } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { sendPush } from '@/lib/push';
+import { pushTemplates } from '@/lib/push-templates';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,12 +47,7 @@ export async function POST(request: Request) {
             await prisma.booking.update({ where: { id }, data: { meetingLink: value } });
 
             if (value) {
-                sendPush(booking.userId, {
-                    title: 'Your session link is ready',
-                    body: 'Tap to open your 1:1 session details.',
-                    url: '/dashboard/therapy/book',
-                    channelId: 'sessions',
-                }).catch(() => {});
+                sendPush(booking.userId, pushTemplates.sessionLinkReady()).catch(() => {});
             }
         }
 

@@ -9,6 +9,7 @@ import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { markReferralConverted } from '@/lib/referral';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { sendPush } from '@/lib/push';
+import { pushTemplates } from '@/lib/push-templates';
 import { Prisma, type PlanType } from '@prisma/client';
 
 function planFrom(planKey: string | null, planType: PlanType | null) {
@@ -200,12 +201,7 @@ export async function POST(request: Request) {
                     void markReferralConverted(userId, planType).catch(() => {});
                 }
                 if (!firstActivation) {
-                    sendPush(userId, {
-                        title: 'Membership renewed',
-                        body: `Your ${effectivePlan.name} plan renewed successfully.`,
-                        url: '/dashboard/billing',
-                        channelId: 'billing',
-                    }).catch(() => {});
+                    sendPush(userId, pushTemplates.membershipRenewed(effectivePlan.name)).catch(() => {});
                 }
                 if (payEntity) {
                     recordRevenue({
@@ -241,12 +237,7 @@ export async function POST(request: Request) {
                     });
                 }
                 recordEvent('PAYMENT_FAILED', { userId, metadata: { plan: planType } });
-                sendPush(userId, {
-                    title: 'A payment did not go through',
-                    body: 'Update your payment method to keep your Shakti Yoga access.',
-                    url: '/dashboard/billing',
-                    channelId: 'billing',
-                }).catch(() => {});
+                sendPush(userId, pushTemplates.paymentFailed()).catch(() => {});
                 const u = subscription?.user ?? (await prisma.user.findUnique({ where: { id: userId } }));
                 if (u) {
                     sendEmail({
