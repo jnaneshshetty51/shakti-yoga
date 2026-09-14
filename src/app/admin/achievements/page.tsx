@@ -52,7 +52,12 @@ export default function AchievementsPage() {
 
     const bulkGrant = async () => {
         if (!bulkKey || bulkEmailList.length === 0) return;
-        if (!confirm(`Grant this badge to ${bulkEmailList.length} member(s)?`)) return;
+        const ok = await confirm({
+            title: "Grant this badge?",
+            message: `Grant it to ${bulkEmailList.length} member(s)?`,
+            confirmLabel: "Grant",
+        });
+        if (!ok) return;
         setBulkBusy(true);
         try {
             const results = await Promise.all(

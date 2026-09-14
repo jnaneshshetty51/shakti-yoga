@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { activatePlan } from '@/lib/subscription';
+import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { planByProductId, regionFor } from '@/lib/pricing';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { posthogCapture, posthogIdentify } from '@/lib/posthog';
@@ -102,15 +102,27 @@ export async function applyRcEvent(e: RcEvent): Promise<string> {
           })();
 
     const first = e.type === 'INITIAL_PURCHASE';
-    const { mappedRole } = await activatePlan(userId, plan, {
-        recurring: e.type !== 'NON_RENEWING_PURCHASE',
-        subscriptionId: e.original_transaction_id ?? e.transaction_id ?? undefined,
-        renewalDate,
-        region,
-        provider,
-        store,
-        ...(typeof e.price === 'number' && e.currency ? { amount: e.price, currency: e.currency } : {}),
-    });
+    let mappedRole: string;
+    try {
+        ({ mappedRole } = await activatePlan(userId, plan, {
+            recurring: e.type !== 'NON_RENEWING_PURCHASE',
+            subscriptionId: e.original_transaction_id ?? e.transaction_id ?? undefined,
+            renewalDate,
+            region,
+            provider,
+            store,
+            ...(typeof e.price === 'number' && e.currency ? { amount: e.price, currency: e.currency } : {}),
+        }));
+    } catch (err) {
+        if (err instanceof SubscriptionProviderConflictError) {
+            // The App/Play Store has already charged the member — this only
+            // refuses to overwrite their other live subscription's billing id.
+            // Needs a human to reconcile (likely a refund on one side).
+            console.error(`[revenuecat] provider conflict for user ${userId}: ${err.message}`);
+            return `provider conflict — not applied (${err.existingProvider})`;
+        }
+        throw err;
+    }
 
     recordEvent(first ? 'subscription_started' : 'subscription_renewed', {
         userId,

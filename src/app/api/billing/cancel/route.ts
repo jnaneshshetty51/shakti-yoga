@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const updated = await prisma.subscription.update({
         where: { userId: session.id },
         data: {
-            status: 'CANCELLED',
+            status: intent === 'pause' ? 'PAUSED' : 'CANCELLED',
             recurring: false,
             pendingPlanKey: null,
             pausedAt: intent === 'pause' ? new Date() : null,
