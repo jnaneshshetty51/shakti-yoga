@@ -100,7 +100,7 @@ export default function AchievementsPage() {
 
             <Card padded className="mb-6">
                 <label className={labelClass}>Bulk-grant a badge to a cohort</label>
-                <div className="grid gap-2 sm:grid-cols-[200px_1fr_auto] items-start">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[200px_1fr_auto] items-start">
                     <select className={inputClass} value={bulkKey} onChange={(e) => setBulkKey(e.target.value)}>
                         <option value="">Choose a badge…</option>
                         {data.achievements.map((a) => <option key={a.key} value={a.key}>{a.title}</option>)}
@@ -116,7 +116,7 @@ export default function AchievementsPage() {
                 </div>
             </Card>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {data.achievements.map((a) => {
                     const has = data.member?.earned.includes(a.key);
                     const pct = data.totalMembers ? Math.round((a.earnedBy / data.totalMembers) * 100) : 0;

@@ -9,7 +9,7 @@ export default function BlogLoading() {
                 </div>
             </section>
             <section className="py-20 px-4">
-                <div className="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="animate-pulse">
                             <div className="bg-gray-100 aspect-[4/3] rounded-lg mb-6" />

@@ -116,7 +116,7 @@ export default function PracticesHubPage() {
                 practices!.length === 0 ? (
                     <Card><EmptyState icon={LuSparkles} title="No practices yet" hint="Check back soon — new guided practices are added regularly." /></Card>
                 ) : (
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {practices!.map((p) => (
                             <Link key={p.id} href={`/dashboard/practices/${p.id}`}>
                                 <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
@@ -201,7 +201,7 @@ export default function PracticesHubPage() {
                 !achievements ? (
                     <PageLoading />
                 ) : (
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {achievements.items.map((a) => (
                             <Card key={a.key} padded className={`flex items-start gap-3 ${a.earnedAt ? "" : "opacity-50"}`}>
                                 <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-xl shrink-0">

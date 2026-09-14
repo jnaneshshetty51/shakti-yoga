@@ -64,7 +64,7 @@ export default function CertificatesPage() {
                     />
                 </Card>
             ) : (
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {certificates.map((c) => (
                         <Card key={c.id} padded>
                             <div className="flex items-start gap-3">

@@ -15,7 +15,7 @@ export default async function WelcomePage() {
                     Your journey to wellness has officially begun. We are so excited to have you with us.
                 </p>
 
-                <div className="grid md:grid-cols-2 gap-6 mb-12 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 text-left">
                     <div className="p-6 border border-gray-100 rounded-lg bg-gray-50">
                         <div className="text-2xl mb-2">📅</div>
                         <h3 className="font-bold text-gray-800 mb-1">Book Your First Class</h3>

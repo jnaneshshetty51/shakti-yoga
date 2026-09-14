@@ -32,7 +32,7 @@ export default async function Programs() {
                     <CurrencyToggle region={region} />
                 </div>
 
-                <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2">
+                <div className="mx-auto grid grid-cols-1 max-w-3xl gap-6 md:grid-cols-2">
                     {/* Everyday Yoga */}
                     <div className="relative flex flex-col rounded-3xl border border-secondary/30 bg-white p-7 shadow-[0_2px_20px_rgba(44,62,50,0.06)] sm:p-8">
                         {everyday.recommended !== false && (

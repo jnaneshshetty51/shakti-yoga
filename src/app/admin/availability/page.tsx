@@ -103,8 +103,8 @@ export default function AvailabilityPage() {
                 subtitle="Weekly windows the 1:1 therapy booking page offers as slots."
             />
 
-            <form onSubmit={add} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-4 sm:p-6 mb-8 grid gap-3 md:grid-cols-6 items-end">
-                <label className="md:col-span-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+            <form onSubmit={add} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-4 sm:p-6 mb-8 grid grid-cols-1 gap-3 sm:grid-cols-6 items-end">
+                <label className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-gray-500">
                     Teacher
                     <select value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })} className="mt-1 w-full p-2 border border-gray-200 rounded text-sm font-normal normal-case">
                         {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -128,8 +128,8 @@ export default function AvailabilityPage() {
                     Slot (min)
                     <input type="number" min={15} max={120} value={form.slotMinutes} onChange={(e) => setForm({ ...form, slotMinutes: Number(e.target.value) })} className="mt-1 w-full p-2 border border-gray-200 rounded text-sm font-normal" />
                 </label>
-                <button className="md:col-span-6 md:w-auto px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">Add window</button>
-                {err && <p className="md:col-span-6 text-sm text-red-600">{err}</p>}
+                <button className="sm:col-span-6 md:w-auto px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">Add window</button>
+                {err && <p className="sm:col-span-6 text-sm text-red-600">{err}</p>}
             </form>
 
             <Card className="overflow-x-auto">

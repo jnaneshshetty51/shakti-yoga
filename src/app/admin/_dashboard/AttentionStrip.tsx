@@ -50,7 +50,7 @@ export function AttentionStrip({ data }: { data: Dashboard }) {
                 <h3 className="font-semibold text-ink text-sm">Needs attention</h3>
                 <span className="text-xs text-ink-subtle num">{items.length} item{items.length === 1 ? "" : "s"}</span>
             </div>
-            <div className="grid sm:grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {items.map((i) => {
                     const n = data.attention[i.key];
                     return (

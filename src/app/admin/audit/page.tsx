@@ -134,7 +134,7 @@ function AuditLogInner() {
                                     {expanded === r.id && (
                                         <tr className="bg-gray-50 border-t border-gray-100">
                                             <td colSpan={5} className="px-4 py-3">
-                                                <div className="grid sm:grid-cols-2 gap-4 text-xs font-mono">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
                                                     <div>
                                                         <div className="text-gray-400 uppercase tracking-wider mb-1">Before</div>
                                                         <pre className="whitespace-pre-wrap text-gray-600">{JSON.stringify(r.before, null, 2)}</pre>

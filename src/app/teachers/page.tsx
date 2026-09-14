@@ -53,7 +53,7 @@ export default async function TeachersPage() {
                     {teachers.length === 0 ? (
                         <p className="text-center text-text/60 font-sans">Teacher profiles are being updated — check back soon.</p>
                     ) : (
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
                             {teachers.map((t) => (
                                 <div key={t.id} className="bg-white rounded-2xl shadow-sm border border-primary/10 overflow-hidden flex flex-col">
                                     <div className="relative w-full aspect-square bg-primary/10">

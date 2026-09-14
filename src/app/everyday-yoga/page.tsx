@@ -116,7 +116,7 @@ export default function EverydayYogaPage() {
                         </video>
                     </div>
 
-                    <div className="grid sm:grid-cols-3 gap-4 mt-6 text-xs text-white/80 text-center sm:text-left">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-xs text-white/80 text-center sm:text-left">
                         <div className="p-3.5 bg-white/5 rounded-xl border border-white/10">
                             <span className="text-emerald-400 font-bold block mb-1">✦ Real-time feedback</span>
                             Teachers watch camera feeds and cue safe posture adjustments live.

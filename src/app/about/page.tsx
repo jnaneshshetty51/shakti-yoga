@@ -49,7 +49,7 @@ export default async function AboutPage() {
             <section className="py-16 sm:py-20 px-4 sm:px-8">
                 <div className="max-w-6xl mx-auto">
                     {/* Story Section */}
-                    <div className="grid md:grid-cols-2 gap-12 sm:gap-16 items-center mb-20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 items-center mb-20">
                         <div>
                             <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Our Origins</span>
                             <h2 className="font-serif text-3xl sm:text-4xl text-primary mb-6">{cms.story_title}</h2>
@@ -83,7 +83,7 @@ export default async function AboutPage() {
                     </div>
 
                     {/* Founder Section */}
-                    <div id="founder" className="grid md:grid-cols-2 gap-12 sm:gap-16 items-center pt-8 mb-20 scroll-mt-24">
+                    <div id="founder" className="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 items-center pt-8 mb-20 scroll-mt-24">
                         <div>
                             <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Our Founder &amp; Acharya</span>
                             <h2 className="font-serif text-3xl sm:text-4xl text-primary mb-5">{cms.founder_title}</h2>
@@ -127,7 +127,7 @@ export default async function AboutPage() {
                             <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Our Methodology</span>
                             <h2 className="font-serif text-3xl sm:text-4xl text-primary">The Four Pillars of Our Teaching</h2>
                         </div>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {PILLARS.map((pillar, i) => (
                                 <div key={i} className="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm flex flex-col justify-between">
                                     <div>

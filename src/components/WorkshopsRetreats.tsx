@@ -13,7 +13,7 @@ export default function WorkshopsRetreats() {
                     Step beyond weekly classes. Deepen your understanding of pranayama, philosophy, and alignment in our immersive weekend workshops and Himalayan retreats.
                 </p>
 
-                <div className="grid md:grid-cols-2 gap-6 sm:gap-8 text-left mb-10 sm:mb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 text-left mb-10 sm:mb-12">
                     {/* Workshops Card */}
                     <Link
                         href="/retreats"

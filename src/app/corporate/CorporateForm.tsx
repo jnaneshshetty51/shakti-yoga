@@ -71,7 +71,7 @@ export default function CorporateForm() {
                         </div>
                     )}
 
-                    <div className="grid sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-text/70 mb-1.5">Company Name *</label>
                             <input
@@ -94,7 +94,7 @@ export default function CorporateForm() {
                         </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-text/70 mb-1.5">Work Email *</label>
                             <input
@@ -117,7 +117,7 @@ export default function CorporateForm() {
                         </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-text/70 mb-1.5">Number of Employees</label>
                             <select

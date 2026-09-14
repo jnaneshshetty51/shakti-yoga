@@ -136,7 +136,7 @@ export default function AdminSupportPage() {
                 />
             </div>
 
-            <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
                 <Card>
                     {visibleRows.length === 0 ? (
                         <EmptyState icon={LuLifeBuoy} title={q ? "No matching conversations" : `No ${filter.toLowerCase()} conversations`} />

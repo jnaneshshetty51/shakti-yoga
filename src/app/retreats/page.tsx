@@ -117,7 +117,7 @@ export default function RetreatsPage() {
             {retreats && retreats.length > 0 && (
                 <section className="py-12 px-4 sm:px-8 max-w-6xl mx-auto">
                     <h2 className="font-serif text-2xl sm:text-3xl text-primary mb-6">Upcoming Scheduled Bookings</h2>
-                    <div className="grid sm:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {retreats.map((r) => (
                             <Link
                                 key={r.id}
@@ -149,7 +149,7 @@ export default function RetreatsPage() {
                     </p>
                 </div>
 
-                <div className="grid lg:grid-cols-2 gap-8 sm:gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10">
                     {FEATURED_COHORTS.map((cohort, index) => (
                         <div key={index} className="bg-white rounded-3xl overflow-hidden border border-primary/10 shadow-sm hover:shadow-md transition-all flex flex-col">
                             <div className="relative h-64 sm:h-72 w-full">
@@ -228,7 +228,7 @@ export default function RetreatsPage() {
             {/* What's Included */}
             <section className="py-16 sm:py-20 px-4 sm:px-8 max-w-5xl mx-auto">
                 <h2 className="font-serif text-3xl text-primary text-center mb-10">Everything Thoughtfully Provided</h2>
-                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                     {[
                         { icon: "🏡", title: "Sacred Accommodations", desc: "Private and twin-share eco-luxury rooms surrounded by tranquil natural landscapes." },
                         { icon: "🥗", title: "Ayurvedic Sattvic Cuisine", desc: "Three daily organic meals customized to balance Pitta, Vata, and Kapha doshas." },
@@ -273,7 +273,7 @@ export default function RetreatsPage() {
                                 </div>
                             )}
 
-                            <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-1">Full Name</label>
                                     <input
@@ -298,7 +298,7 @@ export default function RetreatsPage() {
                                 </div>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-white/70 mb-1">Phone / WhatsApp (optional)</label>
                                     <input

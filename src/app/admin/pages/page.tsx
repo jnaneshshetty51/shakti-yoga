@@ -223,7 +223,7 @@ export default function AdminPagesCms() {
                             <h3 className="font-serif text-lg font-bold text-ink-base">Founder Biography</h3>
                             <p className="text-xs text-ink-subtle">Acharya Swastik's biography, background, and personal quote.</p>
                         </div>
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelClass}>Founder Name &amp; Title</label>
                                 <input
@@ -381,7 +381,7 @@ export default function AdminPagesCms() {
                                 className="w-full px-3.5 py-2 text-sm rounded-control border border-border-default bg-surface-base focus:border-brand focus:outline-none"
                             />
                         </div>
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelClass}>Difference Heading (Udupi to World)</label>
                                 <input
@@ -469,7 +469,7 @@ export default function AdminPagesCms() {
                             <h3 className="font-serif text-lg font-bold text-ink-base">Value Metrics Callouts</h3>
                             <p className="text-xs text-ink-subtle">The three statistical ROI badges shown to enterprise decision-makers.</p>
                         </div>
-                        <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="p-3 bg-surface-subtle rounded-control space-y-2 border border-border-subtle">
                                 <label className={labelClass}>Metric 1 Stat</label>
                                 <input

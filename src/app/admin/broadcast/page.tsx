@@ -63,7 +63,7 @@ function BroadcastForm() {
                 subtitle="Send mobile push notifications to active, trial, or at-risk member segments. Always test on your own device first."
             />
 
-            <div className="grid gap-6 lg:grid-cols-[1fr,340px]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,340px]">
                 <Card padded>
                     <div className="space-y-4">
                         <div>
@@ -91,7 +91,7 @@ function BroadcastForm() {
 
                         <div>
                             <label className={labelClass}>Audience</label>
-                            <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 {data.segments.map((s) => (
                                     <label key={s.key}
                                         className={`flex items-center justify-between gap-2 rounded-control border px-3 py-2 text-sm cursor-pointer

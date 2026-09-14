@@ -77,7 +77,7 @@ export default async function CorporatePage() {
                     </p>
                 </div>
 
-                <div className="grid lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {PROGRAMS.map((p, i) => (
                         <div key={i} className="bg-white rounded-3xl p-8 border border-primary/10 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                             <div>
@@ -112,7 +112,7 @@ export default async function CorporatePage() {
             <section className="py-16 sm:py-20 px-4 sm:px-8 bg-accent/30">
                 <div className="max-w-5xl mx-auto">
                     <h2 className="font-serif text-3xl text-primary text-center mb-12">Why People Leaders Choose Shakti Yoga</h2>
-                    <div className="grid sm:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {[
                             { title: "No Fluff, Real Lineage Yoga", desc: "Authentic Indian master teachers who observe participant feeds and provide safe, anatomical corrections." },
                             { title: "Multi-Timezone Support", desc: "Live sessions coordinated to suit North American, European, and Asia-Pacific working windows." },

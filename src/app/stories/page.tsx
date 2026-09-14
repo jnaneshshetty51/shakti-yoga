@@ -78,7 +78,7 @@ export default function StoriesPage() {
                             No stories found for this category.
                         </div>
                     ) : (
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {filteredStories.map((story) => (
                                 <div key={story.id} className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col">
                                     <div className="flex justify-between items-start mb-6 gap-3">
