@@ -195,11 +195,23 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    if (!(await requireDepartment(['THERAPIST']))) return forbidden();
+    const admin = await requireDepartment(['THERAPIST']);
+    if (!admin) return forbidden();
     try {
         const id = new URL(request.url).searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing booking id' }, { status: 400 });
+
+        const before = await prisma.booking.findUnique({
+            where: { id },
+            select: { userId: true, teacherId: true, type: true, status: true, date: true },
+        });
+        if (!before) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+
         await prisma.booking.delete({ where: { id } });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'booking.delete', entity: 'Booking', entityId: id, before,
+        });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Admin bookings DELETE error:', error);

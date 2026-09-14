@@ -3,10 +3,47 @@ import { prisma } from '@/lib/prisma';
 import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
+import { toMinutes, rangesOverlap } from '@/lib/timeOverlap';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HM = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Refuses a rule that would double-book a teacher: another active rule for
+ * the same teacher, covering the same weekday or the same specific date,
+ * whose time window overlaps. Cross-checking a weekly rule against a
+ * specific-date rule that happens to fall on that weekday is out of scope —
+ * this catches the common case of two overlapping rules of the same kind.
+ */
+async function assertNoAvailabilityConflict(params: {
+    teacherId: string;
+    dayOfWeek: string | null;
+    date: Date | null;
+    startTime: string;
+    endTime: string;
+    excludeId?: string;
+}): Promise<string | null> {
+    const { teacherId, dayOfWeek, date, startTime, endTime, excludeId } = params;
+    const start = toMinutes(startTime);
+    const end = toMinutes(endTime);
+
+    const others = await prisma.teacherAvailability.findMany({
+        where: {
+            teacherId,
+            active: true,
+            ...(excludeId ? { id: { not: excludeId } } : {}),
+            ...(dayOfWeek ? { dayOfWeek } : date ? { date } : {}),
+        },
+        select: { startTime: true, endTime: true },
+    });
+    for (const other of others) {
+        if (rangesOverlap(start, end, toMinutes(other.startTime), toMinutes(other.endTime))) {
+            return `Overlaps this teacher's existing availability (${other.startTime}–${other.endTime}).`;
+        }
+    }
+    return null;
+}
 
 export async function GET() {
     if (!(await requireDepartment(['TRAINER', 'THERAPIST']))) return forbidden();
@@ -49,16 +86,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Set either a weekday or a specific date' }, { status: 400 });
         }
         const slotMinutes = Math.min(120, Math.max(15, Math.trunc(Number(b.slotMinutes) || 45)));
+        const dayOfWeek = b.dayOfWeek || null;
+        const date = b.date ? new Date(`${b.date}T00:00:00.000Z`) : null;
+
+        const active = b.active === undefined ? true : Boolean(b.active);
+        if (active) {
+            const conflict = await assertNoAvailabilityConflict({
+                teacherId: b.teacherId, dayOfWeek, date, startTime: b.startTime, endTime: b.endTime,
+            });
+            if (conflict) return NextResponse.json({ error: conflict }, { status: 409 });
+        }
 
         const rule = await prisma.teacherAvailability.create({
             data: {
                 teacherId: b.teacherId,
-                dayOfWeek: b.dayOfWeek || null,
-                date: b.date ? new Date(`${b.date}T00:00:00.000Z`) : null,
+                dayOfWeek,
+                date,
                 startTime: b.startTime,
                 endTime: b.endTime,
                 slotMinutes,
-                active: b.active === undefined ? true : Boolean(b.active),
+                active,
             },
         });
         await recordAudit({
@@ -94,6 +141,19 @@ export async function PATCH(request: Request) {
         if (b.date !== undefined) data.date = b.date ? new Date(`${b.date}T00:00:00.000Z`) : null;
         if (b.slotMinutes !== undefined) data.slotMinutes = Math.min(120, Math.max(15, Math.trunc(Number(b.slotMinutes) || 45)));
         if (b.active !== undefined) data.active = Boolean(b.active);
+
+        const resultingActive = (data.active as boolean) ?? before.active;
+        if (resultingActive) {
+            const conflict = await assertNoAvailabilityConflict({
+                teacherId: before.teacherId,
+                dayOfWeek: (data.dayOfWeek as string | null) ?? before.dayOfWeek,
+                date: (data.date as Date | null) ?? before.date,
+                startTime: (data.startTime as string) ?? before.startTime,
+                endTime: (data.endTime as string) ?? before.endTime,
+                excludeId: String(b.id),
+            });
+            if (conflict) return NextResponse.json({ error: conflict }, { status: 409 });
+        }
 
         const rule = await prisma.teacherAvailability.update({ where: { id: String(b.id) }, data });
         await recordAudit({

@@ -113,7 +113,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    if (!(await requireDepartment(['TRAINER']))) return forbidden();
+    const admin = await requireDepartment(['TRAINER']);
+    if (!admin) return forbidden();
     try {
         const { batchId, date } = await request.json().catch(() => ({}));
         if (!batchId || !date) {
@@ -121,6 +122,11 @@ export async function POST(request: Request) {
         }
         const instance = await prisma.classInstance.create({
             data: { batchId, date: new Date(date), status: 'Scheduled' },
+        });
+        await recordAudit({
+            actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
+            action: 'class.instance.create', entity: 'ClassInstance', entityId: instance.id,
+            after: { batchId, date: instance.date },
         });
         return NextResponse.json({ instance: { id: instance.id } });
     } catch (error) {
