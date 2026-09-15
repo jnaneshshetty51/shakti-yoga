@@ -17,9 +17,12 @@ export default function ChromeGate({
 }) {
     const pathname = usePathname() || "/";
     const bare =
-        pathname.startsWith("/dashboard") ||
-        pathname.startsWith("/admin") ||
-        pathname.startsWith("/teacher");
+        pathname === "/dashboard" ||
+        pathname.startsWith("/dashboard/") ||
+        pathname === "/admin" ||
+        pathname.startsWith("/admin/") ||
+        pathname === "/teacher" ||
+        pathname.startsWith("/teacher/");
 
     return (
         <>
