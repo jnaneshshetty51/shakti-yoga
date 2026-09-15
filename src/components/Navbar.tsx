@@ -45,7 +45,7 @@ export default function Navbar() {
             <Link
                 href="/"
                 onClick={() => setIsMenuOpen(false)}
-                className="group flex flex-col z-10"
+                className="group flex items-center z-10"
             >
                 <Image
                     src="/logo.png"
@@ -55,9 +55,6 @@ export default function Navbar() {
                     priority
                     className="h-9 sm:h-11 w-auto group-hover:opacity-85 transition-opacity"
                 />
-                <span className="hidden sm:block text-[10px] font-sans uppercase tracking-[0.2em] text-text/60 mt-0.5">
-                    Authentic Lineage · Udupi, India
-                </span>
             </Link>
 
             {/* Desktop Navigation Links (Visible on xl screens: >= 1280px) */}
