@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -46,10 +47,15 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
                 className="group flex flex-col z-10"
             >
-                <span className="font-serif text-2xl sm:text-3xl font-bold text-primary tracking-wider group-hover:text-secondary transition-colors">
-                    Shakti Yoga
-                </span>
-                <span className="hidden sm:block text-[10px] font-sans uppercase tracking-[0.2em] text-text/60 -mt-1">
+                <Image
+                    src="/logo.png"
+                    alt="Shakti Yoga Kendra"
+                    width={1200}
+                    height={263}
+                    priority
+                    className="h-9 sm:h-11 w-auto group-hover:opacity-85 transition-opacity"
+                />
+                <span className="hidden sm:block text-[10px] font-sans uppercase tracking-[0.2em] text-text/60 mt-0.5">
                     Authentic Lineage · Udupi, India
                 </span>
             </Link>
