@@ -39,7 +39,7 @@ function prefsToString(form: ProfileForm): string {
 }
 
 export default function ProfilePage() {
-    const { refreshUser } = useAuth();
+    const { refreshUser, logout } = useAuth();
     const [formData, setFormData] = useState<ProfileForm>(EMPTY_FORM);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -47,6 +47,16 @@ export default function ProfilePage() {
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Session management state
+    const [loggingOutOthers, setLoggingOutOthers] = useState(false);
+    const [securityStatus, setSecurityStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Account deletion state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [deletingAccount, setDeletingAccount] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const loadProfile = useCallback(async () => {
         try {
@@ -135,6 +145,43 @@ export default function ProfilePage() {
             setStatus(error instanceof Error ? error.message : "Failed to save profile.");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleLogoutOthers = async () => {
+        setLoggingOutOthers(true);
+        setSecurityStatus(null);
+        try {
+            const res = await fetch("/api/auth/logout-all", { method: "POST" });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to log out other sessions");
+            setSecurityStatus({ type: "success", text: data.message || "All other sessions have been logged out." });
+        } catch (err) {
+            setSecurityStatus({ type: "error", text: err instanceof Error ? err.message : "Failed to log out other sessions." });
+        } finally {
+            setLoggingOutOthers(false);
+        }
+    };
+
+    const handleDeleteAccount = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (deleteConfirmText.trim() !== "DELETE") {
+            setDeleteError("Please type DELETE in capital letters to confirm.");
+            return;
+        }
+        setDeletingAccount(true);
+        setDeleteError(null);
+        try {
+            const res = await fetch("/api/profile", { method: "DELETE" });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || "Could not delete your account");
+            }
+            await logout();
+            window.location.href = "/";
+        } catch (err) {
+            setDeleteError(err instanceof Error ? err.message : "Could not delete account. Please try again.");
+            setDeletingAccount(false);
         }
     };
 
@@ -277,8 +324,110 @@ export default function ProfilePage() {
                             <p className="text-xs text-gray-400">Health profile changes are saved with the Save changes button above.</p>
                         </div>
                     </Card>
+
+                    {/* Security & Sessions */}
+                    <Card padded>
+                        <h3 className="font-bold text-gray-800 mb-2">Security & Active Sessions</h3>
+                        <p className="text-xs text-gray-500 mb-4">
+                            Manage your login sessions. If you left your account logged in on another device or computer, you can log out of all other sessions immediately.
+                        </p>
+
+                        {securityStatus && (
+                            <div
+                                className={`mb-4 p-3 rounded-lg text-sm ${
+                                    securityStatus.type === "success"
+                                        ? "bg-green-50 border border-green-200 text-green-700"
+                                        : "bg-red-50 border border-red-200 text-red-700"
+                                }`}
+                            >
+                                {securityStatus.text}
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={handleLogoutOthers}
+                            disabled={loggingOutOthers}
+                            className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-60"
+                        >
+                            {loggingOutOthers ? "Logging out other devices…" : "Log out of all other sessions"}
+                        </button>
+                    </Card>
+
+                    {/* Danger Zone: Account Deletion */}
+                    <Card padded className="border-red-100 bg-red-50/20">
+                        <h3 className="font-bold text-red-700 mb-2">Danger Zone</h3>
+                        <p className="text-xs text-gray-500 mb-4">
+                            Permanently delete your account and personal data. Active subscriptions will be cancelled and upcoming bookings cleared. This action cannot be undone.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDeleteConfirmText("");
+                                setDeleteError(null);
+                                setShowDeleteModal(true);
+                            }}
+                            className="px-4 py-2 rounded-full border border-red-300 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors"
+                        >
+                            Delete account
+                        </button>
+                    </Card>
                 </div>
             </div>
+
+            {/* Account Deletion Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100">
+                        <h3 className="text-lg font-bold text-red-600 mb-2">Delete Account Permanently?</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            This will permanently delete your account, cancel any active memberships, scrub medical notes, and remove your personal information.
+                        </p>
+
+                        {deleteError && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleDeleteAccount} className="space-y-4">
+                            <div>
+                                <label htmlFor="delete-confirm-input" className="block text-xs font-semibold text-gray-600 mb-1">
+                                    Type <span className="font-mono font-bold text-red-600">DELETE</span> to confirm:
+                                </label>
+                                <input
+                                    id="delete-confirm-input"
+                                    type="text"
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    placeholder="DELETE"
+                                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={deletingAccount}
+                                    className="px-4 py-2 rounded-full text-gray-600 text-sm font-medium hover:bg-gray-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={deleteConfirmText.trim() !== "DELETE" || deletingAccount}
+                                    className="px-5 py-2 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+                                >
+                                    {deletingAccount ? "Deleting account…" : "Permanently delete"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

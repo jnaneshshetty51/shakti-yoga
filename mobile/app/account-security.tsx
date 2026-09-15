@@ -3,7 +3,7 @@ import { ScrollView, View, Switch, StyleSheet, Alert } from "react-native";
 import { Screen, BodyText, Card, Button, Heading } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/context/AuthContext";
-import { api, ApiError } from "@/lib/api";
+import { api, setToken, ApiError } from "@/lib/api";
 import { isAppLockOn, setAppLock, biometricAvailable, authenticateIfLocked } from "@/lib/appLock";
 import { spacing, colors } from "@/theme";
 
@@ -13,6 +13,7 @@ export default function AccountSecurityScreen() {
   const [sentReset, setSentReset] = useState(false);
   const [lock, setLock] = useState(false);
   const [bioOk, setBioOk] = useState(true);
+  const [loggingOutOthers, setLoggingOutOthers] = useState(false);
 
   useEffect(() => {
     isAppLockOn().then(setLock);
@@ -30,6 +31,33 @@ export default function AccountSecurityScreen() {
     } finally {
       setSendingReset(false);
     }
+  };
+
+  const logoutOtherSessions = () => {
+    Alert.alert(
+      "Log out of other devices?",
+      "This will end all other active sessions across your web browsers, tablets, and phones. You will remain logged in on this phone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log out others",
+          onPress: async () => {
+            setLoggingOutOthers(true);
+            try {
+              const res = await api.post<{ ok: boolean; message: string; token: string }>("/api/auth/logout-all");
+              if (res.token) {
+                await setToken(res.token);
+              }
+              Alert.alert("Success", res.message || "All other sessions have been logged out.");
+            } catch (e) {
+              Alert.alert("Error", e instanceof ApiError ? e.message : "Could not log out other sessions. Please try again.");
+            } finally {
+              setLoggingOutOthers(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const toggleLock = async (next: boolean) => {
@@ -64,6 +92,16 @@ export default function AccountSecurityScreen() {
           )}
         </Card>
 
+        <Card style={{ marginBottom: spacing.md }}>
+          <Heading size="sm">Active Sessions</Heading>
+          <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
+            Signed in on another browser, tablet, or phone? You can immediately revoke all other sessions while staying signed in on this device.
+          </BodyText>
+          <Button variant="outline" loading={loggingOutOthers} onPress={logoutOtherSessions}>
+            Log out of all other sessions
+          </Button>
+        </Card>
+
         <Card>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -73,11 +111,6 @@ export default function AccountSecurityScreen() {
             <Switch value={lock} onValueChange={toggleLock} trackColor={{ true: colors.primary }} />
           </View>
         </Card>
-
-        <BodyText muted style={{ marginTop: spacing.md, fontSize: 12 }}>
-          There&rsquo;s no dedicated &ldquo;sign out of other devices&rdquo; switch — resetting your password above does
-          the same thing, ending every other signed-in session (phone, tablet, browser) immediately.
-        </BodyText>
       </ScrollView>
     </Screen>
   );
