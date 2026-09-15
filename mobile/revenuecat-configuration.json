@@ -1,0 +1,131 @@
+{
+  "$schema": "https://raw.githubusercontent.com/RevenueCat/revenuecat-rules/main/schemas/project.schema.json",
+  "project_name": "Shakti Yoga Kendra",
+  "apps": {
+    "ios": {
+      "bundle_id": "com.shaktiyoga.app",
+      "platform": "app_store",
+      "apple_shared_secret_configured": true
+    },
+    "android": {
+      "package_name": "com.shaktiyoga.app",
+      "platform": "play_store",
+      "service_account_credentials_configured": true
+    }
+  },
+  "entitlements": [
+    {
+      "identifier": "membership",
+      "description": "Unlocks daily live Everyday Yoga classes, community sangha, on-demand practices and challenges."
+    },
+    {
+      "identifier": "therapy",
+      "description": "Unlocks 1:1 clinical yoga therapy consultations and personalized health recovery plans."
+    }
+  ],
+  "products": [
+    {
+      "identifier": "sy_starter_monthly",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "monthly",
+      "entitlements": ["membership"]
+    },
+    {
+      "identifier": "sy_everyday_monthly",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "monthly",
+      "entitlements": ["membership"]
+    },
+    {
+      "identifier": "sy_everyday_annual",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "annual",
+      "entitlements": ["membership"]
+    },
+    {
+      "identifier": "sy_family_monthly",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "monthly",
+      "entitlements": ["membership"]
+    },
+    {
+      "identifier": "sy_family_annual",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "annual",
+      "entitlements": ["membership"]
+    },
+    {
+      "identifier": "sy_therapy_monthly",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "monthly",
+      "entitlements": ["membership", "therapy"]
+    },
+    {
+      "identifier": "sy_therapy_annual",
+      "store": "app_store",
+      "type": "subscription",
+      "duration": "annual",
+      "entitlements": ["membership", "therapy"]
+    }
+  ],
+  "offerings": [
+    {
+      "identifier": "default",
+      "description": "Standard Shakti Yoga public paywall offerings",
+      "is_current": true,
+      "packages": [
+        {
+          "identifier": "$rc_monthly",
+          "description": "Everyday Yoga Monthly (Standard)",
+          "product_id": "sy_everyday_monthly"
+        },
+        {
+          "identifier": "$rc_annual",
+          "description": "Everyday Yoga Annual (Best Value - 2 Months Free)",
+          "product_id": "sy_everyday_annual"
+        },
+        {
+          "identifier": "starter",
+          "description": "Starter Monthly (2 classes / week)",
+          "product_id": "sy_starter_monthly"
+        },
+        {
+          "identifier": "therapy_monthly",
+          "description": "Yoga Therapy Monthly (4 x 1:1 sessions)",
+          "product_id": "sy_therapy_monthly"
+        },
+        {
+          "identifier": "family_monthly",
+          "description": "Family Plan Monthly (2 Members)",
+          "product_id": "sy_family_monthly"
+        }
+      ]
+    }
+  ],
+  "integrations": {
+    "webhooks": [
+      {
+        "url": "https://shaktiyoga.in/api/webhooks/revenuecat",
+        "authorization_header": "Bearer ${REVENUECAT_WEBHOOK_SECRET}",
+        "events": [
+          "INITIAL_PURCHASE",
+          "RENEWAL",
+          "PRODUCT_CHANGE",
+          "CANCELLATION",
+          "UNCANCELLATION",
+          "NON_RENEWING_PURCHASE",
+          "EXPIRATION",
+          "BILLING_ISSUE",
+          "SUBSCRIPTION_EXTENDED",
+          "TRANSFER"
+        ]
+      }
+    ]
+  }
+}

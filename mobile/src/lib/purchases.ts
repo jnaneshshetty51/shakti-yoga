@@ -26,8 +26,8 @@ import { Platform } from "react-native";
  * dev client (`npx expo run:ios` / `run:android`, or an EAS dev build).
  */
 
-const IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? "";
-const ANDROID_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? "";
+const IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || "";
+const ANDROID_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || "";
 
 let configured = false;
 
@@ -104,4 +104,22 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
     console.warn("[purchases] restorePurchases failed", e);
     return null;
   }
+}
+
+/** Get latest CustomerInfo from RevenueCat cache/network. */
+export async function getCustomerInfo(): Promise<CustomerInfo | null> {
+  if (!configured) return null;
+  try {
+    return await Purchases.getCustomerInfo();
+  } catch (e) {
+    console.warn("[purchases] getCustomerInfo failed", e);
+    return null;
+  }
+}
+
+/** Check if any subscription entitlement is currently active. */
+export async function hasActiveEntitlement(entitlementId = "membership"): Promise<boolean> {
+  const info = await getCustomerInfo();
+  if (!info) return false;
+  return typeof info.entitlements.active[entitlementId] !== "undefined";
 }

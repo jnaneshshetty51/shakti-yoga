@@ -31,6 +31,16 @@ export default function SubscribeScreen() {
   const [restoring, setRestoring] = useState(false);
   const [waitingForWebhook, setWaitingForWebhook] = useState(false);
 
+  // Authenticated handoff to web checkout if in-app billing is not set up
+  const openWeb = useCallback(async (path: string) => {
+    try {
+      const { url } = await api.post<{ url: string }>("/api/auth/web-handoff", { path });
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      await WebBrowser.openBrowserAsync(`https://shaktiyoga.in${path}`);
+    }
+  }, []);
+
   useEffect(() => {
     getCurrentOfferingPackages().then(setPackages);
   }, []);
@@ -107,7 +117,7 @@ export default function SubscribeScreen() {
           />
           <Button
             style={{ marginTop: spacing.md }}
-            onPress={() => WebBrowser.openBrowserAsync("https://shaktiyoga.in/programs")}
+            onPress={() => openWeb("/programs")}
           >
             Open web checkout
           </Button>
@@ -130,7 +140,7 @@ export default function SubscribeScreen() {
           <Button
             style={{ marginTop: spacing.md }}
             variant="outline"
-            onPress={() => WebBrowser.openBrowserAsync("https://shaktiyoga.in/programs")}
+            onPress={() => openWeb("/programs")}
           >
             Open web checkout
           </Button>

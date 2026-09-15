@@ -33,6 +33,8 @@ export interface RcEvent {
     currency?: string | null;
     original_transaction_id?: string | null;
     transaction_id?: string | null;
+    transferred_from?: string[] | null;
+    transferred_to?: string[] | null;
 }
 
 const GRANT_TYPES = new Set([
@@ -41,6 +43,8 @@ const GRANT_TYPES = new Set([
     'PRODUCT_CHANGE',
     'UNCANCELLATION',
     'NON_RENEWING_PURCHASE',
+    'SUBSCRIPTION_EXTENDED',
+    'TRANSFER',
 ]);
 
 async function downgrade(userId: string, status: SubscriptionStatus): Promise<void> {
@@ -88,6 +92,15 @@ export async function applyRcEvent(e: RcEvent): Promise<string> {
         return 'billing issue';
     }
 
+    if (e.type === 'TRANSFER') {
+        const fromList = e.transferred_from ?? [];
+        for (const fromId of fromList) {
+            if (fromId && fromId !== userId) {
+                await downgrade(fromId, SubscriptionStatus.CANCELLED);
+            }
+        }
+    }
+
     if (!GRANT_TYPES.has(e.type)) return `ignored (${e.type})`;
 
     const plan = e.product_id ? planByProductId(e.product_id) : null;
@@ -105,6 +118,7 @@ export async function applyRcEvent(e: RcEvent): Promise<string> {
     let mappedRole: string;
     try {
         ({ mappedRole } = await activatePlan(userId, plan, {
+            skipCookie: true,
             recurring: e.type !== 'NON_RENEWING_PURCHASE',
             subscriptionId: e.original_transaction_id ?? e.transaction_id ?? undefined,
             renewalDate,

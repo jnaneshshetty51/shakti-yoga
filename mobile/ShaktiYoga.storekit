@@ -1,0 +1,267 @@
+{
+  "appPolicies" : {
+    "eula" : "https://shaktiyoga.in/terms",
+    "privacyPolicy" : "https://shaktiyoga.in/privacy"
+  },
+  "identifier" : "E2B8E5F6-12A4-4B8C-9F3E-5A4C2E8D7F10",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6740112233",
+    "_developerTeamID" : "TEAM123456",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 779587200,
+    "_locale" : "en_IN",
+    "_storefront" : "IND",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21568901",
+      "localizations" : [
+        {
+          "description" : "Shakti Yoga Kendra All-Access Memberships",
+          "displayName" : "Shakti Yoga Memberships",
+          "locale" : "en_IN"
+        }
+      ],
+      "name" : "Shakti Yoga Kendra Memberships",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "699",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "6740112234",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "2 live classes per week + full on-demand practice library",
+              "displayName" : "Starter Monthly",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_starter_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Starter Monthly",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "2000",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6740112235",
+          "introductoryOffer" : {
+            "internalID" : "78491021",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Daily live yoga classes guided directly from Udupi, India",
+              "displayName" : "Everyday Yoga Monthly",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_everyday_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Everyday Yoga Monthly",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "11988",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6740112236",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited live classes for a full year (includes 2 months free)",
+              "displayName" : "Everyday Yoga Annual",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_everyday_annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Everyday Yoga Annual",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "2199",
+          "familyShareable" : true,
+          "groupNumber" : 3,
+          "internalID" : "6740112237",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full Everyday Yoga access for two household members",
+              "displayName" : "Family Monthly",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_family_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Family Monthly",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19188",
+          "familyShareable" : true,
+          "groupNumber" : 2,
+          "internalID" : "6740112238",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full Everyday Yoga access for two household members for one full year",
+              "displayName" : "Family Annual",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_family_annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Family Annual",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4999",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740112239",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "4 personal 1:1 clinical yoga therapy sessions + Everyday Yoga included",
+              "displayName" : "Yoga Therapy Monthly",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_therapy_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Yoga Therapy Monthly",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "44988",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740112240",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "48 personal 1:1 clinical yoga therapy sessions + Everyday Yoga across 12 months",
+              "displayName" : "Yoga Therapy Annual",
+              "locale" : "en_IN"
+            }
+          ],
+          "productID" : "sy_therapy_annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yoga Therapy Annual",
+          "subscriptionGroupID" : "21568901",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
