@@ -42,3 +42,6 @@ dev-server.log
 next-env.d.ts
 version.json
 db-backup-*.sql.gz
+
+# Raw root asset drops
+/*.png

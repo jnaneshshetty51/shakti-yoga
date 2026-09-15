@@ -214,14 +214,14 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "4999",
+          "displayPrice" : "5000",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6740112239",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "4 personal 1:1 clinical yoga therapy sessions + Everyday Yoga included",
+              "description" : "20 personal 1:1 clinical yoga therapy sessions + Everyday Yoga included",
               "displayName" : "Yoga Therapy Monthly",
               "locale" : "en_IN"
             }
@@ -239,14 +239,14 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "44988",
+          "displayPrice" : "50000",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6740112240",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "48 personal 1:1 clinical yoga therapy sessions + Everyday Yoga across 12 months",
+              "description" : "240 personal 1:1 clinical yoga therapy sessions + Everyday Yoga across 12 months",
               "displayName" : "Yoga Therapy Annual",
               "locale" : "en_IN"
             }
