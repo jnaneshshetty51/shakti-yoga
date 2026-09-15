@@ -36,7 +36,7 @@ const BLANK = {
 
 const PAGE_SIZE = 25;
 
-function CorporateDashboard() {
+function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [leads, setLeads] = useState<CorporateLead[]>([]);
@@ -167,7 +167,7 @@ function CorporateDashboard() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Corporate Wellness" subtitle="B2B wellness proposals, corporate workshops, and institutional wellness contracts." />
+            {!embedded && <PageHeader title="Corporate Wellness" subtitle="B2B wellness proposals, corporate workshops, and institutional wellness contracts." />}
 
             <DTable
                 data={leads}
@@ -274,10 +274,14 @@ function CorporateDashboard() {
     );
 }
 
-export default function AdminCorporatePage() {
+export function AdminCorporateContent({ embedded = false }: { embedded?: boolean } = {}) {
     return (
         <Suspense fallback={<div>Loading...</div>}>
-            <CorporateDashboard />
+            <CorporateDashboard embedded={embedded} />
         </Suspense>
     );
+}
+
+export default function AdminCorporatePage() {
+    return <AdminCorporateContent />;
 }

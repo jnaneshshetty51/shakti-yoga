@@ -30,7 +30,11 @@ export default function AuditLogPage() {
     );
 }
 
-function AuditLogInner() {
+export function AdminAuditContent({ embedded = false }: { embedded?: boolean } = {}) {
+    return embedded ? <AuditLogInner embedded /> : <SuperAdminGuard><AuditLogInner /></SuperAdminGuard>;
+}
+
+function AuditLogInner({ embedded = false }: { embedded?: boolean } = {}) {
     const [rows, setRows] = useState<Row[]>([]);
     const [cursor, setCursor] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -71,12 +75,18 @@ function AuditLogInner() {
 
     return (
         <div className="max-w-5xl">
-            <PageHeader
-                title="Audit Log"
-                subtitle="Every privileged change — role, subscription, credits, class, Meet link, deletions."
-            >
-                <a href={`/api/admin/audit?format=csv&${qs().toString()}`} className="text-sm font-semibold text-brand hover:text-brand-strong">Export CSV</a>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <a href={`/api/admin/audit?format=csv&${qs().toString()}`} className="text-sm font-semibold text-brand hover:text-brand-strong">Export CSV</a>
+                </div>
+            ) : (
+                <PageHeader
+                    title="Audit Log"
+                    subtitle="Every privileged change — role, subscription, credits, class, Meet link, deletions."
+                >
+                    <a href={`/api/admin/audit?format=csv&${qs().toString()}`} className="text-sm font-semibold text-brand hover:text-brand-strong">Export CSV</a>
+                </PageHeader>
+            )}
 
             <div className="flex flex-wrap gap-2 mb-4">
                 <input className={input} placeholder="entity (User, Payment…)" value={f.entity} onChange={(e) => setF({ ...f, entity: e.target.value })} />

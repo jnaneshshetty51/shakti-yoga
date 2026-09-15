@@ -36,7 +36,7 @@ const STATUS_OPTIONS = [
     { label: "Cancelled", value: "Cancelled" },
 ];
 
-export default function AdminSchedulePage() {
+export function AdminScheduleContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
@@ -141,25 +141,38 @@ export default function AdminSchedulePage() {
     return (
         <div>
             {dialog}
-            <PageHeader
-                title="Daily Schedule & Attendance"
-                subtitle={`Class instances from ${new Date(`${weekStart}T00:00:00.000Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}, 7 days. Google Meet links and student attendance check-ins.`}
-            >
-                <div className="flex items-center gap-1.5">
-                    <Button variant="secondary" size="sm" icon={LuChevronLeft} onClick={() => shiftWeek(-7)}>Prev</Button>
-                    {weekStart !== todayStr() && (
-                        <Button variant="secondary" size="sm" onClick={() => setWeekStart(todayStr())}>Today</Button>
-                    )}
-                    <Button variant="secondary" size="sm" icon={LuChevronRight} onClick={() => shiftWeek(7)}>Next</Button>
+            {embedded ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-1.5">
+                        <Button variant="secondary" size="sm" icon={LuChevronLeft} onClick={() => shiftWeek(-7)}>Prev</Button>
+                        {weekStart !== todayStr() && (
+                            <Button variant="secondary" size="sm" onClick={() => setWeekStart(todayStr())}>Today</Button>
+                        )}
+                        <Button variant="secondary" size="sm" icon={LuChevronRight} onClick={() => shiftWeek(7)}>Next</Button>
+                    </div>
+                    <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class instance</Button>
                 </div>
-                <a
-                    href="/admin/classes"
-                    className="px-3 py-2 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
+            ) : (
+                <PageHeader
+                    title="Daily Schedule & Attendance"
+                    subtitle={`Class instances from ${new Date(`${weekStart}T00:00:00.000Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}, 7 days. Google Meet links and student attendance check-ins.`}
                 >
-                    Manage Master Batches →
-                </a>
-                <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class instance</Button>
-            </PageHeader>
+                    <div className="flex items-center gap-1.5">
+                        <Button variant="secondary" size="sm" icon={LuChevronLeft} onClick={() => shiftWeek(-7)}>Prev</Button>
+                        {weekStart !== todayStr() && (
+                            <Button variant="secondary" size="sm" onClick={() => setWeekStart(todayStr())}>Today</Button>
+                        )}
+                        <Button variant="secondary" size="sm" icon={LuChevronRight} onClick={() => shiftWeek(7)}>Next</Button>
+                    </div>
+                    <a
+                        href="/admin/classes"
+                        className="px-3 py-2 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
+                    >
+                        Manage Master Batches →
+                    </a>
+                    <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class instance</Button>
+                </PageHeader>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 mb-8">
                 {days.map((day) => (
@@ -251,4 +264,8 @@ export default function AdminSchedulePage() {
             )}
         </div>
     );
+}
+
+export default function AdminSchedulePage() {
+    return <AdminScheduleContent />;
 }

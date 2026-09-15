@@ -25,7 +25,7 @@ const FIELDS: FieldDef[] = [
     { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
 ];
 
-export default function AdminFaqsPage() {
+export function AdminFaqsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [rows, setRows] = useState<FAQ[]>([]);
@@ -76,7 +76,7 @@ export default function AdminFaqsPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="FAQ Knowledge Base" subtitle="Frequently asked questions published across the public website and mobile apps." />
+            {!embedded && <PageHeader title="FAQ Knowledge Base" subtitle="Frequently asked questions published across the public website and mobile apps." />}
             <DTable
                 data={rows}
                 columns={[
@@ -110,4 +110,8 @@ export default function AdminFaqsPage() {
             )}
         </div>
     );
+}
+
+export default function AdminFaqsPage() {
+    return <AdminFaqsContent />;
 }

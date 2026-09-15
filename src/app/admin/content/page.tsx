@@ -6,8 +6,15 @@ import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/
 import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 import { CONTENT_TYPES, CONTENT_TYPE_LABEL, CATEGORY_LABEL, DIFFICULTY_LABEL, ACCESS_LABEL } from "@/lib/content";
+import { AdminMessagesContent } from "@/app/admin/messages/page";
+import { AdminBroadcastContent } from "@/app/admin/broadcast/page";
+import { AdminWhatsAppContent } from "@/app/admin/community/page";
+import { AdminFaqsContent } from "@/app/admin/faqs/page";
+import { AdminPagesContent } from "@/app/admin/pages/page";
+import { AdminSiteContentContent } from "@/app/admin/site-content/page";
+import { AdminSupportContent } from "@/app/admin/support/page";
 
-type ContentTab = "content" | "story" | "comments" | "community";
+type ContentTab = "content" | "story" | "comments" | "community" | "messages" | "broadcast" | "whatsapp" | "faqs" | "pages" | "site-content" | "support";
 type Subtype = (typeof CONTENT_TYPES)[number];
 
 type Story = {
@@ -271,7 +278,7 @@ export default function AdminContentPage() {
     useEffect(() => {
         if (typeof window !== "undefined") {
             const tabParam = new URLSearchParams(window.location.search).get("tab") as ContentTab | null;
-            if (tabParam && ["content", "story", "comments", "community"].includes(tabParam)) {
+            if (tabParam && ["content", "story", "comments", "community", "messages", "broadcast", "whatsapp", "faqs", "pages", "site-content", "support"].includes(tabParam)) {
                 setActiveTab(tabParam);
             }
         }
@@ -431,7 +438,7 @@ export default function AdminContentPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Content" subtitle="Videos, audio, articles, practices, founder messages and announcements — one library for the website and app." />
+            <PageHeader title="Content & Communication" subtitle="Videos, audio, articles, practices, founder messages, announcements, and how they reach students — one engagement centre." />
 
             <div className="mb-6">
                 <Tabs
@@ -442,9 +449,24 @@ export default function AdminContentPage() {
                         { key: "story", label: "Testimonials", count: stories.length },
                         { key: "comments", label: "Comments", count: comments.filter((c) => c.reportCount > 0).length || comments.length },
                         { key: "community", label: "Community Forum", count: communityPosts.filter((p) => p.reportCount > 0).length + communityComments.length || communityPosts.length },
+                        { key: "messages", label: "Contact Inquiries" },
+                        { key: "broadcast", label: "Push Broadcast" },
+                        { key: "whatsapp", label: "WhatsApp" },
+                        { key: "faqs", label: "FAQ" },
+                        { key: "pages", label: "Pages CMS" },
+                        { key: "site-content", label: "Site Content" },
+                        { key: "support", label: "Support" },
                     ]}
                 />
             </div>
+
+            {activeTab === 'messages' && <AdminMessagesContent embedded />}
+            {activeTab === 'broadcast' && <AdminBroadcastContent embedded />}
+            {activeTab === 'whatsapp' && <AdminWhatsAppContent embedded />}
+            {activeTab === 'faqs' && <AdminFaqsContent embedded />}
+            {activeTab === 'pages' && <AdminPagesContent embedded />}
+            {activeTab === 'site-content' && <AdminSiteContentContent embedded />}
+            {activeTab === 'support' && <AdminSupportContent embedded />}
 
             {activeTab === 'content' && (
                 <>
@@ -661,7 +683,7 @@ export default function AdminContentPage() {
                 </div>
             )}
 
-            {modal && activeTab !== 'comments' && activeTab !== 'community' && (
+            {modal && (activeTab === 'content' || activeTab === 'story') && (
                 <EntityFormModal
                     title={
                         activeTab === "content"

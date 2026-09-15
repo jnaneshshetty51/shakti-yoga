@@ -49,7 +49,7 @@ export function OperationsRail({ data }: { data: Dashboard }) {
             <Card>
                 <CardHeader
                     title="Next 48 hours"
-                    action={<Link href="/admin/schedule" className="text-xs font-semibold text-brand hover:text-brand-strong">Schedule →</Link>}
+                    action={<Link href="/admin/classes?tab=schedule" className="text-xs font-semibold text-brand hover:text-brand-strong">Schedule →</Link>}
                 />
                 {nothingUpcoming ? (
                     <EmptyState icon={LuCalendarClock} title="Nothing scheduled" hint="Classes and sessions in the next two days will appear here." />
@@ -91,7 +91,7 @@ export function OperationsRail({ data }: { data: Dashboard }) {
             <Card>
                 <CardHeader
                     title="Recent activity"
-                    action={<Link href="/admin/audit" className="text-xs font-semibold text-brand hover:text-brand-strong">Audit log →</Link>}
+                    action={<Link href="/admin/settings?tab=audit" className="text-xs font-semibold text-brand hover:text-brand-strong">Audit log →</Link>}
                 />
                 <div className="p-5 sm:p-6">
                     {data.activity.length === 0 ? (

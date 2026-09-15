@@ -21,7 +21,7 @@ const ROLE_LABEL: Record<string, string> = {
     TEACHER: "Teachers",
 };
 
-export default function AdminCommunityPage() {
+export function AdminWhatsAppContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [groups, setGroups] = useState<CommunityGroup[]>([]);
@@ -110,14 +110,22 @@ export default function AdminCommunityPage() {
     return (
         <div className="max-w-4xl">
             {dialog}
-            <PageHeader
-                title="WhatsApp Sangha"
-                subtitle="Dedicated WhatsApp community circles surfaced dynamically on member dashboards based on their role and plan."
-            >
-                <Button variant={creating ? "secondary" : "primary"} onClick={() => setCreating((c) => !c)}>
-                    {creating ? "Cancel" : "New group"}
-                </Button>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button variant={creating ? "secondary" : "primary"} onClick={() => setCreating((c) => !c)}>
+                        {creating ? "Cancel" : "New group"}
+                    </Button>
+                </div>
+            ) : (
+                <PageHeader
+                    title="WhatsApp Sangha"
+                    subtitle="Dedicated WhatsApp community circles surfaced dynamically on member dashboards based on their role and plan."
+                >
+                    <Button variant={creating ? "secondary" : "primary"} onClick={() => setCreating((c) => !c)}>
+                        {creating ? "Cancel" : "New group"}
+                    </Button>
+                </PageHeader>
+            )}
 
             {err && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">{err}</div>}
 
@@ -187,4 +195,8 @@ export default function AdminCommunityPage() {
             )}
         </div>
     );
+}
+
+export default function AdminCommunityPage() {
+    return <AdminWhatsAppContent />;
 }

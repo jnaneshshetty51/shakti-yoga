@@ -96,12 +96,12 @@ export default function MemberDetailPage() {
     return (
         <div>
             {dialog}
-            <Link href="/admin/members" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+            <Link href="/admin/students?tab=members" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Members
             </Link>
             <PageHeader title={m.name} subtitle={m.email} eyebrow={<Badge tone="gray">{m.role.replace(/_/g, " ").toLowerCase()}</Badge>}>
                 <Button variant="ghost" onClick={() => setCredit(true)}>Adjust credits</Button>
-                <Link href="/admin/subscriptions"><Button variant="ghost">Change plan</Button></Link>
+                <Link href="/admin/finance?tab=subscriptions"><Button variant="ghost">Change plan</Button></Link>
                 <Button variant={m.active ? "ghost" : "primary"} onClick={toggleActive}>{m.active ? "Deactivate" : "Reactivate"}</Button>
             </PageHeader>
 

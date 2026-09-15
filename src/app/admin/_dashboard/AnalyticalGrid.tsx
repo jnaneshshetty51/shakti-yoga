@@ -29,7 +29,7 @@ export function AnalyticalGrid({ data }: { data: Dashboard }) {
                 <CardHeader
                     title="Trial funnel"
                     subtitle="Last 30 days"
-                    action={<Link href="/admin/leads" className="text-xs font-semibold text-brand hover:text-brand-strong">Leads →</Link>}
+                    action={<Link href="/admin/crm?tab=leads" className="text-xs font-semibold text-brand hover:text-brand-strong">Leads →</Link>}
                 />
                 <div className="p-5 sm:p-6">
                     {trialFunnel && trialFunnel.requested > 0 ? (
@@ -53,7 +53,7 @@ export function AnalyticalGrid({ data }: { data: Dashboard }) {
                 <CardHeader
                     title="Teacher load"
                     subtitle="Next 7 days"
-                    action={<Link href="/admin/availability" className="text-xs font-semibold text-brand hover:text-brand-strong">Availability →</Link>}
+                    action={<Link href="/admin/staff?tab=availability" className="text-xs font-semibold text-brand hover:text-brand-strong">Availability →</Link>}
                 />
                 <div className="p-2">
                     {teacherLoad.length === 0 ? (

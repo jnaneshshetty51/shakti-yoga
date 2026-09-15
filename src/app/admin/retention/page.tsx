@@ -10,7 +10,7 @@ type Seg = { key: string; label: string; total: number; members: Member[] };
 const d = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—");
 const BROADCAST_SEG: Record<string, string> = { inactive: "inactive", at_risk: "at_risk", renewing: "everyday", failed: "all" };
 
-export default function RetentionPage() {
+export function AdminRetentionContent({ embedded = false }: { embedded?: boolean } = {}) {
     const [segs, setSegs] = useState<Seg[] | null>(null);
     const [loadError, setLoadError] = useState(false);
     const [open, setOpen] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function RetentionPage() {
     if (loadError) {
         return (
             <div>
-                <PageHeader title="Retention" subtitle="Members who need attention. Message a whole segment from Broadcast." />
+                {!embedded && <PageHeader title="Retention" subtitle="Members who need attention. Message a whole segment from Broadcast." />}
                 <ErrorState message="Could not load retention data." onRetry={load} />
             </div>
         );
@@ -41,7 +41,7 @@ export default function RetentionPage() {
 
     return (
         <div>
-            <PageHeader title="Retention" subtitle="Members who need attention. Message a whole segment from Broadcast." />
+            {!embedded && <PageHeader title="Retention" subtitle="Members who need attention. Message a whole segment from Broadcast." />}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
                 {segs.map((s) => (
@@ -51,7 +51,7 @@ export default function RetentionPage() {
                             <p className="text-3xl font-bold text-ink mt-1">{s.total}</p>
                         </button>
                         {BROADCAST_SEG[s.key] && (
-                            <Link href={`/admin/broadcast?segment=${BROADCAST_SEG[s.key]}`} className="text-xs font-semibold text-brand mt-2 inline-block">Message segment →</Link>
+                            <Link href={`/admin/content?tab=broadcast&segment=${BROADCAST_SEG[s.key]}`} className="text-xs font-semibold text-brand mt-2 inline-block">Message segment →</Link>
                         )}
                     </Card>
                 ))}
@@ -80,4 +80,8 @@ export default function RetentionPage() {
             })()}
         </div>
     );
+}
+
+export default function RetentionPage() {
+    return <AdminRetentionContent />;
 }

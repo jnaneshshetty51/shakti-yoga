@@ -9,14 +9,14 @@ type Sev = "danger" | "warn" | "info";
 type AttentionKey = keyof Dashboard["attention"];
 
 const ITEMS: { key: AttentionKey; sev: Sev; label: (n: number) => string; href: string }[] = [
-    { key: "failedPayments7d", sev: "danger", label: (n) => `failed payment${n === 1 ? "" : "s"} this week`, href: "/admin/payments?status=FAILED" },
-    { key: "bookingsNoLink", sev: "danger", label: (n) => `upcoming session${n === 1 ? "" : "s"} with no Meet link`, href: "/admin/bookings" },
-    { key: "pendingBookings", sev: "warn", label: (n) => `booking${n === 1 ? "" : "s"} awaiting confirmation`, href: "/admin/bookings" },
-    { key: "expiringSoon", sev: "warn", label: (n) => `subscription${n === 1 ? "" : "s"} expiring within 7 days`, href: "/admin/subscriptions" },
-    { key: "unhandledMessages", sev: "warn", label: (n) => `unread contact message${n === 1 ? "" : "s"}`, href: "/admin/messages" },
-    { key: "newLeads", sev: "warn", label: (n) => `new lead${n === 1 ? "" : "s"} to follow up`, href: "/admin/leads" },
-    { key: "therapyOutOfCredits", sev: "info", label: (n) => `therapy member${n === 1 ? "" : "s"} with no credits`, href: "/admin/members" },
-    { key: "dormantMembers", sev: "info", label: (n) => `active member${n === 1 ? "" : "s"} not seen in 30+ days`, href: "/admin/members" },
+    { key: "failedPayments7d", sev: "danger", label: (n) => `failed payment${n === 1 ? "" : "s"} this week`, href: "/admin/finance?tab=payments&status=FAILED" },
+    { key: "bookingsNoLink", sev: "danger", label: (n) => `upcoming session${n === 1 ? "" : "s"} with no Meet link`, href: "/admin/therapy?tab=bookings" },
+    { key: "pendingBookings", sev: "warn", label: (n) => `booking${n === 1 ? "" : "s"} awaiting confirmation`, href: "/admin/therapy?tab=bookings" },
+    { key: "expiringSoon", sev: "warn", label: (n) => `subscription${n === 1 ? "" : "s"} expiring within 7 days`, href: "/admin/finance?tab=subscriptions" },
+    { key: "unhandledMessages", sev: "warn", label: (n) => `unread contact message${n === 1 ? "" : "s"}`, href: "/admin/content?tab=messages" },
+    { key: "newLeads", sev: "warn", label: (n) => `new lead${n === 1 ? "" : "s"} to follow up`, href: "/admin/crm?tab=leads" },
+    { key: "therapyOutOfCredits", sev: "info", label: (n) => `therapy member${n === 1 ? "" : "s"} with no credits`, href: "/admin/students?tab=members" },
+    { key: "dormantMembers", sev: "info", label: (n) => `active member${n === 1 ? "" : "s"} not seen in 30+ days`, href: "/admin/students?tab=members" },
     { key: "contentDrafts", sev: "info", label: (n) => `content draft${n === 1 ? "" : "s"} awaiting review`, href: "/admin/content" },
 ];
 

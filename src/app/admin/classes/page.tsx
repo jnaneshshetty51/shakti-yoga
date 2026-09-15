@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { AdminScheduleContent } from "@/app/admin/schedule/page";
 
 export type ClassBatch = {
     id: string;
@@ -30,7 +32,7 @@ const PLAN_OPTIONS = [
     { label: "Trial", value: "TRIAL" },
 ];
 
-export default function AdminClassesPage() {
+export function AdminClassesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [batches, setBatches] = useState<ClassBatch[]>([]);
@@ -133,14 +135,16 @@ export default function AdminClassesPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Class Batches" subtitle="Master recurring class batches, timings, teacher assignments, and default Google Meet links.">
-                <a
-                    href="/admin/schedule"
-                    className="px-3 py-1.5 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
-                >
-                    View Live Schedule &amp; Attendance →
-                </a>
-            </PageHeader>
+            {!embedded && (
+                <PageHeader title="Class Batches" subtitle="Master recurring class batches, timings, teacher assignments, and default Google Meet links.">
+                    <a
+                        href="/admin/schedule"
+                        className="px-3 py-1.5 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
+                    >
+                        View Live Schedule &amp; Attendance →
+                    </a>
+                </PageHeader>
+            )}
 
             <DTable
                 data={batches}
@@ -186,5 +190,41 @@ export default function AdminClassesPage() {
                 />
             )}
         </div>
+    );
+}
+
+type TabKey = "schedule" | "batches";
+const TABS: { key: TabKey; label: string }[] = [
+    { key: "schedule", label: "Schedule" },
+    { key: "batches", label: "Batches" },
+];
+
+/**
+ * Classes & Schedule hub — the daily/weekly operational calendar (with
+ * attendance check-in) and the master recurring batches that generate it.
+ */
+function ClassesHub() {
+    const tabParam = useSearchParams().get("tab") as TabKey | null;
+    const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "schedule");
+
+    return (
+        <div>
+            <PageHeader title="Classes & Schedule" subtitle="The Everyday Yoga operational calendar — recurring batches and daily instances." />
+
+            <div className="mb-6">
+                <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
+            </div>
+
+            {tab === "schedule" && <AdminScheduleContent embedded />}
+            {tab === "batches" && <AdminClassesContent embedded />}
+        </div>
+    );
+}
+
+export default function AdminClassesPage() {
+    return (
+        <Suspense fallback={<PageLoading title="Classes & Schedule" />}>
+            <ClassesHub />
+        </Suspense>
     );
 }

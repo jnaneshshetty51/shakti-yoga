@@ -213,7 +213,7 @@ export function NotificationsBell() {
 
                     <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/50">
                         <Link
-                            href="/admin/audit"
+                            href="/admin/settings?tab=audit"
                             onClick={() => setOpen(false)}
                             className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors"
                         >

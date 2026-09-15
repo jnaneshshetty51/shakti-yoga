@@ -68,7 +68,7 @@ const MANUAL_FIELDS: FieldDef[] = [
 
 const PAGE_SIZE = 25;
 
-function PaymentsTable() {
+function PaymentsTable({ embedded = false }: { embedded?: boolean }) {
     const initialStatus = useSearchParams().get("status");
     const { showToast } = useToast();
     const [payments, setPayments] = useState<Payment[]>([]);
@@ -193,16 +193,22 @@ function PaymentsTable() {
 
     return (
         <div>
-            <PageHeader
-                title="Payments Ledger"
-                subtitle="Real-time transaction ledger of member checkouts, subscription renewals, refunds, and offline manual entries."
-            >
-                <Button onClick={() => setManualOpen(true)}>Record payment</Button>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button onClick={() => setManualOpen(true)}>Record payment</Button>
+                </div>
+            ) : (
+                <PageHeader
+                    title="Payments Ledger"
+                    subtitle="Real-time transaction ledger of member checkouts, subscription renewals, refunds, and offline manual entries."
+                >
+                    <Button onClick={() => setManualOpen(true)}>Record payment</Button>
+                </PageHeader>
+            )}
             {initialStatus && (
                 <p className="mb-3 text-xs text-gray-500">
                     Filtered to <span className="font-semibold">{initialStatus}</span> payments.{" "}
-                    <a href="/admin/payments" className="text-brand font-semibold">Show all</a>
+                    <a href={embedded ? "/admin/finance?tab=payments" : "/admin/payments"} className="text-brand font-semibold">Show all</a>
                 </p>
             )}
             <DTable
@@ -299,10 +305,14 @@ function PaymentsTable() {
     );
 }
 
-export default function AdminPaymentsPage() {
+export function AdminPaymentsContent({ embedded = false }: { embedded?: boolean } = {}) {
     return (
         <Suspense fallback={<PageLoading title="Payments" />}>
-            <PaymentsTable />
+            <PaymentsTable embedded={embedded} />
         </Suspense>
     );
+}
+
+export default function AdminPaymentsPage() {
+    return <AdminPaymentsContent />;
 }

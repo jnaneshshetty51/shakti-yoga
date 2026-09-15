@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, Tabs, labelClass, inputClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
+import { AdminBookingsContent } from "@/app/admin/bookings/page";
 
 type Status = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "RECOMMENDED" | "RECOMMENDED_WITH_CONDITIONS" | "NOT_RECOMMENDED";
 
@@ -55,7 +57,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 const PAGE_SIZE = 25;
 
-export default function AdminTherapyIntakesPage() {
+function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }) {
     const { showToast } = useToast();
     const [rows, setRows] = useState<IntakeRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -159,20 +161,7 @@ export default function AdminTherapyIntakesPage() {
 
     return (
         <div>
-            <PageHeader title="Yoga Therapy & Patient Care" subtitle="Review member health intakes, medical conditions, and between-session progress updates." />
-
-            <div className="mb-6">
-                <Tabs
-                    active="intakes"
-                    onChange={(k) => {
-                        if (k === "updates") window.location.href = "/admin/therapy/updates";
-                    }}
-                    tabs={[
-                        { key: "intakes", label: "Intake Assessments", count: totalCount },
-                        { key: "updates", label: "Patient Progress Updates" },
-                    ]}
-                />
-            </div>
+            {!embedded && <PageHeader title="Yoga Therapy & Patient Care" subtitle="Review member health intakes, medical conditions, and between-session progress updates." />}
 
             <DTable
                 data={rows}
@@ -287,5 +276,50 @@ export default function AdminTherapyIntakesPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+type TabKey = "assessments" | "bookings";
+const TABS: { key: TabKey; label: string }[] = [
+    { key: "assessments", label: "Assessments" },
+    { key: "bookings", label: "Sessions & Bookings" },
+];
+
+/**
+ * Yoga Therapy hub — intake assessments, 1:1 session bookings, and (via a
+ * dedicated sub-route, kept separate since it's a distinct long-form editor)
+ * patient progress updates. Kept as its own protected module per the
+ * sensitivity of the medical/personal information it holds.
+ */
+function TherapyHub() {
+    const tabParam = useSearchParams().get("tab") as TabKey | null;
+    const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "assessments");
+
+    return (
+        <div>
+            <PageHeader title="Yoga Therapy" subtitle="Assessments, patient management and 1:1 sessions — kept separate for its sensitive medical data.">
+                <a
+                    href="/admin/therapy/updates"
+                    className="px-3 py-2 text-xs font-semibold rounded-control border border-hairline bg-surface hover:bg-surface-hover text-ink transition-colors"
+                >
+                    Patient Progress Updates →
+                </a>
+            </PageHeader>
+
+            <div className="mb-6">
+                <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
+            </div>
+
+            {tab === "assessments" && <AdminTherapyIntakesContent embedded />}
+            {tab === "bookings" && <AdminBookingsContent embedded />}
+        </div>
+    );
+}
+
+export default function AdminTherapyIntakesPage() {
+    return (
+        <Suspense fallback={<PageLoading title="Yoga Therapy" />}>
+            <TherapyHub />
+        </Suspense>
     );
 }

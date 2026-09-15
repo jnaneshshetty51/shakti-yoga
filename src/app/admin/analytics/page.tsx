@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { LuIndianRupee, LuWallet, LuUserPlus, LuUsers } from "react-icons/lu";
 import { StatCard } from "@/components/admin/StatCard";
 import { TrendChart } from "@/components/admin/TrendChart";
 import { CHART_PRIMARY, CHART_SECONDARY } from "@/components/admin/Sparkline";
-import { PageHeader, ErrorState } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, ErrorState } from "@/components/admin/ui";
+import { AdminReportsContent } from "@/app/admin/reports/page";
+import { AdminRetentionContent } from "@/app/admin/retention/page";
 
 type Series = { label: string; value: number }[];
 
@@ -87,7 +90,7 @@ function HBars({ rows, total }: { rows: { label: string; count: number }[]; tota
     );
 }
 
-export default function AnalyticsPage() {
+export function AdminAnalyticsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const [data, setData] = useState<Analytics | null>(null);
     const [range, setRange] = useState("30d");
     const [loading, setLoading] = useState(true);
@@ -119,15 +122,27 @@ export default function AnalyticsPage() {
 
     return (
         <div>
-            <PageHeader title="Analytics" subtitle="Business performance and growth.">
-                <select
-                    value={range}
-                    onChange={(e) => setRange(e.target.value)}
-                    className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                    {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <select
+                        value={range}
+                        onChange={(e) => setRange(e.target.value)}
+                        className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                        {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                </div>
+            ) : (
+                <PageHeader title="Analytics" subtitle="Business performance and growth.">
+                    <select
+                        value={range}
+                        onChange={(e) => setRange(e.target.value)}
+                        className="px-4 py-2 border border-gray-200 rounded-full text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                        {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                </PageHeader>
+            )}
 
             {error && (
                 <div className="mb-8">
@@ -249,5 +264,40 @@ export default function AnalyticsPage() {
                 </>
             ) : null}
         </div>
+    );
+}
+
+type TabKey = "analytics" | "reports" | "retention";
+const TABS: { key: TabKey; label: string }[] = [
+    { key: "analytics", label: "Analytics" },
+    { key: "reports", label: "Reports & Exports" },
+    { key: "retention", label: "Retention" },
+];
+
+/** One business-intelligence module — live performance, trailing reports/exports, and at-risk retention segments. */
+function AnalyticsHub() {
+    const tabParam = useSearchParams().get("tab") as TabKey | null;
+    const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "analytics");
+
+    return (
+        <div>
+            <PageHeader title="Analytics & Retention" subtitle="What's happening to the business, not just what's in the database." />
+
+            <div className="mb-6">
+                <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
+            </div>
+
+            {tab === "analytics" && <AdminAnalyticsContent embedded />}
+            {tab === "reports" && <AdminReportsContent embedded />}
+            {tab === "retention" && <AdminRetentionContent embedded />}
+        </div>
+    );
+}
+
+export default function AnalyticsPage() {
+    return (
+        <Suspense fallback={<PageLoading title="Analytics & Retention" />}>
+            <AnalyticsHub />
+        </Suspense>
     );
 }

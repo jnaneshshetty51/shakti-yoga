@@ -18,7 +18,7 @@ interface Rule {
 interface Teacher { id: string; name: string }
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default function AvailabilityPage() {
+export function AdminAvailabilityContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [rules, setRules] = useState<Rule[]>([]);
@@ -105,10 +105,12 @@ export default function AvailabilityPage() {
     return (
         <div className="max-w-4xl">
             {dialog}
-            <PageHeader
-                title="Teacher Availability"
-                subtitle="Weekly windows the 1:1 therapy booking page offers as slots."
-            />
+            {!embedded && (
+                <PageHeader
+                    title="Teacher Availability"
+                    subtitle="Weekly windows the 1:1 therapy booking page offers as slots."
+                />
+            )}
 
             <form onSubmit={add} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-4 sm:p-6 mb-8 grid grid-cols-1 gap-3 sm:grid-cols-6 items-end">
                 <label className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -204,4 +206,8 @@ export default function AvailabilityPage() {
             </Card>
         </div>
     );
+}
+
+export default function AvailabilityPage() {
+    return <AdminAvailabilityContent />;
 }

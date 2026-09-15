@@ -53,7 +53,7 @@ const fmtDate = (iso: string) =>
 
 const PAGE_SIZE = 25;
 
-export default function AdminSubscriptionsPage() {
+export function AdminSubscriptionsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -198,9 +198,15 @@ export default function AdminSubscriptionsPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Subscriptions" subtitle="Manage member plans, billing state and renewals.">
-                <Button onClick={() => setCreating(true)}>Activate a plan</Button>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button onClick={() => setCreating(true)}>Activate a plan</Button>
+                </div>
+            ) : (
+                <PageHeader title="Subscriptions" subtitle="Manage member plans, billing state and renewals.">
+                    <Button onClick={() => setCreating(true)}>Activate a plan</Button>
+                </PageHeader>
+            )}
 
             <DTable
                 data={subscriptions}
@@ -254,4 +260,8 @@ export default function AdminSubscriptionsPage() {
             )}
         </div>
     );
+}
+
+export default function AdminSubscriptionsPage() {
+    return <AdminSubscriptionsContent />;
 }

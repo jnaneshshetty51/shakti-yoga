@@ -92,7 +92,7 @@ function statusBadge(member: Member) {
     return <Badge tone={member.status === "Active" ? "green" : "gray"}>{member.status}</Badge>;
 }
 
-export default function AdminMembersPage() {
+export function AdminMembersContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const [data, setData] = useState<Payload | null>(null);
     const [loading, setLoading] = useState(true);
@@ -217,7 +217,7 @@ export default function AdminMembersPage() {
     if (loadError) {
         return (
             <div>
-                <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy." />
+                {!embedded && <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy." />}
                 <ErrorState message="Could not load members." onRetry={fetchData} />
             </div>
         );
@@ -225,7 +225,7 @@ export default function AdminMembersPage() {
 
     return (
         <div>
-            <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy." />
+            {!embedded && <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy." />}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Active Members" value={data?.counts.active ?? 0} icon={<LuFlower2 />} accent="green" />
@@ -279,4 +279,8 @@ export default function AdminMembersPage() {
             )}
         </div>
     );
+}
+
+export default function AdminMembersPage() {
+    return <AdminMembersContent />;
 }

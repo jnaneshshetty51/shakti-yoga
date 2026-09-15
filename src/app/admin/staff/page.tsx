@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { LuGraduationCap } from "react-icons/lu";
-import { PageHeader, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass, useConfirmDialog } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Card, EmptyState, ErrorState, Badge, Button, ActionButton, inputClass, useConfirmDialog } from "@/components/admin/ui";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/admin/Toast";
+import { AdminAvailabilityContent } from "@/app/admin/availability/page";
 
 const DEPARTMENT_LABEL: Record<string, string> = { CONTENT: "Content Team", SUPPORT: "Support Staff", TRAINER: "Everyday Trainer", THERAPIST: "Yoga Therapist" };
 
@@ -65,7 +67,7 @@ function PhotoInput({ current, onFile }: { current: string | null; onFile: (f: F
     );
 }
 
-export default function AdminStaffPage() {
+export function AdminStaffContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { user } = useAuth();
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
@@ -208,11 +210,19 @@ export default function AdminStaffPage() {
     return (
         <div className="max-w-4xl">
             {dialog}
-            <PageHeader title="Staff & Teachers" subtitle="Accounts, photos and bios for teachers and admins.">
-                <Button variant={creating ? "secondary" : "primary"} onClick={() => { setCreating((c) => !c); setErr(""); }}>
-                    {creating ? "Cancel" : "Add staff"}
-                </Button>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button variant={creating ? "secondary" : "primary"} onClick={() => { setCreating((c) => !c); setErr(""); }}>
+                        {creating ? "Cancel" : "Add staff"}
+                    </Button>
+                </div>
+            ) : (
+                <PageHeader title="Staff & Teachers" subtitle="Accounts, photos and bios for teachers and admins.">
+                    <Button variant={creating ? "secondary" : "primary"} onClick={() => { setCreating((c) => !c); setErr(""); }}>
+                        {creating ? "Cancel" : "Add staff"}
+                    </Button>
+                </PageHeader>
+            )}
 
             {msg && <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">{msg}</div>}
             {err && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">{err}</div>}
@@ -355,5 +365,38 @@ export default function AdminStaffPage() {
             )}
 
         </div>
+    );
+}
+
+type TabKey = "staff" | "availability";
+const TABS: { key: TabKey; label: string }[] = [
+    { key: "staff", label: "Staff" },
+    { key: "availability", label: "Availability" },
+];
+
+/** Staff hub — accounts/roles/RBAC and 1:1 therapy booking availability windows. */
+function StaffHub() {
+    const tabParam = useSearchParams().get("tab") as TabKey | null;
+    const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "staff");
+
+    return (
+        <div>
+            <PageHeader title="Staff" subtitle="Everyone working inside Shakti — accounts, roles, and availability." />
+
+            <div className="mb-6">
+                <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
+            </div>
+
+            {tab === "staff" && <AdminStaffContent embedded />}
+            {tab === "availability" && <AdminAvailabilityContent embedded />}
+        </div>
+    );
+}
+
+export default function AdminStaffPage() {
+    return (
+        <Suspense fallback={<PageLoading title="Staff" />}>
+            <StaffHub />
+        </Suspense>
     );
 }

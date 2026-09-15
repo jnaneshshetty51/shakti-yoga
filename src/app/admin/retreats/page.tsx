@@ -52,7 +52,7 @@ const ENQUIRY_STATUS_OPTIONS = [
     { label: "Cancelled", value: "CANCELLED" },
 ];
 
-export default function AdminRetreatsPage() {
+export function AdminRetreatsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [tab, setTab] = useState<"retreats" | "enquiries">("retreats");
@@ -149,16 +149,29 @@ export default function AdminRetreatsPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Retreats & Events" subtitle="Retreats, workshops and one-off events — enquiry to manual payment.">
-                <Tabs
-                    tabs={[
-                        { key: "retreats", label: "Retreats & Events", count: retreats.length },
-                        { key: "enquiries", label: "Enquiries", count: enquiries.length },
-                    ]}
-                    active={tab}
-                    onChange={setTab}
-                />
-            </PageHeader>
+            {embedded ? (
+                <div className="mb-4">
+                    <Tabs
+                        tabs={[
+                            { key: "retreats", label: "Retreats & Events", count: retreats.length },
+                            { key: "enquiries", label: "Enquiries", count: enquiries.length },
+                        ]}
+                        active={tab}
+                        onChange={setTab}
+                    />
+                </div>
+            ) : (
+                <PageHeader title="Retreats & Events" subtitle="Retreats, workshops and one-off events — enquiry to manual payment.">
+                    <Tabs
+                        tabs={[
+                            { key: "retreats", label: "Retreats & Events", count: retreats.length },
+                            { key: "enquiries", label: "Enquiries", count: enquiries.length },
+                        ]}
+                        active={tab}
+                        onChange={setTab}
+                    />
+                </PageHeader>
+            )}
 
             {tab === "retreats" ? (
                 <DTable
@@ -226,4 +239,8 @@ export default function AdminRetreatsPage() {
             )}
         </div>
     );
+}
+
+export default function AdminRetreatsPage() {
+    return <AdminRetreatsContent />;
 }

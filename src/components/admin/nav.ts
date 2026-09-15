@@ -1,21 +1,38 @@
 import type { IconType } from "react-icons";
 import {
-    LuLayoutDashboard, LuChartLine, LuChartColumnBig, LuUsers, LuFlower2, LuTarget, LuGraduationCap,
-    LuCreditCard, LuHeart, LuCalendarDays, LuCalendarClock, LuClock, LuMessageSquare,
-    LuFileText, LuInbox, LuArchive, LuSettings, LuCircleHelp,
-    LuUserPlus, LuGift, LuLifeBuoy,
-    LuBuilding2, LuTent, LuAward, LuReceipt, LuMegaphone, LuLayoutTemplate,
-    LuClipboardList,
+    LuLayoutDashboard, LuFlower2, LuTarget, LuCreditCard,
+    LuCalendarDays, LuClock, LuClipboardList, LuGraduationCap,
+    LuFileText, LuChartLine, LuArchive, LuLifeBuoy,
 } from "react-icons/lu";
 
 /**
  * Single source of truth for the admin navigation — consumed by the sidebar
  * (src/app/admin/layout.tsx) and the command palette (CommandPalette.tsx) so
  * the two never drift out of sync on destinations or permission gating.
+ *
+ * Frozen at 11 modules (Dashboard + 10 hubs) per the "Final Admin Dashboard"
+ * scope decision — every admin screen lives inside one of these as a tab,
+ * reached via `?tab=`, rather than as its own top-level nav item. See each
+ * hub's own page.tsx for the tabs it bundles.
  */
 
 export type Department = "CONTENT" | "SUPPORT" | "TRAINER" | "THERAPIST";
-export type NavItem = { name: string; description?: string; href: string; icon: IconType; superOnly?: boolean; departments?: Department[] };
+export type NavItem = {
+    name: string;
+    description?: string;
+    href: string;
+    icon: IconType;
+    superOnly?: boolean;
+    departments?: Department[];
+    /**
+     * This item exists only so a departmented account has a working deep
+     * link into a hub whose *default* tab their department can't open (e.g.
+     * a trainer landing on Staff's account-roles tab). A full/super admin
+     * already sees the hub itself, so hide the deep link from them to keep
+     * their sidebar at exactly the 11 frozen modules.
+     */
+    deepLinkOnly?: boolean;
+};
 export type NavGroup = { label: string; items: NavItem[] };
 
 export const NAV: NavGroup[] = [
@@ -23,74 +40,44 @@ export const NAV: NavGroup[] = [
         label: "Overview",
         items: [
             { name: "Dashboard", description: "Overview & attention items", href: "/admin", icon: LuLayoutDashboard },
-            { name: "Analytics", description: "Trends, revenue, funnel", href: "/admin/analytics", icon: LuChartLine },
-            { name: "Reports & Exports", description: "Revenue, cohorts, CSV exports", href: "/admin/reports", icon: LuChartColumnBig },
-            { name: "Retention", description: "At-risk & lapsed members", href: "/admin/retention", icon: LuTarget },
-        ],
-    },
-    {
-        label: "People & Growth",
-        items: [
-            { name: "Members", description: "Active members by track", href: "/admin/members", icon: LuFlower2 },
-            { name: "Users", description: "All system accounts", href: "/admin/users", icon: LuUsers },
-            { name: "Leads", description: "Prospects & trial requests", href: "/admin/leads", icon: LuTarget },
-            { name: "Staff", description: "Teachers & admins", href: "/admin/staff", icon: LuGraduationCap },
-            { name: "Family", description: "Family plans & seats", href: "/admin/family", icon: LuUserPlus },
-            { name: "Referrals", description: "Refer & Earn activity", href: "/admin/referrals", icon: LuGift },
-        ],
-    },
-    {
-        label: "Operations",
-        items: [
-            { name: "Daily Schedule", description: "Class instances & Meet links", href: "/admin/schedule", icon: LuCalendarDays, departments: ["TRAINER"] },
-            { name: "Class Batches", description: "Master group class batches", href: "/admin/classes", icon: LuHeart, departments: ["TRAINER"] },
-            { name: "1:1 Bookings", description: "1:1 session bookings", href: "/admin/bookings", icon: LuCalendarClock, departments: ["THERAPIST"] },
-            { name: "Teacher Availability", description: "Teacher availability windows", href: "/admin/availability", icon: LuClock, departments: ["TRAINER", "THERAPIST"] },
-            { name: "Therapy & Patient Care", description: "Yoga therapy intake review & patient updates", href: "/admin/therapy", icon: LuClipboardList, departments: ["THERAPIST"] },
-        ],
-    },
-    {
-        label: "Billing & Revenue",
-        items: [
-            { name: "Subscriptions", description: "Plans & billing state", href: "/admin/subscriptions", icon: LuCreditCard },
-            { name: "Payments Ledger", description: "Payment & renewal charge ledger", href: "/admin/payments", icon: LuReceipt },
-            { name: "Invoices", description: "Tax invoices, PDF download", href: "/admin/invoices", icon: LuFileText },
-        ],
-    },
-    {
-        label: "Communications",
-        items: [
-            { name: "Support Inbox", description: "Member support threads", href: "/admin/support", icon: LuLifeBuoy, departments: ["SUPPORT"] },
-            { name: "Contact Inquiries", description: "Website contact form submissions", href: "/admin/messages", icon: LuInbox },
-            { name: "Push Broadcast", description: "Send a push notification to a segment", href: "/admin/broadcast", icon: LuMegaphone },
-            { name: "WhatsApp Sangha", description: "Community group links & pinned messages", href: "/admin/community", icon: LuMessageSquare, departments: ["CONTENT"] },
-        ],
-    },
-    {
-        label: "Content & Programs",
-        items: [
-            { name: "Content Library", description: "Videos, audio, articles, practices, founder messages, announcements", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "Challenges", description: "Time-boxed member goals", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
-            { name: "Achievements", description: "Badge earn rates + grant/revoke", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
-            { name: "FAQ Knowledge Base", description: "Website + app FAQs", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },
-            { name: "Edit Pages (CMS)", description: "Edit About, Home, Corporate copy", href: "/admin/pages", icon: LuLayoutTemplate, departments: ["CONTENT"] },
-            { name: "Site Content", description: "Why-us benefits + homepage stats", href: "/admin/site-content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "Certificates", description: "Issue & approve certificates", href: "/admin/certificates", icon: LuAward },
         ],
     },
     {
         label: "Business",
         items: [
-            { name: "Corporate Wellness", description: "B2B pipeline & proposals", href: "/admin/corporate", icon: LuBuilding2 },
-            { name: "Retreats & Events", description: "Retreats, workshops, enquiries", href: "/admin/retreats", icon: LuTent },
+            { name: "Students", description: "Members, accounts, family plans, progress & certificates", href: "/admin/students", icon: LuFlower2 },
+            { name: "CRM", description: "Leads, corporate, retreats & events, referrals", href: "/admin/crm", icon: LuTarget },
+            { name: "Payments & Finance", description: "Subscriptions, payments, invoices", href: "/admin/finance", icon: LuCreditCard },
+        ],
+    },
+    {
+        label: "Operations",
+        items: [
+            { name: "Classes & Schedule", description: "Recurring batches & the daily operational calendar", href: "/admin/classes", icon: LuCalendarDays, departments: ["TRAINER"] },
+            { name: "Attendance", description: "Today's check-ins & attendance corrections", href: "/admin/attendance", icon: LuClipboardList, departments: ["TRAINER"] },
+            { name: "Yoga Therapy", description: "Intake assessments & 1:1 session bookings", href: "/admin/therapy", icon: LuClipboardList, departments: ["THERAPIST"] },
+            { name: "Staff", description: "Accounts, roles & RBAC", href: "/admin/staff", icon: LuGraduationCap },
+            { name: "Availability", description: "Your teaching / session availability windows", href: "/admin/staff?tab=availability", icon: LuClock, departments: ["TRAINER", "THERAPIST"], deepLinkOnly: true },
+        ],
+    },
+    {
+        label: "Engagement",
+        items: [
+            { name: "Content & Communication", description: "Library, testimonials, community, inbox, broadcast, WhatsApp, FAQ, pages", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
+            { name: "Support Inbox", description: "Member support conversations", href: "/admin/content?tab=support", icon: LuLifeBuoy, departments: ["SUPPORT"], deepLinkOnly: true },
+            { name: "Progress & Achievements", description: "Challenges and badge grants", href: "/admin/students?tab=challenges", icon: LuTarget, departments: ["CONTENT"], deepLinkOnly: true },
+        ],
+    },
+    {
+        label: "Insights",
+        items: [
+            { name: "Analytics & Retention", description: "Live performance, reports & exports, at-risk segments", href: "/admin/analytics", icon: LuChartLine },
         ],
     },
     {
         label: "System",
         items: [
-            { name: "Pricing Plans", description: "Plan prices + features (super only)", href: "/admin/pricing", icon: LuCreditCard, superOnly: true },
-            { name: "Audit Log", description: "Privileged actions (super only)", href: "/admin/audit", icon: LuArchive, superOnly: true },
-            { name: "Settings", description: "Platform settings (super only)", href: "/admin/settings", icon: LuSettings, superOnly: true },
+            { name: "Settings & Audit", description: "Platform settings, pricing, privileged-action audit log (super only)", href: "/admin/settings", icon: LuArchive, superOnly: true },
         ],
     },
 ];
@@ -105,7 +92,7 @@ export function visibleNavGroups(department: Department | null, isSuper: boolean
         .map((g) => ({
             ...g,
             items: g.items.filter((i) =>
-                department ? i.departments?.includes(department) : (!i.superOnly || isSuper)
+                department ? i.departments?.includes(department) : (!i.superOnly || isSuper) && !i.deepLinkOnly
             ),
         }))
         .filter((g) => g.items.length > 0);

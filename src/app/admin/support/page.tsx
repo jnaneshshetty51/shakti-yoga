@@ -33,7 +33,7 @@ function when(iso: string) {
     return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 }
 
-export default function AdminSupportPage() {
+export function AdminSupportContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { confirm, dialog } = useConfirmDialog();
     const [filter, setFilter] = useState<"OPEN" | "CLOSED">("OPEN");
     const [rows, setRows] = useState<Row[] | null>(null);
@@ -107,7 +107,7 @@ export default function AdminSupportPage() {
     if (!rows && loadError) {
         return (
             <div>
-                <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment." />
+                {!embedded && <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment." />}
                 <ErrorState message="Could not load conversations." onRetry={load} />
             </div>
         );
@@ -127,14 +127,26 @@ export default function AdminSupportPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment.">
-                <SegmentedControl
-                    aria-label="Filter"
-                    value={filter}
-                    onChange={setFilter}
-                    options={[{ value: "OPEN", label: "Open" }, { value: "CLOSED", label: "Closed" }]}
-                />
-            </PageHeader>
+            {embedded ? (
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <h2 className="font-semibold text-ink">Support</h2>
+                    <SegmentedControl
+                        aria-label="Filter"
+                        value={filter}
+                        onChange={setFilter}
+                        options={[{ value: "OPEN", label: "Open" }, { value: "CLOSED", label: "Closed" }]}
+                    />
+                </div>
+            ) : (
+                <PageHeader title="Support" subtitle="Member conversations. Anyone on Support can reply — no manual assignment.">
+                    <SegmentedControl
+                        aria-label="Filter"
+                        value={filter}
+                        onChange={setFilter}
+                        options={[{ value: "OPEN", label: "Open" }, { value: "CLOSED", label: "Closed" }]}
+                    />
+                </PageHeader>
+            )}
 
             <div className="relative w-full sm:w-72 mb-4">
                 <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle text-sm" />
@@ -215,4 +227,8 @@ export default function AdminSupportPage() {
             </div>
         </div>
     );
+}
+
+export default function AdminSupportPage() {
+    return <AdminSupportContent />;
 }

@@ -26,7 +26,7 @@ const STAT_FIELDS: FieldDef[] = [
     { name: "category", label: "Category", placeholder: "general" },
 ];
 
-export default function SiteContentPage() {
+export function AdminSiteContentContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
@@ -75,7 +75,7 @@ export default function SiteContentPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Site content" subtitle="'Why us' benefits and the homepage stat figures." />
+            {!embedded && <PageHeader title="Site content" subtitle="'Why us' benefits and the homepage stat figures." />}
             <div className="mb-4">
                 <Tabs
                     active={tab}
@@ -135,4 +135,8 @@ export default function SiteContentPage() {
             )}
         </div>
     );
+}
+
+export default function SiteContentPage() {
+    return <AdminSiteContentContent />;
 }

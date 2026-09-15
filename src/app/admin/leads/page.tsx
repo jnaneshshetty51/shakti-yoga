@@ -25,7 +25,7 @@ export type Lead = {
     _count: { activities: number };
 };
 
-function LeadsDashboard() {
+function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [leads, setLeads] = useState<Lead[]>([]);
@@ -233,7 +233,7 @@ function LeadsDashboard() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Leads CRM" subtitle="Track and manage potential members from inquiry to conversion." />
+            {!embedded && <PageHeader title="Leads CRM" subtitle="Track and manage potential members from inquiry to conversion." />}
 
             <DTable
                 data={leads}
@@ -356,10 +356,14 @@ function LeadsDashboard() {
     );
 }
 
-export default function AdminLeadsPage() {
+export function AdminLeadsContent({ embedded = false }: { embedded?: boolean } = {}) {
     return (
         <Suspense fallback={<div>Loading...</div>}>
-            <LeadsDashboard />
+            <LeadsDashboard embedded={embedded} />
         </Suspense>
     );
+}
+
+export default function AdminLeadsPage() {
+    return <AdminLeadsContent />;
 }

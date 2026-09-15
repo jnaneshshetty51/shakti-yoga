@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { useToast } from "@/components/admin/Toast";
@@ -38,7 +39,7 @@ export type User = {
 
 const PAGE_SIZE = 25;
 
-export default function AdminUsersPage() {
+export function AdminUsersContent({ embedded = false }: { embedded?: boolean } = {}) {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<User | null>(null);
@@ -205,7 +206,7 @@ export default function AdminUsersPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="User Management" subtitle="Manage all registered users, members, and staff." />
+            {!embedded && <PageHeader title="User Management" subtitle="Manage all registered users, members, and staff." />}
 
             <DTable
                 data={users}
@@ -230,6 +231,7 @@ export default function AdminUsersPage() {
                 }}
                 actions={(user) => (
                     <TableActions>
+                        <Link href={`/admin/members/${user.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
                         <ActionButton onClick={() => setEditing(user)}>Edit</ActionButton>
                         <ActionButton onClick={() => toggleActive(user)}>
                             {(user.active ?? true) ? "Deactivate" : "Reactivate"}
@@ -263,4 +265,8 @@ export default function AdminUsersPage() {
             )}
         </div>
     );
+}
+
+export default function AdminUsersPage() {
+    return <AdminUsersContent />;
 }

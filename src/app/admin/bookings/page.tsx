@@ -43,7 +43,7 @@ const STATUS_FILTER = STATUS_OPTIONS.map((o) => ({ label: o.label, value: o.valu
 
 const PAGE_SIZE = 25;
 
-export default function AdminBookingsPage() {
+export function AdminBookingsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -206,12 +206,18 @@ export default function AdminBookingsPage() {
     return (
         <div>
             {dialog}
-            <PageHeader
-                title="Bookings"
-                subtitle="1:1 therapy sessions and consultations. Reschedule, reassign the teacher, or create one for a member."
-            >
-                <Button onClick={() => setCreating(true)}>New booking</Button>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button onClick={() => setCreating(true)}>New booking</Button>
+                </div>
+            ) : (
+                <PageHeader
+                    title="Bookings"
+                    subtitle="1:1 therapy sessions and consultations. Reschedule, reassign the teacher, or create one for a member."
+                >
+                    <Button onClick={() => setCreating(true)}>New booking</Button>
+                </PageHeader>
+            )}
 
             <DTable
                 data={bookings}
@@ -277,4 +283,8 @@ export default function AdminBookingsPage() {
             )}
         </div>
     );
+}
+
+export default function AdminBookingsPage() {
+    return <AdminBookingsContent />;
 }

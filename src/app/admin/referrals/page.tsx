@@ -31,7 +31,7 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 const PAGE_SIZE = 25;
 
-export default function AdminReferralsPage() {
+export function AdminReferralsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [referrals, setReferrals] = useState<Referral[]>([]);
@@ -135,7 +135,7 @@ export default function AdminReferralsPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Referrals" subtitle="Refer & Earn activity, reward settings and manual review." />
+            {!embedded && <PageHeader title="Referrals" subtitle="Refer & Earn activity, reward settings and manual review." />}
 
             {stats && (
                 <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
@@ -208,4 +208,8 @@ export default function AdminReferralsPage() {
             />
         </div>
     );
+}
+
+export default function AdminReferralsPage() {
+    return <AdminReferralsContent />;
 }

@@ -15,7 +15,7 @@ interface PagesData {
     corporate: CorporatePageContent;
 }
 
-export default function AdminPagesCms() {
+export function AdminPagesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const [tab, setTab] = useState<CmsTab>("about");
     const [data, setData] = useState<PagesData | null>(null);
@@ -58,12 +58,16 @@ export default function AdminPagesCms() {
     if (!data) return <PageLoading title="Pages CMS" />;
 
     return (
-        <div className="max-w-5xl space-y-6">
+        <div className={embedded ? "space-y-6" : "max-w-5xl space-y-6"}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <PageHeader
-                    title="Pages CMS &amp; Content Editor"
-                    subtitle="Live editor for public page copy. Update narrative texts, hero headlines, and founder statements."
-                />
+                {embedded ? (
+                    <h2 className="font-serif text-lg font-bold text-ink-base">Pages CMS &amp; Content Editor</h2>
+                ) : (
+                    <PageHeader
+                        title="Pages CMS &amp; Content Editor"
+                        subtitle="Live editor for public page copy. Update narrative texts, hero headlines, and founder statements."
+                    />
+                )}
                 <div className="flex items-center gap-2">
                     <Link
                         href={tab === "about" ? "/about" : tab === "corporate" ? "/corporate" : "/"}
@@ -76,22 +80,23 @@ export default function AdminPagesCms() {
                 </div>
             </div>
 
-            {/* Quick CMS Hub bar */}
-            <div className="p-4 rounded-card bg-surface-subtle border border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                <div>
-                    <span className="font-semibold text-ink-base flex items-center gap-1.5">
-                        <span>📰</span> Articles &amp; Blog Publishing Studio
-                    </span>
-                    <p className="text-ink-subtle mt-0.5">Publish long-form yogic wisdom articles, essays, and stories with custom slugs &amp; CTAs.</p>
+            {!embedded && (
+                <div className="p-4 rounded-card bg-surface-subtle border border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                    <div>
+                        <span className="font-semibold text-ink-base flex items-center gap-1.5">
+                            <span>📰</span> Articles &amp; Blog Publishing Studio
+                        </span>
+                        <p className="text-ink-subtle mt-0.5">Publish long-form yogic wisdom articles, essays, and stories with custom slugs &amp; CTAs.</p>
+                    </div>
+                    <Link
+                        href="/admin/content"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-control bg-brand text-white font-semibold hover:bg-brand-hover transition-colors shrink-0"
+                    >
+                        <span>Write &amp; Manage Content</span>
+                        <LuExternalLink className="text-xs" />
+                    </Link>
                 </div>
-                <Link
-                    href="/admin/content?tab=blog"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-control bg-brand text-white font-semibold hover:bg-brand-hover transition-colors shrink-0"
-                >
-                    <span>Write &amp; Manage Blogs</span>
-                    <LuExternalLink className="text-xs" />
-                </Link>
-            </div>
+            )}
 
             <Tabs
                 active={tab}
@@ -567,4 +572,8 @@ export default function AdminPagesCms() {
             )}
         </div>
     );
+}
+
+export default function AdminPagesCms() {
+    return <AdminPagesContent />;
 }

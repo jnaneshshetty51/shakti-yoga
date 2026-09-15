@@ -42,7 +42,7 @@ export default function CorporateDetailPage() {
     if (loadError) {
         return (
             <div>
-                <Link href="/admin/corporate" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+                <Link href="/admin/crm?tab=corporate" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                     <LuArrowLeft /> Corporate
                 </Link>
                 <ErrorState message="Could not load this lead." onRetry={load} />
@@ -54,7 +54,7 @@ export default function CorporateDetailPage() {
 
     return (
         <div>
-            <Link href="/admin/corporate" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+            <Link href="/admin/crm?tab=corporate" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Corporate
             </Link>
             <PageHeader

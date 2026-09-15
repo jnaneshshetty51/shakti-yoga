@@ -22,7 +22,7 @@ const d = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "num
 
 const PAGE_SIZE = 25;
 
-export default function InvoicesPage() {
+export function AdminInvoicesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const [rows, setRows] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -83,7 +83,7 @@ export default function InvoicesPage() {
 
     return (
         <div>
-            <PageHeader title="Invoices" subtitle="Auto-issued on every successful payment. Download a copy here." />
+            {!embedded && <PageHeader title="Invoices" subtitle="Auto-issued on every successful payment. Download a copy here." />}
             {loadError ? (
                 <ErrorState message="Could not load invoices." onRetry={load} />
             ) : (
@@ -161,4 +161,8 @@ export default function InvoicesPage() {
             )}
         </div>
     );
+}
+
+export default function InvoicesPage() {
+    return <AdminInvoicesContent />;
 }

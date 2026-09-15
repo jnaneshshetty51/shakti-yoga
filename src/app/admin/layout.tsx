@@ -86,7 +86,7 @@ function UserMenu({
         >
             <MenuLabel>{name || "Admin"} · {tierLabel}</MenuLabel>
             <MenuItem href="/admin/settings" icon={LuSettings}>Settings</MenuItem>
-            <MenuItem href="/admin/audit" icon={LuArchive}>Audit log</MenuItem>
+            <MenuItem href="/admin/settings?tab=audit" icon={LuArchive}>Audit log</MenuItem>
             <MenuItem href="/dashboard" icon={LuUserRound}>My member view</MenuItem>
             <MenuSep />
             <MenuItem onClick={onLogout} icon={LuLogOut} tone="danger">Sign out</MenuItem>

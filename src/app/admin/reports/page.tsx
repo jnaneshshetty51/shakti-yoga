@@ -35,7 +35,7 @@ const EXPORTS = [
     { type: "bookings", label: "Bookings" },
 ] as const;
 
-export default function AdminReportsPage() {
+export function AdminReportsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const [data, setData] = useState<Reports | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function AdminReportsPage() {
 
     return (
         <div>
-            <PageHeader title="Reports & Exports" subtitle="Trailing 12-month financials, retention cohorts, plan mix, and raw CSV exports for accounting." />
+            {!embedded && <PageHeader title="Reports & Exports" subtitle="Trailing 12-month financials, retention cohorts, plan mix, and raw CSV exports for accounting." />}
 
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Revenue (12m)" value={inr(summary.totalRevenue)} icon={<LuIndianRupee />} accent="green" spark={data.revenueByMonth.map((p) => p.value)} />
@@ -184,4 +184,8 @@ export default function AdminReportsPage() {
             </div>
         </div>
     );
+}
+
+export default function AdminReportsPage() {
+    return <AdminReportsContent />;
 }

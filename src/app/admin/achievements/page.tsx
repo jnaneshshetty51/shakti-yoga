@@ -8,7 +8,7 @@ type Badge = { key: string; title: string; description: string; icon: string; ea
 type Member = { id: string; name: string; email: string; earned: string[] };
 type Data = { achievements: Badge[]; totalMembers: number; member: Member | null };
 
-export default function AchievementsPage() {
+export function AdminAchievementsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
@@ -82,10 +82,12 @@ export default function AchievementsPage() {
     return (
         <div>
             {dialog}
-            <PageHeader
-                title="Achievements"
-                subtitle="The badge catalogue is defined in code. Here you can see earn rates and grant or revoke a badge for one member."
-            />
+            {!embedded && (
+                <PageHeader
+                    title="Achievements"
+                    subtitle="The badge catalogue is defined in code. Here you can see earn rates and grant or revoke a badge for one member."
+                />
+            )}
 
             <Card padded className="mb-6">
                 <label className={labelClass}>Look up a member</label>
@@ -139,4 +141,8 @@ export default function AchievementsPage() {
             </div>
         </div>
     );
+}
+
+export default function AchievementsPage() {
+    return <AdminAchievementsContent />;
 }

@@ -13,7 +13,7 @@ type HistoryRow = {
 };
 type Data = { segments: Segment[]; channels: string[]; history: HistoryRow[] };
 
-function BroadcastForm() {
+function BroadcastForm({ embedded = false }: { embedded?: boolean }) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const initialSegment = useSearchParams().get("segment") ?? "";
@@ -67,10 +67,12 @@ function BroadcastForm() {
     return (
         <div>
             {dialog}
-            <PageHeader
-                title="Push Broadcast"
-                subtitle="Send mobile push notifications to active, trial, or at-risk member segments. Always test on your own device first."
-            />
+            {!embedded && (
+                <PageHeader
+                    title="Push Broadcast"
+                    subtitle="Send mobile push notifications to active, trial, or at-risk member segments. Always test on your own device first."
+                />
+            )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,340px]">
                 <Card padded>
@@ -152,10 +154,14 @@ function BroadcastForm() {
     );
 }
 
-export default function BroadcastPage() {
+export function AdminBroadcastContent({ embedded = false }: { embedded?: boolean } = {}) {
     return (
         <Suspense fallback={<PageLoading title="Broadcast" />}>
-            <BroadcastForm />
+            <BroadcastForm embedded={embedded} />
         </Suspense>
     );
+}
+
+export default function BroadcastPage() {
+    return <AdminBroadcastContent />;
 }

@@ -70,7 +70,7 @@ export default function EnquiryDetailPage() {
     if (loadError) {
         return (
             <div>
-                <Link href="/admin/retreats" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+                <Link href="/admin/crm?tab=retreats" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                     <LuArrowLeft /> Retreats
                 </Link>
                 <ErrorState message="Could not load this enquiry." onRetry={load} />
@@ -83,7 +83,7 @@ export default function EnquiryDetailPage() {
     return (
         <div>
             {dialog}
-            <Link href="/admin/retreats" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+            <Link href="/admin/crm?tab=retreats" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Retreats
             </Link>
             <PageHeader title={e.name} subtitle={e.email} eyebrow={<StatusBadge status={e.status} />}>
@@ -104,7 +104,7 @@ export default function EnquiryDetailPage() {
                     </dl>
                     {e.message && <p className="text-sm mt-3"><span className="text-ink-subtle">Message: </span>{e.message}</p>}
                     <div className="mt-4 flex gap-2">
-                        <Link href="/admin/payments"><Button size="sm" variant="ghost">Record a payment</Button></Link>
+                        <Link href="/admin/finance?tab=payments"><Button size="sm" variant="ghost">Record a payment</Button></Link>
                         <Button size="sm" variant="ghost" onClick={del}>Delete enquiry</Button>
                     </div>
                 </Card>

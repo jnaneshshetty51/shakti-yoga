@@ -17,7 +17,11 @@ export default function AdminPricingPage() {
     return <SuperAdminGuard><Inner /></SuperAdminGuard>;
 }
 
-function Inner() {
+export function AdminPricingContent({ embedded = false }: { embedded?: boolean } = {}) {
+    return embedded ? <Inner embedded /> : <SuperAdminGuard><Inner /></SuperAdminGuard>;
+}
+
+function Inner({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const [plans, setPlans] = useState<Plan[] | null>(null);
     const [draft, setDraft] = useState<Draft>({});
@@ -76,12 +80,18 @@ function Inner() {
 
     return (
         <div>
-            <PageHeader
-                title="Pricing Plans"
-                subtitle="Manage regional pricing (INR/USD), plan recommendations, and marketing features for each membership tier."
-            >
-                <Button loading={saving} onClick={save}>Save pricing</Button>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button loading={saving} onClick={save}>Save pricing</Button>
+                </div>
+            ) : (
+                <PageHeader
+                    title="Pricing Plans"
+                    subtitle="Manage regional pricing (INR/USD), plan recommendations, and marketing features for each membership tier."
+                >
+                    <Button loading={saving} onClick={save}>Save pricing</Button>
+                </PageHeader>
+            )}
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {plans.map((p) => {

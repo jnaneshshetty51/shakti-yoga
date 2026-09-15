@@ -31,7 +31,7 @@ function fmt(iso: string) {
     return new Date(iso).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function AdminFamilyPage() {
+export function AdminFamilyContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [groups, setGroups] = useState<Group[] | null>(null);
@@ -90,10 +90,12 @@ export default function AdminFamilyPage() {
     return (
         <div>
             {dialog}
-            <PageHeader
-                title="Family"
-                subtitle="Every family plan and its seats. Members manage their own group from the app; use these controls to intervene."
-            />
+            {!embedded && (
+                <PageHeader
+                    title="Family"
+                    subtitle="Every family plan and its seats. Members manage their own group from the app; use these controls to intervene."
+                />
+            )}
 
             {groups.length === 0 ? (
                 <Card><EmptyState icon={LuUserPlus} title="No family plans yet" hint="Family groups appear here once a member starts one." /></Card>
@@ -141,4 +143,8 @@ export default function AdminFamilyPage() {
             )}
         </div>
     );
+}
+
+export default function AdminFamilyPage() {
+    return <AdminFamilyContent />;
 }

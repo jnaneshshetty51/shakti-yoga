@@ -34,7 +34,7 @@ const FIELDS: FieldDef[] = [
     { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
 ];
 
-export default function AdminChallengesPage() {
+export function AdminChallengesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [rows, setRows] = useState<Challenge[]>([]);
@@ -85,7 +85,7 @@ export default function AdminChallengesPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Challenges" subtitle="Time-boxed goals members opt into." />
+            {!embedded && <PageHeader title="Challenges" subtitle="Time-boxed goals members opt into." />}
             <DTable
                 data={rows}
                 columns={[
@@ -135,4 +135,8 @@ export default function AdminChallengesPage() {
             )}
         </div>
     );
+}
+
+export default function AdminChallengesPage() {
+    return <AdminChallengesContent />;
 }

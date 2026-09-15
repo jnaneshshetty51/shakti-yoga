@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SuperAdminGuard } from "@/components/admin/SuperAdminGuard";
-import { PageHeader, PageLoading, Card, Badge, ErrorState, labelClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Card, Badge, ErrorState, labelClass } from "@/components/admin/ui";
+import { AdminPricingContent } from "@/app/admin/pricing/page";
+import { AdminAuditContent } from "@/app/admin/audit/page";
 
 interface Settings {
     platformName: string;
@@ -41,15 +44,44 @@ interface Integrations {
     minio: boolean;
 }
 
-export default function AdminSettingsPage() {
+type TabKey = "settings" | "pricing" | "audit";
+const TABS: { key: TabKey; label: string }[] = [
+    { key: "settings", label: "Settings" },
+    { key: "pricing", label: "Pricing" },
+    { key: "audit", label: "Audit Log" },
+];
+
+/** System-control hub — platform settings, pricing, and the privileged-action audit log. Super admin only. */
+function SettingsHub() {
+    const tabParam = useSearchParams().get("tab") as TabKey | null;
+    const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "settings");
+
     return (
         <SuperAdminGuard>
-            <SettingsInner />
+            <div>
+                <PageHeader title="Settings & Audit" subtitle="Platform configuration, pricing, and the privileged-action audit trail." />
+
+                <div className="mb-6">
+                    <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
+                </div>
+
+                {tab === "settings" && <SettingsInner embedded />}
+                {tab === "pricing" && <AdminPricingContent embedded />}
+                {tab === "audit" && <AdminAuditContent embedded />}
+            </div>
         </SuperAdminGuard>
     );
 }
 
-function SettingsInner() {
+export default function AdminSettingsPage() {
+    return (
+        <Suspense fallback={<PageLoading title="Settings & Audit" />}>
+            <SettingsHub />
+        </Suspense>
+    );
+}
+
+function SettingsInner({ embedded = false }: { embedded?: boolean } = {}) {
     const [settings, setSettings] = useState<Settings>({
         platformName: "", supportEmail: "", defaultTimezone: "IST",
         teacher_rate_class: "500", teacher_rate_session: "800",
@@ -123,7 +155,7 @@ function SettingsInner() {
 
     return (
         <div>
-            <PageHeader title="Platform Settings" subtitle="General settings and integration status." />
+            {!embedded && <PageHeader title="Platform Settings" subtitle="General settings and integration status." />}
 
             {status && (
                 <div className="mb-6 p-3 rounded-xl bg-accent/40 border border-primary/10 text-sm text-text max-w-3xl">{status}</div>

@@ -15,7 +15,7 @@ interface Message {
     createdAt: string;
 }
 
-export default function AdminMessagesPage() {
+export function AdminMessagesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -82,12 +82,21 @@ export default function AdminMessagesPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Contact Inquiries" subtitle="Website contact form submissions, general inquiries, and prospective student questions.">
-                <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full border border-gray-200 bg-white cursor-pointer">
-                    <input type="checkbox" className="accent-primary" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />
-                    Show handled
-                </label>
-            </PageHeader>
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full border border-gray-200 bg-white cursor-pointer">
+                        <input type="checkbox" className="accent-primary" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />
+                        Show handled
+                    </label>
+                </div>
+            ) : (
+                <PageHeader title="Contact Inquiries" subtitle="Website contact form submissions, general inquiries, and prospective student questions.">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-2 rounded-full border border-gray-200 bg-white cursor-pointer">
+                        <input type="checkbox" className="accent-primary" checked={showHandled} onChange={(e) => setShowHandled(e.target.checked)} />
+                        Show handled
+                    </label>
+                </PageHeader>
+            )}
 
             {loadError ? (
                 <ErrorState message="Could not load inquiries." onRetry={load} />
@@ -124,4 +133,8 @@ export default function AdminMessagesPage() {
             )}
         </div>
     );
+}
+
+export default function AdminMessagesPage() {
+    return <AdminMessagesContent />;
 }

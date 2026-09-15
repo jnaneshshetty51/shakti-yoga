@@ -23,7 +23,7 @@ type UserOption = { id: string; name: string; email: string };
 
 const PAGE_SIZE = 25;
 
-export default function AdminCertificatesPage() {
+export function AdminCertificatesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [certificates, setCertificates] = useState<Certificate[] | null>(null);
@@ -119,7 +119,7 @@ export default function AdminCertificatesPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Certificates" subtitle="Approve auto-issued certificates or issue one manually." />
+            {!embedded && <PageHeader title="Certificates" subtitle="Approve auto-issued certificates or issue one manually." />}
 
             <DTable
                 data={certificates}
@@ -170,4 +170,8 @@ export default function AdminCertificatesPage() {
             )}
         </div>
     );
+}
+
+export default function AdminCertificatesPage() {
+    return <AdminCertificatesContent />;
 }

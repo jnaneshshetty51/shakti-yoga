@@ -79,7 +79,7 @@ export default function ChallengeParticipantsPage() {
     if (loadError) {
         return (
             <div>
-                <Link href="/admin/challenges" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+                <Link href="/admin/students?tab=challenges" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                     <LuArrowLeft /> Challenges
                 </Link>
                 <ErrorState message="Could not load this challenge." onRetry={load} />
@@ -94,7 +94,7 @@ export default function ChallengeParticipantsPage() {
     return (
         <div>
             {dialog}
-            <Link href="/admin/challenges" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
+            <Link href="/admin/students?tab=challenges" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Challenges
             </Link>
             <PageHeader
