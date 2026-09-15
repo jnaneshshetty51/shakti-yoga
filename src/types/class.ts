@@ -6,6 +6,8 @@ export interface ClassView {
     endsAt: string;
     status: string;
     joinable: boolean;
+    /** Whether this caller has a ClassAttendance row for this instance — per-member, not the instance's own Scheduled/Completed/Cancelled status. */
+    attended: boolean;
 }
 
 export interface SessionBalanceInfo {

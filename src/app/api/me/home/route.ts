@@ -3,12 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { getSession, mapDatabaseRole } from '@/lib/auth';
 import { syncSubscriptionState } from '@/lib/subscription';
 import { getHomeContent } from '@/lib/content-home';
-import { getStreak } from '@/lib/streak';
+import { getPracticeConsistency } from '@/lib/practice-consistency';
 import { getClassFeed } from '@/lib/class-feed';
 import { buildMemberActivity } from '@/lib/member-activity';
 import { getNotificationState, isRead, isDismissed } from '@/lib/notifications';
-import { computeProgress, serializeChallenge } from '@/lib/challenges';
-import { Role } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,40 +18,6 @@ async function unreadActivityCount(userId: string): Promise<number> {
         getNotificationState(userId),
     ]);
     return items.filter((n) => !isDismissed(n, state) && !isRead(n, state)).length;
-}
-
-async function communityCard(role: Role) {
-    const roles: Role[] = [role];
-    if (role === Role.MEMBER_THERAPY) roles.push(Role.MEMBER_EVERYDAY);
-    const g = await prisma.whatsAppGroup.findFirst({
-        where: { active: true, role: { in: roles } },
-        orderBy: { name: 'asc' },
-    });
-    return g ? { name: g.name, whatsappLink: g.link, pinnedMessage: g.pinnedMessage || null } : null;
-}
-
-async function activeChallenge(userId: string) {
-    const part = await prisma.challengeParticipant.findFirst({
-        where: {
-            userId,
-            completedAt: null,
-            challenge: { status: 'PUBLISHED', endDate: { gte: new Date() } },
-        },
-        include: { challenge: true },
-        orderBy: { challenge: { endDate: 'asc' } },
-    });
-    if (!part) return null;
-    const progress = await computeProgress(part.challenge, userId);
-    const v = serializeChallenge(part.challenge, part, progress);
-    return {
-        id: v.id,
-        title: v.title,
-        goalLabel: v.goalLabel,
-        goalTarget: v.goalTarget,
-        progress: v.progress,
-        daysLeft: v.daysLeft,
-        completed: v.completed,
-    };
 }
 
 async function classesBlock(userId: string) {
@@ -105,7 +69,7 @@ async function therapyBlock(userId: string) {
 /**
  * GET /api/me/home — one role-aware bundle for the mobile Home screen, so the app
  * makes a single request instead of fanning out to classes / bookings / content /
- * streak / challenges / activity itself. Read-only; every block degrades to null
+ * practice-consistency / activity itself. Read-only; every block degrades to null
  * on failure rather than failing the whole response.
  */
 export async function GET() {
@@ -122,14 +86,12 @@ export async function GET() {
     const isTherapy = role === 'member_therapy';
     const isMember = isEveryday || isTherapy;
 
-    const [content, unread, community, classes, streak, therapy, challenge] = await Promise.all([
+    const [content, unread, classes, practice, therapy] = await Promise.all([
         getHomeContent(session.id),
         unreadActivityCount(session.id).catch(() => 0),
-        communityCard(effectiveRole).catch(() => null),
         isEveryday ? classesBlock(session.id).catch(() => null) : Promise.resolve(undefined),
-        isEveryday ? getStreak(session.id).catch(() => null) : Promise.resolve(undefined),
+        isMember ? getPracticeConsistency(session.id).catch(() => null) : Promise.resolve(undefined),
         isTherapy ? therapyBlock(session.id).catch(() => null) : Promise.resolve(undefined),
-        isMember ? activeChallenge(session.id).catch(() => null) : Promise.resolve(undefined),
     ]);
 
     return NextResponse.json(
@@ -143,11 +105,9 @@ export async function GET() {
                 recommended: content.recommended,
             },
             activity: { unreadCount: unread },
-            community,
             ...(classes !== undefined ? { classes } : {}),
-            ...(streak !== undefined ? { streak } : {}),
+            ...(practice !== undefined ? { practice } : {}),
             ...(therapy !== undefined ? { therapy } : {}),
-            ...(challenge !== undefined ? { activeChallenge: challenge } : {}),
         },
         { headers: { 'Cache-Control': 'no-store' } },
     );

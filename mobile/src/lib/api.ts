@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 /**
@@ -12,16 +13,54 @@ const TOKEN_KEY = "shakti_session_token";
 
 let cachedToken: string | null | undefined;
 
+// expo-secure-store has no web implementation (there's no OS keychain to wrap)
+// — the web build falls back to localStorage, same trust model as any other
+// bearer-token web app. Native platforms keep using the OS keychain.
+async function storageGet(key: string): Promise<string | null> {
+  if (Platform.OS === "web") {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  return SecureStore.getItemAsync(key);
+}
+
+async function storageSet(key: string, value: string): Promise<void> {
+  if (Platform.OS === "web") {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function storageDelete(key: string): Promise<void> {
+  if (Platform.OS === "web") {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  await SecureStore.deleteItemAsync(key);
+}
+
 export async function getToken(): Promise<string | null> {
   if (cachedToken !== undefined) return cachedToken;
-  cachedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+  cachedToken = await storageGet(TOKEN_KEY);
   return cachedToken;
 }
 
 export async function setToken(token: string | null): Promise<void> {
   cachedToken = token;
-  if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
-  else await SecureStore.deleteItemAsync(TOKEN_KEY);
+  if (token) await storageSet(TOKEN_KEY, token);
+  else await storageDelete(TOKEN_KEY);
 }
 
 export class ApiError extends Error {

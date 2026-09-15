@@ -6,6 +6,8 @@ export interface ClassView {
   endsAt: string;
   status: string;
   joinable: boolean;
+  /** Whether the caller has attended this instance — per-member, not the instance's own status. */
+  attended: boolean;
 }
 
 /** Per-cycle session-credit balance for capped plans (monthly Everyday / Family). */
@@ -187,13 +189,6 @@ export interface ProgressResponse {
 
 // ---- Home aggregate (/api/me/home) ------------------------------------
 
-export interface HomeStreak {
-  currentStreakWeeks: number;
-  classesThisWeek: number;
-  attendedThisWeek: boolean;
-  starterLimit: number | null;
-}
-
 export interface HomeTherapyNext {
   id: string;
   date: string;
@@ -203,14 +198,11 @@ export interface HomeTherapyNext {
   joinable: boolean;
 }
 
-export interface HomeChallenge {
-  id: string;
-  title: string;
-  goalLabel: string;
-  goalTarget: number;
-  progress: number;
-  daysLeft: number;
-  completed: boolean;
+/** Self-practice consistency for the "Your Practice" Home card — plain counts, no points. */
+export interface PracticeConsistency {
+  streakDays: number;
+  thisCycle: number;
+  total: number;
 }
 
 export interface HomeResponse {
@@ -223,18 +215,16 @@ export interface HomeResponse {
     recommended: { category: string; items: FeedItem[] } | null;
   };
   activity: { unreadCount: number };
-  community: { name: string; whatsappLink: string; pinnedMessage: string | null } | null;
   classes?: {
     access: ClassAccess;
     next: ClassView | null;
     restToday: ClassView[];
     sessionBalance: SessionBalance | null;
   } | null;
-  streak?: HomeStreak | null;
+  practice?: PracticeConsistency | null;
   therapy?: {
     next: HomeTherapyNext | null;
     completed: number;
     creditsRemaining: number;
   } | null;
-  activeChallenge?: HomeChallenge | null;
 }

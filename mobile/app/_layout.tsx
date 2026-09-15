@@ -105,9 +105,15 @@ function AuthGate({ children }: { children: ReactNode }) {
     SplashScreen.hideAsync().catch(() => {});
 
     const inAuthGroup = segments[0] === "(auth)";
+    // `/` (bare index.tsx, no segments) is a pure "waiting for this redirect"
+    // spinner — never a screen a logged-in user should land on and stay put.
+    // Cast: expo-router's typed-routes narrows this tuple's length to a
+    // literal that (incorrectly) excludes 0 — verified at runtime that a
+    // fresh `/` load does produce an empty segments array.
+    const atBareIndex = (segments as readonly string[]).length === 0;
     if (!user && !inAuthGroup) {
       router.replace("/(auth)/welcome");
-    } else if (user && inAuthGroup) {
+    } else if (user && (inAuthGroup || atBareIndex)) {
       router.replace("/(tabs)");
     }
   }, [user, isLoading, segments, router]);
@@ -272,7 +278,7 @@ export default function RootLayout() {
             <AuthGate>
               <LockGate>
                 <StatusBar style="dark" />
-                <NotificationRouter />
+                {Platform.OS !== "web" && <NotificationRouter />}
                 <UrlRouter />
                 <OfflineBanner />
                 <Stack screenOptions={{ headerShown: false }} />

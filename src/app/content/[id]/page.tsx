@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { canAccessContent } from "@/lib/content-audience";
 import { CONTENT_TYPE_LABEL, isFeedType } from "@/lib/content";
+import ReelPlayer from "@/components/ReelPlayer";
 import type { Metadata } from "next";
 
 // Public share-link / Universal-Link-fallback page for a single piece of
@@ -51,6 +52,7 @@ export default async function ContentPage(props: { params: Promise<{ id: string 
         : null;
 
     const unlocked = await canAccessContent(null, content);
+    const isReelOrVideo = content.type === "VIDEO" || Boolean(content.videoUrl) || Boolean(content.instagramUrl);
 
     if (!unlocked) {
         return (
@@ -101,16 +103,16 @@ export default async function ContentPage(props: { params: Promise<{ id: string 
                     </h1>
                 </header>
 
-                {content.videoUrl ? (
-                    <div className="mb-8 rounded-lg overflow-hidden bg-black">
-                        <video
-                            src={content.videoUrl}
-                            poster={content.imageUrl ?? undefined}
-                            controls
-                            playsInline
-                            className="w-full max-h-[70vh] mx-auto"
-                        />
-                    </div>
+                {isReelOrVideo ? (
+                    <ReelPlayer
+                        title={content.title}
+                        caption={content.caption ?? content.body}
+                        videoUrl={content.videoUrl}
+                        imageUrl={content.imageUrl}
+                        instagramUrl={content.instagramUrl}
+                        author={content.author}
+                        tags={content.tags}
+                    />
                 ) : content.audioUrl ? (
                     <div className="mb-8">
                         <audio src={content.audioUrl} controls className="w-full" />
@@ -122,24 +124,12 @@ export default async function ContentPage(props: { params: Promise<{ id: string 
                     </div>
                 ) : null}
 
-                {(content.caption || content.body) && (
+                {/* Extended description / cues for articles and practices */}
+                {!isReelOrVideo && (content.caption || content.body) && (
                     <div className="prose prose-lg mx-auto mb-8">
                         <p className="whitespace-pre-wrap font-sans text-text/80 leading-relaxed">
                             {content.caption ?? content.body}
                         </p>
-                    </div>
-                )}
-
-                {content.instagramUrl && (
-                    <div className="mb-8 text-center">
-                        <a
-                            href={content.instagramUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block px-6 py-2.5 border-2 border-primary text-primary font-sans text-sm uppercase tracking-widest rounded hover:bg-primary hover:text-white transition-colors font-bold"
-                        >
-                            View on Instagram
-                        </a>
                     </div>
                 )}
 

@@ -1,20 +1,18 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking } from "react-native";
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
 import { Link, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
-import { Screen, Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState } from "@/components/ui";
+import { Screen, Heading, BodyText, Card, Button, LoadingView, EmptyState } from "@/components/ui";
 import { HomeHeader } from "@/components/HomeHeader";
-import { QuickCategoryBar } from "@/components/QuickCategoryBar";
 import { HeroClassCard } from "@/components/HeroClassCard";
-import { DailyRitualCard } from "@/components/DailyRitualCard";
-import { StreakCard } from "@/components/StreakCard";
-import { TeacherWisdomCard } from "@/components/TeacherWisdomCard";
-import { VisitorHeroSection } from "@/components/VisitorHeroSection";
+import { TodaysScheduleCard } from "@/components/TodaysScheduleCard";
 import { SessionBalanceCard } from "@/components/SessionBalanceCard";
+import { YourPracticeCard } from "@/components/YourPracticeCard";
+import { TakeAMomentSection } from "@/components/TakeAMomentSection";
+import { FromShaktiCard } from "@/components/FromShaktiCard";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
-import { ChallengeCard } from "@/components/ChallengeCard";
-import { ContentRail } from "@/components/ContentRail";
+import { VisitorHeroSection } from "@/components/VisitorHeroSection";
 import { useAuth } from "@/context/AuthContext";
 import { api, API_URL } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
@@ -22,92 +20,15 @@ import { useJoin } from "@/lib/useJoin";
 import { colors, spacing, radius, shadows } from "@/theme";
 import type { HomeResponse, FeedItem } from "@/lib/types";
 
-function discoveryItems(data: HomeResponse): FeedItem[] {
-  return [data.content.featured, data.content.founderMessage, ...data.content.forYou].filter(
-    (x): x is FeedItem => Boolean(x),
-  );
-}
+const PLAN_LABEL: Record<string, string> = {
+  member_everyday: "Everyday Yoga",
+  member_starter: "Starter",
+  trial: "Free Trial",
+};
 
-function CommunityCard({ community }: { community: HomeResponse["community"] }) {
-  if (!community) return null;
-  return (
-    <Pressable onPress={() => Linking.openURL(community.whatsappLink)}>
-      <Card style={styles.communityCard}>
-        <View style={styles.communityRow}>
-          <View style={styles.whatsappIconCircle}>
-            <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <BodyText style={{ fontWeight: "700", color: colors.primary, fontSize: 15 }}>
-              {community.name}
-            </BodyText>
-            {community.pinnedMessage ? (
-              <BodyText muted style={{ marginTop: 2, fontSize: 12 }} numberOfLines={2}>
-                {community.pinnedMessage}
-              </BodyText>
-            ) : (
-              <BodyText muted style={{ marginTop: 2, fontSize: 12 }}>
-                Connect with fellow practitioners across 14+ countries
-              </BodyText>
-            )}
-          </View>
-          <Ionicons name="open-outline" size={16} color={colors.secondary} />
-        </View>
-      </Card>
-    </Pressable>
-  );
-}
-
-function DiscoverySections({ data }: { data: HomeResponse }) {
-  const rec = data.content.recommended;
-  const items = discoveryItems(data);
-
-  if (items.length === 0 && (!rec || rec.items.length === 0)) return null;
-
-  return (
-    <View style={{ marginTop: spacing.xs }}>
-      {items.length > 0 && <ContentRail title="Curated from Shakti" items={items} />}
-      {rec && rec.items.length > 0 && (
-        <ContentRail title={`Because you explore ${rec.category.toLowerCase()}`} items={rec.items} />
-      )}
-    </View>
-  );
-}
-
-function ExploreLinks() {
-  return (
-    <View style={styles.exploreSection}>
-      <Heading size="sm" style={styles.exploreHeading}>
-        Explore Shakti Kendra
-      </Heading>
-      <View style={styles.exploreGrid}>
-        <TeaserRow
-          icon="book-outline"
-          label="Read & Watch Library"
-          subtitle="Articles, reels & wisdom"
-          onPress={() => router.push("/(tabs)/practice")}
-        />
-        <TeaserRow
-          icon="trophy-outline"
-          label="Monthly Challenges"
-          subtitle="Join 21-day community goals"
-          onPress={() => router.push("/challenges")}
-        />
-        <TeaserRow
-          icon="calendar-outline"
-          label="Workshops & Retreats"
-          subtitle="In-person & online immersions"
-          onPress={() => router.push("/events")}
-        />
-        <TeaserRow
-          icon="help-circle-outline"
-          label="Help & Knowledge Base"
-          subtitle="Answers to common questions"
-          onPress={() => router.push("/faq")}
-        />
-      </View>
-    </View>
-  );
+/** Exactly one relevant piece of content — Home is not a feed. */
+function pickFromShakti(data: HomeResponse): FeedItem | null {
+  return data.content.founderMessage ?? data.content.featured ?? data.content.forYou[0] ?? null;
 }
 
 function TeaserRow({
@@ -154,6 +75,8 @@ function EverydayHome({
   const isTrial = user?.role === "trial";
   const { joiningId, joinClass } = useJoin();
   const c = data.classes;
+  const fromShakti = pickFromShakti(data);
+  const planLabel = user?.role ? PLAN_LABEL[user.role] : undefined;
 
   if (!c) {
     return (
@@ -166,7 +89,7 @@ function EverydayHome({
     );
   }
 
-  // Paywall or session exhausted state
+  // Paywall or session-exhausted state — membership has actually lapsed.
   if (!c.access.ok) {
     const { outOfSessions, paywall, reason } = c.access;
     return (
@@ -174,12 +97,9 @@ function EverydayHome({
         contentContainerStyle={styles.scrollContainer}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.primary} />}
       >
-        <QuickCategoryBar />
-        <AnnouncementBanner announcement={data.announcement} />
-        
         <Card style={styles.paywallCard}>
           <View style={styles.paywallIcon}>
-            <Ionicons name="sparkles-outline" size={24} color={colors.secondary} />
+            <Ionicons name="leaf-outline" size={24} color={colors.secondary} />
           </View>
           <Heading size="sm" style={{ textAlign: "center" }}>
             {outOfSessions
@@ -187,7 +107,7 @@ function EverydayHome({
               : paywall
               ? isTrial
                 ? "Your free trial class is complete"
-                : "Your membership has ended"
+                : "Your practice is waiting for you 🌿"
               : "Group classes aren't included in your plan"}
           </Heading>
           <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.md, textAlign: "center" }}>
@@ -204,11 +124,11 @@ function EverydayHome({
           ) : null}
         </Card>
 
-        <SessionBalanceCard balance={c.sessionBalance} style={{ marginTop: spacing.md }} />
-        <DailyRitualCard />
-        <DiscoverySections data={data} />
-        <CommunityCard community={data.community} />
-        <ExploreLinks />
+        <SessionBalanceCard balance={c.sessionBalance} style={{ marginBottom: spacing.lg }} />
+        <YourPracticeCard practice={data.practice} />
+        <TakeAMomentSection />
+        <FromShaktiCard item={fromShakti} />
+        <AnnouncementBanner announcement={data.announcement} />
       </ScrollView>
     );
   }
@@ -218,10 +138,6 @@ function EverydayHome({
       contentContainerStyle={styles.scrollContainer}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.primary} />}
     >
-      <QuickCategoryBar />
-      <AnnouncementBanner announcement={data.announcement} />
-
-      {/* Hero Next Class Card */}
       <HeroClassCard
         nextClass={c.next}
         isTrial={isTrial}
@@ -230,27 +146,27 @@ function EverydayHome({
         restTodayCount={c.restToday.length}
       />
 
-      {/* Daily Micro-Practice Ritual */}
-      <DailyRitualCard />
+      <TodaysScheduleCard
+        today={[
+          // `next` can be tomorrow's class once today's are all done — only
+          // fold it into "Today" when it's genuinely today's.
+          ...(c.next && new Date(c.next.startsAt).toDateString() === new Date().toDateString() ? [c.next] : []),
+          ...c.restToday,
+        ].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())}
+        nextId={c.next?.id ?? null}
+      />
 
-      {/* Session Balance & Weekly Consistency Streak */}
-      {!isTrial && <SessionBalanceCard balance={c.sessionBalance} style={{ marginBottom: spacing.lg }} />}
-      <StreakCard streak={data.streak} />
+      {!isTrial && (
+        <SessionBalanceCard balance={c.sessionBalance} planLabel={planLabel} style={{ marginBottom: spacing.lg }} />
+      )}
 
-      {/* Active Community Challenge */}
-      <ChallengeCard challenge={data.activeChallenge} />
+      <YourPracticeCard practice={data.practice} />
 
-      {/* Teacher Lineage & Mindful Reflections */}
-      <TeacherWisdomCard />
+      <TakeAMomentSection />
 
-      {/* Curated Content Rails */}
-      <DiscoverySections data={data} />
+      <FromShaktiCard item={fromShakti} />
 
-      {/* International WhatsApp Sangha */}
-      <CommunityCard community={data.community} />
-
-      {/* Explore & Library Links */}
-      <ExploreLinks />
+      <AnnouncementBanner announcement={data.announcement} />
     </ScrollView>
   );
 }
@@ -266,6 +182,7 @@ function TherapyHome({
 }) {
   const { joiningId, joinBooking } = useJoin();
   const t = data.therapy;
+  const fromShakti = pickFromShakti(data);
 
   if (!t) {
     return (
@@ -283,24 +200,13 @@ function TherapyHome({
       contentContainerStyle={styles.scrollContainer}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.primary} />}
     >
-      <QuickCategoryBar />
-      <AnnouncementBanner announcement={data.announcement} />
+      <HeroClassCard nextTherapy={t.next} joiningId={joiningId} onJoinTherapy={joinBooking} />
 
-      {/* Hero Therapy 1:1 Session Card */}
-      <HeroClassCard
-        nextTherapy={t.next}
-        joiningId={joiningId}
-        onJoinTherapy={joinBooking}
-      />
-
-      {/* Daily Breath & Reset */}
-      <DailyRitualCard />
-
-      {/* Therapy Journey Card */}
+      {/* Membership — therapy's equivalent of "sessions remaining" */}
       <Pressable onPress={() => router.push("/therapy")} style={({ pressed }) => [pressed && { opacity: 0.9 }]}>
         <Card style={styles.therapyJourneyCard}>
           <View style={styles.therapyJourneyContent}>
-            <BodyText style={styles.therapyEyebrow}>YOUR THERAPY JOURNEY</BodyText>
+            <BodyText style={styles.therapyEyebrow}>YOGA THERAPY</BodyText>
             <Heading size="md" style={{ color: colors.primary, marginTop: 2 }}>
               {t.completed} sessions completed
             </Heading>
@@ -314,20 +220,13 @@ function TherapyHome({
         </Card>
       </Pressable>
 
-      {/* Active Challenge */}
-      <ChallengeCard challenge={data.activeChallenge} />
+      <YourPracticeCard practice={data.practice} />
 
-      {/* Teacher Wisdom */}
-      <TeacherWisdomCard />
+      <TakeAMomentSection />
 
-      {/* Curated Content */}
-      <DiscoverySections data={data} />
+      <FromShaktiCard item={fromShakti} />
 
-      {/* International WhatsApp Circle */}
-      <CommunityCard community={data.community} />
-
-      {/* Explore Links */}
-      <ExploreLinks />
+      <AnnouncementBanner announcement={data.announcement} />
     </ScrollView>
   );
 }
@@ -343,14 +242,13 @@ function ExploreHome({
 }) {
   const { user } = useAuth();
   const isStaff = user?.role === "admin" || user?.role === "teacher";
+  const fromShakti = data ? pickFromShakti(data) : null;
 
   return (
     <ScrollView
       contentContainerStyle={styles.scrollContainer}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.primary} />}
     >
-      <QuickCategoryBar />
-
       {isStaff && (
         <Card style={{ marginBottom: spacing.md, backgroundColor: colors.sage }}>
           <Heading size="sm">{user?.role === "teacher" ? "Teacher Portal" : "Admin Console"}</Heading>
@@ -363,20 +261,11 @@ function ExploreHome({
         </Card>
       )}
 
-      {/* World-Class Visitor Showcase */}
       <VisitorHeroSection />
 
-      {/* Daily Micro-Practice Teaser */}
-      <DailyRitualCard />
+      <TakeAMomentSection />
 
-      {/* Lineage Reflections */}
-      <TeacherWisdomCard />
-
-      {/* Curated Public Feeds */}
-      {data && <DiscoverySections data={data} />}
-
-      {/* Explore Section */}
-      <ExploreLinks />
+      {fromShakti && <FromShaktiCard item={fromShakti} />}
 
       <TeaserRow
         icon="chatbubble-ellipses-outline"
@@ -384,12 +273,8 @@ function ExploreHome({
         subtitle="Transformations from practitioners worldwide"
         onPress={() => router.push("/testimonials")}
       />
-      <TeaserRow
-        icon="call-outline"
-        label="Contact Shakti Kendra"
-        subtitle="Speak directly with our wellness advisors"
-        onPress={() => router.push("/contact")}
-      />
+
+      {data && <AnnouncementBanner announcement={data.announcement} />}
     </ScrollView>
   );
 }
@@ -404,7 +289,6 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      {/* Serene Sanctuary Header */}
       <HomeHeader
         userName={user?.name}
         unreadNotifications={data?.activity.unreadCount ?? 0}
@@ -434,28 +318,6 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
-  },
-  communityCard: {
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: spacing.lg,
-    ...shadows.subtle,
-  },
-  communityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm + 2,
-  },
-  whatsappIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    backgroundColor: "#25D36615",
-    alignItems: "center",
-    justifyContent: "center",
   },
   paywallCard: {
     padding: spacing.lg,
@@ -504,18 +366,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sage,
     alignItems: "center",
     justifyContent: "center",
-  },
-  exploreSection: {
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  exploreHeading: {
-    fontSize: 18,
-    letterSpacing: 0.2,
-    marginBottom: spacing.sm,
-  },
-  exploreGrid: {
-    gap: spacing.sm,
   },
   teaserPressable: {
     marginBottom: 2,

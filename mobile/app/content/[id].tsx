@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, View, TextInput, Pressable, Share, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from "react-native";
+import { ScrollView, View, TextInput, Pressable, Share, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Linking } from "react-native";
 import { useLocalSearchParams, Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -22,24 +22,120 @@ const KIND_TITLE: Record<FeedItem["kind"], string> = {
   announcement: "Announcement",
 };
 
-/** Native self-hosted player, used for both video and audio-only sources — expo-video's VideoView renders a controls-only surface when there's no visual track, which is a fine minimal audio player and avoids pulling in a second media library. */
-function InlineMediaPlayer({ uri }: { uri: string }) {
+/** Native self-hosted player, supports both 9:16 Reels aspect ratio and landscape/audio modes. */
+function InlineMediaPlayer({ uri, isReel }: { uri: string; isReel?: boolean }) {
   const { width } = useWindowDimensions();
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
   });
+  const playerWidth = width - spacing.lg * 2;
+  const playerHeight = isReel ? Math.min(playerWidth * (16 / 9), 500) : 320;
+
   return (
     <VideoView
       player={player}
       style={{
-        width: width - spacing.lg * 2,
-        height: 320,
-        borderRadius: radius.control,
+        width: playerWidth,
+        height: playerHeight,
+        borderRadius: isReel ? 24 : radius.control,
         marginTop: spacing.md,
-        backgroundColor: colors.border,
+        backgroundColor: "#000",
       }}
       nativeControls
     />
+  );
+}
+
+/** Interactive Instagram Reel card with thumbnail, gradient overlay, and direct app deep-linking. */
+function InstagramReelCard({ item }: { item: FeedItem }) {
+  const { width } = useWindowDimensions();
+  const cardWidth = width - spacing.lg * 2;
+  const cardHeight = Math.min(cardWidth * (16 / 9), 480);
+  const thumb = mediaUri(item.imageUrl);
+
+  const openReel = async () => {
+    if (!item.instagramUrl) return;
+    try {
+      const canOpen = await Linking.canOpenURL(item.instagramUrl);
+      if (canOpen) {
+        await Linking.openURL(item.instagramUrl);
+        return;
+      }
+    } catch {}
+    WebBrowser.openBrowserAsync(item.instagramUrl);
+  };
+
+  return (
+    <Pressable onPress={openReel} style={{ marginTop: spacing.md }}>
+      <View
+        style={{
+          width: cardWidth,
+          height: cardHeight,
+          borderRadius: 24,
+          overflow: "hidden",
+          backgroundColor: "#050505",
+          position: "relative",
+          justifyContent: "space-between",
+          padding: spacing.md,
+        }}
+      >
+        {thumb ? (
+          <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : null}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
+
+        {/* Top Reels badge */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "rgba(225, 48, 108, 0.95)",
+              paddingHorizontal: spacing.sm,
+              paddingVertical: 5,
+              borderRadius: 100,
+              gap: 5,
+            }}
+          >
+            <Ionicons name="logo-instagram" size={14} color="#fff" />
+            <BodyText style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>Instagram Reel</BodyText>
+          </View>
+        </View>
+
+        {/* Center Play Icon */}
+        <View style={{ alignSelf: "center", alignItems: "center", justifyContent: "center" }}>
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: "rgba(255,255,255,0.25)",
+              borderWidth: 2,
+              borderColor: "rgba(255,255,255,0.7)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="play" size={28} color="#fff" style={{ marginLeft: 3 }} />
+          </View>
+          <BodyText style={{ color: "#fff", fontSize: 12, fontWeight: "600", marginTop: spacing.xs }}>
+            Tap to Watch Reel
+          </BodyText>
+        </View>
+
+        {/* Bottom Metadata */}
+        <View style={{ backgroundColor: "rgba(0,0,0,0.65)", padding: spacing.sm, borderRadius: 14 }}>
+          <BodyText style={{ color: "#fff", fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+            {item.title}
+          </BodyText>
+          {item.caption ? (
+            <BodyText style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, marginTop: 2 }} numberOfLines={2}>
+              {item.caption}
+            </BodyText>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -128,9 +224,11 @@ export default function ContentDetailScreen() {
           </BodyText>
 
           {item!.videoUrl ? (
-            <InlineMediaPlayer uri={mediaUri(item!.videoUrl)!} />
+            <InlineMediaPlayer uri={mediaUri(item!.videoUrl)!} isReel={item!.kind === "video" || Boolean(item!.instagramUrl)} />
           ) : item!.audioUrl ? (
             <InlineMediaPlayer uri={mediaUri(item!.audioUrl)!} />
+          ) : item!.instagramUrl ? (
+            <InstagramReelCard item={item!} />
           ) : (
             <ContentImages item={item!} />
           )}
@@ -138,9 +236,9 @@ export default function ContentDetailScreen() {
           {(item!.kind === "video" || item!.kind === "audio") && item!.caption && (
             <BodyText style={{ marginTop: spacing.md }}>{item!.caption}</BodyText>
           )}
-          {item!.instagramUrl && (
-            <Button variant={item!.videoUrl ? "outline" : "primary"} style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(item!.instagramUrl!)}>
-              View on Instagram
+          {item!.instagramUrl && item!.videoUrl && (
+            <Button variant="outline" style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(item!.instagramUrl!)}>
+              Open on Instagram
             </Button>
           )}
 

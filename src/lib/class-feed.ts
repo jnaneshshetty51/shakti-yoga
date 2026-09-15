@@ -34,6 +34,15 @@ export async function getClassFeed(userId: string): Promise<ClassFeed> {
         orderBy: { date: 'asc' },
     });
 
+    const attendedIds = new Set(
+        (
+            await prisma.classAttendance.findMany({
+                where: { userId, classInstanceId: { in: instances.map((i) => i.id) } },
+                select: { classInstanceId: true },
+            })
+        ).map((a) => a.classInstanceId),
+    );
+
     const todayIst = istParts(now);
     const today: ClassView[] = [];
     const upcoming: ClassView[] = [];
@@ -47,6 +56,7 @@ export async function getClassFeed(userId: string): Promise<ClassFeed> {
             endsAt: new Date(inst.date.getTime() + inst.batch.durationMin * 60_000).toISOString(),
             status: inst.status,
             joinable: isJoinable(inst, inst.batch, now),
+            attended: attendedIds.has(inst.id),
         };
         const d = istParts(inst.date);
         const isToday = d.year === todayIst.year && d.month1 === todayIst.month1 && d.day === todayIst.day;

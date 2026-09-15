@@ -40,7 +40,7 @@ export function HeroClassCard({
           <View style={styles.badgeRow}>
             <View style={[styles.pulseDot, isJoinable && styles.pulseDotLive]} />
             <BodyText style={[styles.eyebrow, isJoinable && styles.eyebrowLive]}>
-              {isJoinable ? "SESSION OPEN NOW" : "UPCOMING 1:1 SESSION"}
+              {isJoinable ? "SESSION OPEN NOW" : "YOUR NEXT THERAPY SESSION"}
             </BodyText>
           </View>
           <Badge tone={isJoinable ? "success" : "neutral"}>
@@ -67,11 +67,10 @@ export function HeroClassCard({
         <View style={styles.actionRow}>
           <Button
             style={styles.mainButton}
-            disabled={!isJoinable}
             loading={joiningId === nextTherapy.id}
-            onPress={() => onJoinTherapy?.(nextTherapy.id)}
+            onPress={() => (isJoinable ? onJoinTherapy?.(nextTherapy.id) : router.push("/therapy"))}
           >
-            {isJoinable ? "Join Therapy Room" : "Opens 15 min before"}
+            {isJoinable ? "Join Therapy Room" : "View Session"}
           </Button>
           <Pressable
             onPress={() => router.push("/therapy")}
@@ -88,6 +87,9 @@ export function HeroClassCard({
   // Group Class View (Everyday / Trial)
   if (nextClass) {
     const isJoinable = nextClass.joinable;
+    const hasStarted = Date.now() >= new Date(nextClass.startsAt).getTime();
+    const isLiveNow = isJoinable && hasStarted;
+    const isLiveSoon = isJoinable && !hasStarted;
 
     return (
       <Card style={styles.heroCard}>
@@ -95,11 +97,13 @@ export function HeroClassCard({
           <View style={styles.badgeRow}>
             <View style={[styles.pulseDot, isJoinable && styles.pulseDotLive]} />
             <BodyText style={[styles.eyebrow, isJoinable && styles.eyebrowLive]}>
-              {isJoinable
+              {isLiveNow
                 ? "LIVE NOW"
+                : isLiveSoon
+                ? "LIVE SOON"
                 : isTrial
                 ? "YOUR FREE TRIAL BATCH"
-                : "NEXT UPCOMING BATCH"}
+                : "YOUR NEXT CLASS"}
             </BodyText>
           </View>
           <Badge tone={isJoinable ? "success" : "neutral"}>
@@ -121,21 +125,15 @@ export function HeroClassCard({
             <Ionicons name="time-outline" size={15} color={colors.secondary} />
             <BodyText style={styles.metaText}>{formatClassTime(nextClass.startsAt)}</BodyText>
           </View>
-          <View style={styles.metaDivider} />
-          <View style={styles.metaItem}>
-            <Ionicons name="videocam-outline" size={15} color={colors.secondary} />
-            <BodyText style={styles.metaText}>Live (Meet)</BodyText>
-          </View>
         </View>
 
         <View style={styles.actionRow}>
           <Button
             style={styles.mainButton}
-            disabled={!isJoinable}
             loading={joiningId === nextClass.id}
-            onPress={() => onJoinClass?.(nextClass.id)}
+            onPress={() => (isJoinable ? onJoinClass?.(nextClass.id) : router.push("/(tabs)/classes"))}
           >
-            {isJoinable ? "Join Live Class" : "Opens 30 min before"}
+            {isJoinable ? "Join Google Meet" : "View Class"}
           </Button>
           <Pressable
             onPress={() => router.push("/calendar")}
@@ -161,26 +159,25 @@ export function HeroClassCard({
     );
   }
 
-  // Rest & Serene State: When no more classes remain today
+  // No booking found — nothing in the lookahead window to show as "next".
   return (
     <Card style={[styles.heroCard, styles.restCard]}>
       <View style={styles.restIconCircle}>
-        <Ionicons name="moon-outline" size={24} color={colors.secondary} />
+        <Ionicons name="leaf-outline" size={24} color={colors.secondary} />
       </View>
       <View style={{ flex: 1 }}>
-        <BodyText style={styles.eyebrow}>EVENING REST & RESTORATION</BodyText>
         <Heading size="sm" style={styles.restTitle}>
-          Your practice for today is complete
+          Choose your next practice
         </Heading>
         <BodyText muted style={styles.restDescription}>
-          Rest deeply tonight to restore vitality. Tomorrow&apos;s morning batches resume at 6:00 AM IST.
+          Find a class that works for you.
         </BodyText>
         <View style={styles.restBtnRow}>
           <Pressable
             onPress={() => router.push("/(tabs)/classes")}
             style={({ pressed }) => [styles.restButton, pressed && { opacity: 0.8 }]}
           >
-            <BodyText style={styles.restButtonText}>View Tomorrow&apos;s Timetable</BodyText>
+            <BodyText style={styles.restButtonText}>View Classes</BodyText>
             <Ionicons name="arrow-forward" size={14} color={colors.primary} />
           </Pressable>
         </View>
