@@ -7,6 +7,7 @@ import { issueInvoiceForPayment } from '@/lib/invoice';
 import { confirmAndActivate } from '@/lib/checkoutConfirm';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { markReferralConverted } from '@/lib/referral';
+import { markLeadConverted } from '@/lib/leads';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { sendPush } from '@/lib/push';
 import { pushTemplates } from '@/lib/push-templates';
@@ -199,6 +200,7 @@ export async function POST(request: Request) {
                 });
                 if (firstActivation && planType !== 'TRIAL') {
                     void markReferralConverted(userId, planType).catch(() => {});
+                    void markLeadConverted(userId, planType).catch(() => {});
                 }
                 if (!firstActivation) {
                     sendPush(userId, pushTemplates.membershipRenewed(effectivePlan.name)).catch(() => {});

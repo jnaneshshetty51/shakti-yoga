@@ -15,6 +15,7 @@ interface Reports {
     signupsByMonth: Series;
     retention: { label: string; joined: number; retained: number; rate: number | null }[];
     planMix: { plan: string; active: number; total: number }[];
+    leadAttribution: { source: string; leads: number; converted: number; conversionRate: number; revenue: number }[];
     summary: {
         totalRevenue: number;
         totalSignups: number;
@@ -182,6 +183,36 @@ export function AdminReportsContent({ embedded = false }: { embedded?: boolean }
                     </div>
                 </Card>
             </div>
+
+            <Card className="overflow-hidden mt-6">
+                <CardHeader title="Revenue by lead source" subtitle="Actual PAID revenue collected from converted leads, by source — not a manual estimate" />
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50/70 text-gray-400 text-[11px] font-semibold uppercase tracking-wider">
+                            <tr>
+                                <th className="px-4 py-3">Source</th>
+                                <th className="px-4 py-3 text-right">Leads</th>
+                                <th className="px-4 py-3 text-right">Converted</th>
+                                <th className="px-4 py-3 text-right">Conversion rate</th>
+                                <th className="px-4 py-3 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {data.leadAttribution.length === 0 ? (
+                                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No leads yet.</td></tr>
+                            ) : data.leadAttribution.map((r) => (
+                                <tr key={r.source} className="text-gray-600">
+                                    <td className="px-4 py-2.5 capitalize">{r.source.replace(/_/g, " ").toLowerCase()}</td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums">{r.leads}</td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums">{r.converted}</td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums">{r.conversionRate}%</td>
+                                    <td className="px-4 py-2.5 text-right tabular-nums font-medium text-gray-800">{inr(r.revenue)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
         </div>
     );
 }

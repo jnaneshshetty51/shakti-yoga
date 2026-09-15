@@ -246,6 +246,55 @@ export async function revenueTotals(range: RangeKey, now = new Date()) {
     return { current, previous, delta: pctDelta(current, previous) };
 }
 
+/**
+ * Real revenue attribution by lead source — not the `dealValue`-style manual
+ * estimates elsewhere, but actual PAID `Payment` totals for the users each
+ * source's converted leads actually became. Answers "which channel is worth
+ * the money" rather than just "which channel makes the most leads."
+ */
+export async function leadSourceAttribution() {
+    const leads = await prisma.lead.findMany({
+        select: { source: true, status: true, convertedToUserId: true },
+    });
+
+    type Row = { leads: number; converted: number; revenue: number };
+    const bySource = new Map<string, Row>();
+    for (const l of leads) {
+        const row = bySource.get(l.source) ?? { leads: 0, converted: 0, revenue: 0 };
+        row.leads += 1;
+        if (l.status === 'CONVERTED') row.converted += 1;
+        bySource.set(l.source, row);
+    }
+
+    const convertedUserIds = leads.map((l) => l.convertedToUserId).filter((id): id is string => !!id);
+    if (convertedUserIds.length) {
+        const payments = await prisma.payment.findMany({
+            where: { userId: { in: convertedUserIds }, status: 'PAID' },
+            select: { userId: true, amount: true },
+        });
+        const revenueByUser = new Map<string, number>();
+        for (const p of payments) revenueByUser.set(p.userId, (revenueByUser.get(p.userId) ?? 0) + p.amount);
+
+        for (const l of leads) {
+            if (!l.convertedToUserId) continue;
+            const revenue = revenueByUser.get(l.convertedToUserId);
+            if (!revenue) continue;
+            const row = bySource.get(l.source)!;
+            row.revenue += revenue;
+        }
+    }
+
+    return Array.from(bySource.entries())
+        .map(([source, row]) => ({
+            source,
+            leads: row.leads,
+            converted: row.converted,
+            conversionRate: row.leads ? Math.round((row.converted / row.leads) * 1000) / 10 : 0,
+            revenue: Math.round(row.revenue),
+        }))
+        .sort((a, b) => b.revenue - a.revenue);
+}
+
 export async function classFillRate(range: RangeKey, now = new Date()) {
     const { start } = rangeWindow(range, now);
     const [instances, eligible] = await Promise.all([

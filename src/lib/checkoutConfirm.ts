@@ -7,6 +7,7 @@ import { sendEmail, emailLayout } from '@/lib/email';
 import { recordEvent, recordRevenue } from '@/lib/analytics';
 import { posthogCapture, posthogIdentify } from '@/lib/posthog';
 import { markReferralConverted, consumeCheckoutDiscount } from '@/lib/referral';
+import { markLeadConverted } from '@/lib/leads';
 import type { PlanType, Payment } from '@prisma/client';
 
 export function planForPayment(p: Payment) {
@@ -84,7 +85,10 @@ export async function confirmAndActivate(params: {
     recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.key, recurring } });
     posthogCapture(userId, 'subscription_started', { plan: plan.key, billing: 'razorpay', recurring, amount: paymentRecord.amount });
     posthogIdentify(userId, { plan: plan.key, role: mappedRole, subscribed_at: new Date().toISOString() });
-    if (plan.interval !== 'trial') void markReferralConverted(userId, paymentRecord.planType).catch(() => {});
+    if (plan.interval !== 'trial') {
+        void markReferralConverted(userId, paymentRecord.planType).catch(() => {});
+        void markLeadConverted(userId, paymentRecord.planType).catch(() => {});
+    }
     recordRevenue({
         userId,
         amount: paymentRecord.amount,

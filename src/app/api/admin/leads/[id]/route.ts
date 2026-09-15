@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { LeadStatus } from '@prisma/client';
+import { auditAs } from '@/lib/audit';
 
 const ACTIVITY_TYPES = ['CALL', 'EMAIL', 'WHATSAPP', 'NOTE', 'MEETING'];
 
@@ -47,8 +48,14 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         const admin = await requireAdmin();
         if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-        await prisma.lead.delete({
-            where: { id }
+        const lead = await prisma.lead.findUnique({ where: { id } });
+        if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+        await prisma.lead.delete({ where: { id } });
+
+        await auditAs({ id: admin.id, email: admin.email }, request)({
+            action: 'lead.delete', entity: 'Lead', entityId: id,
+            before: { name: lead.name, email: lead.email, status: lead.status },
         });
 
         return NextResponse.json({ success: true, message: 'Lead deleted successfully' });
@@ -65,14 +72,23 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const body = await request.json();
-        const { name, email, phone, country, status, notes, assignedToId } = body;
+        const { name, email, phone, country, status, programInterest, campaign, nextFollowUpAt, notes, assignedToId } = body;
 
-        const prev = await prisma.lead.findUnique({ where: { id }, select: { status: true } });
+        const prev = await prisma.lead.findUnique({ where: { id } });
+        if (!prev) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
         const updateData: Record<string, unknown> = {};
         if (name) updateData.name = String(name).slice(0, 200);
         if (email) updateData.email = String(email).slice(0, 200);
         if (phone !== undefined) updateData.phone = phone || null;
         if (country !== undefined) updateData.country = country || null;
+        if (programInterest !== undefined) updateData.programInterest = programInterest || null;
+        if (campaign !== undefined) updateData.campaign = campaign || null;
+        if (nextFollowUpAt !== undefined) {
+            const d = nextFollowUpAt ? new Date(nextFollowUpAt) : null;
+            if (d && Number.isNaN(d.getTime())) return NextResponse.json({ error: 'Invalid follow-up date' }, { status: 400 });
+            updateData.nextFollowUpAt = d;
+        }
         if (status) {
             const s = String(status).toUpperCase();
             if (!(s in LeadStatus)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
@@ -92,11 +108,17 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
             }
         });
 
-        if (updateData.status && prev && updateData.status !== prev.status) {
+        if (updateData.status && prev.status && updateData.status !== prev.status) {
             await prisma.leadActivity.create({
                 data: { leadId: id, type: 'STATUS_CHANGE', content: `${prev.status} → ${updateData.status}`, performedBy: admin.email },
             }).catch(() => {});
         }
+
+        await auditAs({ id: admin.id, email: admin.email }, request)({
+            action: 'lead.update', entity: 'Lead', entityId: id,
+            before: { name: prev.name, email: prev.email, status: prev.status, assignedToId: prev.assignedToId, notes: prev.notes },
+            after: { name: updatedLead.name, email: updatedLead.email, status: updatedLead.status, assignedToId: updatedLead.assignedToId, notes: updatedLead.notes },
+        });
 
         return NextResponse.json({
             success: true,

@@ -8,6 +8,9 @@ import { countryForIp } from '@/lib/geoip';
 const REGION_COOKIE = 'sy_region';
 const REGION_MAX_AGE = 60 * 60 * 24 * 180; // 180 days
 
+const CAMPAIGN_COOKIE = 'sy_campaign';
+const CAMPAIGN_MAX_AGE = 60 * 60 * 24 * 90; // 90 days — first-touch attribution window
+
 /** country ISO code → pricing region. Anything that isn't India is INTL. */
 function regionFromCountry(country: string | null | undefined): 'IN' | 'INTL' {
     const c = (country || '').trim().toUpperCase();
@@ -77,10 +80,26 @@ export async function middleware(request: NextRequest) {
         region = regionFromCountry(country);
     }
 
-    // Make the resolved region visible to server components on THIS request
-    // (the cookie only takes effect on the next one).
+    // ---- Marketing attribution (first-touch, every route) -----------------
+    // Whichever campaign/source tag the visitor first arrived under sticks for
+    // 90 days, so a lead created days later on /contact (or a signup) still
+    // carries where they actually came from. Never overwrites once captured.
+    let campaign = request.cookies.get(CAMPAIGN_COOKIE)?.value ?? null;
+    if (!campaign) {
+        const params = request.nextUrl.searchParams;
+        const utmSource = params.get('utm_source');
+        const utmMedium = params.get('utm_medium');
+        const utmCampaign = params.get('utm_campaign');
+        if (utmSource || utmCampaign) {
+            campaign = [utmSource, utmMedium, utmCampaign].filter(Boolean).join('/').slice(0, 200);
+        }
+    }
+
+    // Make the resolved region/campaign visible to server components on THIS
+    // request (the cookie only takes effect on the next one).
     const forwarded = new Headers(request.headers);
     forwarded.set('x-sy-region', region);
+    if (campaign) forwarded.set('x-sy-campaign', campaign);
 
     const finish = (res: NextResponse) => {
         res.cookies.set(REGION_COOKIE, region!, {
@@ -88,6 +107,13 @@ export async function middleware(request: NextRequest) {
             path: '/',
             sameSite: 'lax',
         });
+        if (campaign) {
+            res.cookies.set(CAMPAIGN_COOKIE, campaign, {
+                maxAge: CAMPAIGN_MAX_AGE,
+                path: '/',
+                sameSite: 'lax',
+            });
+        }
         return res;
     };
 

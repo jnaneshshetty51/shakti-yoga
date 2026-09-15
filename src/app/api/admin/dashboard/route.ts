@@ -76,7 +76,15 @@ async function loadCounts(now: Date) {
         headlineStats(now),
         prisma.booking.count({ where: { status: 'PENDING' } }),
         prisma.contactMessage.count({ where: { handled: false } }),
-        prisma.lead.count({ where: { status: 'NEW' } }),
+        // "Needs follow-up": still in an active stage, and either never had a
+        // follow-up scheduled or its scheduled follow-up is due/overdue —
+        // not just a raw NEW-status count, which never went stale.
+        prisma.lead.count({
+            where: {
+                status: { in: ['NEW', 'CONTACTED', 'TRIAL'] },
+                OR: [{ nextFollowUpAt: null }, { nextFollowUpAt: { lte: now } }],
+            },
+        }),
         prisma.subscription.count({
             where: { status: { in: ['ACTIVE', 'TRIAL'] }, renewalDate: { gt: now, lt: in7 } },
         }),

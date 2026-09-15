@@ -14,7 +14,7 @@ const ITEMS: { key: AttentionKey; sev: Sev; label: (n: number) => string; href: 
     { key: "pendingBookings", sev: "warn", label: (n) => `booking${n === 1 ? "" : "s"} awaiting confirmation`, href: "/admin/therapy?tab=bookings" },
     { key: "expiringSoon", sev: "warn", label: (n) => `subscription${n === 1 ? "" : "s"} expiring within 7 days`, href: "/admin/finance?tab=subscriptions" },
     { key: "unhandledMessages", sev: "warn", label: (n) => `unread contact message${n === 1 ? "" : "s"}`, href: "/admin/content?tab=messages" },
-    { key: "newLeads", sev: "warn", label: (n) => `new lead${n === 1 ? "" : "s"} to follow up`, href: "/admin/crm?tab=leads" },
+    { key: "newLeads", sev: "warn", label: (n) => `lead${n === 1 ? "" : "s"} due for follow-up`, href: "/admin/crm?tab=leads" },
     { key: "therapyOutOfCredits", sev: "info", label: (n) => `therapy member${n === 1 ? "" : "s"} with no credits`, href: "/admin/students?tab=members" },
     { key: "dormantMembers", sev: "info", label: (n) => `active member${n === 1 ? "" : "s"} not seen in 30+ days`, href: "/admin/students?tab=members" },
     { key: "contentDrafts", sev: "info", label: (n) => `content draft${n === 1 ? "" : "s"} awaiting review`, href: "/admin/content" },

@@ -17,6 +17,9 @@ export type Lead = {
     source: 'WEBSITE' | 'WHATSAPP' | 'REFERRAL' | 'SOCIAL_MEDIA' | 'OTHER';
     status: 'NEW' | 'CONTACTED' | 'TRIAL' | 'CONVERTED' | 'LOST';
     notes: string | null;
+    programInterest: string | null;
+    campaign: string | null;
+    nextFollowUpAt: string | null;
     trialRequestedAt: string | null;
     trialDate: string | null;
     trialAttended: boolean;
@@ -48,6 +51,9 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         country: '',
         status: 'NEW',
         source: 'WEBSITE',
+        programInterest: '',
+        campaign: '',
+        nextFollowUpAt: '',
         notes: '',
         assignedToId: ''
     });
@@ -96,25 +102,40 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         }
     }
 
+    const submitLead = async (confirmDuplicate = false) => {
+        const url = isEditMode ? `/api/admin/leads/${editingLeadId}` : '/api/admin/leads';
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...formData, confirmDuplicate }),
+        });
+        const data = await res.json();
+
+        if (res.status === 409 && data.error === 'duplicate') {
+            const proceed = await confirm({
+                title: "This email already exists",
+                message: `${data.message} Create it anyway?`,
+                confirmLabel: "Create anyway",
+                tone: "danger",
+            });
+            if (proceed) return submitLead(true);
+            return false;
+        }
+
+        if (!res.ok) {
+            throw new Error(data.error || `Failed to ${isEditMode ? 'update' : 'create'} lead`);
+        }
+        return true;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
-        const url = isEditMode ? `/api/admin/leads/${editingLeadId}` : '/api/admin/leads';
-        const method = isEditMode ? 'PUT' : 'POST';
-        
         try {
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const data = await res.json();
-            
-            if (!res.ok) {
-                throw new Error(data.error || `Failed to ${isEditMode ? 'update' : 'create'} lead`);
-            }
-            
+            const done = await submitLead();
+            if (!done) return; // user backed out of the duplicate confirmation
             setIsModalOpen(false);
             setEditingLeadId(null);
             showToast('success', `Lead ${isEditMode ? 'updated' : 'created'}`);
@@ -135,6 +156,9 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             country: '',
             status: 'NEW',
             source: 'WEBSITE',
+            programInterest: '',
+            campaign: '',
+            nextFollowUpAt: '',
             notes: '',
             assignedToId: ''
         });
@@ -149,6 +173,9 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             country: lead.country || '',
             status: lead.status,
             source: lead.source,
+            programInterest: lead.programInterest || '',
+            campaign: lead.campaign || '',
+            nextFollowUpAt: lead.nextFollowUpAt ? lead.nextFollowUpAt.slice(0, 10) : '',
             notes: lead.notes || '',
             assignedToId: lead.assignedTo?.id || ''
         });
@@ -216,6 +243,19 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         {
             header: "Assigned To",
             accessor: (lead: Lead) => lead.assignedTo ? lead.assignedTo.name : <span className="text-gray-400 italic">Unassigned</span>
+        },
+        {
+            header: "Follow-up",
+            accessor: (lead: Lead) => {
+                if (!lead.nextFollowUpAt) return <span className="text-gray-400 italic text-xs">Not scheduled</span>;
+                const due = new Date(lead.nextFollowUpAt);
+                const overdue = due.getTime() <= Date.now() && lead.status !== 'CONVERTED' && lead.status !== 'LOST';
+                return (
+                    <span className={`text-xs font-medium ${overdue ? "text-red-600" : "text-gray-600"}`}>
+                        {overdue ? "Overdue — " : ""}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                );
+            }
         },
         {
             header: "Last Activity",
@@ -321,14 +361,37 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className={labelClass}>Assign To (Staff)</label>
-                                <select value={formData.assignedToId} onChange={(e) => setFormData({...formData, assignedToId: e.target.value})} className={inputClass}>
-                                    <option value="">Unassigned</option>
-                                    {staffList.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Program Interest</label>
+                                    <select value={formData.programInterest} onChange={(e) => setFormData({...formData, programInterest: e.target.value})} className={inputClass}>
+                                        <option value="">Not specified</option>
+                                        <option value="EVERYDAY_YOGA">Everyday Yoga</option>
+                                        <option value="YOGA_THERAPY">Yoga Therapy</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Campaign</label>
+                                    <input type="text" value={formData.campaign} placeholder="e.g. instagram_diwali_2026"
+                                        onChange={(e) => setFormData({...formData, campaign: e.target.value})} className={inputClass} />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Assign To (Staff)</label>
+                                    <select value={formData.assignedToId} onChange={(e) => setFormData({...formData, assignedToId: e.target.value})} className={inputClass}>
+                                        <option value="">Unassigned</option>
+                                        {staffList.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelClass}>Next Follow-up</label>
+                                    <input type="date" value={formData.nextFollowUpAt}
+                                        onChange={(e) => setFormData({...formData, nextFollowUpAt: e.target.value})} className={inputClass} />
+                                </div>
                             </div>
 
                             <div>

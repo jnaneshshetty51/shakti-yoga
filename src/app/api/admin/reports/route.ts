@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { liveSubWhere } from '@/lib/metrics';
+import { liveSubWhere, leadSourceAttribution } from '@/lib/metrics';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export async function GET() {
     const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (MONTHS - 1), 1));
 
     try {
-        const [payments, users, subs, liveSubUserIds] = await Promise.all([
+        const [payments, users, subs, liveSubUserIds, leadAttribution] = await Promise.all([
             prisma.payment.findMany({
                 where: { status: 'PAID', createdAt: { gte: since } },
                 select: { amount: true, createdAt: true, planType: true },
@@ -33,6 +33,7 @@ export async function GET() {
             }),
             prisma.subscription.groupBy({ by: ['planType', 'status'], _count: { _all: true } }),
             prisma.subscription.findMany({ where: liveSubWhere(now), select: { userId: true } }),
+            leadSourceAttribution(),
         ]);
 
         // month scaffold
@@ -91,6 +92,7 @@ export async function GET() {
                     rate: cohortJoined[k] ? Math.round((cohortRetained[k] / cohortJoined[k]) * 100) : null,
                 })),
                 planMix,
+                leadAttribution,
                 summary: {
                     totalRevenue: Math.round(totalRevenue),
                     totalSignups,

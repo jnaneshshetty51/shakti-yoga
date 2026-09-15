@@ -3,9 +3,72 @@ import { prisma } from '@/lib/prisma';
 import { notifyAdmin, emailLayout } from '@/lib/email';
 import { readJson, str, optStr, email as emailField, ValidationError, handleValidationError } from '@/lib/validation';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { getCampaignFromRequest } from '@/lib/attribution';
+import { LeadStatus } from '@prisma/client';
 
 function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+/**
+ * Subjects that mean "this person is a sales prospect", mapped to the program
+ * they're asking about. Everything else (General Inquiry, Billing Issue) is a
+ * support matter, not a CRM lead.
+ */
+const SALES_SUBJECT_PROGRAM: Record<string, string> = {
+    'Free Trial Class': 'EVERYDAY_YOGA',
+    'Yoga Therapy Consultation': 'YOGA_THERAPY',
+};
+
+/**
+ * A sales-relevant enquiry also becomes a real CRM Lead — not just a
+ * ContactMessage nobody outside the inbox ever sees — so Yoga Therapy
+ * enquiries in particular actually enter the pipeline the therapist team
+ * works from, with source/campaign/program attribution attached.
+ * Never blocks the contact-form response on failure.
+ */
+async function captureAsLead(params: { name: string; email: string; subject: string; message: string; campaign: string | null }) {
+    const programInterest = SALES_SUBJECT_PROGRAM[params.subject];
+    if (!programInterest) return;
+
+    try {
+        const existing = await prisma.lead.findFirst({
+            where: {
+                email: { equals: params.email, mode: 'insensitive' },
+                status: { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        if (existing) {
+            await prisma.leadActivity.create({
+                data: {
+                    leadId: existing.id,
+                    type: 'NOTE',
+                    content: `Submitted another website enquiry (${params.subject}): ${params.message.slice(0, 500)}`,
+                    performedBy: 'system',
+                },
+            });
+            return;
+        }
+
+        const lead = await prisma.lead.create({
+            data: {
+                name: params.name,
+                email: params.email,
+                source: 'WEBSITE',
+                status: LeadStatus.NEW,
+                programInterest,
+                campaign: params.campaign,
+                notes: params.message.slice(0, 2000),
+            },
+        });
+        await prisma.leadActivity.create({
+            data: { leadId: lead.id, type: 'NOTE', content: `Website enquiry (${params.subject}): ${params.message.slice(0, 500)}`, performedBy: 'system' },
+        });
+    } catch (error) {
+        console.error('[contact] captureAsLead failed', error);
+    }
 }
 
 export async function POST(request: Request) {
@@ -27,6 +90,10 @@ export async function POST(request: Request) {
         await prisma.contactMessage.create({
             data: { name, email, subject: subject ?? null, message },
         });
+
+        if (subject) {
+            void captureAsLead({ name, email, subject, message, campaign: getCampaignFromRequest(request) });
+        }
 
         // Fire-and-forget admin notification.
         notifyAdmin(

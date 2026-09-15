@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { CorporateLeadStatus } from '@prisma/client';
+import { auditAs } from '@/lib/audit';
 
 const ACTIVITY_TYPES = ['CALL', 'EMAIL', 'WHATSAPP', 'NOTE', 'MEETING'];
 
@@ -41,13 +42,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ activity });
 }
 
-export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await context.params;
         const admin = await requireAdmin();
         if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+        const lead = await prisma.corporateLead.findUnique({ where: { id } });
+        if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
         await prisma.corporateLead.delete({ where: { id } });
+
+        await auditAs({ id: admin.id, email: admin.email }, request)({
+            action: 'corporate.delete', entity: 'CorporateLead', entityId: id,
+            before: { companyName: lead.companyName, contactEmail: lead.contactEmail, status: lead.status },
+        });
+
         return NextResponse.json({ success: true, message: 'Corporate lead deleted successfully' });
     } catch (error) {
         console.error('Failed to delete corporate lead:', error);
@@ -100,6 +110,12 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
                 },
             });
         }
+
+        await auditAs({ id: admin.id, email: admin.email }, request)({
+            action: 'corporate.update', entity: 'CorporateLead', entityId: id,
+            before: { companyName: before.companyName, status: before.status, dealValue: before.dealValue, assignedToId: before.assignedToId },
+            after: { companyName: lead.companyName, status: lead.status, dealValue: lead.dealValue, assignedToId: lead.assignedToId },
+        });
 
         return NextResponse.json({ success: true, message: 'Corporate lead updated successfully', lead });
     } catch (error) {

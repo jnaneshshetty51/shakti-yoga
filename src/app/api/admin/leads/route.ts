@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { LeadSource, LeadStatus, Prisma } from '@prisma/client';
+import { auditAs } from '@/lib/audit';
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
@@ -57,13 +58,35 @@ export async function POST(request: Request) {
         if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const body = await request.json();
-        const { name, email, phone, country, source, notes, assignedToId } = body;
+        const { name, email, phone, country, source, programInterest, campaign, notes, assignedToId, confirmDuplicate } = body;
 
         if (!name || !email) {
             return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
         }
 
-        const dbSource = source ? source.toUpperCase() : 'WEBSITE';
+        const rawSource = source ? String(source).toUpperCase() : 'WEBSITE';
+        const dbSource = (rawSource in LeadSource ? rawSource : 'OTHER') as LeadSource;
+
+        if (!confirmDuplicate) {
+            const [existingUser, existingLead] = await Promise.all([
+                prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true, name: true, role: true } }),
+                prisma.lead.findFirst({
+                    where: { email: { equals: email, mode: 'insensitive' } },
+                    select: { id: true, name: true, status: true, createdAt: true },
+                    orderBy: { createdAt: 'desc' },
+                }),
+            ]);
+            if (existingUser || existingLead) {
+                return NextResponse.json({
+                    error: 'duplicate',
+                    message: existingUser
+                        ? `${existingUser.name} already has an account with this email.`
+                        : `${existingLead!.name} is already a lead with this email (status: ${existingLead!.status}).`,
+                    existingUser,
+                    existingLead,
+                }, { status: 409 });
+            }
+        }
 
         const newLead = await prisma.lead.create({
             data: {
@@ -71,8 +94,10 @@ export async function POST(request: Request) {
                 email,
                 phone,
                 country,
-                source: dbSource as LeadSource,
+                source: dbSource,
                 status: 'NEW',
+                programInterest: programInterest || null,
+                campaign: campaign || null,
                 notes,
                 assignedToId: assignedToId || undefined
             },
@@ -80,6 +105,10 @@ export async function POST(request: Request) {
                 assignedTo: { select: { id: true, name: true } },
                 _count: { select: { activities: true } }
             }
+        });
+
+        await auditAs({ id: admin.id, email: admin.email }, request)({
+            action: 'lead.create', entity: 'Lead', entityId: newLead.id, after: { name, email, source: dbSource },
         });
 
         return NextResponse.json(newLead);

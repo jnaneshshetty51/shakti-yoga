@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as emailField, ValidationError, handleValidationError } from '@/lib/validation';
 import { notifyAdmin, emailLayout } from '@/lib/email';
+import { getCampaignFromRequest } from '@/lib/attribution';
 
 function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
                 companyName, contactName, contactEmail, contactPhone,
                 employeeCount: Number.isFinite(employeeCount) ? employeeCount : null,
                 requirement, programInterest,
+                campaign: getCampaignFromRequest(request),
                 message,
             },
         });

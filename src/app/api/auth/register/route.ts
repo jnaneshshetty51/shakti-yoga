@@ -6,6 +6,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
 import { redeemReferral } from '@/lib/referral';
+import { linkLeadToUser } from '@/lib/leads';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { SITE_URL } from '@/lib/site';
 
@@ -62,12 +63,9 @@ export async function POST(request: Request) {
         const mappedRole = mapDatabaseRole(user.role);
 
         // Link any CRM lead for this email to the account it actually became —
-        // otherwise "Converted" is just a status label with no way to trace
-        // which lead became which member.
-        await prisma.lead.updateMany({
-            where: { email: { equals: email, mode: 'insensitive' }, convertedToUserId: null },
-            data: { status: 'CONVERTED', convertedToUserId: user.id, convertedAt: new Date() },
-        }).catch(() => { });
+        // signing up isn't a conversion (see lib/leads.ts markLeadConverted,
+        // called on the first real paid membership instead).
+        await linkLeadToUser(user.id, email);
 
         const token = await signToken(sessionClaims(user));
 

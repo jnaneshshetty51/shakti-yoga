@@ -830,23 +830,34 @@ model WhatsAppGroup {
 }
 
 model Lead {
-  id      String     @id @default(cuid())
-  name    String
-  email   String
-  phone   String?
-  country String?
-  source  LeadSource @default(WEBSITE)
-  status  LeadStatus @default(NEW)
-  notes   String?
+  id              String     @id @default(cuid())
+  name            String
+  email           String
+  phone           String?
+  country         String?
+  source          LeadSource @default(WEBSITE)
+  status          LeadStatus @default(NEW)
+  notes           String?
+  programInterest String? // "EVERYDAY_YOGA" | "YOGA_THERAPY" | free text — which program they asked about
+  campaign        String? // marketing campaign / ad-set tag, independent of `source`
 
   // Trial info
   trialRequestedAt DateTime?
   trialDate        DateTime?
   trialAttended    Boolean   @default(false)
 
-  // Conversion tracking
+  // Identity — set the moment this email becomes a real account, regardless
+  // of whether they ever pay. Distinct from conversion: a signed-up trial
+  // user is linked but not yet `CONVERTED`. See lib/leads.ts.
+  linkedUserId String?
+
+  // Conversion tracking — only set on an actual qualifying paid membership
+  // (see markLeadConverted in lib/leads.ts), never on signup alone.
   convertedToUserId String?
   convertedAt       DateTime?
+
+  // Follow-up
+  nextFollowUpAt DateTime? // staff-set "check back on this by" date — drives the dashboard's stale-lead signal
 
   // Assignment
   assignedToId String?
@@ -859,6 +870,7 @@ model Lead {
 
   @@index([email])
   @@index([status])
+  @@index([nextFollowUpAt])
 }
 
 model LeadActivity {
@@ -1110,6 +1122,7 @@ model CorporateLead {
   employeeCount   Int?
   requirement     String?
   programInterest String?
+  campaign        String? // marketing campaign / ad-set tag, from first-touch attribution
   message         String?
   status          CorporateLeadStatus @default(NEW)
   dealValue       Float?

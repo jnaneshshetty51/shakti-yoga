@@ -10,7 +10,9 @@ import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTime
 type Lead = {
     id: string; name: string; email: string; phone: string | null; country: string | null;
     source: string; status: string; notes: string | null;
+    programInterest: string | null; campaign: string | null; nextFollowUpAt: string | null;
     trialDate: string | null; trialAttended: boolean;
+    linkedUserId: string | null;
     convertedToUserId: string | null; convertedAt: string | null;
     assignedTo: { id: string; name: string } | null;
     createdAt: string;
@@ -70,11 +72,15 @@ export default function LeadDetailPage() {
                     <dl className="text-sm grid grid-cols-2 gap-y-1.5">
                         <dt className="text-ink-subtle">Phone</dt><dd>{lead.phone || "—"}</dd>
                         <dt className="text-ink-subtle">Country</dt><dd>{lead.country || "—"}</dd>
+                        <dt className="text-ink-subtle">Program interest</dt><dd>{lead.programInterest ? lead.programInterest.replace(/_/g, " ") : "—"}</dd>
+                        <dt className="text-ink-subtle">Campaign</dt><dd>{lead.campaign || "—"}</dd>
                         <dt className="text-ink-subtle">Assigned to</dt><dd>{lead.assignedTo?.name || "—"}</dd>
+                        <dt className="text-ink-subtle">Next follow-up</dt><dd>{d(lead.nextFollowUpAt)}</dd>
                         <dt className="text-ink-subtle">Trial date</dt><dd>{d(lead.trialDate)}</dd>
                         <dt className="text-ink-subtle">Trial attended</dt><dd>{lead.trialAttended ? "Yes" : "No"}</dd>
                         <dt className="text-ink-subtle">Created</dt><dd>{d(lead.createdAt)}</dd>
-                        <dt className="text-ink-subtle">Converted</dt><dd>{lead.convertedAt ? d(lead.convertedAt) : "No"}</dd>
+                        <dt className="text-ink-subtle">Account linked</dt><dd>{lead.linkedUserId ? "Yes — signed up" : "No"}</dd>
+                        <dt className="text-ink-subtle">Converted (paid)</dt><dd>{lead.convertedAt ? d(lead.convertedAt) : "No"}</dd>
                     </dl>
                     {lead.notes && <p className="text-sm mt-3"><span className="text-ink-subtle">Notes: </span>{lead.notes}</p>}
                 </Card>

@@ -61,10 +61,31 @@ export async function POST(request: Request) {
         if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const body = await request.json();
-        const { companyName, contactName, contactEmail, contactPhone, employeeCount, requirement, programInterest, notes, assignedToId } = body;
+        const { companyName, contactName, contactEmail, contactPhone, employeeCount, requirement, programInterest, notes, assignedToId, confirmDuplicate } = body;
 
         if (!companyName || !contactName || !contactEmail) {
             return NextResponse.json({ error: 'Company name, contact name and email are required' }, { status: 400 });
+        }
+
+        if (!confirmDuplicate) {
+            const existing = await prisma.corporateLead.findFirst({
+                where: {
+                    status: { notIn: [CorporateLeadStatus.COMPLETED, CorporateLeadStatus.LOST] },
+                    OR: [
+                        { contactEmail: { equals: contactEmail, mode: 'insensitive' } },
+                        { companyName: { equals: companyName, mode: 'insensitive' } },
+                    ],
+                },
+                select: { id: true, companyName: true, contactEmail: true, status: true },
+                orderBy: { createdAt: 'desc' },
+            });
+            if (existing) {
+                return NextResponse.json({
+                    error: 'duplicate',
+                    message: `${existing.companyName} already has an open deal (status: ${existing.status}).`,
+                    existingLead: existing,
+                }, { status: 409 });
+            }
         }
 
         const lead = await prisma.corporateLead.create({

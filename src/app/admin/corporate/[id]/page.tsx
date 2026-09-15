@@ -9,7 +9,7 @@ import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTime
 
 type Lead = {
     id: string; companyName: string; contactName: string; contactEmail: string; contactPhone: string | null;
-    employeeCount: number | null; requirement: string | null; programInterest: string | null; message: string | null;
+    employeeCount: number | null; requirement: string | null; programInterest: string | null; campaign: string | null; message: string | null;
     status: string; dealValue: number | null; notes: string | null;
     assignedTo: { id: string; name: string } | null;
     createdAt: string;
@@ -70,6 +70,7 @@ export default function CorporateDetailPage() {
                         <dt className="text-ink-subtle">Phone</dt><dd>{lead.contactPhone || "—"}</dd>
                         <dt className="text-ink-subtle">Employees</dt><dd>{lead.employeeCount ?? "—"}</dd>
                         <dt className="text-ink-subtle">Programme</dt><dd>{lead.programInterest || "—"}</dd>
+                        <dt className="text-ink-subtle">Campaign</dt><dd>{lead.campaign || "—"}</dd>
                         <dt className="text-ink-subtle">Deal value</dt>
                         <dd>
                             {money(lead.dealValue)}
