@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import {
   PrismaClient, Role, PlanType, SubscriptionStatus,
-  ContentType, ContentCategory, PracticeLevel, ChallengeGoal,
+  ContentType, ContentCategory, ContentDifficulty, ChallengeGoal,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -86,9 +86,10 @@ async function main() {
     await prisma.userProfile.deleteMany({
       where: { user: { email: { in: seedEmails } } },
     });
-    // Content-platform tables — children cascade from these parents.
+    // Content-platform tables — children cascade from these parents. Content
+    // is the unified model (videos, audio, articles, practices, founder
+    // messages, announcements) — Practice/BlogPost were folded into it.
     await prisma.content.deleteMany({}).catch(() => {});
-    await prisma.practice.deleteMany({}).catch(() => {});
     await prisma.challenge.deleteMany({}).catch(() => {});
     await prisma.communityPost.deleteMany({}).catch(() => {});
     await prisma.userAchievement.deleteMany({
@@ -98,7 +99,6 @@ async function main() {
     // Class instances (and their attendance, which cascades) reference batches.
     await prisma.classInstance.deleteMany({}).catch(() => {});
     await prisma.classBatch.deleteMany({});
-    await prisma.blogPost.deleteMany({});
     await prisma.story.deleteMany({});
     await prisma.whatsAppGroup.deleteMany({});
     await prisma.$executeRawUnsafe('DELETE FROM "SupportMessage"').catch(() => {});
@@ -378,50 +378,53 @@ async function main() {
 
   // Yoga Therapy is strictly 1:1 and handled through Booking — no group batch.
 
-  // Create Blog Posts
-  const blog1 = await prisma.blogPost.create({
+  // Create Articles (ARTICLE-type Content — the public /blog pages read these)
+  const blog1 = await prisma.content.create({
     data: {
+      type: ContentType.ARTICLE, status: 'PUBLISHED',
       slug: 'benefits-of-morning-yoga',
       title: '5 Amazing Benefits of Morning Yoga Practice',
       excerpt: 'Discover how starting your day with yoga can transform your life and boost your energy levels.',
-      content: '# Benefits of Morning Yoga\n\nMorning yoga is a powerful way to start your day...\n\n## 1. Increased Energy\nYoga helps wake up your body and mind...\n\n## 2. Better Focus\nMorning practice improves concentration...',
-      category: 'Wellness',
+      body: '# Benefits of Morning Yoga\n\nMorning yoga is a powerful way to start your day...\n\n## 1. Increased Energy\nYoga helps wake up your body and mind...\n\n## 2. Better Focus\nMorning practice improves concentration...',
+      category: ContentCategory.WELLNESS,
       author: 'Yoga Teacher',
       publishedAt: new Date(),
-      status: 'PUBLISHED',
+      access: 'PUBLIC',
       imageUrl: '/blog/morning-yoga.jpg',
     },
   });
-  console.log('✅ Created Blog Post:', blog1.title);
+  console.log('✅ Created Article:', blog1.title);
 
-  const blog2 = await prisma.blogPost.create({
+  await prisma.content.create({
     data: {
+      type: ContentType.ARTICLE, status: 'PUBLISHED',
       slug: 'yoga-for-back-pain',
       title: 'Yoga Therapy for Chronic Back Pain Relief',
       excerpt: 'Learn how therapeutic yoga can help alleviate chronic back pain and improve your quality of life.',
-      content: '# Yoga for Back Pain\n\nChronic back pain affects millions...\n\n## Understanding Back Pain\nBack pain can be caused by...\n\n## Yoga Poses for Relief\n1. Cat-Cow Stretch\n2. Child\'s Pose...',
-      category: 'Therapy',
+      body: '# Yoga for Back Pain\n\nChronic back pain affects millions...\n\n## Understanding Back Pain\nBack pain can be caused by...\n\n## Yoga Poses for Relief\n1. Cat-Cow Stretch\n2. Child\'s Pose...',
+      category: ContentCategory.THERAPY,
       author: 'Yoga Teacher',
       publishedAt: new Date(),
-      status: 'PUBLISHED',
+      access: 'PUBLIC',
       imageUrl: '/blog/back-pain.jpg',
     },
   });
-  console.log('✅ Created Blog Post:', blog2.title);
+  console.log('✅ Created Article: Yoga Therapy for Chronic Back Pain Relief');
 
-  const blog3 = await prisma.blogPost.create({
+  await prisma.content.create({
     data: {
+      type: ContentType.ARTICLE, status: 'DRAFT',
       slug: 'getting-started-with-yoga',
       title: 'Getting Started with Yoga: A Beginner\'s Guide',
       excerpt: 'New to yoga? This comprehensive guide will help you start your yoga journey with confidence.',
-      content: '# Beginner\'s Guide to Yoga\n\nStarting yoga can be intimidating...\n\n## What You Need\n- Yoga mat\n- Comfortable clothing\n- Open mind...',
-      category: 'Beginners',
+      body: '# Beginner\'s Guide to Yoga\n\nStarting yoga can be intimidating...\n\n## What You Need\n- Yoga mat\n- Comfortable clothing\n- Open mind...',
+      category: ContentCategory.BEGINNERS,
       author: 'Yoga Teacher',
-      status: 'DRAFT',
+      access: 'PUBLIC',
       imageUrl: '/blog/beginners-guide.jpg',
     },
   });
-  console.log('✅ Created Blog Post:', blog3.title);
+  console.log('✅ Created Article: Getting Started with Yoga');
 
   // Create Success Stories
   const story1 = await prisma.story.create({
@@ -506,89 +509,115 @@ async function main() {
 
   const now = new Date();
 
-  await prisma.practice.create({
+  await prisma.content.create({
     data: {
+      type: ContentType.SHORT_PRACTICE, status: 'PUBLISHED',
       title: 'Morning Wake-Up Flow',
       slug: 'morning-wake-up-flow',
-      description: 'A gentle 10-minute sequence to shake off sleep and set an easy, steady tone for the day.',
+      body: 'A gentle 10-minute sequence to shake off sleep and set an easy, steady tone for the day.',
       steps: '1. **Seated breath** — 5 slow rounds, lengthen the exhale.\n2. **Cat–Cow** — 8 rounds with the breath.\n3. **Downward Dog** — pedal the heels, 5 breaths.\n4. **Low lunge** — both sides, 5 breaths each.\n5. **Forward fold** — soft knees, let the head hang.\n6. **Mountain pose** — arrive, 3 full breaths.',
       category: ContentCategory.MOBILITY,
-      level: PracticeLevel.ALL_LEVELS,
+      difficulty: ContentDifficulty.ALL_LEVELS,
       durationMin: 10,
       videoUrl: '/videos/practice-preview.webm',
-      thumbnailUrl: '/blog/morning-yoga.jpg',
-      status: 'PUBLISHED',
+      imageUrl: '/blog/morning-yoga.jpg',
+      access: 'PUBLIC',
       publishedAt: now,
     },
   });
-  await prisma.practice.create({
+  await prisma.content.create({
     data: {
+      type: ContentType.SHORT_PRACTICE, status: 'PUBLISHED',
       title: 'Wind-Down for Sleep',
       slug: 'wind-down-for-sleep',
-      description: 'Five quiet shapes and a long breath to help the nervous system downshift before bed.',
+      body: 'Five quiet shapes and a long breath to help the nervous system downshift before bed.',
       steps: '1. **Legs up the wall** — 3 minutes.\n2. **Reclined twist** — both sides, slow.\n3. **Supported child’s pose** — a bolster or pillow under the chest.\n4. **Happy baby** — gently rock side to side.\n5. **Savasana** — 4-count in, 6-count out, 10 rounds.',
       category: ContentCategory.SLEEP,
-      level: PracticeLevel.BEGINNER,
+      difficulty: ContentDifficulty.BEGINNER,
       durationMin: 12,
       videoUrl: '/videos/breath-flow.mp4',
-      thumbnailUrl: '/blog/beginners-guide.jpg',
-      status: 'PUBLISHED',
+      imageUrl: '/blog/beginners-guide.jpg',
+      access: 'PUBLIC',
       publishedAt: now,
     },
   });
-  const practiceBreath = await prisma.practice.create({
+  const practiceBreath = await prisma.content.create({
     data: {
+      type: ContentType.SHORT_PRACTICE, status: 'PUBLISHED',
       title: 'Box Breathing Reset',
       slug: 'box-breathing-reset',
-      description: 'A 5-minute breathing practice to steady yourself before a class, a meeting, or sleep.',
+      body: 'A 5-minute breathing practice to steady yourself before a class, a meeting, or sleep.',
       steps: '1. Sit tall, soften the shoulders.\n2. Inhale for 4.\n3. Hold for 4.\n4. Exhale for 4.\n5. Hold for 4.\n6. Repeat for 5 minutes — drop the count if it strains.',
       category: ContentCategory.BREATHING,
-      level: PracticeLevel.ALL_LEVELS,
+      difficulty: ContentDifficulty.ALL_LEVELS,
       durationMin: 5,
       videoUrl: '/videos/gentle-therapy.mp4',
-      thumbnailUrl: '/blog/back-pain.jpg',
-      status: 'PUBLISHED',
+      imageUrl: '/blog/back-pain.jpg',
+      access: 'PUBLIC',
       publishedAt: now,
     },
   });
-  console.log('✅ Created 3 Practices');
+  console.log('✅ Created 3 Short Practices');
+
+  // Take a Moment — very short daily-use micro-practices.
+  await prisma.content.create({
+    data: {
+      type: ContentType.TAKE_A_MOMENT, status: 'PUBLISHED',
+      title: 'Breathe', slug: 'take-a-moment-breathe',
+      body: 'Two minutes to reset between meetings.',
+      category: ContentCategory.BREATHING, difficulty: ContentDifficulty.ALL_LEVELS,
+      durationMin: 2, access: 'PUBLIC', publishedAt: now,
+    },
+  });
+  console.log('✅ Created 1 Take a Moment item');
+
+  await prisma.content.create({
+    data: {
+      type: ContentType.FOUNDER_MESSAGE, status: 'PUBLISHED',
+      title: 'Welcome to Shakti', slug: 'welcome-to-shakti',
+      body: 'A short note from Acharya Swastik on why we built Shakti — and what steady practice, not perfect practice, can do for you.',
+      category: ContentCategory.PHILOSOPHY,
+      author: 'Acharya Swastik', access: 'PUBLIC', publishedAt: now,
+    },
+  });
+  console.log('✅ Created 1 Founder Message');
 
   await prisma.content.createMany({
     data: [
       {
-        type: ContentType.REEL, status: 'PUBLISHED', category: ContentCategory.BREATHING,
+        type: ContentType.VIDEO, status: 'PUBLISHED', category: ContentCategory.BREATHING,
         title: '3-minute breath to calm the mind', caption: 'Try this before your evening class.',
         instagramUrl: 'https://www.instagram.com/reel/CexampleReel1/',
         imageUrl: '/blog/morning-yoga.jpg',
-        author: 'Shakti Yoga', pinned: true, publishedAt: now,
-        ctaType: 'open_practice', ctaLabel: 'Do the full practice', relatedPracticeId: practiceBreath.id,
+        author: 'Shakti Yoga', pinned: true, featured: true, publishedAt: now, access: 'PUBLIC',
+        ctaType: 'open_practice', ctaLabel: 'Do the full practice', relatedContentId: practiceBreath.id,
       },
       {
-        type: ContentType.REEL, status: 'PUBLISHED', category: ContentCategory.MOBILITY,
+        type: ContentType.VIDEO, status: 'PUBLISHED', category: ContentCategory.MOBILITY,
         title: 'Release tight hips in 60 seconds', caption: 'Save this for after sitting all day.',
         instagramUrl: 'https://www.instagram.com/reel/CexampleReel2/',
         imageUrl: '/blog/back-pain.jpg',
-        author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 86_400_000),
+        author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 86_400_000), access: 'PUBLIC',
         ctaType: 'view_classes', ctaLabel: 'See the class schedule',
       },
       {
-        type: ContentType.POST, status: 'PUBLISHED', category: ContentCategory.WELLNESS,
+        type: ContentType.ARTICLE, status: 'PUBLISHED', category: ContentCategory.WELLNESS,
         title: '5 things to do before your morning class',
         body: '1. Drink a glass of water.\n2. Skip the heavy breakfast — practice light.\n3. Roll out your mat the night before.\n4. Silence your phone.\n5. Take three slow breaths before you press *Join*.',
         imageUrl: '/blog/beginners-guide.jpg',
-        author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 2 * 86_400_000),
-        ctaType: 'open_blog', ctaLabel: 'Read: benefits of morning yoga', relatedBlogId: blog1.id,
+        author: 'Shakti Yoga', publishedAt: new Date(now.getTime() - 2 * 86_400_000), access: 'PUBLIC',
+        ctaType: 'open_content', ctaLabel: 'Read: benefits of morning yoga', relatedContentId: blog1.id,
       },
       {
         type: ContentType.ANNOUNCEMENT, status: 'PUBLISHED', category: ContentCategory.STUDIO,
         title: 'New: guided practices in the app',
         body: 'You can now do short guided practices on your own mat between classes — find them under Explore → Practices. Start with the Morning Wake-Up Flow.',
         imageUrl: '/therapy.webp',
-        author: 'Shakti Yoga', pinned: true, publishedAt: now,
+        author: 'Shakti Yoga', pinned: true, publishedAt: now, access: 'PUBLIC',
       },
     ],
   });
-  console.log('✅ Created 4 Content items (2 reels, 1 post, 1 announcement)');
+  console.log('✅ Created 4 Content items (2 videos, 1 article, 1 announcement)');
 
   const challenge = await prisma.challenge.create({
     data: {

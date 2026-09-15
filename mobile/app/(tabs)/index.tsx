@@ -23,7 +23,9 @@ import { colors, spacing, radius, shadows } from "@/theme";
 import type { HomeResponse, FeedItem } from "@/lib/types";
 
 function discoveryItems(data: HomeResponse): FeedItem[] {
-  return [data.content.featuredReel, ...data.content.forYou].filter((x): x is FeedItem => Boolean(x));
+  return [data.content.featured, data.content.founderMessage, ...data.content.forYou].filter(
+    (x): x is FeedItem => Boolean(x),
+  );
 }
 
 function CommunityCard({ community }: { community: HomeResponse["community"] }) {

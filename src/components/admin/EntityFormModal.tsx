@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui";
 
-export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image" | "video";
+export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image" | "video" | "audio";
 
 export interface FieldDef {
     name: string;
@@ -27,6 +27,8 @@ interface Props {
     uploadImage?: (file: File) => Promise<string>;
     /** Required if any field has type "video". Uploads the file, returns its URL. */
     uploadVideo?: (file: File) => Promise<string>;
+    /** Required if any field has type "audio". Uploads the file, returns its URL. */
+    uploadAudio?: (file: File) => Promise<string>;
 }
 
 const fieldInputClass =
@@ -42,6 +44,7 @@ export default function EntityFormModal({
     onSubmit,
     uploadImage,
     uploadVideo,
+    uploadAudio,
 }: Props) {
     const [uploading, setUploading] = useState<string | null>(null);
     const [values, setValues] = useState<EntityValues>(() => {
@@ -185,6 +188,41 @@ export default function EntityFormModal({
                                                 setError(null);
                                                 try {
                                                     set(f.name, await uploadVideo(file));
+                                                } catch (err) {
+                                                    setError(err instanceof Error ? err.message : "Upload failed");
+                                                } finally {
+                                                    setUploading(null);
+                                                }
+                                            }}
+                                            className="text-xs"
+                                        />
+                                        {uploading === f.name && <p className="text-xs text-ink-subtle">Uploading…</p>}
+                                        {values[f.name] && (
+                                            <button type="button" onClick={() => set(f.name, "")} className="block text-xs text-ink-subtle hover:text-red-500">
+                                                remove
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : f.type === "audio" ? (
+                                <div className="flex flex-wrap items-start gap-3">
+                                    <div className="w-24 h-16 rounded-control bg-surface-sunken border border-hairline overflow-hidden shrink-0 flex items-center justify-center text-ink-subtle text-xs text-center px-1">
+                                        {values[f.name] ? "audio attached" : "none"}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <input
+                                            id={`entity-field-${f.name}`}
+                                            type="file"
+                                            accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav"
+                                            disabled={!uploadAudio || uploading === f.name}
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                e.target.value = "";
+                                                if (!file || !uploadAudio) return;
+                                                setUploading(f.name);
+                                                setError(null);
+                                                try {
+                                                    set(f.name, await uploadAudio(file));
                                                 } catch (err) {
                                                     setError(err instanceof Error ? err.message : "Upload failed");
                                                 } finally {

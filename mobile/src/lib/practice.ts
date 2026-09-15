@@ -4,11 +4,12 @@ export const LEVEL_LABEL: Record<PracticeLevel, string> = {
   BEGINNER: "Beginner",
   INTERMEDIATE: "Intermediate",
   ALL_LEVELS: "All levels",
+  ADVANCED: "Advanced",
 };
 
-export const PRACTICE_LEVELS: PracticeLevel[] = ["BEGINNER", "INTERMEDIATE", "ALL_LEVELS"];
+export const PRACTICE_LEVELS: PracticeLevel[] = ["BEGINNER", "INTERMEDIATE", "ALL_LEVELS", "ADVANCED"];
 
-/** The 11 ContentCategory values, shared by content + practice filtering. */
+/** The ContentCategory values, shared by content + practice filtering. */
 export const CONTENT_CATEGORIES = [
   "YOGA",
   "BREATHING",
@@ -19,10 +20,13 @@ export const CONTENT_CATEGORIES = [
   "WELLNESS",
   "BEGINNERS",
   "PHILOSOPHY",
+  "THERAPY",
   "STUDIO",
   "COMMUNITY",
 ] as const;
 
+const CATEGORY_LABEL_OVERRIDE: Record<string, string> = { MINDFULNESS: "Meditation" };
+
 export function categoryLabel(cat: string): string {
-  return cat.charAt(0) + cat.slice(1).toLowerCase();
+  return CATEGORY_LABEL_OVERRIDE[cat] ?? cat.charAt(0) + cat.slice(1).toLowerCase();
 }

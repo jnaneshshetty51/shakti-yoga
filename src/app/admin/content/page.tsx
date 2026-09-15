@@ -5,26 +5,25 @@ import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { CONTENT_TYPES, CONTENT_TYPE_LABEL, CATEGORY_LABEL, DIFFICULTY_LABEL, ACCESS_LABEL } from "@/lib/content";
 
-type ContentTab = "content" | "story" | "blog" | "comments" | "community";
-type Subtype = "REEL" | "POST" | "ANNOUNCEMENT";
+type ContentTab = "content" | "story" | "comments" | "community";
+type Subtype = (typeof CONTENT_TYPES)[number];
 
 type Story = {
     id: string; name: string; authorName: string; location: string; plan: string;
     planType: string; rating: number; quote: string; content: string; status: string; imageUrl: string;
 };
-type BlogPost = {
-    id: string; title: string; category: string; date: string; slug: string;
-    excerpt: string; content: string; author: string; status: string; imageUrl: string;
-    ctaType: string; ctaLabel: string; relatedClassBatchId: string;
-};
 type ContentRow = {
-    id: string; contentType: Subtype; title: string; body: string; caption: string;
-    category: string; status: string; instagramUrl: string; imageUrl: string; videoUrl: string;
-    ctaType: string; ctaLabel: string; relatedBlogId: string; author: string;
-    tags: string; pinned: boolean; notifyOnPublish: boolean;
+    id: string; contentType: Subtype; title: string; slug: string; excerpt: string; body: string; caption: string; steps: string;
+    category: string; status: string; instagramUrl: string; imageUrl: string; videoUrl: string; audioUrl: string;
+    durationMin: number | ""; difficulty: string; language: string;
+    ctaType: string; ctaLabel: string; relatedContentId: string; relatedClassBatchId: string; author: string;
+    tags: string; pinned: boolean; featured: boolean; notifyOnPublish: boolean; access: string;
     important?: boolean; audience?: string; mediaUrls?: string; expiresAt?: string | null;
     publishedAt: string | null; scheduledAt: string | null;
+    metaTitle: string; metaDescription: string;
+    submittedForReviewAt: string | null; reviewedAt: string | null; reviewNote: string; approvedAt: string | null;
 };
 type CommentRow = {
     id: string; body: string; hidden: boolean; reportCount: number; createdAt: string;
@@ -37,25 +36,26 @@ type CommunityModRow = {
 
 const STATUS_OPTIONS = [
     { label: "Draft", value: "DRAFT" },
+    { label: "In review", value: "IN_REVIEW" },
+    { label: "Approved", value: "APPROVED" },
     { label: "Published", value: "PUBLISHED" },
     { label: "Archived", value: "ARCHIVED" },
 ];
-const ROLE_OPTIONS = [
-    { label: "Everyday Member", value: "MEMBER_EVERYDAY" },
-    { label: "Therapy Member", value: "MEMBER_THERAPY" },
-    { label: "Trial", value: "TRIAL" },
-    { label: "Visitor", value: "VISITOR" },
+const STORY_STATUS_OPTIONS = [
+    { label: "Draft", value: "DRAFT" },
+    { label: "Published", value: "PUBLISHED" },
+    { label: "Archived", value: "ARCHIVED" },
 ];
-const CATEGORY_OPTIONS = [
-    "YOGA", "BREATHING", "MINDFULNESS", "MOBILITY", "SLEEP", "STRENGTH",
-    "WELLNESS", "BEGINNERS", "PHILOSOPHY", "STUDIO", "COMMUNITY",
-].map((v) => ({ label: v[0] + v.slice(1).toLowerCase(), value: v }));
+const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABEL).map(([value, label]) => ({ label, value }));
+const DIFFICULTY_OPTIONS = Object.entries(DIFFICULTY_LABEL).map(([value, label]) => ({ label, value }));
+const ACCESS_OPTIONS = Object.entries(ACCESS_LABEL).map(([value, label]) => ({ label, value }));
 const CTA_OPTIONS = [
     { label: "None", value: "none" },
     { label: "Join next class", value: "join_next_class" },
     { label: "View classes", value: "view_classes" },
     { label: "Book therapy", value: "book_therapy" },
-    { label: "Open related article", value: "open_blog" },
+    { label: "Open related content", value: "open_content" },
+    { label: "Open related practice", value: "open_practice" },
 ];
 
 const STORY_FIELDS: FieldDef[] = [
@@ -66,87 +66,106 @@ const STORY_FIELDS: FieldDef[] = [
     { name: "imageUrl", label: "Photo", type: "image" },
     { name: "quote", label: "Short Quote", type: "textarea", required: true },
     { name: "content", label: "Full Testimonial", type: "textarea" },
-    { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
-];
-const BLOG_CTA_OPTIONS = [
-    { label: "None", value: "none" },
-    { label: "Join next class", value: "join_next_class" },
-    { label: "View classes", value: "view_classes" },
-    { label: "Book therapy", value: "book_therapy" },
+    { name: "status", label: "Status", type: "select", options: STORY_STATUS_OPTIONS },
 ];
 
-function blogFields(classBatchOptions: { label: string; value: string }[]): FieldDef[] {
-    return [
-        { name: "title", label: "Title", required: true },
-        { name: "slug", label: "URL slug", placeholder: "auto from title if blank" },
-        { name: "category", label: "Category", required: true },
-        { name: "author", label: "Author" },
-        { name: "imageUrl", label: "Thumbnail", type: "image" },
-        { name: "excerpt", label: "Excerpt", type: "textarea" },
-        { name: "content", label: "Content (Markdown)", type: "textarea", required: true },
-        { name: "ctaType", label: "Call to action", type: "select", options: BLOG_CTA_OPTIONS },
-        { name: "ctaLabel", label: "CTA button label", placeholder: "e.g. Try today's practice" },
-        { name: "relatedClassBatchId", label: "Pairs with class", type: "select", options: classBatchOptions },
-        { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
-    ];
-}
+const SEO_TYPES: Subtype[] = ["ARTICLE", "FOUNDER_MESSAGE"];
 
-function contentFields(subtype: Subtype, blogOptions: { label: string; value: string }[]): FieldDef[] {
+function contentFields(subtype: Subtype, contentOptions: { label: string; value: string }[], classBatchOptions: { label: string; value: string }[]): FieldDef[] {
     const media: FieldDef[] =
-        subtype === "REEL"
+        subtype === "VIDEO"
             ? [
                   { name: "videoUrl", label: "Video (self-hosted, plays natively in the app)", type: "video" },
                   { name: "instagramUrl", label: "Instagram URL (optional — shown as \"View on Instagram\")", placeholder: "https://www.instagram.com/reel/…" },
                   { name: "caption", label: "Caption", type: "textarea" },
                   { name: "imageUrl", label: "Thumbnail", type: "image" },
               ]
+            : subtype === "AUDIO"
+            ? [
+                  { name: "audioUrl", label: "Audio file (MP3 / M4A / WAV)", type: "audio" },
+                  { name: "caption", label: "Caption", type: "textarea" },
+                  { name: "imageUrl", label: "Thumbnail", type: "image" },
+              ]
+            : subtype === "ARTICLE"
+            ? [
+                  { name: "slug", label: "URL slug", placeholder: "auto from title if blank" },
+                  { name: "excerpt", label: "Excerpt", type: "textarea" },
+                  { name: "body", label: "Content (Markdown)", type: "textarea", required: true },
+                  { name: "imageUrl", label: "Thumbnail", type: "image" },
+              ]
+            : subtype === "FOUNDER_MESSAGE"
+            ? [
+                  { name: "slug", label: "URL slug", placeholder: "auto from title if blank" },
+                  { name: "body", label: "Message (Markdown)", type: "textarea", required: true },
+                  { name: "videoUrl", label: "Video (optional)", type: "video" },
+                  { name: "audioUrl", label: "Audio (optional)", type: "audio" },
+                  { name: "imageUrl", label: "Thumbnail", type: "image" },
+              ]
+            : subtype === "ANNOUNCEMENT"
+            ? [
+                  { name: "body", label: "Body", type: "textarea", required: true },
+                  { name: "imageUrl", label: "Hero image (optional)", type: "image" },
+              ]
             : [
-                  { name: "body", label: "Body", type: "textarea", required: subtype === "POST" },
-                  { name: "imageUrl", label: subtype === "POST" ? "Image" : "Hero image (optional)", type: "image" },
+                  // SHORT_PRACTICE / TAKE_A_MOMENT
+                  { name: "body", label: "Intro", type: "textarea" },
+                  { name: "steps", label: "Steps (markdown list)", type: "textarea" },
+                  { name: "durationMin", label: "Duration (minutes)", type: "number", required: true },
+                  { name: "difficulty", label: "Difficulty", type: "select", options: DIFFICULTY_OPTIONS },
+                  { name: "videoUrl", label: "Video (optional)", type: "video" },
+                  { name: "imageUrl", label: "Thumbnail", type: "image" },
               ];
+
     return [
         { name: "title", label: "Title", required: true },
-        { name: "category", label: "Category", type: "select", required: true, options: CATEGORY_OPTIONS },
+        { name: "category", label: "Category / Practice type", type: "select", required: true, options: CATEGORY_OPTIONS },
         ...media,
-        ...(subtype !== "REEL"
-            ? [{ name: "mediaUrls", label: "Extra images (one media path per line, from an upload)", type: "textarea" as const }]
-            : []),
+        ...(SEO_TYPES.includes(subtype) ? [
+            { name: "metaTitle", label: "SEO title (optional)" },
+            { name: "metaDescription", label: "SEO description (optional)" },
+        ] as FieldDef[] : []),
+        { name: "mediaUrls", label: "Extra images (one media path per line, from an upload)", type: "textarea" },
         { name: "ctaType", label: "Call to action", type: "select", options: CTA_OPTIONS },
         { name: "ctaLabel", label: "CTA button label", placeholder: "e.g. Join evening yoga" },
-        { name: "relatedBlogId", label: "Related article", type: "select", options: blogOptions },
+        { name: "relatedContentId", label: "Pairs with (related content)", type: "select", options: contentOptions },
+        { name: "relatedClassBatchId", label: "Pairs with class", type: "select", options: classBatchOptions },
         { name: "tags", label: "Tags (comma separated)" },
-        { name: "author", label: "Author" },
-        { name: "audience", label: "Target plan tiers (blank = everyone)", placeholder: "starter, everyday, family, therapy, trial" },
+        { name: "author", label: "Public author", placeholder: "e.g. Acharya Swastik" },
+        { name: "language", label: "Language", placeholder: "English" },
+        { name: "access", label: "Who can access this?", type: "select", options: ACCESS_OPTIONS },
+        { name: "audience", label: "Specific plan tiers (only used when Access = Membership required)", placeholder: "starter, everyday, family, therapy, trial" },
         ...(subtype === "ANNOUNCEMENT"
             ? [
                   { name: "important", label: "Important — highlight and keep on top", type: "checkbox" as const },
-                  { name: "expiresAt", label: "Expires (optional)", type: "datetime-local" as const },
+                  { name: "expiresAt", label: "Unpublish at (optional)", type: "datetime-local" as const },
               ]
             : []),
-        { name: "pinned", label: "Pin to top of feed", type: "checkbox" },
+        { name: "featured", label: "Featured — surface on Home / Practice", type: "checkbox" },
+        { name: "pinned", label: "Pin to top of its list", type: "checkbox" },
         { name: "notifyOnPublish", label: "Push a notification when this publishes", type: "checkbox" },
         { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
-        { name: "scheduledAt", label: "Schedule for (optional)", type: "datetime-local" },
+        { name: "scheduledAt", label: "Schedule publish for (optional — needs Approved status)", type: "datetime-local" },
+        { name: "reviewNote", label: "Review note (internal, optional)", type: "textarea" },
     ];
 }
 
-const SUBTYPE_LABEL: Record<Subtype, string> = { REEL: "Reel", POST: "Post", ANNOUNCEMENT: "Announcement" };
-
-// Only the "Media Feed" (content posts) list is a bounded resource
-// collection that keeps growing over time — worth real server-side
-// pagination. Stories, the blog, comments and community moderation are
-// small staff-curated sets or queues and stay as they were.
+// Only the Content Library list is a bounded, ever-growing resource
+// collection — worth real server-side pagination. Stories, comments and
+// community moderation are small staff-curated sets or queues.
 const PAGE_SIZE = 25;
 
 function contentInitial(r: ContentRow): EntityValues {
     return {
-        title: r.title, category: r.category, body: r.body, caption: r.caption,
-        instagramUrl: r.instagramUrl, imageUrl: r.imageUrl, videoUrl: r.videoUrl, ctaType: r.ctaType || "none",
-        ctaLabel: r.ctaLabel, relatedBlogId: r.relatedBlogId, tags: r.tags,
-        author: r.author, pinned: r.pinned, status: r.status,
+        title: r.title, category: r.category, slug: r.slug, excerpt: r.excerpt, body: r.body, caption: r.caption, steps: r.steps,
+        instagramUrl: r.instagramUrl, imageUrl: r.imageUrl, videoUrl: r.videoUrl, audioUrl: r.audioUrl,
+        durationMin: r.durationMin, difficulty: r.difficulty, language: r.language || "English",
+        ctaType: r.ctaType || "none", ctaLabel: r.ctaLabel, relatedContentId: r.relatedContentId, relatedClassBatchId: r.relatedClassBatchId,
+        tags: r.tags, author: r.author, pinned: r.pinned, featured: r.featured, status: r.status, access: r.access || "PUBLIC",
         notifyOnPublish: r.notifyOnPublish,
         audience: r.audience ?? "", important: r.important ?? false,
         mediaUrls: r.mediaUrls ?? "",
+        metaTitle: r.metaTitle, metaDescription: r.metaDescription,
+        reviewNote: r.reviewNote,
         expiresAt: r.expiresAt ? toLocalInput(r.expiresAt) : "",
         scheduledAt: r.scheduledAt ? toLocalInput(r.scheduledAt) : "",
     };
@@ -169,17 +188,19 @@ export default function AdminContentPage() {
     const [contentTotalCount, setContentTotalCount] = useState(0);
     const [contentSearch, setContentSearch] = useState("");
     const [contentSort, setContentSort] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+    const [statusFilter, setStatusFilter] = useState("");
+    const [typeFilter, setTypeFilter] = useState("");
     // The calendar view needs a fuller cross-month picture than one 25-row
     // page of the (now server-paginated) list — kept as its own snapshot
     // (capped at the route's page-size ceiling) so switching to "calendar"
     // doesn't only show whatever page the list last landed on.
     const [calendarContent, setCalendarContent] = useState<ContentRow[]>([]);
-    const [blogOptions, setBlogOptions] = useState<{ label: string; value: string }[]>([]);
+    const [contentOptions, setContentOptions] = useState<{ label: string; value: string }[]>([]);
     const [classBatchOptions, setClassBatchOptions] = useState<{ label: string; value: string }[]>([]);
-    const [counts, setCounts] = useState({ drafts: 0, published: 0, scheduled: 0 });
+    const [counts, setCounts] = useState({ drafts: 0, inReview: 0, published: 0, scheduled: 0, archived: 0 });
+    const [canApprove, setCanApprove] = useState(false);
     const [contentView, setContentView] = useState<"list" | "calendar">("list");
     const [stories, setStories] = useState<Story[]>([]);
-    const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
     const [comments, setComments] = useState<CommentRow[]>([]);
     const [communityPosts, setCommunityPosts] = useState<CommunityModRow[]>([]);
     const [communityComments, setCommunityComments] = useState<CommunityModRow[]>([]);
@@ -192,24 +213,26 @@ export default function AdminContentPage() {
         try {
             const params = new URLSearchParams({ page: String(contentPage), pageSize: String(PAGE_SIZE) });
             if (contentSearch) params.set('q', contentSearch);
+            if (statusFilter) params.set('status', statusFilter);
+            if (typeFilter) params.set('contentType', typeFilter);
             if (contentSort) { params.set('sortKey', contentSort.key); params.set('sortDir', contentSort.direction); }
             const response = await fetch(`/api/admin/content?${params}`);
             if (response.ok) {
                 const data = await response.json();
                 setStories(data.stories || []);
-                setBlogPosts(data.blogPosts || []);
                 setContent(data.content || []);
                 setContentTotalCount(data.totalCount ?? 0);
-                setBlogOptions(data.blogOptions || []);
+                setContentOptions(data.contentOptions || []);
                 setClassBatchOptions(data.classBatchOptions || []);
-                setCounts(data.counts || { drafts: 0, published: 0, scheduled: 0 });
+                setCounts(data.counts || { drafts: 0, inReview: 0, published: 0, scheduled: 0, archived: 0 });
+                setCanApprove(!!data.canApprove);
             }
         } catch (error) {
             console.error('Failed to fetch content:', error);
         } finally {
             setLoading(false);
         }
-    }, [contentPage, contentSearch, contentSort]);
+    }, [contentPage, contentSearch, statusFilter, typeFilter, contentSort]);
 
     const fetchCalendarContent = useCallback(async () => {
         try {
@@ -248,18 +271,17 @@ export default function AdminContentPage() {
     useEffect(() => {
         if (typeof window !== "undefined") {
             const tabParam = new URLSearchParams(window.location.search).get("tab") as ContentTab | null;
-            if (tabParam && ["content", "story", "blog", "comments", "community"].includes(tabParam)) {
+            if (tabParam && ["content", "story", "comments", "community"].includes(tabParam)) {
                 setActiveTab(tabParam);
             }
         }
         fetchComments();
         fetchCommunity();
         fetchCalendarContent();
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; fetchContent has its own effect below since it also reacts to content-tab paging/search/sort
     }, [fetchComments, fetchCommunity, fetchCalendarContent]);
 
-    // The Media Feed list's own pagination/search/sort — separate from the
-    // mount-only effect above so paging the "content" tab doesn't refetch
+    // The Content Library's own pagination/search/sort/filters — separate from
+    // the mount-only effect above so paging the "content" tab doesn't refetch
     // comments/community every time.
     useEffect(() => {
         fetchContent();
@@ -317,13 +339,12 @@ export default function AdminContentPage() {
 
     const fields: FieldDef[] =
         activeTab === "content"
-            ? contentFields(modal?.subtype ?? "POST", blogOptions)
-            : activeTab === "story" ? STORY_FIELDS
-            : blogFields(classBatchOptions);
+            ? contentFields(modal?.subtype ?? "ARTICLE", contentOptions, classBatchOptions)
+            : STORY_FIELDS;
 
     const save = async (values: EntityValues) => {
         const payload: Record<string, unknown> = { ...values, id: modal?.id };
-        if (activeTab === "content") payload.contentType = modal?.subtype ?? "POST";
+        if (activeTab === "content") payload.contentType = modal?.subtype ?? "ARTICLE";
         const res = await fetch(`/api/admin/content?type=${activeTab}`, {
             method: modal?.mode === "edit" ? "PATCH" : "POST",
             headers: { "Content-Type": "application/json" },
@@ -338,10 +359,29 @@ export default function AdminContentPage() {
         if (activeTab === "content") fetchCalendarContent();
     };
 
+    const setContentStatus = async (id: string, status: string) => {
+        const res = await fetch(`/api/admin/content?type=content`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status }),
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Action failed.");
+            return;
+        }
+        showToast("success", status === "APPROVED" ? "Approved." : status === "PUBLISHED" ? "Published." : "Sent back to draft.");
+        fetchContent();
+        fetchCalendarContent();
+    };
+
     const remove = async (id: string) => {
+        const target = activeTab === "content" ? content.find((c) => c.id === id) : null;
+        const willArchiveOnly = activeTab === "content" && target && target.status !== "DRAFT" && target.status !== "ARCHIVED";
         const ok = await confirm({
-            title: "Delete this item?",
-            confirmLabel: "Delete",
+            title: willArchiveOnly ? "Archive this content?" : "Delete this item?",
+            message: willArchiveOnly ? "Published/reviewed content is archived, not deleted, so history and analytics are preserved. Delete permanently from Archived." : undefined,
+            confirmLabel: willArchiveOnly ? "Archive" : "Delete",
             tone: "danger",
         });
         if (!ok) return;
@@ -351,19 +391,29 @@ export default function AdminContentPage() {
             showToast("error", data.error || "Delete failed.");
             return;
         }
-        showToast("success", "Deleted.");
+        const data = await res.json().catch(() => ({}));
+        showToast("success", data.archived ? "Archived." : "Deleted.");
         // Removing the last row on a page beyond the first would otherwise
         // leave the admin looking at a page that no longer exists — only the
-        // "content" (Media Feed) list is server-paginated.
+        // "content" (Content Library) list is server-paginated.
         if (activeTab === "content" && content.length === 1 && contentPage > 1) setContentPage((p) => p - 1);
         else fetchContent();
         if (activeTab === "content") fetchCalendarContent();
     };
 
-    const rowActions = (id: string, initial: EntityValues, subtype?: Subtype) => (
+    const rowActions = (r: ContentRow) => (
         <TableActions>
-            <ActionButton onClick={() => setModal({ mode: "edit", id, initial, subtype })}>Edit</ActionButton>
-            <ActionButton tone="danger" onClick={() => remove(id)}>Delete</ActionButton>
+            {canApprove && r.status === "IN_REVIEW" && (
+                <>
+                    <ActionButton onClick={() => setContentStatus(r.id, "APPROVED")}>Approve</ActionButton>
+                    <ActionButton onClick={() => setContentStatus(r.id, "DRAFT")}>Send back</ActionButton>
+                </>
+            )}
+            {canApprove && r.status === "APPROVED" && !r.scheduledAt && (
+                <ActionButton onClick={() => setContentStatus(r.id, "PUBLISHED")}>Publish</ActionButton>
+            )}
+            <ActionButton onClick={() => setModal({ mode: "edit", id: r.id, initial: contentInitial(r), subtype: r.contentType })}>Edit</ActionButton>
+            <ActionButton tone="danger" onClick={() => remove(r.id)}>{r.status === "ARCHIVED" ? "Delete" : r.status === "DRAFT" ? "Delete" : "Archive"}</ActionButton>
         </TableActions>
     );
 
@@ -381,16 +431,15 @@ export default function AdminContentPage() {
     return (
         <div>
             {dialog}
-            <PageHeader title="Media & Feed" subtitle="Social reels, reflections, announcements, blog articles, stories, and discussions." />
+            <PageHeader title="Content" subtitle="Videos, audio, articles, practices, founder messages and announcements — one library for the website and app." />
 
             <div className="mb-6">
                 <Tabs
                     active={activeTab}
                     onChange={(k) => setActiveTab(k as ContentTab)}
                     tabs={[
-                        { key: "content", label: "Media Feed", count: contentTotalCount },
-                        { key: "story", label: "Stories & Testimonials", count: stories.length },
-                        { key: "blog", label: "Articles & Blog", count: blogPosts.length },
+                        { key: "content", label: "Library", count: contentTotalCount },
+                        { key: "story", label: "Testimonials", count: stories.length },
                         { key: "comments", label: "Comments", count: comments.filter((c) => c.reportCount > 0).length || comments.length },
                         { key: "community", label: "Community Forum", count: communityPosts.filter((p) => p.reportCount > 0).length + communityComments.length || communityPosts.length },
                     ]}
@@ -402,8 +451,30 @@ export default function AdminContentPage() {
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         <span className="text-sm text-gray-500">
                             {counts.published} published · {counts.drafts} draft{counts.drafts === 1 ? "" : "s"}
+                            {counts.inReview ? ` · ${counts.inReview} in review` : ""}
                             {counts.scheduled ? ` · ${counts.scheduled} scheduled` : ""}
+                            {counts.archived ? ` · ${counts.archived} archived` : ""}
                         </span>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => { setStatusFilter(e.target.value); setContentPage(1); }}
+                            className="text-xs rounded-full border border-hairline px-3 py-1.5 bg-surface"
+                        >
+                            <option value="">All statuses</option>
+                            {[...STATUS_OPTIONS, { label: "Scheduled", value: "SCHEDULED" }].map((o) => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => { setTypeFilter(e.target.value); setContentPage(1); }}
+                            className="text-xs rounded-full border border-hairline px-3 py-1.5 bg-surface"
+                        >
+                            <option value="">All types</option>
+                            {CONTENT_TYPES.map((t) => (
+                                <option key={t} value={t}>{CONTENT_TYPE_LABEL[t]}</option>
+                            ))}
+                        </select>
                         <div className="flex gap-1 rounded-full bg-gray-100 p-1 ml-auto text-xs font-semibold">
                             {(["list", "calendar"] as const).map((v) => (
                                 <button
@@ -415,14 +486,14 @@ export default function AdminContentPage() {
                                 </button>
                             ))}
                         </div>
-                        <div className="flex gap-2">
-                            {(["REEL", "POST", "ANNOUNCEMENT"] as Subtype[]).map((s) => (
+                        <div className="flex flex-wrap gap-2">
+                            {CONTENT_TYPES.map((s) => (
                                 <button
                                     key={s}
                                     onClick={() => setModal({ mode: "create", subtype: s })}
                                     className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
                                 >
-                                    + {SUBTYPE_LABEL[s]}
+                                    + {CONTENT_TYPE_LABEL[s]}
                                 </button>
                             ))}
                         </div>
@@ -436,9 +507,10 @@ export default function AdminContentPage() {
                             data={content}
                             columns={[
                                 { header: "Title", accessor: "title", className: "font-bold", sortable: true },
-                                { header: "Type", accessor: (r: ContentRow) => SUBTYPE_LABEL[r.contentType] },
-                                { header: "Category", accessor: (r: ContentRow) => r.category[0] + r.category.slice(1).toLowerCase() },
-                                { header: "Pinned", accessor: (r: ContentRow) => (r.pinned ? "📌" : "") },
+                                { header: "Type", accessor: (r: ContentRow) => CONTENT_TYPE_LABEL[r.contentType] },
+                                { header: "Category", accessor: (r: ContentRow) => CATEGORY_LABEL[r.category as keyof typeof CATEGORY_LABEL] ?? r.category },
+                                { header: "Access", accessor: (r: ContentRow) => ACCESS_LABEL[r.access as keyof typeof ACCESS_LABEL] ?? r.access },
+                                { header: "Featured", accessor: (r: ContentRow) => (r.featured ? "⭐" : r.pinned ? "📌" : "") },
                                 {
                                     header: "Status",
                                     accessor: (r: ContentRow) =>
@@ -451,7 +523,7 @@ export default function AdminContentPage() {
                                         ),
                                 },
                             ]}
-                            title="Feed content"
+                            title="Content"
                             server={{
                                 page: contentPage,
                                 pageSize: PAGE_SIZE,
@@ -460,7 +532,7 @@ export default function AdminContentPage() {
                                 onSearchChange: (q) => { setContentSearch(q); setContentPage(1); },
                                 onSortChange: (key, direction) => setContentSort({ key, direction }),
                             }}
-                            actions={(r: ContentRow) => rowActions(r.id, contentInitial(r), r.contentType)}
+                            actions={(r: ContentRow) => rowActions(r)}
                         />
                     )}
                 </>
@@ -475,7 +547,7 @@ export default function AdminContentPage() {
                         { header: "Rating", accessor: (s: Story) => "★".repeat(s.rating) },
                         { header: "Status", accessor: (r: { status: string }) => <StatusBadge status={r.status} /> },
                     ]}
-                    title="Stories & Testimonials"
+                    title="Testimonials"
                     onCreate={() => setModal({ mode: "create" })}
                     actions={(s: Story) => (
                         <TableActions>
@@ -492,26 +564,6 @@ export default function AdminContentPage() {
                             <ActionButton tone="danger" onClick={() => remove(s.id)}>Delete</ActionButton>
                         </TableActions>
                     )}
-                />
-            )}
-
-            {activeTab === 'blog' && (
-                <DTable
-                    data={blogPosts}
-                    columns={[
-                        { header: "Title", accessor: "title", className: "font-bold" },
-                        { header: "Category", accessor: "category" },
-                        { header: "Date", accessor: "date" },
-                        { header: "Status", accessor: (r: { status: string }) => <StatusBadge status={r.status} /> },
-                    ]}
-                    title="Blog Posts"
-                    onCreate={() => setModal({ mode: "create" })}
-                    actions={(p: BlogPost) => rowActions(p.id, {
-                        title: p.title, category: p.category, author: p.author,
-                        excerpt: p.excerpt, content: p.content, status: p.status, imageUrl: p.imageUrl,
-                        slug: p.slug, ctaType: p.ctaType || "none", ctaLabel: p.ctaLabel,
-                        relatedClassBatchId: p.relatedClassBatchId,
-                    })}
                 />
             )}
 
@@ -613,7 +665,7 @@ export default function AdminContentPage() {
                 <EntityFormModal
                     title={
                         activeTab === "content"
-                            ? `${modal.mode === "create" ? "New" : "Edit"} ${SUBTYPE_LABEL[modal.subtype ?? "POST"]}`
+                            ? `${modal.mode === "create" ? "New" : "Edit"} ${CONTENT_TYPE_LABEL[modal.subtype ?? "ARTICLE"]}`
                             : modal.mode === "create" ? `New ${activeTab}` : `Edit ${activeTab}`
                     }
                     submitLabel={modal.mode === "create" ? "Create" : "Save"}
@@ -623,7 +675,7 @@ export default function AdminContentPage() {
                     onSubmit={save}
                     uploadImage={async (file) => {
                         const fd = new FormData();
-                        fd.append("kind", activeTab === "story" ? "story" : activeTab === "content" ? "content" : "blog");
+                        fd.append("kind", activeTab === "story" ? "story" : "content");
                         fd.append("file", file);
                         const res = await fetch("/api/admin/content/image", { method: "POST", body: fd });
                         const data = await res.json();
@@ -634,6 +686,14 @@ export default function AdminContentPage() {
                         const fd = new FormData();
                         fd.append("file", file);
                         const res = await fetch("/api/admin/content/video", { method: "POST", body: fd });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Upload failed");
+                        return data.url as string;
+                    }}
+                    uploadAudio={async (file) => {
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        const res = await fetch("/api/admin/content/audio", { method: "POST", body: fd });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Upload failed");
                         return data.url as string;

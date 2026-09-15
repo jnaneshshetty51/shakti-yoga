@@ -63,16 +63,34 @@ enum BookingStatus {
   NO_SHOW
 }
 
+// DRAFT -> IN_REVIEW -> APPROVED -> PUBLISHED -> ARCHIVED. Shared with a few
+// unrelated models (Story, Challenge, FAQ, Plan, WhyUsBenefit) that only ever
+// use the DRAFT/PUBLISHED/ARCHIVED subset — IN_REVIEW/APPROVED are Content-only.
 enum ContentStatus {
   DRAFT
+  IN_REVIEW
+  APPROVED
   PUBLISHED
   ARCHIVED
 }
 
 enum ContentType {
-  REEL
-  POST
+  VIDEO
+  AUDIO
+  ARTICLE
+  SHORT_PRACTICE
+  TAKE_A_MOMENT
+  FOUNDER_MESSAGE
   ANNOUNCEMENT
+}
+
+// Who can access a piece of Content, enforced server-side in
+// src/lib/content-audience.ts — never just hidden client-side.
+enum ContentAccess {
+  PUBLIC
+  ACCOUNT_REQUIRED
+  MEMBERSHIP_REQUIRED
+  THERAPY_ONLY
 }
 
 enum ContentCategory {
@@ -85,14 +103,16 @@ enum ContentCategory {
   WELLNESS
   BEGINNERS
   PHILOSOPHY
+  THERAPY
   STUDIO
   COMMUNITY
 }
 
-enum PracticeLevel {
+enum ContentDifficulty {
   BEGINNER
   INTERMEDIATE
   ALL_LEVELS
+  ADVANCED
 }
 
 enum ChallengeGoal {
@@ -144,26 +164,26 @@ enum TherapyIntakeStatus {
 // Models
 
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String?
-  role         Role      @default(VISITOR)
-  active       Boolean   @default(true) // false = admin-deactivated; blocked at sign-in
-  emailVerified Boolean  @default(false) // signup doesn't block on this — gates referral-reward payout only, see lib/referral.ts
-  phone        String?
-  country      String?
-  timezone     String    @default("IST")
-  avatarUrl    String?
-  credits      Int       @default(0) // 1:1 therapy session credits
-  trialStartedAt DateTime? // set once, the first time the user activates a free trial
-  tokenVersion Int       @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
-  referralCode      String?  @unique // this user's own shareable code
-  referralCreditBalance Decimal @default(0) @db.Decimal(10, 2) // ₹ wallet, redeemable at checkout (any plan, any renewal) — Decimal, not Float: repeatedly incremented/decremented over the account's lifetime, and binary float arithmetic drifts under repeated addition
-  adminDepartment AdminDepartment? // null = full admin access; set = scoped to one admin department
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastLogin    DateTime?
+  id                    String           @id @default(cuid())
+  name                  String
+  email                 String           @unique
+  passwordHash          String?
+  role                  Role             @default(VISITOR)
+  active                Boolean          @default(true) // false = admin-deactivated; blocked at sign-in
+  emailVerified         Boolean          @default(false) // signup doesn't block on this — gates referral-reward payout only, see lib/referral.ts
+  phone                 String?
+  country               String?
+  timezone              String           @default("IST")
+  avatarUrl             String?
+  credits               Int              @default(0) // 1:1 therapy session credits
+  trialStartedAt        DateTime? // set once, the first time the user activates a free trial
+  tokenVersion          Int              @default(0) // bump to invalidate all outstanding sessions (e.g. on password reset)
+  referralCode          String?          @unique // this user's own shareable code
+  referralCreditBalance Decimal          @default(0) @db.Decimal(10, 2) // ₹ wallet, redeemable at checkout (any plan, any renewal) — Decimal, not Float: repeatedly incremented/decremented over the account's lifetime, and binary float arithmetic drifts under repeated addition
+  adminDepartment       AdminDepartment? // null = full admin access; set = scoped to one admin department
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  lastLogin             DateTime?
 
   // Relations
   profile      UserProfile?
@@ -178,30 +198,36 @@ model User {
 
   // For Teachers
   classesTaught  ClassBatch[]
-  sessionsTaught Booking[]    @relation("TeacherBookings")
+  sessionsTaught Booking[]             @relation("TeacherBookings")
   availability   TeacherAvailability[] @relation("TeacherAvailability")
 
   // For Students
   classAttendance      ClassAttendance[]
-  attendanceConfirmed  ClassAttendance[]     @relation("AttendanceConfirmedBy")
+  attendanceConfirmed  ClassAttendance[]    @relation("AttendanceConfirmedBy")
   sessionCreditEntries SessionCreditEntry[]
 
   // For Staff/Admins managing leads
   assignedLeads Lead[]
 
-  passwordResetTokens PasswordResetToken[]
+  passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
-  webHandoffTokens WebHandoffToken[]
+  webHandoffTokens        WebHandoffToken[]
 
   contentInteractions ContentInteraction[]
   contentComments     ContentComment[]
 
-  practiceCompletions   PracticeCompletion[]
+  contentCreated        Content[]           @relation("ContentCreatedBy")
+  contentSubmitted      Content[]           @relation("ContentSubmittedBy")
+  contentReviewed       Content[]           @relation("ContentReviewedBy")
+  contentApproved       Content[]           @relation("ContentApprovedBy")
+  contentVersionsEdited ContentVersion[]    @relation("ContentVersionEditedBy")
+  contentCompletions    ContentCompletion[]
+
   challengeParticipation ChallengeParticipant[]
-  achievements          UserAchievement[]
-  communityPosts        CommunityPost[]
-  communityComments     CommunityComment[]
-  communityLikes        CommunityInteraction[]
+  achievements           UserAchievement[]
+  communityPosts         CommunityPost[]
+  communityComments      CommunityComment[]
+  communityLikes         CommunityInteraction[]
 
   referralsSent    Referral[] @relation("ReferralsSent")
   referralReceived Referral?  @relation("ReferralReceived")
@@ -217,11 +243,11 @@ model User {
   supportConversationsAssigned SupportConversation[] @relation("SupportAssignee")
   supportMessagesSent          SupportMessage[]
 
-  invoices             Invoice[]
-  therapyMeasurements  TherapyMeasurement[]
-  measurementsRecorded TherapyMeasurement[] @relation("MeasurementRecorder")
-  patientUpdates       PatientUpdate[]
-  patientUpdatesReviewed PatientUpdate[]    @relation("PatientUpdateReviewer")
+  invoices               Invoice[]
+  therapyMeasurements    TherapyMeasurement[]
+  measurementsRecorded   TherapyMeasurement[] @relation("MeasurementRecorder")
+  patientUpdates         PatientUpdate[]
+  patientUpdatesReviewed PatientUpdate[]      @relation("PatientUpdateReviewer")
 }
 
 /// One redeemed referral. Created (PENDING) when someone signs up with a code;
@@ -498,63 +524,31 @@ model Story {
   createdAt  DateTime      @default(now())
 }
 
-model BlogPost {
-  id              String        @id @default(cuid())
-  slug            String        @unique
-  title           String
-  excerpt         String?
-  content         String // Markdown or HTML
-  category        String
-  author          String
-  publishedAt     DateTime?
-  status          ContentStatus @default(DRAFT)
-  imageUrl        String?
-  featuredImage   String?
-  metaTitle       String?
-  metaDescription String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  // "Don't let an article be a dead end" — pair it with practice.
-  ctaType             String? // same set as Content, minus 'open_blog'
-  ctaLabel            String?
-  relatedClassBatchId String? // loose pointer to a ClassBatch (resolved at read)
-  relatedPracticeId   String?
-  relatedPractice     Practice? @relation("PracticeRelatedBlog", fields: [relatedPracticeId], references: [id], onDelete: SetNull)
-
-  relatedContent  Content[]     @relation("BlogRelatedContent")
-
-  @@index([status])
-  @@index([category])
-}
-
-/// Feed-native content for the member app: Instagram Reels (link + thumbnail),
-/// image/text Posts, and studio Announcements. Blogs stay in BlogPost; the app's
-/// /api/content/feed merges both into one stream. Every item can carry a CTA
-/// that routes the member back into practice (next class, therapy, an article).
+/// The single source of truth for all Shakti content — videos, audio,
+/// articles, short practices, Take a Moment micro-practices, founder
+/// messages, and announcements — powering the website and mobile app from
+/// one record. See docs/content-management.md for the full model.
 model Content {
   id       String          @id @default(cuid())
   type     ContentType
   status   ContentStatus   @default(DRAFT)
-  category ContentCategory  @default(YOGA)
+  category ContentCategory @default(YOGA)
 
   title   String
-  body    String? // POST / ANNOUNCEMENT copy (markdown-lite). null for REEL.
-  caption String? // REEL one-liner under the thumbnail
+  body    String? // article markdown / practice intro / announcement copy
+  caption String? // short one-liner under a video/audio thumbnail
+  steps   String? // markdown list of cues (practice types)
 
-  instagramUrl String? // https://www.instagram.com/reel/XXXX/ — optional "View on Instagram" link
-  imageUrl     String? // REEL thumbnail / POST + ANNOUNCEMENT hero (as /api/media/<key>)
-  videoUrl     String? // REEL self-hosted clip (as /api/media/<key>) — plays natively in the app
-  mediaUrls    String[] @default([]) // POST carousel (Phase 2)
+  instagramUrl String? // optional "View on Instagram" external link
+  imageUrl     String? // thumbnail / hero (as /api/media/<key>)
+  videoUrl     String? // self-hosted, plays natively (as /api/media/<key>)
+  mediaUrls    String[] @default([]) // extra gallery images
 
-  ctaType          String? // 'join_next_class' | 'view_classes' | 'book_therapy' | 'open_blog' | 'open_practice' | 'none'
-  ctaLabel         String?
-  relatedBlogId    String?
-  relatedBlog      BlogPost? @relation("BlogRelatedContent", fields: [relatedBlogId], references: [id], onDelete: SetNull)
-  relatedPracticeId String?
-  relatedPractice   Practice? @relation("PracticeRelatedContent", fields: [relatedPracticeId], references: [id], onDelete: SetNull)
+  ctaType             String? // 'join_next_class' | 'view_classes' | 'book_therapy' | 'open_content' | 'open_practice' | 'none'
+  ctaLabel            String?
+  relatedClassBatchId String? // loose pointer to a ClassBatch (resolved at read)
 
-  author String @default("Shakti Yoga")
+  author String   @default("Shakti Yoga")
   tags   String[] @default([])
 
   publishedAt DateTime?
@@ -564,10 +558,11 @@ model Content {
   important   Boolean   @default(false) // ANNOUNCEMENT: highlighted + always-on-top
   audience    String[]  @default([]) // plan-tier keys it targets; empty = everyone
 
-  likeCount    Int @default(0)
-  saveCount    Int @default(0)
-  viewCount    Int @default(0)
-  commentCount Int @default(0)
+  likeCount       Int @default(0)
+  saveCount       Int @default(0)
+  viewCount       Int @default(0)
+  commentCount    Int @default(0)
+  completionCount Int @default(0)
 
   // Push: when true, members with the app get one notification the first time
   // this item is published. `notifiedAt` is the idempotency claim.
@@ -580,9 +575,90 @@ model Content {
   interactions ContentInteraction[]
   comments     ContentComment[]
 
+  slug    String? @unique // ARTICLE / FOUNDER_MESSAGE public routing; null for feed-only types
+  excerpt String? // short teaser — also the free-preview text shown to non-eligible viewers
+
+  audioUrl String? // self-hosted — AUDIO type
+
+  durationMin Int?
+  difficulty  ContentDifficulty?
+  language    String             @default("English")
+
+  // Public byline (`author`, above) vs internal accountability.
+  createdByUserId String?
+  createdBy       User?   @relation("ContentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  // Access control — enforced server-side, see src/lib/content-audience.ts.
+  // `audience` (above) narrows further to specific plan tiers when
+  // access = MEMBERSHIP_REQUIRED; empty = any paying tier qualifies.
+  access ContentAccess @default(PUBLIC)
+
+  // Generic "pairs with" pointer (self-relation) — a class, another article,
+  // a practice — resolved by ctaType/ctaLabel above.
+  relatedContentId   String?
+  relatedContentTo   Content?  @relation("ContentRelated", fields: [relatedContentId], references: [id], onDelete: SetNull)
+  relatedContentFrom Content[] @relation("ContentRelated")
+
+  metaTitle       String? // ARTICLE / FOUNDER_MESSAGE SEO
+  metaDescription String?
+
+  featured Boolean @default(false) // surfaced on Home / Practice "Featured" rail — distinct from `pinned` (admin list ordering)
+
+  // Publishing workflow: Draft -> In review -> Approved -> Published -> Archived.
+  submittedForReviewAt DateTime?
+  submittedByUserId    String?
+  submittedBy          User?     @relation("ContentSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedByUserId     String?
+  reviewedBy           User?     @relation("ContentReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt           DateTime?
+  reviewNote           String?
+  approvedByUserId     String?
+  approvedBy           User?     @relation("ContentApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt           DateTime?
+
+  completions ContentCompletion[]
+  versions    ContentVersion[]
+
   @@index([status, type, publishedAt])
   @@index([status, category])
   @@index([scheduledAt])
+}
+
+/// A pre-edit snapshot of a Content row, written every time an admin updates
+/// an existing item, so published changes stay auditable (never destroyed).
+model ContentVersion {
+  id             String        @id @default(cuid())
+  contentId      String
+  content        Content       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  version        Int
+  title          String
+  body           String?
+  status         ContentStatus
+  editedByUserId String?
+  editedBy       User?         @relation("ContentVersionEditedBy", fields: [editedByUserId], references: [id], onDelete: SetNull)
+  note           String?
+  createdAt      DateTime      @default(now())
+
+  @@unique([contentId, version])
+  @@index([contentId])
+}
+
+/// One member finishing a piece of qualifying content (a practice watched/done
+/// end to end) — always written by a trusted backend event, never a client
+/// "I watched it" claim. Feeds gamification (streaks, challenges, badges) and
+/// content analytics. `minutes` snapshots the duration so progress totals
+/// survive a later edit to Content.durationMin.
+model ContentCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId   String
+  content     Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  minutes     Int
+  completedAt DateTime @default(now())
+
+  @@index([userId, completedAt])
+  @@index([contentId])
 }
 
 /// A member's like / save on a Content item. One row per (user, content, kind).
@@ -629,46 +705,6 @@ model CommentReport {
   createdAt DateTime       @default(now())
 
   @@unique([commentId, userId])
-}
-
-/// A guided practice — a short at-home sequence. Links out to a video (Instagram
-/// / YouTube) like a reel; the app never hosts video. `steps` is a markdown list.
-model Practice {
-  id           String        @id @default(cuid())
-  title        String
-  slug         String        @unique
-  description  String? // markdown-lite intro
-  steps        String? // markdown list of cues
-  category     ContentCategory @default(YOGA)
-  level        PracticeLevel @default(ALL_LEVELS)
-  durationMin  Int           @default(10)
-  videoUrl     String? // Instagram / YouTube link, opened externally
-  thumbnailUrl String? // /api/media/<key>
-  status       ContentStatus @default(DRAFT)
-  publishedAt  DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  completions    PracticeCompletion[]
-  relatedContent Content[]  @relation("PracticeRelatedContent")
-  relatedBlogs   BlogPost[] @relation("PracticeRelatedBlog")
-
-  @@index([status, category])
-}
-
-/// One member marking a practice done. `minutes` snapshots the duration so
-/// progress totals survive a later edit to Practice.durationMin.
-model PracticeCompletion {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  practiceId  String
-  practice    Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
-  minutes     Int
-  completedAt DateTime @default(now())
-
-  @@index([userId, completedAt])
-  @@index([practiceId])
 }
 
 /// A time-boxed goal members opt into ("30 classes in 30 days"). Progress is
@@ -794,13 +830,13 @@ model WhatsAppGroup {
 }
 
 model Lead {
-  id   String @id @default(cuid())
-  name String
-  email String
+  id      String     @id @default(cuid())
+  name    String
+  email   String
   phone   String?
   country String?
-  source LeadSource @default(WEBSITE)
-  status LeadStatus @default(NEW)
+  source  LeadSource @default(WEBSITE)
+  status  LeadStatus @default(NEW)
   notes   String?
 
   // Trial info
@@ -944,17 +980,17 @@ model AuditLog {
 }
 
 model TeacherAvailability {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   teacherId   String
-  teacher     User     @relation("TeacherAvailability", fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher     User      @relation("TeacherAvailability", fields: [teacherId], references: [id], onDelete: Cascade)
   // Either a recurring weekday rule (dayOfWeek set, date null) or a one-off (date set).
   dayOfWeek   String? // "Mon".."Sun"
   date        DateTime? // specific day (UTC midnight IST)
   startTime   String // "09:00" 24h IST
   endTime     String // "17:00" 24h IST
-  slotMinutes Int      @default(45)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  slotMinutes Int       @default(45)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
 
   @@index([teacherId])
 }
@@ -1229,19 +1265,19 @@ model Invoice {
 /// Scores are 0-10 (higher = worse for pain/stress, better for mobility/sleep —
 /// UI labels each). Feeds the member's "Therapy Journey" charts.
 model TherapyMeasurement {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  takenAt        DateTime @default(now())
-  painScore      Int?
-  mobilityScore  Int?
-  sleepScore     Int?
-  stressScore    Int?
-  weightKg       Float?
-  note           String?
-  recordedById   String?
-  recordedBy     User?    @relation("MeasurementRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  takenAt       DateTime @default(now())
+  painScore     Int?
+  mobilityScore Int?
+  sleepScore    Int?
+  stressScore   Int?
+  weightKg      Float?
+  note          String?
+  recordedById  String?
+  recordedBy    User?    @relation("MeasurementRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
 
   @@index([userId, takenAt])
 }

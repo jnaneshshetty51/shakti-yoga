@@ -34,12 +34,17 @@ export async function notifyContentPublished(id: string): Promise<boolean> {
     const userIds = [...new Set(tokenRows.map((r) => r.userId))];
     if (userIds.length === 0) return true;
 
+    const url = `/content/${c.id}`;
     const msg =
-        c.type === 'REEL'
-            ? { title: 'New reel on Shakti Yoga', body: snippet(c.caption, c.title), url: `/reel/${c.id}` }
-            : c.type === 'ANNOUNCEMENT'
-              ? { title: c.title, body: snippet(c.body, 'Tap to read the announcement.'), url: `/post/${c.id}` }
-              : { title: 'New from Shakti Yoga', body: snippet(c.body, c.title), url: `/post/${c.id}` };
+        c.type === 'ANNOUNCEMENT'
+            ? { title: c.title, body: snippet(c.body, 'Tap to read the announcement.'), url }
+            : c.type === 'FOUNDER_MESSAGE'
+              ? { title: 'A message from Acharya Swastik', body: snippet(c.body ?? c.caption, c.title), url }
+              : c.type === 'VIDEO'
+                ? { title: 'New video on Shakti Yoga', body: snippet(c.caption, c.title), url }
+                : c.type === 'AUDIO'
+                  ? { title: 'New audio on Shakti Yoga', body: snippet(c.caption, c.title), url }
+                  : { title: 'New from Shakti Yoga', body: snippet(c.body ?? c.caption, c.title), url };
 
     await sendPush(userIds, { ...msg, channelId: 'default' });
     return true;

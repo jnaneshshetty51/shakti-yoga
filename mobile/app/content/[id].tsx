@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, View, TextInput, Pressable, Share, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,10 +12,18 @@ import { mediaUri } from "@/lib/media";
 import { runCta, ctaLabel } from "@/lib/contentCta";
 import { toParagraphs } from "@/lib/text";
 import { colors, spacing, radius } from "@/theme";
-import type { FeedItem, ContentComment } from "@/lib/types";
+import type { FeedItem, ContentComment, ContentDetailResponse } from "@/lib/types";
 
-/** Native self-hosted Reel player — the primary "plays in the app" experience. */
-function ReelVideo({ uri }: { uri: string }) {
+const KIND_TITLE: Record<FeedItem["kind"], string> = {
+  video: "Video",
+  audio: "Audio",
+  article: "Article",
+  founder_message: "From Acharya Swastik",
+  announcement: "Announcement",
+};
+
+/** Native self-hosted player, used for both video and audio-only sources — expo-video's VideoView renders a controls-only surface when there's no visual track, which is a fine minimal audio player and avoids pulling in a second media library. */
+function InlineMediaPlayer({ uri }: { uri: string }) {
   const { width } = useWindowDimensions();
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
@@ -35,11 +43,11 @@ function ReelVideo({ uri }: { uri: string }) {
   );
 }
 
-/** Hero image + any extra carousel images on a post/announcement/reel. */
+/** Hero image + any extra carousel images. */
 function ContentImages({ item }: { item: FeedItem }) {
   const { width } = useWindowDimensions();
-  const primary = "imageUrl" in item ? mediaUri(item.imageUrl) : null;
-  const extra = ("mediaUrls" in item ? item.mediaUrls : []).map((u) => mediaUri(u)).filter(Boolean) as string[];
+  const primary = mediaUri(item.imageUrl);
+  const extra = item.mediaUrls.map((u) => mediaUri(u)).filter(Boolean) as string[];
   const gallery = [primary, ...extra].filter(Boolean) as string[];
   if (gallery.length === 0) return null;
 
@@ -61,90 +69,127 @@ function ContentImages({ item }: { item: FeedItem }) {
   );
 }
 
+/** Free-preview card for gated content the caller doesn't have access to — mirrors the website's /content/:id acquisition card. */
+function LockedPreview({ preview }: { preview: Extract<ContentDetailResponse, { locked: true }>["preview"] }) {
+  const thumb = mediaUri(preview.imageUrl);
+  return (
+    <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      {thumb ? <Image source={{ uri: thumb }} style={[styles.hero, { width: "100%" }]} resizeMode="cover" /> : null}
+      <Heading size="lg" style={{ marginTop: spacing.md }}>{preview.title}</Heading>
+      {(preview.excerpt || preview.caption) && (
+        <BodyText muted style={{ marginTop: spacing.sm }}>{preview.excerpt ?? preview.caption}</BodyText>
+      )}
+      <Card style={{ marginTop: spacing.lg, alignItems: "center" }}>
+        <Ionicons name="lock-closed-outline" size={22} color={colors.muted} style={{ marginBottom: spacing.sm }} />
+        <BodyText muted style={{ textAlign: "center", marginBottom: spacing.md }}>
+          This is available to Shakti members.
+        </BodyText>
+        <Link href="/subscribe" asChild>
+          <Button>See membership plans</Button>
+        </Link>
+      </Card>
+    </ScrollView>
+  );
+}
+
 export default function ContentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, loading, error } = useResource(
-    () => api.get<{ item: FeedItem & { body?: string } }>(`/api/content/${id}`),
+    () => api.get<ContentDetailResponse>(`/api/content/${id}`),
     [id],
   );
-  const item = data?.item;
 
   useEffect(() => {
     api.post(`/api/content/${id}/view`).catch(() => {});
   }, [id]);
 
+  const item = data && !data.locked ? data.item : null;
+
   return (
     <Screen>
-      <ScreenHeader title={item?.kind === "blog" ? "Article" : item?.kind === "reel" ? "Reel" : "Post"} />
+      <ScreenHeader title={item ? KIND_TITLE[item.kind] : "Content"} />
       {loading ? (
         <LoadingView />
-      ) : error || !item ? (
+      ) : error || !data ? (
         <EmptyState title="Not found" subtitle={error ?? undefined} />
+      ) : data.locked ? (
+        <LockedPreview preview={data.preview} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-          <Badge tone={item.kind === "announcement" ? "warning" : "neutral"}>
-            {item.kind === "blog" ? `${item.readMinutes} min read` : item.kind}
+          <Badge tone={item!.kind === "announcement" ? "warning" : "neutral"}>
+            {(item!.kind === "article" || item!.kind === "founder_message") && item!.readMinutes
+              ? `${item!.readMinutes} min read`
+              : KIND_TITLE[item!.kind]}
           </Badge>
-          <Heading size="lg" style={{ marginTop: spacing.sm }}>{item.title}</Heading>
+          <Heading size="lg" style={{ marginTop: spacing.sm }}>{item!.title}</Heading>
           <BodyText muted style={{ fontSize: 12, marginTop: spacing.xs }}>
-            {item.author}
-            {item.publishedAt ? ` · ${new Date(item.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+            {item!.author}
+            {item!.publishedAt ? ` · ${new Date(item!.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}
           </BodyText>
 
-          {item.kind === "reel" && item.videoUrl ? (
-            <ReelVideo uri={mediaUri(item.videoUrl)!} />
+          {item!.videoUrl ? (
+            <InlineMediaPlayer uri={mediaUri(item!.videoUrl)!} />
+          ) : item!.audioUrl ? (
+            <InlineMediaPlayer uri={mediaUri(item!.audioUrl)!} />
           ) : (
-            <ContentImages item={item} />
+            <ContentImages item={item!} />
           )}
 
-          {item.kind === "reel" && (
+          {(item!.kind === "video" || item!.kind === "audio") && item!.caption && (
+            <BodyText style={{ marginTop: spacing.md }}>{item!.caption}</BodyText>
+          )}
+          {item!.instagramUrl && (
+            <Button variant={item!.videoUrl ? "outline" : "primary"} style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(item!.instagramUrl!)}>
+              View on Instagram
+            </Button>
+          )}
+
+          {item!.kind === "announcement" && item!.body && (
+            <BodyText style={{ marginTop: spacing.md }}>{item!.body}</BodyText>
+          )}
+
+          {(item!.kind === "article" || item!.kind === "founder_message") && (
             <View style={{ marginTop: spacing.md }}>
-              {item.caption && <BodyText>{item.caption}</BodyText>}
-              {item.instagramUrl && (
-                <Button variant={item.videoUrl ? "outline" : "primary"} style={{ marginTop: spacing.md }} onPress={() => WebBrowser.openBrowserAsync(item.instagramUrl!)}>
-                  View on Instagram
+              {item!.body ? (
+                toParagraphs(item!.body).map((para, i) => (
+                  <BodyText key={i} style={{ fontSize: 15, lineHeight: 23, marginTop: i === 0 ? 0 : spacing.md }}>{para}</BodyText>
+                ))
+              ) : item!.excerpt ? (
+                <BodyText style={{ fontSize: 15, lineHeight: 23 }}>{item!.excerpt}</BodyText>
+              ) : null}
+              {item!.kind === "article" && item!.slug && (
+                <Button
+                  variant="outline"
+                  style={{ marginTop: spacing.lg }}
+                  onPress={() => WebBrowser.openBrowserAsync(`${API_URL}/blog/${item!.slug}`)}
+                >
+                  Read on shaktiyoga.in
                 </Button>
               )}
             </View>
           )}
 
-          {(item.kind === "post" || item.kind === "announcement") && item.body && (
-            <BodyText style={{ marginTop: spacing.md }}>{item.body}</BodyText>
+          {item!.relatedClass && (
+            <Card style={{ marginTop: spacing.lg }}>
+              <BodyText muted style={{ fontSize: 12 }}>Pairs with</BodyText>
+              <BodyText style={{ fontWeight: "700", marginTop: 2 }}>{item!.relatedClass.name}</BodyText>
+            </Card>
           )}
 
-          {item.kind === "blog" && (
-            <View style={{ marginTop: spacing.md }}>
-              {item.body ? (
-                toParagraphs(item.body).map((para, i) => (
-                  <BodyText key={i} style={{ fontSize: 15, lineHeight: 23, marginTop: i === 0 ? 0 : spacing.md }}>{para}</BodyText>
-                ))
-              ) : item.excerpt ? (
-                <BodyText style={{ fontSize: 15, lineHeight: 23 }}>{item.excerpt}</BodyText>
-              ) : null}
-              <Button
-                variant="outline"
-                style={{ marginTop: spacing.lg }}
-                onPress={() => WebBrowser.openBrowserAsync(`${API_URL}/blog/${item.slug}`)}
-              >
-                Read on shaktiyoga.in
-              </Button>
-            </View>
-          )}
-
-          {item.cta.type !== "none" && (
-            <Button variant="secondary" style={{ marginTop: spacing.lg }} onPress={() => runCta(item.cta)}>
-              {ctaLabel(item.cta)}
+          {item!.cta.type !== "none" && (
+            <Button variant="secondary" style={{ marginTop: spacing.lg }} onPress={() => runCta(item!.cta)}>
+              {ctaLabel(item!.cta)}
             </Button>
           )}
 
-          {item.kind !== "blog" && <Interactions item={item} contentId={String(id)} />}
+          <Interactions item={item!} contentId={String(id)} />
         </ScrollView>
       )}
     </Screen>
   );
 }
 
-function Interactions({ item, contentId }: { item: Extract<FeedItem, { kind: "reel" | "post" | "announcement" }>; contentId: string }) {
+function Interactions({ item, contentId }: { item: FeedItem; contentId: string }) {
   const [liked, setLiked] = useState(item.liked);
   const [likeCount, setLikeCount] = useState(item.likeCount);
   const [saved, setSaved] = useState(item.saved);

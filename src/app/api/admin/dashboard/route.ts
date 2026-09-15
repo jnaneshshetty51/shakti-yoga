@@ -83,7 +83,7 @@ async function loadCounts(now: Date) {
         prisma.payment.count({ where: { status: 'FAILED', createdAt: { gte: ago7 } } }),
         prisma.user.count({ where: { role: 'MEMBER_THERAPY', credits: 0 } }),
         prisma.story.count({ where: { status: 'DRAFT' } }),
-        prisma.blogPost.count({ where: { status: 'DRAFT' } }),
+        prisma.content.count({ where: { type: 'ARTICLE', status: 'DRAFT' } }),
         prisma.booking.count({
             where: { status: { in: ['PENDING', 'CONFIRMED'] }, date: { gt: now }, meetingLink: null },
         }),

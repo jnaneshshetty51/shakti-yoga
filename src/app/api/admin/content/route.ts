@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireDepartment } from '@/lib/admin-auth';
+import { requireAdmin, requireDepartment } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { toStorageKey, mediaSrc, deleteFile } from '@/lib/storage';
-import { Prisma, Role, ContentStatus, ContentType as ContentSubtype } from '@prisma/client';
-import { isCtaType, toContentCategory, serializeContent } from '@/lib/content';
+import { Prisma, Role, ContentStatus, ContentType } from '@prisma/client';
+import { isCtaType, toContentCategory, toContentDifficulty, toContentAccess, serializeContent, isFeedType } from '@/lib/content';
 import { notifyContentPublished } from '@/lib/content-notify';
 import { truncate as cap } from '@/lib/validation';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-type ContentType = 'story' | 'blog' | 'whatsapp' | 'content';
+type ResourceType = 'story' | 'whatsapp' | 'content';
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
 
 const INSTAGRAM_RE = /^https:\/\/(www\.)?instagram\.com\/(reel|p|tv)\/[A-Za-z0-9_-]+\/?/i;
 
-function toSubtype(v: unknown): ContentSubtype {
+function toContentType(v: unknown): ContentType {
     const s = String(v || '').toUpperCase();
-    return s in ContentSubtype ? (s as ContentSubtype) : ContentSubtype.POST;
+    return s in ContentType ? (s as ContentType) : ContentType.ARTICLE;
 }
 
 /** Comma / newline separated -> trimmed, de-duped, capped list. */
@@ -53,82 +53,69 @@ function slugify(s: string) {
     return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+async function uniqueSlug(base: string, ownId: string | undefined): Promise<string> {
+    let slug = base || `content-${Date.now()}`;
+    let n = 2;
+    for (;;) {
+        const clash = await prisma.content.findUnique({ where: { slug }, select: { id: true } });
+        if (!clash || clash.id === ownId) return slug;
+        slug = `${base}-${n++}`;
+    }
+}
+
 export async function GET(request: Request) {
     try {
         const payload = await requireDepartment('CONTENT');
         if (!payload) return forbidden();
 
-        // Only the "Media Feed" (content) list is a bounded, ever-growing
-        // resource collection worth paginating server-side — stories, the
-        // blog and the WhatsApp groups are small, staff-curated sets that
-        // stay client-paginated, so they're still fetched here in full.
         const url = new URL(request.url);
         const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
         const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
         const q = url.searchParams.get('q')?.trim();
+        const statusFilter = url.searchParams.get('status'); // DRAFT | IN_REVIEW | APPROVED | PUBLISHED | ARCHIVED | SCHEDULED
+        const typeFilter = url.searchParams.get('contentType');
         const sortKey = url.searchParams.get('sortKey');
         const sortDir: Prisma.SortOrder = url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
+        const now = new Date();
 
-        const contentWhere: Prisma.ContentWhereInput = q ? {
-            OR: [
-                { title: { contains: q, mode: 'insensitive' } },
-                { body: { contains: q, mode: 'insensitive' } },
-                { caption: { contains: q, mode: 'insensitive' } },
-                { author: { contains: q, mode: 'insensitive' } },
-            ],
-        } : {};
+        const contentWhere: Prisma.ContentWhereInput = {
+            ...(q
+                ? {
+                      OR: [
+                          { title: { contains: q, mode: 'insensitive' } },
+                          { body: { contains: q, mode: 'insensitive' } },
+                          { caption: { contains: q, mode: 'insensitive' } },
+                          { author: { contains: q, mode: 'insensitive' } },
+                      ],
+                  }
+                : {}),
+            ...(statusFilter === 'SCHEDULED'
+                ? { scheduledAt: { gt: now }, status: { not: 'PUBLISHED' } }
+                : statusFilter && statusFilter in ContentStatus
+                  ? { status: statusFilter as ContentStatus }
+                  : {}),
+            ...(typeFilter && typeFilter in ContentType ? { type: typeFilter as ContentType } : {}),
+        };
 
-        // Only "title" maps to a real, directly-sortable column — Type,
-        // Category, Pinned and Status all render through a function accessor
-        // on the page (derived/formatted), so none of them offer a sort
-        // control. Falls back to the original pinned-then-recent default.
         const contentOrderBy: Prisma.ContentOrderByWithRelationInput[] =
             sortKey === 'title' ? [{ title: sortDir }] : [{ pinned: 'desc' }, { createdAt: 'desc' }];
 
-        const [stories, blogPosts, groups, contentRows, contentTotalCount, draftsCount, publishedCount, scheduledCount, classBatches] = await Promise.all([
-            prisma.story.findMany({
-                include: {
-                    user: {
-                        select: {
-                            name: true,
-                        },
-                    },
-                },
-                orderBy: {
-                    createdAt: 'desc',
-                },
-            }),
-            prisma.blogPost.findMany({
-                orderBy: {
-                    createdAt: 'desc',
-                },
-            }),
-            prisma.whatsAppGroup.findMany({
-                where: {
-                    active: true,
-                },
-            }),
-            prisma.content.findMany({
-                where: contentWhere,
-                orderBy: contentOrderBy,
-                skip: (page - 1) * pageSize,
-                take: pageSize,
-            }),
-            prisma.content.count({ where: contentWhere }),
-            // The published/draft/scheduled counters are a dashboard-wide
-            // summary, not scoped to the current search — computed
-            // independently of contentWhere/pagination, same as before.
-            prisma.content.count({ where: { status: 'DRAFT' } }),
-            prisma.content.count({ where: { status: 'PUBLISHED' } }),
-            prisma.content.count({ where: { status: { not: 'PUBLISHED' }, scheduledAt: { gt: new Date() } } }),
-            prisma.classBatch.findMany({
-                where: { active: true },
-                select: { id: true, name: true },
-                orderBy: { name: 'asc' },
-            }),
-        ]);
+        const [stories, groups, contentRows, contentTotalCount, draftsCount, inReviewCount, publishedCount, scheduledCount, archivedCount, classBatches, contentOptionsRaw] =
+            await Promise.all([
+                prisma.story.findMany({ include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } }),
+                prisma.whatsAppGroup.findMany({ where: { active: true } }),
+                prisma.content.findMany({ where: contentWhere, orderBy: contentOrderBy, skip: (page - 1) * pageSize, take: pageSize }),
+                prisma.content.count({ where: contentWhere }),
+                prisma.content.count({ where: { status: 'DRAFT' } }),
+                prisma.content.count({ where: { status: 'IN_REVIEW' } }),
+                prisma.content.count({ where: { status: 'PUBLISHED' } }),
+                prisma.content.count({ where: { status: { not: 'PUBLISHED' }, scheduledAt: { gt: now } } }),
+                prisma.content.count({ where: { status: 'ARCHIVED' } }),
+                prisma.classBatch.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+                prisma.content.findMany({ select: { id: true, title: true, type: true }, orderBy: { title: 'asc' }, take: 500 }),
+            ]);
 
-        const formattedStories = stories.map(story => ({
+        const formattedStories = stories.map((story) => ({
             id: story.id,
             name: story.user?.name || story.authorName,
             authorName: story.authorName,
@@ -142,23 +129,7 @@ export async function GET(request: Request) {
             imageUrl: story.imageUrl || '',
         }));
 
-        const formattedBlogPosts = blogPosts.map(post => ({
-            id: post.id,
-            title: post.title,
-            category: post.category,
-            date: formatDate(post.publishedAt || post.createdAt),
-            slug: post.slug,
-            excerpt: post.excerpt || '',
-            content: post.content,
-            author: post.author,
-            status: post.status,
-            imageUrl: post.imageUrl || '',
-            ctaType: post.ctaType || 'none',
-            ctaLabel: post.ctaLabel || '',
-            relatedClassBatchId: post.relatedClassBatchId || '',
-        }));
-
-        const formattedGroups = groups.map(group => ({
+        const formattedGroups = groups.map((group) => ({
             id: group.id,
             name: group.name,
             role: group.role,
@@ -167,7 +138,7 @@ export async function GET(request: Request) {
         }));
 
         const content = contentRows.map((row) => {
-            const item = serializeContent(row);
+            const item = isFeedType(row.type) ? serializeContent(row) : null;
             return {
                 ...item,
                 id: row.id,
@@ -175,17 +146,27 @@ export async function GET(request: Request) {
                 status: row.status,
                 category: row.category,
                 title: row.title,
+                slug: row.slug || '',
+                excerpt: row.excerpt || '',
                 body: row.body || '',
                 caption: row.caption || '',
+                steps: row.steps || '',
                 instagramUrl: row.instagramUrl || '',
                 imageUrl: row.imageUrl || '',
                 videoUrl: row.videoUrl || '',
+                audioUrl: row.audioUrl || '',
+                durationMin: row.durationMin ?? '',
+                difficulty: row.difficulty || '',
+                language: row.language,
                 ctaType: row.ctaType || 'none',
                 ctaLabel: row.ctaLabel || '',
-                relatedBlogId: row.relatedBlogId || '',
+                relatedContentId: row.relatedContentId || '',
+                relatedClassBatchId: row.relatedClassBatchId || '',
+                access: row.access,
                 author: row.author,
                 tags: row.tags.join(', '),
                 pinned: row.pinned,
+                featured: row.featured,
                 important: row.important,
                 audience: row.audience.join(', '),
                 mediaUrls: row.mediaUrls.join('\n'),
@@ -193,23 +174,31 @@ export async function GET(request: Request) {
                 notifyOnPublish: row.notifyOnPublish,
                 publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
                 scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
+                metaTitle: row.metaTitle || '',
+                metaDescription: row.metaDescription || '',
+                submittedForReviewAt: row.submittedForReviewAt ? row.submittedForReviewAt.toISOString() : null,
+                reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+                reviewNote: row.reviewNote || '',
+                approvedAt: row.approvedAt ? row.approvedAt.toISOString() : null,
             };
         });
 
         return NextResponse.json({
             stories: formattedStories,
-            blogPosts: formattedBlogPosts,
             groups: formattedGroups,
             content,
             page,
             pageSize,
             totalCount: contentTotalCount,
-            blogOptions: blogPosts.map((b) => ({ label: b.title, value: b.id })),
             classBatchOptions: classBatches.map((b) => ({ label: b.name, value: b.id })),
+            contentOptions: contentOptionsRaw.map((c) => ({ label: `${c.title} (${c.type})`, value: c.id })),
+            canApprove: !!(await requireAdmin()),
             counts: {
                 drafts: draftsCount,
+                inReview: inReviewCount,
                 published: publishedCount,
                 scheduled: scheduledCount,
+                archived: archivedCount,
             },
         });
     } catch (error) {
@@ -218,22 +207,42 @@ export async function GET(request: Request) {
     }
 }
 
-async function upsertContent(type: ContentType, body: Record<string, unknown>, isCreate: boolean) {
+/** Snapshot the pre-edit state of a Content row so published changes stay auditable. */
+async function snapshotVersion(id: string, editedByUserId: string, note?: string) {
+    const current = await prisma.content.findUnique({ where: { id }, select: { title: true, body: true, status: true } });
+    if (!current) return;
+    const last = await prisma.contentVersion.findFirst({ where: { contentId: id }, orderBy: { version: 'desc' }, select: { version: true } });
+    await prisma.contentVersion.create({
+        data: {
+            contentId: id,
+            version: (last?.version ?? 0) + 1,
+            title: current.title,
+            body: current.body,
+            status: current.status,
+            editedByUserId,
+            note: note || null,
+        },
+    });
+}
+
+async function upsertContent(
+    type: ResourceType,
+    body: Record<string, unknown>,
+    isCreate: boolean,
+    admin: { id: string; email: string },
+    isFullAdmin: boolean,
+) {
     const id = body.id as string | undefined;
 
     const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
-    // Only accept a media path we produced (the content-image upload endpoint), or '' to clear.
     const imageUrl = has('imageUrl')
-        ? (typeof body.imageUrl === 'string' && toStorageKey(body.imageUrl)
-            ? mediaSrc(toStorageKey(body.imageUrl)!)
-            : (body.imageUrl === '' ? null : undefined))
+        ? (typeof body.imageUrl === 'string' && toStorageKey(body.imageUrl) ? mediaSrc(toStorageKey(body.imageUrl)!) : body.imageUrl === '' ? null : undefined)
         : undefined;
-    // Same pattern for the REEL's self-hosted video — only accept a media
-    // path we produced (the content-video upload endpoint), or '' to clear.
     const videoUrl = has('videoUrl')
-        ? (typeof body.videoUrl === 'string' && toStorageKey(body.videoUrl)
-            ? mediaSrc(toStorageKey(body.videoUrl)!)
-            : (body.videoUrl === '' ? null : undefined))
+        ? (typeof body.videoUrl === 'string' && toStorageKey(body.videoUrl) ? mediaSrc(toStorageKey(body.videoUrl)!) : body.videoUrl === '' ? null : undefined)
+        : undefined;
+    const audioUrl = has('audioUrl')
+        ? (typeof body.audioUrl === 'string' && toStorageKey(body.audioUrl) ? mediaSrc(toStorageKey(body.audioUrl)!) : body.audioUrl === '' ? null : undefined)
         : undefined;
 
     if (type === 'story') {
@@ -246,7 +255,6 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
                     quote: cap(body.quote, 600),
                     content: cap(body.content, 5000) || null,
                     rating: Math.min(5, Math.max(1, Math.trunc(Number(body.rating) || 5))),
-                    // New stories land as DRAFT — they need approval before they go live.
                     status: toContentStatus(body.status ?? 'DRAFT'),
                     ...(imageUrl !== undefined ? { imageUrl } : {}),
                 },
@@ -262,8 +270,6 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         if (has('status')) data.status = toContentStatus(body.status);
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
 
-        // Editing the visible copy of an already-approved story sends it back for
-        // re-approval (unless this call is itself setting the status).
         const touchesCopy = has('quote') || has('content') || has('authorName') || has('name') || has('rating');
         if (touchesCopy && !has('status')) {
             const cur = await prisma.story.findUnique({ where: { id }, select: { status: true } });
@@ -272,79 +278,54 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         return prisma.story.update({ where: { id }, data });
     }
 
-    if (type === 'blog') {
-        if (isCreate) {
-            const title = cap(body.title || 'Untitled', 200);
-            const status = toContentStatus(body.status);
-            return prisma.blogPost.create({
-                data: {
-                    title,
-                    slug: cap(body.slug, 200) || slugify(title),
-                    excerpt: cap(body.excerpt, 500) || null,
-                    content: cap(body.content, 100_000),
-                    category: cap(body.category || 'General', 80),
-                    author: cap(body.author || 'Shakti Yoga', 120),
-                    status,
-                    publishedAt: status === 'PUBLISHED' ? new Date() : null,
-                    ctaType: isCtaType(body.ctaType) && body.ctaType !== 'open_blog' ? String(body.ctaType) : null,
-                    ctaLabel: cap(body.ctaLabel, 60) || null,
-                    relatedClassBatchId: cap(body.relatedClassBatchId, 40) || null,
-                    ...(imageUrl !== undefined ? { imageUrl } : {}),
-                },
-            });
-        }
-        const data: Record<string, unknown> = {};
-        if (has('title')) data.title = cap(body.title || 'Untitled', 200);
-        if (has('slug') && cap(body.slug, 200)) data.slug = slugify(cap(body.slug, 200));
-        if (has('excerpt')) data.excerpt = cap(body.excerpt, 500) || null;
-        if (has('content')) data.content = cap(body.content, 100_000);
-        if (has('category')) data.category = cap(body.category || 'General', 80);
-        if (has('author')) data.author = cap(body.author || 'Shakti Yoga', 120);
-        if (has('ctaType')) data.ctaType = isCtaType(body.ctaType) && body.ctaType !== 'open_blog' ? String(body.ctaType) : null;
-        if (has('ctaLabel')) data.ctaLabel = cap(body.ctaLabel, 60) || null;
-        if (has('relatedClassBatchId')) data.relatedClassBatchId = cap(body.relatedClassBatchId, 40) || null;
-        if (imageUrl !== undefined) data.imageUrl = imageUrl;
-        if (has('status')) {
-            const status = toContentStatus(body.status);
-            data.status = status;
-            const current = await prisma.blogPost.findUnique({ where: { id }, select: { publishedAt: true } });
-            if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
-            if (status !== 'PUBLISHED') data.publishedAt = null;
-        }
-        return prisma.blogPost.update({ where: { id }, data });
-    }
-
     if (type === 'content') {
-        const subtype = toSubtype(body.contentType);
+        const subtype = toContentType(body.contentType);
         let status = toContentStatus(body.status);
+
+        // A departmented CONTENT staff account (passed requireDepartment but
+        // not requireAdmin) can draft and submit for review, but cannot move
+        // anything to APPROVED or PUBLISHED directly — that needs a full/super
+        // admin. See spec: "Don't allow every staff member to immediately publish."
+        if (!isFullAdmin && (status === 'APPROVED' || status === 'PUBLISHED')) {
+            status = 'IN_REVIEW';
+        }
+
         const igRaw = cap(body.instagramUrl, 300);
-        if (subtype === 'REEL' && igRaw && !INSTAGRAM_RE.test(igRaw)) {
+        if (subtype === 'VIDEO' && igRaw && !INSTAGRAM_RE.test(igRaw)) {
             throw new Error('Instagram URL must look like https://www.instagram.com/reel/XXXX/');
         }
-        if (subtype === 'REEL') {
-            // A Reel needs at least one playable/linkable asset. `videoUrl` may be
-            // `undefined` here meaning "not touched by this request" (partial
-            // update) — in that case fall back to what's already stored.
+        if (subtype === 'VIDEO') {
             let effectiveVideo = videoUrl;
             if (effectiveVideo === undefined) {
-                effectiveVideo = isCreate
-                    ? null
-                    : ((await prisma.content.findUnique({ where: { id }, select: { videoUrl: true } }))?.videoUrl ?? null);
+                effectiveVideo = isCreate ? null : ((await prisma.content.findUnique({ where: { id }, select: { videoUrl: true } }))?.videoUrl ?? null);
             }
             if (!effectiveVideo && !igRaw) {
-                throw new Error('A Reel needs either an uploaded video or an Instagram URL.');
+                throw new Error('A video needs either an uploaded clip or an Instagram URL.');
             }
         }
-        const relatedBlogId = cap(body.relatedBlogId, 40) || null;
+        if (subtype === 'AUDIO') {
+            let effectiveAudio = audioUrl;
+            if (effectiveAudio === undefined) {
+                effectiveAudio = isCreate ? null : ((await prisma.content.findUnique({ where: { id }, select: { audioUrl: true } }))?.audioUrl ?? null);
+            }
+            if (!effectiveAudio) throw new Error('Audio content needs an uploaded audio file.');
+        }
 
-        // Scheduling: a future `scheduledAt` parks the item as a DRAFT until the
-        // publish-scheduled cron promotes it.
+        const relatedContentId = cap(body.relatedContentId, 40) || null;
+        if (relatedContentId && relatedContentId === id) throw new Error('Content cannot relate to itself.');
+
         const schedRaw = body.scheduledAt ? new Date(String(body.scheduledAt)) : null;
         const scheduledAt = schedRaw && !Number.isNaN(+schedRaw) && schedRaw > new Date() ? schedRaw : null;
-        if (scheduledAt) status = 'DRAFT';
+        // A schedule can only be set on an already-approved item — it just
+        // waits for the publish-scheduled cron, it doesn't skip review.
+        if (scheduledAt && status !== 'PUBLISHED') status = isFullAdmin ? 'APPROVED' : 'IN_REVIEW';
 
         const expRaw = body.expiresAt ? new Date(String(body.expiresAt)) : null;
         const expiresAt = expRaw && !Number.isNaN(+expRaw) ? expRaw : null;
+
+        const titleCapped = cap(body.title || 'Untitled', 200);
+        const explicitSlug = cap(body.slug, 200);
+        const wantsSlug = subtype === 'ARTICLE' || subtype === 'FOUNDER_MESSAGE';
 
         const common = {
             type: subtype,
@@ -352,16 +333,26 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
             scheduledAt,
             expiresAt,
             important: body.important === true || body.important === 'true',
+            featured: body.featured === true || body.featured === 'true',
             audience: toAudience(body.audience),
+            access: toContentAccess(body.access),
             mediaUrls: toMediaUrls(body.mediaUrls),
             category: toContentCategory(body.category),
-            title: cap(body.title || 'Untitled', 200),
-            body: cap(body.body, 20_000) || null,
+            title: titleCapped,
+            excerpt: cap(body.excerpt, 500) || null,
+            body: cap(body.body, 100_000) || null,
             caption: cap(body.caption, 300) || null,
+            steps: cap(body.steps, 20_000) || null,
             instagramUrl: igRaw || null,
+            durationMin: has('durationMin') && body.durationMin !== '' ? Math.max(0, Math.min(180, Math.trunc(Number(body.durationMin) || 0))) : null,
+            difficulty: toContentDifficulty(body.difficulty),
+            language: cap(body.language, 40) || 'English',
             ctaType: isCtaType(body.ctaType) ? String(body.ctaType) : 'none',
             ctaLabel: cap(body.ctaLabel, 60) || null,
-            relatedBlogId,
+            relatedContentId,
+            relatedClassBatchId: cap(body.relatedClassBatchId, 40) || null,
+            metaTitle: cap(body.metaTitle, 70) || null,
+            metaDescription: cap(body.metaDescription, 160) || null,
             author: cap(body.author || 'Shakti Yoga', 120),
             tags: toTags(body.tags),
             pinned: body.pinned === true || body.pinned === 'true',
@@ -369,23 +360,48 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         };
 
         if (isCreate) {
+            const slug = wantsSlug || explicitSlug ? await uniqueSlug(explicitSlug || slugify(titleCapped), undefined) : null;
             const created = await prisma.content.create({
                 data: {
                     ...common,
+                    slug,
+                    createdByUserId: admin.id,
+                    submittedByUserId: status === 'IN_REVIEW' ? admin.id : null,
+                    submittedForReviewAt: status === 'IN_REVIEW' ? new Date() : null,
+                    approvedByUserId: status === 'APPROVED' || status === 'PUBLISHED' ? admin.id : null,
+                    approvedAt: status === 'APPROVED' || status === 'PUBLISHED' ? new Date() : null,
                     publishedAt: status === 'PUBLISHED' ? new Date() : null,
                     ...(imageUrl !== undefined ? { imageUrl } : {}),
                     ...(videoUrl !== undefined ? { videoUrl } : {}),
+                    ...(audioUrl !== undefined ? { audioUrl } : {}),
                 },
             });
             if (created.status === 'PUBLISHED') void notifyContentPublished(created.id);
             return created;
         }
-        const current = await prisma.content.findUnique({ where: { id }, select: { publishedAt: true } });
+
+        await snapshotVersion(id!, admin.id);
+        const current = await prisma.content.findUnique({ where: { id }, select: { publishedAt: true, status: true, slug: true } });
         const data: Record<string, unknown> = { ...common };
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
         if (videoUrl !== undefined) data.videoUrl = videoUrl;
+        if (audioUrl !== undefined) data.audioUrl = audioUrl;
+        if ((wantsSlug || explicitSlug) && !current?.slug) data.slug = await uniqueSlug(explicitSlug || slugify(titleCapped), id);
+        else if (explicitSlug) data.slug = await uniqueSlug(slugify(explicitSlug), id);
+
+        if (status === 'IN_REVIEW' && current?.status !== 'IN_REVIEW') {
+            data.submittedByUserId = admin.id;
+            data.submittedForReviewAt = new Date();
+        }
+        if (status === 'APPROVED' && current?.status !== 'APPROVED') {
+            data.reviewedByUserId = admin.id;
+            data.reviewedAt = new Date();
+            data.approvedByUserId = admin.id;
+            data.approvedAt = new Date();
+        }
         if (status === 'PUBLISHED' && !current?.publishedAt) data.publishedAt = new Date();
         if (status !== 'PUBLISHED') data.publishedAt = null;
+
         const updated = await prisma.content.update({ where: { id }, data });
         if (updated.status === 'PUBLISHED') void notifyContentPublished(updated.id);
         return updated;
@@ -400,25 +416,24 @@ async function upsertContent(type: ContentType, body: Record<string, unknown>, i
         pinnedMessage: cap(body.pinnedMessage, 2000) || null,
         active: body.active === undefined ? true : Boolean(body.active),
     };
-    return isCreate
-        ? prisma.whatsAppGroup.create({ data })
-        : prisma.whatsAppGroup.update({ where: { id }, data });
+    return isCreate ? prisma.whatsAppGroup.create({ data }) : prisma.whatsAppGroup.update({ where: { id }, data });
 }
 
-function getType(request: Request): ContentType | null {
+function getType(request: Request): ResourceType | null {
     const t = new URL(request.url).searchParams.get('type');
-    return t === 'story' || t === 'blog' || t === 'whatsapp' || t === 'content' ? t : null;
+    return t === 'story' || t === 'whatsapp' || t === 'content' ? t : null;
 }
 
 export async function POST(request: Request) {
     const admin = await requireDepartment('CONTENT');
     if (!admin) return forbidden();
     const type = getType(request);
-    if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
+    if (!type) return NextResponse.json({ error: 'Missing ?type=story|whatsapp|content' }, { status: 400 });
     try {
+        const isFullAdmin = !!(await requireAdmin());
         const body = await request.json().catch(() => ({}));
-        const created = await upsertContent(type, body, true);
-        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `${type}.create`, entity: type, entityId: created.id });
+        const created = await upsertContent(type, body, true, admin, isFullAdmin);
+        await auditAs(admin, request)({ action: `${type}.create`, entity: type, entityId: created.id });
         return NextResponse.json({ id: created.id });
     } catch (error) {
         console.error('Admin content POST error:', error);
@@ -431,12 +446,13 @@ export async function PATCH(request: Request) {
     const admin = await requireDepartment('CONTENT');
     if (!admin) return forbidden();
     const type = getType(request);
-    if (!type) return NextResponse.json({ error: 'Missing ?type=story|blog|whatsapp' }, { status: 400 });
+    if (!type) return NextResponse.json({ error: 'Missing ?type=story|whatsapp|content' }, { status: 400 });
     try {
+        const isFullAdmin = !!(await requireAdmin());
         const body = await request.json().catch(() => ({}));
         if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-        const updated = await upsertContent(type, body, false);
-        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `${type}.update`, entity: type, entityId: updated.id, after: { status: body.status } });
+        const updated = await upsertContent(type, body, false, admin, isFullAdmin);
+        await auditAs(admin, request)({ action: `${type}.update`, entity: type, entityId: updated.id, after: { status: body.status } });
         return NextResponse.json({ id: updated.id });
     } catch (error) {
         console.error('Admin content PATCH error:', error);
@@ -453,16 +469,29 @@ export async function DELETE(request: Request) {
     const id = url.searchParams.get('id');
     if (!type || !id) return NextResponse.json({ error: 'Missing type or id' }, { status: 400 });
     try {
-        await auditAs({ id: admin.id, email: admin.email }, request)({ action: `${type}.delete`, entity: type, entityId: id });
-        if (type === 'story') await prisma.story.delete({ where: { id } });
-        else if (type === 'blog') await prisma.blogPost.delete({ where: { id } });
-        else if (type === 'content') {
-            const row = await prisma.content.findUnique({ where: { id }, select: { imageUrl: true, videoUrl: true, mediaUrls: true } });
-            await prisma.content.delete({ where: { id } });
-            for (const url of [row?.imageUrl, row?.videoUrl, ...(row?.mediaUrls ?? [])]) {
-                if (url) await deleteFile(url).catch(() => {});
+        if (type === 'content') {
+            const row = await prisma.content.findUnique({ where: { id }, select: { status: true, imageUrl: true, videoUrl: true, audioUrl: true, mediaUrls: true } });
+            if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+            // Archive instead of delete for anything that's ever been public —
+            // preserves engagement history, comments and analytics. A hard
+            // delete of published/archived content needs a super admin.
+            if (row.status !== 'DRAFT' && row.status !== 'ARCHIVED') {
+                await auditAs(admin, request)({ action: 'content.archive', entity: type, entityId: id });
+                await prisma.content.update({ where: { id }, data: { status: 'ARCHIVED', publishedAt: null } });
+                return NextResponse.json({ success: true, archived: true });
             }
+            if (row.status === 'ARCHIVED' && !(await requireAdmin())) {
+                return NextResponse.json({ error: 'Only a full admin can permanently delete archived content.' }, { status: 403 });
+            }
+            await auditAs(admin, request)({ action: `${type}.delete`, entity: type, entityId: id });
+            await prisma.content.delete({ where: { id } });
+            for (const u of [row.imageUrl, row.videoUrl, row.audioUrl, ...(row.mediaUrls ?? [])]) {
+                if (u) await deleteFile(u).catch(() => {});
+            }
+            return NextResponse.json({ success: true });
         }
+        await auditAs(admin, request)({ action: `${type}.delete`, entity: type, entityId: id });
+        if (type === 'story') await prisma.story.delete({ where: { id } });
         else await prisma.whatsAppGroup.delete({ where: { id } });
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -470,12 +499,3 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Could not delete content' }, { status: 500 });
     }
 }
-
-function formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    }).format(date);
-}
-

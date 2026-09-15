@@ -8,16 +8,17 @@ import { colors, spacing, radius, shadows } from "@/theme";
 import type { FeedItem } from "@/lib/types";
 
 const META: Record<FeedItem["kind"], string> = {
-  reel: "Video Reel",
-  post: "Reflection",
+  video: "Video",
+  audio: "Audio",
   announcement: "Announcement",
-  blog: "Article",
+  article: "Article",
+  founder_message: "From Acharya Swastik",
 };
 
 export function FeedCard({ item }: { item: FeedItem }) {
-  const meta = item.kind === "blog" ? `${item.readMinutes} min read` : META[item.kind];
-  const preview =
-    item.kind === "blog" ? item.excerpt : item.kind === "reel" ? item.caption : item.body;
+  const isReadable = item.kind === "article" || item.kind === "founder_message";
+  const meta = isReadable && item.readMinutes ? `${item.readMinutes} min read` : META[item.kind];
+  const preview = isReadable ? (item.excerpt ?? item.body) : item.kind === "video" || item.kind === "audio" ? item.caption : item.body;
   const thumb = mediaUri(item.imageUrl);
 
   return (
@@ -39,7 +40,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
               <BodyText muted style={styles.author}>
                 {item.author}
               </BodyText>
-              {item.kind !== "blog" && item.likeCount > 0 ? (
+              {item.likeCount > 0 ? (
                 <View style={styles.likes}>
                   <Ionicons name="heart" size={12} color={colors.secondary} />
                   <BodyText muted style={styles.likesText}>
@@ -53,11 +54,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
             <Image source={{ uri: thumb }} style={styles.thumb} resizeMode="cover" />
           ) : (
             <View style={styles.thumbPlaceholder}>
-              <Ionicons
-                name={item.kind === "reel" ? "videocam-outline" : "book-outline"}
-                size={22}
-                color={colors.muted}
-              />
+              <Ionicons name={FALLBACK_ICON[item.kind]} size={22} color={colors.muted} />
             </View>
           )}
         </View>
@@ -66,9 +63,18 @@ export function FeedCard({ item }: { item: FeedItem }) {
   );
 }
 
+const FALLBACK_ICON: Record<FeedItem["kind"], React.ComponentProps<typeof Ionicons>["name"]> = {
+  video: "videocam-outline",
+  audio: "musical-notes-outline",
+  article: "book-outline",
+  founder_message: "sparkles-outline",
+  announcement: "megaphone-outline",
+};
+
 /** Luxury fixed-width variant for horizontal rails (Home discovery strips). */
 export function FeedCardCompact({ item }: { item: FeedItem }) {
-  const meta = item.kind === "blog" ? `${item.readMinutes} min read` : META[item.kind];
+  const isReadable = item.kind === "article" || item.kind === "founder_message";
+  const meta = isReadable && item.readMinutes ? `${item.readMinutes} min read` : META[item.kind];
   const thumb = mediaUri(item.imageUrl);
 
   return (
@@ -81,11 +87,7 @@ export function FeedCardCompact({ item }: { item: FeedItem }) {
           <Image source={{ uri: thumb }} style={styles.compactImage} resizeMode="cover" />
         ) : (
           <View style={styles.compactImageFallback}>
-            <Ionicons
-              name={item.kind === "reel" ? "play-circle" : "sparkles"}
-              size={24}
-              color={colors.secondary}
-            />
+            <Ionicons name={FALLBACK_ICON[item.kind]} size={24} color={colors.secondary} />
           </View>
         )}
         <View style={styles.compactContent}>

@@ -1,5 +1,5 @@
 import { prisma } from '../src/lib/prisma';
-import { Role, PlanType, SubscriptionStatus, PaymentStatus, LeadStatus, ContentStatus } from '@prisma/client';
+import { Role, PlanType, SubscriptionStatus, PaymentStatus, LeadStatus, ContentStatus, ContentType, ContentCategory } from '@prisma/client';
 
 async function main() {
     console.log('================================================================');
@@ -144,18 +144,19 @@ async function main() {
 
     // 11. CONTENT & 16. TESTIMONIALS
     console.log('\n11 & 16. Modules: Content & Testimonials (/admin/content)...');
-    const post = await prisma.blogPost.create({
+    const post = await prisma.content.create({
         data: {
+            type: ContentType.ARTICLE,
             slug: `test-post-${timestamp}`,
             title: 'The Power of Pranayama',
             excerpt: 'Breath control benefits',
-            content: '# Pranayama\nDeep breathing regulates the nervous system.',
-            category: 'Breathing',
+            body: '# Pranayama\nDeep breathing regulates the nervous system.',
+            category: ContentCategory.BREATHING,
             author: 'Shakti Team',
             status: ContentStatus.DRAFT,
         },
     });
-    await prisma.blogPost.update({ where: { id: post.id }, data: { status: ContentStatus.PUBLISHED, publishedAt: new Date() } });
+    await prisma.content.update({ where: { id: post.id }, data: { status: ContentStatus.PUBLISHED, publishedAt: new Date() } });
 
     const story = await prisma.story.create({
         data: {
@@ -386,7 +387,7 @@ async function main() {
     await prisma.broadcastLog.deleteMany({ where: { id: broadcast.id } });
     await prisma.whyUsBenefit.deleteMany({ where: { id: benefit.id } });
     await prisma.story.deleteMany({ where: { id: story.id } });
-    await prisma.blogPost.deleteMany({ where: { id: post.id } });
+    await prisma.content.deleteMany({ where: { id: post.id } });
     await prisma.payment.deleteMany({ where: { id: payment.id } });
     await prisma.subscription.deleteMany({ where: { id: sub.id } });
     await prisma.therapyIntake.deleteMany({ where: { id: intake.id } });

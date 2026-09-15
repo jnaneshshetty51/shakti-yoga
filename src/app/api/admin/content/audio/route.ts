@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { requireDepartment } from '@/lib/admin-auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { uploadFile, mediaSrc } from '@/lib/storage';
-import { validateVideoField } from '@/lib/video-upload';
+import { validateAudioField } from '@/lib/audio-upload';
 
-/** Admin video upload for self-hosted Content clips — VIDEO / SHORT_PRACTICE / TAKE_A_MOMENT / FOUNDER_MESSAGE (multipart: file). */
+/** Admin audio upload for self-hosted AUDIO content (multipart: file). */
 export async function POST(request: Request) {
     const admin = await requireDepartment('CONTENT');
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const { allowed, retryAfterSeconds } = await rateLimit(`content-video:${admin.id}`, 10, 60 * 60 * 1000);
+    const { allowed, retryAfterSeconds } = await rateLimit(`content-audio:${admin.id}`, 20, 60 * 60 * 1000);
     if (!allowed) {
         return NextResponse.json(
             { error: 'Too many uploads. Try again later.' },
@@ -24,15 +24,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
     }
 
-    const video = await validateVideoField(form.get('file'));
-    if (!video.ok) return NextResponse.json({ error: video.error }, { status: video.status });
+    const audio = await validateAudioField(form.get('file'));
+    if (!audio.ok) return NextResponse.json({ error: audio.error }, { status: audio.status });
 
     try {
-        const key = `content/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${video.ext}`;
-        const storedKey = await uploadFile(video.buffer, key, { contentType: video.contentType });
+        const key = `content-audio/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${audio.ext}`;
+        const storedKey = await uploadFile(audio.buffer, key, { contentType: audio.contentType });
         return NextResponse.json({ url: mediaSrc(storedKey) });
     } catch (error) {
-        console.error('Content video upload error:', error);
-        return NextResponse.json({ error: 'Could not upload the video. Please try again.' }, { status: 500 });
+        console.error('Content audio upload error:', error);
+        return NextResponse.json({ error: 'Could not upload the audio. Please try again.' }, { status: 500 });
     }
 }

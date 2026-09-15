@@ -6,6 +6,88 @@ between classes and routes them back into practice and paid plans.
 
 ---
 
+## STATUS — Content Management unification built (2026-09-15), migrated locally, not yet deployed
+
+Full redesign per a Content Management spec: one CMS should be the source of truth for
+everything (videos, audio, articles, practices, founder messages, announcements) across
+web + mobile, with backend-enforced membership gating, a review workflow, versioning, and
+archive-not-delete. **Decisions locked in:** full model consolidation (not just extension),
+skip offline/DRM downloads for v1 (conflicts with mobile's Expo Go / zero-native-modules
+constraint — same open tradeoff as RevenueCat), add a Draft → In Review → Approved →
+Published gate.
+
+- **Schema** — `Content`, `Practice` and `BlogPost` are now ONE `Content` model.
+  `ContentType`: `VIDEO | AUDIO | ARTICLE | SHORT_PRACTICE | TAKE_A_MOMENT |
+  FOUNDER_MESSAGE | ANNOUNCEMENT` (REEL/POST retired — REEL→VIDEO, POST→ARTICLE).
+  `ContentStatus` gains `IN_REVIEW`/`APPROVED`. New `ContentAccess` enum
+  (`PUBLIC | ACCOUNT_REQUIRED | MEMBERSHIP_REQUIRED | THERAPY_ONLY`) enforced server-side
+  in `src/lib/content-audience.ts` (`audienceWhere`/`canAccessContent`) — narrowed further
+  by the existing `audience` tier array only when `access = MEMBERSHIP_REQUIRED`. New
+  `slug`, `excerpt`, `audioUrl`, `durationMin`, `difficulty` (`ContentDifficulty`),
+  `language`, `createdByUserId` (internal attribution vs. the public `author` byline),
+  `featured`, `relatedContentId` (self-relation, replaces `relatedBlogId`/`relatedPracticeId`),
+  `metaTitle`/`metaDescription`, and the review-workflow columns
+  (`submittedForReviewAt/By`, `reviewedAt/By/Note`, `approvedAt/By`). New models
+  `ContentVersion` (pre-edit snapshot on every admin update — auditable published-change
+  history) and `ContentCompletion` (replaces `PracticeCompletion`, generalized to any
+  completable type). Migrations: `20260915164710_content_unify_additive` →
+  `scripts/backfill-unified-content.ts` (reuses each row's original id as the new Content
+  id, so old FKs/slugs keep resolving) → `20260915165238_..._add_steps_relatedclass` →
+  `20260915165353_content_unify_cleanup` (drops `BlogPost`/`Practice`/`PracticeCompletion`
+  and the old enum values/columns). Verified against the local dev DB: 19 rows migrated
+  correctly (categories, `relatedContentId` links, difficulty all checked by hand).
+- **Backend enforcement, not UI hiding** — `access` is checked in every read path
+  (`/api/content/feed`, `/home`, `/[id]`, `/saved`, and `/api/practices*` which now query
+  `Content` filtered to `SHORT_PRACTICE`/`TAKE_A_MOMENT` under an unchanged `PracticeView`
+  wire contract). A gated `/api/content/[id]` (by id or slug) returns
+  `{locked:true, preview:{...}}` instead of the full item; the website's
+  `/content/[id]` share page renders that as a "Continue in the Shakti app" / "Join
+  Shakti" acquisition card (the spec's free-preview loop) instead of a flat 404.
+- **Review workflow** — `requireDepartment('CONTENT')` staff can draft/edit/submit for
+  review; only a full/super admin (`requireAdmin()`) can move something to
+  `APPROVED`/`PUBLISHED` — enforced in `upsertContent()`
+  (`src/app/api/admin/content/route.ts`), not just hidden in the UI. Scheduling
+  (`scheduledAt`) now requires `APPROVED` first; `publishScheduledContent()` promotes
+  `APPROVED → PUBLISHED` when due (was `DRAFT`).
+- **Archive, not delete** — `DELETE /api/admin/content` archives anything that was ever
+  submitted/published instead of deleting it; hard delete is restricted to `DRAFT` rows or
+  a super admin acting on an already-`ARCHIVED` row.
+- **Admin UI** — `/admin/content` ("Content Library" in the nav) collapsed the old
+  Content/Story/Blog tabs into Library (all 7 types, one `EntityFormModal` per type via
+  `contentFields()`) / Testimonials / Comments / Community Forum. Status + type filter
+  dropdowns, the existing list/calendar toggle kept. New audio upload
+  (`/api/admin/content/audio`, `src/lib/audio-upload.ts`, mirrors the video upload) and an
+  `"audio"` `EntityFormModal` field type. The standalone `/admin/practices` page + API were
+  retired — Short Practice / Take a Moment are just Content types now, created from the
+  same Library.
+- **Mobile** — `FeedItem`'s `kind` is now `video | audio | article | founder_message |
+  announcement` (was `reel | post | blog | announcement`); `Cta` carries one generic
+  `contentId` instead of `blogId`/`practiceId`. `/api/practices*` contract untouched, so
+  `practices.tsx`/`practice/[id].tsx` needed no changes. `content/[id].tsx` handles the new
+  `{locked, item}` / `{locked, preview}` response shape and plays audio through the
+  existing `expo-video` `VideoView` (no visual track — a controls-only surface — rather
+  than adding a second media library, keeping the zero-native-modules constraint intact).
+- **Verified live**: full click-through via a scripted Playwright pass against the running
+  dev server — logged in, opened the Content Library, created a Draft Article, published
+  it, confirmed it appeared on the public `/blog` page and `/api/content/posts`
+  immediately (one CMS record powering both surfaces, no separate copies). Zero console
+  errors. `npx tsc --noEmit` clean on both the web app and `mobile/`.
+- **Deliberately deferred**: offline downloads/DRM (decision above); a true watch-time /
+  partial-progress analytics pipeline (only view/like/save/comment/completion counts exist
+  today — no scrubbing/percent-watched pings from any player); a dedicated
+  approve/reject-with-note UI beyond the status dropdown + row-level Approve/Send-back
+  buttons; full admin IA re-grouping into "Content & Communication" per the spec's section
+  28 (the nav rename was minimal — just dropped the now-redundant "Guided Practices" item).
+- **To ship**: `npx prisma migrate deploy` on the VPS (three migrations, in order — the
+  cleanup one is destructive, so back up `Content`/`Practice`/`BlogPost` first), then
+  `npx tsx scripts/backfill-unified-content.ts` **before** the cleanup migration if
+  deploying the additive migration and the cleanup one as separate deploy steps (locally
+  they were applied additive → backfill → cleanup, in that order — the backfill reads
+  `Practice`/`BlogPost` via raw SQL since they're no longer in the Prisma schema, so it
+  must run before those tables are dropped).
+
+---
+
 ## STATUS — Phases 1–5 built (2026-09-08), not yet migrated/deployed
 
 ### Phase 5 — Practices, Challenges, Badges, Community, AI guide (built)

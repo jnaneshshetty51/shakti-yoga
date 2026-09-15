@@ -69,8 +69,7 @@ export const NAV: NavGroup[] = [
     {
         label: "Content & Programs",
         items: [
-            { name: "Media & Feed", description: "Reels, reflections, blog, stories", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
-            { name: "Guided Practices", description: "Audio & video guided practices", href: "/admin/practices", icon: LuFlower2, departments: ["CONTENT"] },
+            { name: "Content Library", description: "Videos, audio, articles, practices, founder messages, announcements", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
             { name: "Challenges", description: "Time-boxed member goals", href: "/admin/challenges", icon: LuTarget, departments: ["CONTENT"] },
             { name: "Achievements", description: "Badge earn rates + grant/revoke", href: "/admin/achievements", icon: LuAward, departments: ["CONTENT"] },
             { name: "FAQ Knowledge Base", description: "Website + app FAQs", href: "/admin/faqs", icon: LuCircleHelp, departments: ["CONTENT"] },

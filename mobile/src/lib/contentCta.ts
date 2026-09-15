@@ -11,11 +11,11 @@ export function runCta(cta: Cta): void {
     case "book_therapy":
       router.push("/therapy-intake");
       break;
-    case "open_blog":
-      if (cta.blogId) router.push(`/content/${cta.blogId}`);
+    case "open_content":
+      if (cta.contentId) router.push(`/content/${cta.contentId}`);
       break;
     case "open_practice":
-      if (cta.practiceId) router.push(`/practice/${cta.practiceId}`);
+      if (cta.contentId) router.push(`/practice/${cta.contentId}`);
       else router.push("/practices");
       break;
     default:
@@ -30,7 +30,7 @@ export function ctaLabel(cta: Cta): string {
       join_next_class: "Join the next class",
       view_classes: "See the timetable",
       book_therapy: "Begin Yoga Therapy",
-      open_blog: "Read more",
+      open_content: "Read more",
       open_practice: "Open the practice",
       none: "",
     } as const

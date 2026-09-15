@@ -137,7 +137,8 @@ export async function GET() {
             role,
             announcement: content.announcement,
             content: {
-                featuredReel: content.featuredReel,
+                featured: content.featured,
+                founderMessage: content.founderMessage,
                 forYou: content.forYou,
                 recommended: content.recommended,
             },

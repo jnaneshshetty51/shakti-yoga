@@ -12,11 +12,11 @@ export const dynamicParams = true;
 
 export async function generateStaticParams() {
     try {
-        const posts = await prisma.blogPost.findMany({
-            where: { status: "PUBLISHED" },
+        const posts = await prisma.content.findMany({
+            where: { type: "ARTICLE", status: "PUBLISHED", access: "PUBLIC", slug: { not: null } },
             select: { slug: true },
         });
-        return posts.map((p) => ({ slug: p.slug }));
+        return posts.map((p) => ({ slug: p.slug as string }));
     } catch {
         // DB unavailable at build — fall back to fully on-demand ISR.
         return [];
@@ -26,9 +26,9 @@ export async function generateStaticParams() {
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
     const { slug } = await props.params;
     try {
-        const post = await prisma.blogPost.findUnique({ where: { slug } });
-        if (!post || post.status !== "PUBLISHED") return {};
-        const description = post.metaDescription ?? post.excerpt ?? post.content.slice(0, 155);
+        const post = await prisma.content.findFirst({ where: { type: "ARTICLE", slug } });
+        if (!post || post.status !== "PUBLISHED" || post.access !== "PUBLIC") return {};
+        const description = post.metaDescription ?? post.excerpt ?? (post.body ?? "").slice(0, 155);
         return {
             title: post.metaTitle ?? post.title,
             description,
@@ -39,7 +39,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
                 description,
                 url: `/blog/${slug}`,
                 publishedTime: (post.publishedAt ?? post.createdAt).toISOString(),
-                ...(post.imageUrl || post.featuredImage ? { images: [(post.imageUrl ?? post.featuredImage) as string] } : {}),
+                ...(post.imageUrl ? { images: [post.imageUrl] } : {}),
             },
         };
     } catch {
@@ -49,9 +49,9 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
 
 export default async function BlogPostPage(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
-    const post = await prisma.blogPost.findUnique({ where: { slug: params.slug } });
+    const post = await prisma.content.findFirst({ where: { type: "ARTICLE", slug: params.slug } });
 
-    if (!post || post.status !== "PUBLISHED") {
+    if (!post || post.status !== "PUBLISHED" || post.access !== "PUBLIC") {
         notFound();
     }
 
@@ -77,17 +77,17 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                     <div className="w-24 h-1 bg-secondary mx-auto rounded-full"></div>
                 </header>
 
-                {(post.imageUrl || post.featuredImage) && (
+                {post.imageUrl && (
                     <div className="mb-12 rounded-lg overflow-hidden aspect-[16/9] bg-gray-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={(post.imageUrl ?? post.featuredImage) as string} alt={post.title} className="w-full h-full object-cover" />
+                        <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
                     </div>
                 )}
 
                 {/* Content */}
                 <div
                     className="prose prose-lg prose-headings:font-serif prose-headings:text-primary prose-a:text-secondary mx-auto"
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body ?? "") }}
                 />
 
                 {/* Footer / Share */}

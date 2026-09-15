@@ -165,7 +165,7 @@ export async function buildAdminNotifications(now = new Date()): Promise<AdminNo
             orderBy: { updatedAt: 'desc' },
         }),
         prisma.story.findMany({ where: { status: 'DRAFT' }, select: { createdAt: true }, orderBy: { createdAt: 'desc' } }),
-        prisma.blogPost.findMany({ where: { status: 'DRAFT' }, select: { createdAt: true }, orderBy: { createdAt: 'desc' } }),
+        prisma.content.findMany({ where: { type: 'ARTICLE', status: 'DRAFT' }, select: { createdAt: true }, orderBy: { createdAt: 'desc' } }),
         prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 15 }),
     ]);
 

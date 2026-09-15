@@ -31,8 +31,8 @@ const FALLBACK_BLOG_POSTS = [
 
 export async function GET() {
     try {
-        const posts = await prisma.blogPost.findMany({
-            where: { status: 'PUBLISHED' },
+        const posts = await prisma.content.findMany({
+            where: { type: 'ARTICLE', status: 'PUBLISHED', access: 'PUBLIC' },
             orderBy: { publishedAt: 'desc' },
             select: {
                 id: true,
@@ -46,7 +46,7 @@ export async function GET() {
 
         const formattedPosts = posts.map(post => ({
             id: post.id,
-            slug: post.slug,
+            slug: post.slug ?? post.id,
             title: post.title,
             excerpt: post.excerpt || '',
             category: post.category,

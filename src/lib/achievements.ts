@@ -42,7 +42,7 @@ export async function checkAchievements(userId: string): Promise<AchievementDef[
         prisma.classAttendance.findMany({ where: { userId }, select: { joinedAt: true } }),
         prisma.contentInteraction.count({ where: { userId, kind: 'save' } }),
         prisma.contentComment.count({ where: { userId } }),
-        prisma.practiceCompletion.count({ where: { userId } }),
+        prisma.contentCompletion.count({ where: { userId } }),
         prisma.challengeParticipant.count({ where: { userId, completedAt: { not: null } } }),
         prisma.userAchievement.findMany({ where: { userId }, select: { key: true } }),
     ]);

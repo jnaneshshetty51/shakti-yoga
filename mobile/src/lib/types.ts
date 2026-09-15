@@ -51,54 +51,59 @@ export interface BookingRow {
 // ---- Content feed (/api/content/*) --------------------------------------
 
 export type CtaType =
-  | "none" | "join_next_class" | "view_classes" | "book_therapy" | "open_blog" | "open_practice";
+  | "none" | "join_next_class" | "view_classes" | "book_therapy" | "open_content" | "open_practice";
 
 export interface Cta {
   type: CtaType;
   label: string | null;
-  blogId: string | null;
-  practiceId: string | null;
+  /** Another Content row's id — an article, video, practice, whatever ctaType points at. */
+  contentId: string | null;
 }
 
-interface FeedCommon {
+export type FeedKind = "video" | "audio" | "article" | "founder_message" | "announcement";
+
+/** A single feed item, shared shape across every kind — fields are null/empty when not applicable to that kind. */
+export interface FeedItem {
+  kind: FeedKind;
   id: string;
   title: string;
+  slug: string | null;
+  excerpt: string | null;
+  caption: string | null;
+  body: string | null;
+  category: string;
+  instagramUrl: string | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  audioUrl: string | null;
+  mediaUrls: string[];
   author: string;
+  tags: string[];
   publishedAt: string | null;
   pinned: boolean;
-  /** ANNOUNCEMENT only — highlighted + always-on-top. Absent on blog items. */
-  important?: boolean;
-  cta: Cta;
-}
-interface FeedSocial {
-  category: string;
-  tags: string[];
-  imageUrl: string | null;
+  featured: boolean;
+  /** ANNOUNCEMENT only — highlighted + always-on-top. */
+  important: boolean;
   likeCount: number;
   saveCount: number;
   commentCount: number;
   liked: boolean;
   saved: boolean;
+  cta: Cta;
+  /** ARTICLE / FOUNDER_MESSAGE only. */
+  readMinutes: number | null;
+  relatedClass: { id: string; name: string } | null;
 }
-
-export type FeedItem =
-  | (FeedCommon & FeedSocial & { kind: "reel"; caption: string | null; instagramUrl: string | null; videoUrl: string | null })
-  | (FeedCommon & FeedSocial & { kind: "post" | "announcement"; body: string | null; mediaUrls: string[] })
-  | (FeedCommon & {
-      kind: "blog";
-      slug: string;
-      excerpt: string | null;
-      category: string;
-      imageUrl: string | null;
-      readMinutes: number;
-      relatedClass: { id: string; name: string } | null;
-      body?: string;
-    });
 
 export interface FeedResponse {
   items: FeedItem[];
   nextCursor: number | null;
 }
+
+/** GET /api/content/:id response — locked when the caller doesn't meet the access requirement. */
+export type ContentDetailResponse =
+  | { locked: false; item: FeedItem }
+  | { locked: true; preview: { id: string; title: string; excerpt: string | null; caption: string | null; imageUrl: string | null; access: string } };
 
 export interface ContentComment {
   id: string;
@@ -111,12 +116,12 @@ export interface ContentComment {
 
 // ---- Practices (/api/practices) --------------------------------------
 
-export type PracticeLevel = "BEGINNER" | "INTERMEDIATE" | "ALL_LEVELS";
+export type PracticeLevel = "BEGINNER" | "INTERMEDIATE" | "ALL_LEVELS" | "ADVANCED";
 
 export interface PracticeView {
   id: string;
   title: string;
-  slug: string;
+  slug: string | null;
   description: string | null;
   steps: string | null;
   category: string;
@@ -212,7 +217,8 @@ export interface HomeResponse {
   role: string;
   announcement: FeedItem | null;
   content: {
-    featuredReel: FeedItem | null;
+    featured: FeedItem | null;
+    founderMessage: FeedItem | null;
     forYou: FeedItem[];
     recommended: { category: string; items: FeedItem[] } | null;
   };

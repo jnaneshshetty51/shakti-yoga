@@ -12,10 +12,11 @@ import type { FeedItem, FeedResponse, PracticeView } from "@/lib/types";
 
 const FILTERS = [
   { label: "All", value: "all" },
-  { label: "Reels", value: "reel" },
-  { label: "Posts", value: "post" },
+  { label: "Videos", value: "video" },
+  { label: "Audio", value: "audio" },
+  { label: "Articles", value: "article" },
+  { label: "From Acharya", value: "founder_message" },
   { label: "Announcements", value: "announcement" },
-  { label: "Articles", value: "blog" },
 ] as const;
 
 type FilterValue = (typeof FILTERS)[number]["value"];
@@ -61,8 +62,7 @@ export default function ExploreScreen() {
   const [error, setError] = useState<string | null>(null);
   const reqId = useRef(0);
 
-  const showCategories = type !== "blog";
-  const effectiveCategory = showCategories ? category : null;
+  const effectiveCategory = category;
 
   const loadPage = useCallback(
     async (nextCursor: number, filter: string, cat: string | null, replace: boolean) => {
@@ -134,14 +134,12 @@ export default function ExploreScreen() {
                 <Chip key={f.value} label={f.label} on={type === f.value} onPress={() => setType(f.value)} />
               ))}
             </ScrollView>
-            {showCategories && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                <Chip label="All topics" on={!category} onPress={() => setCategory(null)} />
-                {CONTENT_CATEGORIES.map((c) => (
-                  <Chip key={c} label={categoryLabel(c)} on={category === c} onPress={() => setCategory(c)} />
-                ))}
-              </ScrollView>
-            )}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              <Chip label="All topics" on={!category} onPress={() => setCategory(null)} />
+              {CONTENT_CATEGORIES.map((c) => (
+                <Chip key={c} label={categoryLabel(c)} on={category === c} onPress={() => setCategory(c)} />
+              ))}
+            </ScrollView>
           </>
         }
         renderItem={({ item }) => (

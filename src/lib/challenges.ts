@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { checkAchievements } from '@/lib/achievements';
+import { PRACTICE_TYPES } from '@/lib/practice';
 import type { Challenge, ChallengeParticipant, ChallengeGoal } from '@prisma/client';
 
 export const CHALLENGE_GOALS: ChallengeGoal[] = ['CLASSES', 'PRACTICES', 'PRACTICE_MINUTES'];
@@ -22,10 +23,12 @@ export async function computeProgress(challenge: Challenge, userId: string): Pro
         return prisma.classAttendance.count({ where: { userId, joinedAt: window } });
     }
     if (challenge.goalType === 'PRACTICES') {
-        return prisma.practiceCompletion.count({ where: { userId, completedAt: window } });
+        return prisma.contentCompletion.count({
+            where: { userId, completedAt: window, content: { type: { in: PRACTICE_TYPES } } },
+        });
     }
-    const agg = await prisma.practiceCompletion.aggregate({
-        where: { userId, completedAt: window },
+    const agg = await prisma.contentCompletion.aggregate({
+        where: { userId, completedAt: window, content: { type: { in: PRACTICE_TYPES } } },
         _sum: { minutes: true },
     });
     return agg._sum.minutes ?? 0;

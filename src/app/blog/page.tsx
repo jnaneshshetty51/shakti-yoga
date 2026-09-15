@@ -15,10 +15,10 @@ function formatDate(d: Date) {
 }
 
 export default async function BlogPage() {
-    let posts: Awaited<ReturnType<typeof prisma.blogPost.findMany>> = [];
+    let posts: Awaited<ReturnType<typeof prisma.content.findMany>> = [];
     try {
-        posts = await prisma.blogPost.findMany({
-            where: { status: "PUBLISHED" },
+        posts = await prisma.content.findMany({
+            where: { type: "ARTICLE", status: "PUBLISHED", access: "PUBLIC" },
             orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
         });
     } catch {
@@ -45,8 +45,8 @@ export default async function BlogPage() {
                         <p className="text-text/60 italic col-span-full text-center">No articles published yet.</p>
                     )}
                     {posts.map((post) => (
-                        <article key={post.slug} className="group cursor-pointer">
-                            <Link href={`/blog/${post.slug}`}>
+                        <article key={post.id} className="group cursor-pointer">
+                            <Link href={`/blog/${post.slug ?? post.id}`}>
                                 <div className="bg-gray-100 aspect-[4/3] rounded-lg mb-6 overflow-hidden relative">
                                     {post.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element

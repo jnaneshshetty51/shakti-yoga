@@ -10,8 +10,9 @@ import type { FeedItem } from "@/lib/types";
 
 const FILTERS = [
   { label: "All", value: "all" },
-  { label: "Reels", value: "reel" },
-  { label: "Posts", value: "post" },
+  { label: "Videos", value: "video" },
+  { label: "Audio", value: "audio" },
+  { label: "Articles", value: "article" },
 ] as const;
 
 export default function SavedScreen() {
