@@ -20,13 +20,14 @@ export interface SessionBalanceInfo {
 }
 
 export type ClassAccessInfo =
-    | { ok: true; sessionBalance?: SessionBalanceInfo | null }
+    | { ok: true; sessionBalance?: SessionBalanceInfo | null; starter?: { used: number; limit: number } | null }
     | {
           ok: false;
           reason: string;
           paywall: boolean;
           outOfSessions?: boolean;
           sessionBalance?: SessionBalanceInfo | null;
+          starter?: { used: number; limit: number } | null;
       };
 
 export interface ClassesResponse {

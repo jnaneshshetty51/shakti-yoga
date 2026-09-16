@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { IconType } from "react-icons";
 import {
@@ -28,9 +28,11 @@ const NAV: NavItem[] = [
 const ROLE_BADGE: Record<string, string> = {
     member_therapy: "1:1 Therapy Member",
     member_everyday: "Everyday Yoga Member",
+    member_starter: "Starter Member",
     trial: "Trial Member",
     admin: "Administrator",
     teacher: "Teacher",
+    visitor: "Free Account",
 };
 
 function initials(name?: string) {
@@ -38,24 +40,32 @@ function initials(name?: string) {
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
-function NavList({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
+function NavList({ pathname, unreadCount, onNavigate }: { pathname: string; unreadCount: number; onNavigate: () => void }) {
     return (
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
             {NAV.map((item) => {
                 const active = pathname === item.href;
                 const Icon = item.icon;
+                const isActivity = item.href === "/dashboard/activity";
                 return (
                     <Link
                         key={item.href}
                         href={item.href}
                         onClick={onNavigate}
-                        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                        className={`relative flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                             active ? "bg-primary/10 text-primary" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                     >
-                        {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />}
-                        <Icon className={`text-lg shrink-0 ${active ? "text-primary" : "text-gray-400"}`} />
-                        {item.name}
+                        <div className="flex items-center gap-3">
+                            {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />}
+                            <Icon className={`text-lg shrink-0 ${active ? "text-primary" : "text-gray-400"}`} />
+                            <span>{item.name}</span>
+                        </div>
+                        {isActivity && unreadCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary text-white shrink-0">
+                                {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                        )}
                     </Link>
                 );
             })}
@@ -118,6 +128,21 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const [open, setOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        let cancelled = false;
+        fetch("/api/activity")
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (!cancelled && d?.unreadCount != null) {
+                    setUnreadCount(d.unreadCount);
+                }
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [user?.id, pathname]);
 
     const badge = ROLE_BADGE[user?.role ?? ""] ?? "Free Account";
     const close = () => setOpen(false);
@@ -152,7 +177,7 @@ export default function Sidebar() {
                     </Link>
                     <div className="mt-0.5 text-[11px] font-medium text-gray-400 tracking-wide">Move · Breathe · Belong</div>
                 </div>
-                <NavList pathname={pathname} onNavigate={close} />
+                <NavList pathname={pathname} unreadCount={unreadCount} onNavigate={close} />
                 <SidebarFooter {...footerProps} />
             </aside>
 
@@ -168,7 +193,7 @@ export default function Sidebar() {
                         <LuX className="w-5 h-5" />
                     </button>
                 </div>
-                <NavList pathname={pathname} onNavigate={close} />
+                <NavList pathname={pathname} unreadCount={unreadCount} onNavigate={close} />
                 <SidebarFooter {...footerProps} />
             </aside>
         </>

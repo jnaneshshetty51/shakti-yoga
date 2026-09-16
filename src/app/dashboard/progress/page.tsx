@@ -13,11 +13,26 @@ interface SessionBalance {
     cycleEnd: string;
 }
 
+interface RecentClass {
+    id: string;
+    batchName: string;
+    teacher: string;
+    classDate: string;
+    joinedAt: string;
+    status: string;
+}
+
+interface StarterBalance {
+    used: number;
+    limit: number;
+}
+
 interface Progress {
     generatedAt: string;
     memberSince: string | null;
     credits: number;
     sessionCredits: SessionBalance | null;
+    starter?: StarterBalance | null;
     totals: {
         classesAllTime: number;
         classesThisMonth: number;
@@ -27,6 +42,7 @@ interface Progress {
         longestStreakWeeks: number;
     };
     weeks: { key: string; label: string; count: number }[];
+    recentClasses?: RecentClass[];
     sessions: { id: string; at: string; status: string; teacher: string; notes: string | null }[];
 }
 
@@ -38,6 +54,7 @@ export default function ProgressPage() {
     const [data, setData] = useState<Progress | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [historyTab, setHistoryTab] = useState<"classes" | "sessions">("classes");
 
     const load = useCallback(async () => {
         try {
@@ -72,7 +89,7 @@ export default function ProgressPage() {
                 subtitle={data.memberSince ? `On the mat with Shakti since ${fmtDate(data.memberSince)}.` : "Your practice at a glance."}
             />
 
-            <div className={`grid grid-cols-1 sm:grid-cols-2 ${data.sessionCredits ? "xl:grid-cols-5" : "xl:grid-cols-4"} gap-4 mb-8`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${(data.sessionCredits || data.starter) ? "xl:grid-cols-5" : "xl:grid-cols-4"} gap-4 mb-8`}>
                 <StatCard
                     title="Classes this month"
                     value={totals.classesThisMonth}
@@ -92,6 +109,15 @@ export default function ProgressPage() {
                         icon={<LuCalendarClock />}
                         accent="blue"
                         change={`resets ${fmtDate(data.sessionCredits.cycleEnd)}`}
+                    />
+                )}
+                {data.starter && (
+                    <StatCard
+                        title="Classes left this week"
+                        value={`${Math.max(0, data.starter.limit - data.starter.used)} / ${data.starter.limit}`}
+                        icon={<LuCalendarClock />}
+                        accent="blue"
+                        change="resets every Monday"
                     />
                 )}
             </div>
@@ -114,34 +140,80 @@ export default function ProgressPage() {
                 </div>
             </Card>
 
-            <Card className="overflow-hidden">
-                <CardHeader
-                    title="Session history"
-                    subtitle={`${totals.sessionsCompleted} completed · ${data.credits} credit${data.credits === 1 ? "" : "s"} left`}
-                />
-                {data.sessions.length === 0 ? (
-                    <EmptyState icon={LuMessageSquare} title="No 1:1 sessions yet" hint="Your therapy session history and notes will appear here." />
-                ) : (
-                    <ul className="divide-y divide-gray-50">
-                        {data.sessions.map((s) => (
-                            <li key={s.id} className="px-5 sm:px-6 py-4">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 mb-4">
+                <button
+                    onClick={() => setHistoryTab("classes")}
+                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                        historyTab === "classes" ? "bg-primary text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                >
+                    Live Class History ({data.totals.classesAllTime})
+                </button>
+                <button
+                    onClick={() => setHistoryTab("sessions")}
+                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                        historyTab === "sessions" ? "bg-primary text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                >
+                    1:1 Session History ({data.totals.sessionsCompleted})
+                </button>
+            </div>
+
+            {historyTab === "classes" ? (
+                <Card className="overflow-hidden">
+                    <CardHeader
+                        title="Recent group classes"
+                        subtitle={`${totals.classesAllTime} attended all-time · ${totals.classesThisMonth} this month`}
+                    />
+                    {!data.recentClasses || data.recentClasses.length === 0 ? (
+                        <EmptyState icon={LuHeart} title="No classes attended yet" hint="Join daily live classes on the schedule to build your practice streak." />
+                    ) : (
+                        <ul className="divide-y divide-gray-50">
+                            {data.recentClasses.map((c) => (
+                                <li key={c.id} className="px-5 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <div>
-                                        <span className="font-medium text-gray-800">{fmtDate(s.at)}</span>
-                                        <span className="text-sm text-gray-400"> · with {s.teacher}</span>
+                                        <span className="font-semibold text-gray-800">{c.batchName}</span>
+                                        <span className="text-gray-400"> · with {c.teacher}</span>
+                                        <div className="text-xs text-gray-400 mt-0.5">
+                                            {fmtDate(c.joinedAt)}
+                                        </div>
                                     </div>
-                                    <Badge tone={statusTone(s.status)}>{s.status.replace("_", " ").toLowerCase()}</Badge>
-                                </div>
-                                {s.notes && (
-                                    <p className="mt-2 text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3 whitespace-pre-wrap">
-                                        {s.notes}
-                                    </p>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </Card>
+                                    <Badge tone="green">{c.status.replace("_", " ").toLowerCase()}</Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Card>
+            ) : (
+                <Card className="overflow-hidden">
+                    <CardHeader
+                        title="Session history"
+                        subtitle={`${totals.sessionsCompleted} completed · ${data.credits} credit${data.credits === 1 ? "" : "s"} left`}
+                    />
+                    {data.sessions.length === 0 ? (
+                        <EmptyState icon={LuMessageSquare} title="No 1:1 sessions yet" hint="Your therapy session history and notes will appear here." />
+                    ) : (
+                        <ul className="divide-y divide-gray-50">
+                            {data.sessions.map((s) => (
+                                <li key={s.id} className="px-5 sm:px-6 py-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                            <span className="font-medium text-gray-800">{fmtDate(s.at)}</span>
+                                            <span className="text-sm text-gray-400"> · with {s.teacher}</span>
+                                        </div>
+                                        <Badge tone={statusTone(s.status)}>{s.status.replace("_", " ").toLowerCase()}</Badge>
+                                    </div>
+                                    {s.notes && (
+                                        <p className="mt-2 text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3 whitespace-pre-wrap">
+                                            {s.notes}
+                                        </p>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Card>
+            )}
         </div>
     );
 }

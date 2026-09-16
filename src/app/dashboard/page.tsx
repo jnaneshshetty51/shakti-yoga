@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import {
     LuMessageSquare, LuCalendarClock, LuArrowRight, LuExternalLink, LuTriangleAlert,
+    LuHeart, LuSparkles, LuTrendingUp, LuCreditCard,
 } from "react-icons/lu";
 import { Card, Badge } from "@/components/ui";
 import { useToast } from "@/components/admin/Toast";
@@ -27,6 +28,16 @@ function formatWhen(iso: string) {
         timeZone: "Asia/Kolkata",
     });
 }
+
+const PLAN_LABELS: Record<string, string> = {
+    member_everyday: "Everyday Yoga",
+    member_therapy: "Yoga Therapy",
+    member_starter: "Starter",
+    trial: "Free Trial",
+    visitor: "Free Account",
+    admin: "Administrator",
+    teacher: "Teacher",
+};
 
 export default function DashboardPage() {
     const { user, isLoading } = useAuth();
@@ -99,7 +110,8 @@ export default function DashboardPage() {
         }
     };
 
-    const planLabel = user.role.replace("member_", "").replace("_", " ");
+    const roleLower = (user.role ?? "").toLowerCase();
+    const planLabel = PLAN_LABELS[roleLower] || roleLower.replace("member_", "").replace("_", " ");
 
     return (
         <div>
@@ -223,16 +235,25 @@ export default function DashboardPage() {
 
                     <Card padded>
                         <h3 className="font-bold text-gray-800 mb-4">Quick actions</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {[
-                                { href: "/dashboard/therapy/book", icon: <LuCalendarClock />, label: "Book session" },
-                                { href: "/dashboard/classes", icon: <LuMessageSquare />, label: "My classes" },
-                                { href: "/dashboard/progress", icon: <LuArrowRight />, label: "My progress" },
-                            ].map((a) => (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {(user.role === "member_therapy"
+                                ? [
+                                    { href: "/dashboard/therapy/book", icon: <LuCalendarClock />, label: "Book session" },
+                                    { href: "/dashboard/therapy/notes", icon: <LuSparkles />, label: "Session notes" },
+                                    { href: "/dashboard/practices", icon: <LuHeart />, label: "Practice" },
+                                    { href: "/dashboard/progress", icon: <LuTrendingUp />, label: "My progress" },
+                                ]
+                                : [
+                                    { href: "/dashboard/classes", icon: <LuHeart />, label: "My classes" },
+                                    { href: "/dashboard/practices", icon: <LuSparkles />, label: "Practice" },
+                                    { href: "/dashboard/progress", icon: <LuTrendingUp />, label: "My progress" },
+                                    { href: "/dashboard/billing", icon: <LuCreditCard />, label: "Plan & Billing" },
+                                ]
+                            ).map((a) => (
                                 <Link
                                     key={a.href}
                                     href={a.href}
-                                    className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/[0.03] text-center transition-colors"
+                                    className="flex flex-col items-center gap-2 p-3.5 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-primary/[0.03] text-center transition-colors"
                                 >
                                     <span className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">{a.icon}</span>
                                     <span className="text-xs font-semibold text-gray-600">{a.label}</span>
@@ -259,7 +280,7 @@ export default function DashboardPage() {
                         </Link>
                     </Card>
 
-                    {user.role === "member_therapy" && (
+                    {((user.credits ?? 0) > 0 || user.role === "member_therapy") && (
                         <Card padded className="bg-secondary/5 border-secondary/15">
                             <h3 className="font-bold text-secondary mb-1">Therapy credits</h3>
                             <div className="text-3xl font-bold text-gray-800">{user.credits ?? 0}</div>
@@ -279,6 +300,19 @@ export default function DashboardPage() {
                             </div>
                             <p className="text-xs text-gray-500 uppercase tracking-widest">
                                 Refresh {new Date(access.sessionBalance.cycleEnd).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            </p>
+                        </Card>
+                    )}
+
+                    {access?.starter && (
+                        <Card padded className="bg-primary/5 border-primary/15">
+                            <h3 className="font-bold text-primary mb-1">Weekly classes</h3>
+                            <div className="text-3xl font-bold text-gray-800">
+                                {Math.max(0, access.starter.limit - access.starter.used)}
+                                <span className="text-gray-400 text-xl"> / {access.starter.limit}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest">
+                                Classes left this week
                             </p>
                         </Card>
                     )}

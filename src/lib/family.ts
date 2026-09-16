@@ -34,7 +34,7 @@ export interface FamilyView {
     code: string | null;
     seatsUsed: number;
     seatsTotal: number;
-    members: { name: string; owner: boolean }[];
+    members: { id?: string; name: string; owner: boolean }[];
     ownerName?: string;
 }
 
@@ -55,9 +55,9 @@ export async function familyView(userId: string): Promise<FamilyView> {
 
     const seats = await prisma.subscription.findMany({
         where: { familyOwnerId: userId },
-        select: { user: { select: { name: true } } },
+        select: { user: { select: { id: true, name: true } } },
     });
-    const me = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true } });
     const c = await ensureFamilyCode(userId);
     return {
         isFamily: true,
@@ -66,10 +66,43 @@ export async function familyView(userId: string): Promise<FamilyView> {
         seatsUsed: 1 + seats.length,
         seatsTotal: FAMILY_SEATS,
         members: [
-            { name: me?.name ?? 'You', owner: true },
-            ...seats.map((s) => ({ name: s.user.name, owner: false })),
+            { id: me?.id, name: me?.name ?? 'You', owner: true },
+            ...seats.map((s) => ({ id: s.user.id, name: s.user.name, owner: false })),
         ],
     };
+}
+
+export async function leaveFamily(userId: string): Promise<{ ok: boolean; error?: string }> {
+    const sub = await prisma.subscription.findUnique({ where: { userId } });
+    if (!sub || !sub.familyOwnerId) {
+        return { ok: false, error: 'You are not on a family plan.' };
+    }
+    const ownerId = sub.familyOwnerId;
+    await prisma.$transaction([
+        prisma.subscription.delete({ where: { userId } }),
+        prisma.user.update({ where: { id: userId }, data: { role: Role.VISITOR } }),
+        prisma.subscription.updateMany({
+            where: { userId: ownerId, seatsClaimed: { gt: 0 } },
+            data: { seatsClaimed: { decrement: 1 } },
+        }),
+    ]);
+    return { ok: true };
+}
+
+export async function removeFamilyMember(ownerId: string, memberUserId: string): Promise<{ ok: boolean; error?: string }> {
+    const sub = await prisma.subscription.findUnique({ where: { userId: memberUserId } });
+    if (!sub || sub.familyOwnerId !== ownerId) {
+        return { ok: false, error: 'Member is not on your family plan.' };
+    }
+    await prisma.$transaction([
+        prisma.subscription.delete({ where: { userId: memberUserId } }),
+        prisma.user.update({ where: { id: memberUserId }, data: { role: Role.VISITOR } }),
+        prisma.subscription.updateMany({
+            where: { userId: ownerId, seatsClaimed: { gt: 0 } },
+            data: { seatsClaimed: { decrement: 1 } },
+        }),
+    ]);
+    return { ok: true };
 }
 
 export type JoinResult =

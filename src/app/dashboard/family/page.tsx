@@ -11,7 +11,7 @@ interface FamilyView {
     code: string | null;
     seatsUsed: number;
     seatsTotal: number;
-    members: { name: string; owner: boolean }[];
+    members: { id?: string; name: string; owner: boolean }[];
     ownerName?: string;
 }
 
@@ -23,6 +23,8 @@ export default function FamilyPage() {
     const [joining, setJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [removingId, setRemovingId] = useState<string | null>(null);
+    const [leaving, setLeaving] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -66,10 +68,44 @@ export default function FamilyPage() {
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || "Could not join");
             await load();
+            window.location.reload();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not join");
         } finally {
             setJoining(false);
+        }
+    };
+
+    const handleRemoveMember = async (memberId: string) => {
+        if (!confirm("Are you sure you want to remove this member from your family plan?")) return;
+        setRemovingId(memberId);
+        try {
+            const res = await fetch("/api/family/remove", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ memberId }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Failed to remove member");
+            await load();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to remove member");
+        } finally {
+            setRemovingId(null);
+        }
+    };
+
+    const handleLeaveFamily = async () => {
+        if (!confirm("Are you sure you want to leave this family plan? You will revert to a free account.")) return;
+        setLeaving(true);
+        try {
+            const res = await fetch("/api/family/leave", { method: "POST" });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Failed to leave family plan");
+            window.location.reload();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to leave family plan");
+            setLeaving(false);
         }
     };
 
@@ -144,9 +180,24 @@ export default function FamilyPage() {
                     <Card className="overflow-hidden">
                         <ul className="divide-y divide-gray-50">
                             {view.members.map((m, i) => (
-                                <li key={i} className="px-5 py-3.5 flex items-center justify-between text-sm">
-                                    <span className="text-gray-700">{m.name}</span>
-                                    {m.owner && <Badge tone="gray">Owner</Badge>}
+                                <li key={m.id ?? i} className="px-5 py-3.5 flex items-center justify-between text-sm">
+                                    <span className="text-gray-700 font-medium">{m.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        {m.owner ? (
+                                            <Badge tone="green">Owner</Badge>
+                                        ) : (
+                                            m.id && (
+                                                <button
+                                                    type="button"
+                                                    disabled={removingId === m.id}
+                                                    onClick={() => handleRemoveMember(m.id!)}
+                                                    className="text-xs text-red-600 hover:text-red-700 font-medium px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                                                >
+                                                    {removingId === m.id ? "Removing..." : "Remove"}
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -158,10 +209,18 @@ export default function FamilyPage() {
                         <h3 className="font-serif text-xl text-gray-800">You&rsquo;re on {view.ownerName}&rsquo;s family plan</h3>
                         <Badge tone="gray">Member</Badge>
                     </div>
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-gray-500 text-sm mb-6">
                         Your membership, classes and payments are managed alongside {view.ownerName}&rsquo;s plan. Your own
                         Yoga Therapy details and attendance stay private to you.
                     </p>
+                    <Button
+                        variant="secondary"
+                        loading={leaving}
+                        onClick={handleLeaveFamily}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-sm"
+                    >
+                        Leave Family Plan
+                    </Button>
                 </Card>
             )}
         </div>

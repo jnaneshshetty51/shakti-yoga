@@ -77,7 +77,7 @@ export default function ProfilePage() {
                 timezone: profile.timezone || "IST",
                 goal: profile.profile?.goals || "Stress Relief",
                 conditions: profile.profile?.medicalHistory || "",
-                emailPref: prefs.includes("Email"),
+                emailPref: prefs ? prefs.includes("Email") : true,
                 whatsappPref: prefs.includes("WhatsApp"),
                 phonePref: prefs.includes("Phone"),
             });
@@ -139,6 +139,7 @@ export default function ProfilePage() {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to save profile");
             }
+            await refreshUser();
             setStatus("Profile saved.");
         } catch (error) {
             console.error("Failed to save profile:", error);

@@ -24,8 +24,8 @@ export async function GET() {
     const since = new Date(now.getTime() - 12 * WEEK);
 
     try {
-        const [user, attendance, allAttendanceDates, sessions, sessionCredits] = await Promise.all([
-            prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true, credits: true } }),
+        const [user, attendance, allAttendanceDates, recentAttendance, sessions, sessionCredits] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true, credits: true, role: true } }),
             prisma.classAttendance.findMany({
                 where: { userId, joinedAt: { gte: since } },
                 select: { joinedAt: true },
@@ -34,6 +34,28 @@ export async function GET() {
             prisma.classAttendance.findMany({
                 where: { userId },
                 select: { joinedAt: true },
+            }),
+            prisma.classAttendance.findMany({
+                where: { userId },
+                select: {
+                    id: true,
+                    joinedAt: true,
+                    status: true,
+                    classInstance: {
+                        select: {
+                            id: true,
+                            date: true,
+                            batch: {
+                                select: {
+                                    name: true,
+                                    teacher: { select: { name: true } },
+                                },
+                            },
+                        },
+                    },
+                },
+                orderBy: { joinedAt: 'desc' },
+                take: 15,
             }),
             prisma.booking.findMany({
                 where: { userId, type: 'THERAPY_SESSION' },
@@ -91,12 +113,29 @@ export async function GET() {
 
         const completedSessions = sessions.filter((s) => s.status === 'COMPLETED');
 
+        let starter: { used: number; limit: number } | null = null;
+        if (user?.role === 'MEMBER_STARTER') {
+            const monday = weekStart(now);
+            const usedThisWeek = allAttendanceDates.filter((a) => a.joinedAt >= monday).length;
+            starter = { used: usedThisWeek, limit: 2 };
+        }
+
+        const recentClasses = recentAttendance.map((a) => ({
+            id: a.id,
+            joinedAt: a.joinedAt.toISOString(),
+            status: a.status,
+            batchName: a.classInstance?.batch?.name ?? 'Everyday Yoga',
+            teacher: a.classInstance?.batch?.teacher?.name ?? 'Teacher',
+            classDate: a.classInstance?.date.toISOString() ?? a.joinedAt.toISOString(),
+        }));
+
         return NextResponse.json(
             {
                 generatedAt: now.toISOString(),
                 memberSince: user?.createdAt.toISOString() ?? null,
                 credits: user?.credits ?? 0,
                 sessionCredits,
+                starter,
                 totals: {
                     classesAllTime: allAttendanceDates.length,
                     classesThisMonth: thisMonthCount,
@@ -106,6 +145,7 @@ export async function GET() {
                     longestStreakWeeks: longest,
                 },
                 weeks,
+                recentClasses,
                 sessions: sessions.map((s) => ({
                     id: s.id,
                     at: s.date.toISOString(),

@@ -104,14 +104,51 @@ export default function PracticeDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
             {practice.videoUrl && (
-                <a
-                    href={practice.videoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-3.5 mb-6 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
-                >
-                    <LuPlay /> Watch the practice
-                </a>
+                <div className="mb-6 rounded-2xl overflow-hidden shadow-sm bg-black border border-gray-100">
+                    {(() => {
+                        const ytMatch = practice.videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+                        if (ytMatch) {
+                            return (
+                                <div className="relative aspect-video w-full">
+                                    <iframe
+                                        src={`https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0`}
+                                        title={practice.title}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                        className="w-full h-full border-0"
+                                    />
+                                </div>
+                            );
+                        }
+                        const vimeoMatch = practice.videoUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+                        if (vimeoMatch) {
+                            return (
+                                <div className="relative aspect-video w-full">
+                                    <iframe
+                                        src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
+                                        title={practice.title}
+                                        allow="autoplay; fullscreen; picture-in-picture"
+                                        allowFullScreen
+                                        className="w-full h-full border-0"
+                                    />
+                                </div>
+                            );
+                        }
+                        return (
+                            <div className="relative aspect-video w-full bg-black flex items-center justify-center">
+                                <video
+                                    src={practice.videoUrl}
+                                    poster={practice.thumbnailUrl ?? undefined}
+                                    controls
+                                    playsInline
+                                    className="w-full h-full object-contain"
+                                >
+                                    Your browser does not support HTML5 video.
+                                </video>
+                            </div>
+                        );
+                    })()}
+                </div>
             )}
 
             {steps.length > 0 && (

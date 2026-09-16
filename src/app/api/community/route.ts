@@ -15,8 +15,10 @@ export async function GET() {
         if (!user) return NextResponse.json({ groups: [] });
 
         const roles: Role[] = [user.role];
-        // Therapy members also see the everyday community.
-        if (user.role === Role.MEMBER_THERAPY) roles.push(Role.MEMBER_EVERYDAY);
+        // Therapy and Starter members also see the everyday community.
+        if (user.role === Role.MEMBER_THERAPY || user.role === Role.MEMBER_STARTER) {
+            roles.push(Role.MEMBER_EVERYDAY);
+        }
 
         const groups = await prisma.whatsAppGroup.findMany({
             where: { active: true, role: { in: roles } },

@@ -86,6 +86,26 @@ export default function SupportPage() {
         }
     };
 
+    const closeConversation = async () => {
+        if (!conversation) return;
+        setBusy(true);
+        setError(null);
+        try {
+            const res = await fetch(`/api/support/${conversation.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "CLOSED" }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Could not resolve conversation");
+            setConversation(data.conversation);
+        } catch (e2) {
+            setError(e2 instanceof Error ? e2.message : "Could not resolve conversation");
+        } finally {
+            setBusy(false);
+        }
+    };
+
     if (conversation === undefined && loadError) return <ErrorState message={loadError} onRetry={load} />;
     if (conversation === undefined) return <PageLoading title="Support" />;
 
@@ -101,7 +121,18 @@ export default function SupportPage() {
                 <Card padded className="mb-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
                         <span className="font-semibold text-gray-800 min-w-0 truncate">{conversation.subject || "Your conversation"}</span>
-                        <Badge tone={isOpen ? "blue" : "gray"} className="shrink-0">{isOpen ? "Open" : "Closed"}</Badge>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                            <Badge tone={isOpen ? "blue" : "gray"}>{isOpen ? "Open" : "Closed"}</Badge>
+                            {isOpen && (
+                                <button
+                                    onClick={closeConversation}
+                                    disabled={busy}
+                                    className="text-xs font-semibold text-gray-400 hover:text-gray-700 underline transition-colors disabled:opacity-50"
+                                >
+                                    Mark resolved
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                         {conversation.messages.map((m) => (

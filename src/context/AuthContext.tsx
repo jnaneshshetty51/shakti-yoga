@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { redirectTargetFromLocation } from '@/lib/nav';
 
-export type UserRole = 'visitor' | 'member_everyday' | 'member_therapy' | 'trial' | 'admin' | 'teacher';
+export type UserRole = 'visitor' | 'member_everyday' | 'member_starter' | 'member_therapy' | 'trial' | 'admin' | 'teacher';
 
 interface User {
     id: string;

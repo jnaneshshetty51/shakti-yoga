@@ -91,6 +91,22 @@ export default function ClassesPage() {
                         </Card>
                     )}
 
+                    {data.access.ok && data.access.starter && (
+                        <Card padded className="mb-6 flex items-center justify-between gap-4">
+                            <div>
+                                <div className="text-2xl font-bold text-gray-800">
+                                    {Math.max(0, data.access.starter.limit - data.access.starter.used)}
+                                    <span className="text-gray-400 text-lg"> / {data.access.starter.limit}</span>
+                                </div>
+                                <div className="text-sm text-gray-500">live classes left this week</div>
+                            </div>
+                            <div className="text-xs text-gray-400 text-right">
+                                Starter plan<br />
+                                Resets every Monday
+                            </div>
+                        </Card>
+                    )}
+
                     <section className="mb-8">
                         <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Today</h2>
                         {data.today.length === 0 ? (

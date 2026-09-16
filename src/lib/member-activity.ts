@@ -75,9 +75,28 @@ export async function buildMemberActivity(userId: string, now = new Date()): Pro
             orderBy: { timestamp: 'desc' },
             take: 20,
         }),
+        prisma.supportMessage.findMany({
+            where: {
+                conversation: { userId },
+                senderRole: { not: 'member' },
+                createdAt: { gte: ago7 },
+            },
+            include: { conversation: { select: { id: true, subject: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+        }),
+        prisma.certificate.findMany({
+            where: { userId, status: 'APPROVED', approvedAt: { gte: ago7 } },
+            orderBy: { approvedAt: 'desc' },
+            take: 3,
+        }),
+        prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+        }),
     ]);
 
-    const [classes, sessions, sub, failedPayments, events] = settled.map((r) =>
+    const [classes, sessions, sub, failedPayments, events, supportReplies, certificates, userRow] = settled.map((r) =>
         r.status === 'fulfilled' ? r.value : null,
     ) as [
         ({ id: string; date: Date; batch: { name: string; teacher: { name: string } | null } | null })[] | null,
@@ -85,20 +104,27 @@ export async function buildMemberActivity(userId: string, now = new Date()): Pro
         { planType: string; status: string; renewalDate: Date } | null,
         { id: string; createdAt: Date }[] | null,
         { id: string; eventType: string; timestamp: Date }[] | null,
+        ({ id: string; body: string; createdAt: Date; conversation: { id: string; subject: string | null } })[] | null,
+        ({ id: string; title: string; approvedAt: Date | null; issuedAt: Date })[] | null,
+        { role: string } | null,
     ];
 
     const out: MemberActivityItem[] = [];
 
-    for (const c of classes ?? []) {
-        out.push({
-            id: `class:${c.id}`,
-            kind: 'reminder',
-            severity: 'medium',
-            title: `${c.batch?.name ?? 'Group class'} ${relWhen(c.date, now)}`,
-            body: c.batch?.teacher?.name ? `with ${c.batch.teacher.name}` : undefined,
-            href: '/dashboard/classes',
-            at: c.date.toISOString(),
-        });
+    // Group class reminders — only for members eligible for group classes (not 1:1 therapy-only)
+    const isTherapyOnly = userRow?.role === 'MEMBER_THERAPY';
+    if (!isTherapyOnly) {
+        for (const c of classes ?? []) {
+            out.push({
+                id: `class:${c.id}`,
+                kind: 'reminder',
+                severity: 'medium',
+                title: `${c.batch?.name ?? 'Group class'} ${relWhen(c.date, now)}`,
+                body: c.batch?.teacher?.name ? `with ${c.batch.teacher.name}` : undefined,
+                href: '/dashboard/classes',
+                at: c.date.toISOString(),
+            });
+        }
     }
 
     for (const s of sessions ?? []) {
@@ -115,6 +141,30 @@ export async function buildMemberActivity(userId: string, now = new Date()): Pro
                     : undefined,
             href: '/dashboard/therapy/book',
             at: s.date.toISOString(),
+        });
+    }
+
+    for (const msg of supportReplies ?? []) {
+        out.push({
+            id: `support:${msg.id}`,
+            kind: 'info',
+            severity: 'high',
+            title: 'New reply from Shakti Support',
+            body: msg.body.slice(0, 120),
+            href: '/dashboard/support',
+            at: msg.createdAt.toISOString(),
+        });
+    }
+
+    for (const cert of certificates ?? []) {
+        out.push({
+            id: `cert:${cert.id}`,
+            kind: 'info',
+            severity: 'medium',
+            title: `Your certificate "${cert.title}" is ready!`,
+            body: 'Click to view and download your verified certificate.',
+            href: '/dashboard/certificates',
+            at: (cert.approvedAt ?? cert.issuedAt).toISOString(),
         });
     }
 

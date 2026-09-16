@@ -47,6 +47,12 @@ export default function TherapyBookingPage() {
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [pickSlot, setPickSlot] = useState<string | null>(null);
 
+    const [reschedulingSession, setReschedulingSession] = useState<Session | null>(null);
+    const [rescheduleDate, setRescheduleDate] = useState(istDateKey(dates[1]));
+    const [rescheduleSlots, setRescheduleSlots] = useState<string[]>([]);
+    const [rescheduleSlotsLoading, setRescheduleSlotsLoading] = useState(false);
+    const [reschedulePickSlot, setReschedulePickSlot] = useState<string | null>(null);
+
     const loadSessions = useCallback(async () => {
         setLoading(true);
         try {
@@ -76,6 +82,18 @@ export default function TherapyBookingPage() {
         return () => { cancelled = true; };
     }, [pickDate]);
 
+    useEffect(() => {
+        if (!reschedulingSession) return;
+        let cancelled = false;
+        setRescheduleSlotsLoading(true);
+        setReschedulePickSlot(null);
+        fetch(`/api/therapy/slots?date=${rescheduleDate}`)
+            .then((r) => r.json())
+            .then((d) => { if (!cancelled) setRescheduleSlots(d.slots ?? []); })
+            .finally(() => { if (!cancelled) setRescheduleSlotsLoading(false); });
+        return () => { cancelled = true; };
+    }, [rescheduleDate, reschedulingSession]);
+
     const book = async () => {
         if (!pickSlot) return;
         setBusy("book");
@@ -94,6 +112,29 @@ export default function TherapyBookingPage() {
             setPickSlot(null);
         } catch (e) {
             setMsg(e instanceof Error ? e.message : "Could not book.");
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const handleReschedule = async () => {
+        if (!reschedulingSession || !reschedulePickSlot) return;
+        setBusy("reschedule");
+        setMsg("");
+        try {
+            const res = await fetch(`/api/bookings/${reschedulingSession.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ date: rescheduleDate, slot: reschedulePickSlot }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Could not reschedule.");
+            await loadSessions();
+            setMsg("Session rescheduled successfully.");
+            setReschedulingSession(null);
+            setReschedulePickSlot(null);
+        } catch (e) {
+            setMsg(e instanceof Error ? e.message : "Could not reschedule.");
         } finally {
             setBusy(null);
         }
@@ -145,8 +186,52 @@ export default function TherapyBookingPage() {
 
             {msg && <div className="mb-6 p-3 bg-accent/40 border border-primary/10 text-sm text-text rounded-xl">{msg}</div>}
 
-            {credits === 0 && upcoming.length === 0 ? (
-                <Card padded className="text-center max-w-lg mx-auto py-10">
+            {credits > 0 ? (
+                <Card padded className="mb-8">
+                    <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Book a session</h2>
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                        {dates.map((d) => {
+                            const k = istDateKey(d);
+                            const on = pickDate === k;
+                            return (
+                                <button
+                                    key={k}
+                                    onClick={() => setPickDate(k)}
+                                    className={`min-w-[60px] p-2.5 rounded-xl border flex flex-col items-center transition-colors ${on ? "bg-primary text-white border-primary" : "border-gray-200 hover:border-primary/40 bg-white text-gray-600"}`}
+                                >
+                                    <span className="text-[10px] uppercase font-bold opacity-70">{d.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" })}</span>
+                                    <span className="text-lg font-serif">{d.toLocaleDateString("en-IN", { day: "numeric", timeZone: "Asia/Kolkata" })}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {slotsLoading ? (
+                        <p className="text-sm text-gray-400">Loading slots…</p>
+                    ) : slots.length === 0 ? (
+                        <p className="text-sm text-gray-400">No open slots that day. Try another date.</p>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            {slots.map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => setPickSlot(s)}
+                                    className={`p-2.5 rounded-xl border text-sm transition-colors ${pickSlot === s ? "bg-secondary text-white border-secondary font-semibold" : "border-gray-200 hover:border-secondary/40 text-gray-600"}`}
+                                >
+                                    {s.split(" - ")[0]}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <button
+                        onClick={book}
+                        disabled={!pickSlot || busy === "book"}
+                        className="mt-5 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                        {busy === "book" ? "Booking…" : "Confirm — 1 credit"}
+                    </button>
+                </Card>
+            ) : upcoming.length === 0 ? (
+                <Card padded className="text-center max-w-lg mx-auto py-10 mb-8">
                     <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-2xl mx-auto mb-3"><LuLock /></div>
                     <h3 className="font-serif text-xl text-gray-800 mb-2">No session credits</h3>
                     <p className="text-sm text-gray-500 mb-6">Subscribe to Yoga Therapy to get monthly 1:1 sessions.</p>
@@ -154,98 +239,135 @@ export default function TherapyBookingPage() {
                         Subscribe to Yoga Therapy
                     </Link>
                 </Card>
-            ) : (
-                <>
-                    {credits > 0 && (
-                        <Card padded className="mb-8">
-                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Book a session</h2>
-                            <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-                                {dates.map((d) => {
-                                    const k = istDateKey(d);
-                                    const on = pickDate === k;
-                                    return (
-                                        <button
-                                            key={k}
-                                            onClick={() => setPickDate(k)}
-                                            className={`min-w-[60px] p-2.5 rounded-xl border flex flex-col items-center transition-colors ${on ? "bg-primary text-white border-primary" : "border-gray-200 hover:border-primary/40 bg-white text-gray-600"}`}
-                                        >
-                                            <span className="text-[10px] uppercase font-bold opacity-70">{d.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" })}</span>
-                                            <span className="text-lg font-serif">{d.toLocaleDateString("en-IN", { day: "numeric", timeZone: "Asia/Kolkata" })}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {slotsLoading ? (
-                                <p className="text-sm text-gray-400">Loading slots…</p>
-                            ) : slots.length === 0 ? (
-                                <p className="text-sm text-gray-400">No open slots that day. Try another date.</p>
-                            ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                                    {slots.map((s) => (
-                                        <button
-                                            key={s}
-                                            onClick={() => setPickSlot(s)}
-                                            className={`p-2.5 rounded-xl border text-sm transition-colors ${pickSlot === s ? "bg-secondary text-white border-secondary font-semibold" : "border-gray-200 hover:border-secondary/40 text-gray-600"}`}
-                                        >
-                                            {s.split(" - ")[0]}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            <button
-                                onClick={book}
-                                disabled={!pickSlot || busy === "book"}
-                                className="mt-5 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-                            >
-                                {busy === "book" ? "Booking…" : "Confirm — 1 credit"}
-                            </button>
-                        </Card>
-                    )}
+            ) : null}
 
-                    <section className="mb-8">
-                        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Upcoming</h2>
-                        {loading ? <p className="text-sm text-gray-400">Loading…</p>
-                            : sessionsError ? (
-                                <Card padded className="text-sm text-gray-500 flex items-center justify-between gap-3">
-                                    <span>{sessionsError}</span>
-                                    <button onClick={loadSessions} className="text-xs font-semibold text-primary hover:text-secondary shrink-0">Retry</button>
+            <section className="mb-8">
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Upcoming</h2>
+                {loading ? (
+                    <p className="text-sm text-gray-400">Loading…</p>
+                ) : sessionsError ? (
+                    <Card padded className="text-sm text-gray-500 flex items-center justify-between gap-3">
+                        <span>{sessionsError}</span>
+                        <button onClick={loadSessions} className="text-xs font-semibold text-primary hover:text-secondary shrink-0">Retry</button>
+                    </Card>
+                ) : upcoming.length === 0 ? (
+                    <Card padded className="text-sm text-gray-500">No upcoming sessions.</Card>
+                ) : (
+                    <div className="space-y-3">
+                        {upcoming.map((s) => {
+                            const canReschedule = new Date(s.date).getTime() - Date.now() >= 24 * 3_600_000;
+                            return (
+                                <Card key={s.id} padded className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div className="font-bold text-gray-800">{fmt(s.date)} IST</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                            {s.type === "THERAPY_SESSION" ? "1:1 Therapy" : "Consultation"} · {s.teacher} · <span className="capitalize">{s.status.toLowerCase()}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => join(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50">Join</button>
+                                        {canReschedule && (
+                                            <button
+                                                onClick={() => {
+                                                    setReschedulingSession(s);
+                                                    setRescheduleDate(istDateKey(dates[1]));
+                                                }}
+                                                disabled={busy === s.id}
+                                                className="px-4 py-2 text-xs font-semibold rounded-full border border-primary/30 text-primary hover:bg-primary/5 disabled:opacity-50"
+                                            >
+                                                Reschedule
+                                            </button>
+                                        )}
+                                        <button onClick={() => cancel(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                                    </div>
                                 </Card>
-                            )
-                                : upcoming.length === 0 ? <Card padded className="text-sm text-gray-500">No upcoming sessions.</Card>
-                                : (
-                                    <div className="space-y-3">
-                                        {upcoming.map((s) => (
-                                            <Card key={s.id} padded className="flex flex-wrap items-center justify-between gap-3">
-                                                <div>
-                                                    <div className="font-bold text-gray-800">{fmt(s.date)} IST</div>
-                                                    <div className="text-xs text-gray-500 mt-0.5">
-                                                        {s.type === "THERAPY_SESSION" ? "1:1 Therapy" : "Consultation"} · {s.teacher} · <span className="capitalize">{s.status.toLowerCase()}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => join(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full bg-primary text-white hover:bg-primary/90 disabled:opacity-50">Join</button>
-                                                    <button onClick={() => cancel(s)} disabled={busy === s.id} className="px-4 py-2 text-xs font-semibold rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
-                                                </div>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                )}
-                    </section>
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
 
-                    {past.length > 0 && (
-                        <section>
-                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Past</h2>
-                            <Card className="divide-y divide-gray-50">
-                                {past.map((s) => (
-                                    <div key={s.id} className="px-5 py-3 flex items-center justify-between text-sm">
-                                        <span className="text-gray-600">{fmt(s.date)}</span>
-                                        <Badge tone={statusTone(s.status)}>{s.status.replace("_", " ").toLowerCase()}</Badge>
-                                    </div>
+            {past.length > 0 && (
+                <section>
+                    <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Past sessions</h2>
+                    <Card className="divide-y divide-gray-50">
+                        {past.map((s) => (
+                            <div key={s.id} className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-2 text-sm">
+                                <div>
+                                    <span className="font-medium text-gray-700">{fmt(s.date)}</span>
+                                    <span className="text-xs text-gray-400 ml-2">with {s.teacher}</span>
+                                </div>
+                                <Badge tone={statusTone(s.status)}>{s.status.replace("_", " ").toLowerCase()}</Badge>
+                            </div>
+                        ))}
+                    </Card>
+                </section>
+            )}
+
+            {/* Reschedule Modal */}
+            {reschedulingSession && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+                        <h3 className="font-serif text-xl text-gray-800 mb-1">Reschedule your session</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Current session: <strong className="text-gray-700">{fmt(reschedulingSession.date)}</strong> with {reschedulingSession.teacher}.
+                        </p>
+
+                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                            {dates.slice(1).map((d) => {
+                                const k = istDateKey(d);
+                                const on = rescheduleDate === k;
+                                return (
+                                    <button
+                                        key={k}
+                                        onClick={() => setRescheduleDate(k)}
+                                        className={`min-w-[60px] p-2 rounded-xl border flex flex-col items-center transition-colors ${on ? "bg-primary text-white border-primary" : "border-gray-200 hover:border-primary/40 bg-white text-gray-600"}`}
+                                    >
+                                        <span className="text-[10px] uppercase font-bold opacity-70">{d.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" })}</span>
+                                        <span className="text-base font-serif">{d.toLocaleDateString("en-IN", { day: "numeric", timeZone: "Asia/Kolkata" })}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {rescheduleSlotsLoading ? (
+                            <p className="text-sm text-gray-400">Loading available slots…</p>
+                        ) : rescheduleSlots.length === 0 ? (
+                            <p className="text-sm text-gray-400">No open slots on that day. Try another date.</p>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+                                {rescheduleSlots.map((s) => (
+                                    <button
+                                        key={s}
+                                        onClick={() => setReschedulePickSlot(s)}
+                                        className={`p-2.5 rounded-xl border text-sm transition-colors ${reschedulePickSlot === s ? "bg-secondary text-white border-secondary font-semibold" : "border-gray-200 hover:border-secondary/40 text-gray-600"}`}
+                                    >
+                                        {s.split(" - ")[0]}
+                                    </button>
                                 ))}
-                            </Card>
-                        </section>
-                    )}
-                </>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => setReschedulingSession(null)}
+                                disabled={busy === "reschedule"}
+                                className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleReschedule}
+                                disabled={!reschedulePickSlot || busy === "reschedule"}
+                                className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                            >
+                                {busy === "reschedule" ? "Rescheduling…" : "Confirm Reschedule"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
