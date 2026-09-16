@@ -1,7 +1,16 @@
+import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { Prisma } from '@prisma/client';
+import { hashPassword } from '@/lib/auth';
+import { activatePlan } from '@/lib/subscription';
+import { getPlan, isPlanKey } from '@/lib/pricing';
+import { issueInvoiceForPayment } from '@/lib/invoice';
+import { auditAs } from '@/lib/audit';
+import { readJson, str, optStr, email as parseEmail, oneOf, ValidationError, handleValidationError } from '@/lib/validation';
+import { Prisma, PaymentStatus } from '@prisma/client';
+
+const PAYMENT_METHODS = ['cash', 'upi', 'bank_transfer'] as const;
 
 const IST = 'Asia/Kolkata';
 
@@ -188,5 +197,88 @@ export async function GET(request: Request) {
     } catch (error) {
         console.error('Admin members API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+/**
+ * POST /api/admin/members — walk-in registration: create a member, activate
+ * the plan they paid for, and record the cash/UPI/bank-transfer payment that
+ * paid for it, in one step. Mirrors what checkout does for an online signup,
+ * with `activatePlan`'s `provider: 'manual'` keeping this subscription out of
+ * any automatic-renewal charge loop.
+ */
+export async function POST(request: Request) {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    try {
+        const body = await readJson(request);
+        const name = str(body.name, { label: 'Name', min: 1, max: 120 });
+        const email = parseEmail(body.email, 'Email');
+        const phone = optStr(body.phone, { label: 'Phone', max: 40 });
+
+        const planKeyRaw = str(body.planKey, { label: 'Plan' });
+        if (!isPlanKey(planKeyRaw)) throw new ValidationError('Unknown plan.');
+        const plan = getPlan(planKeyRaw);
+
+        const amount = Number(body.amount);
+        if (!Number.isFinite(amount) || amount <= 0) throw new ValidationError('Enter a valid amount.');
+        const currency = String(body.currency || 'INR').toUpperCase().slice(0, 3);
+        const method = oneOf(body.method, PAYMENT_METHODS, 'Payment method');
+        const note = optStr(body.note, { label: 'Note', max: 200 });
+
+        const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+        if (existing) return NextResponse.json({ error: 'A user with this email already exists.' }, { status: 409 });
+
+        // Random password; shown once to the front-desk admin. The student can
+        // also always set their own later via the public "Forgot password" flow.
+        const tempPassword = randomBytes(9).toString('base64url');
+        const passwordHash = await hashPassword(tempPassword);
+
+        const user = await prisma.user.create({
+            data: { name, email, passwordHash, phone: phone ?? null, role: 'VISITOR' },
+        });
+
+        await activatePlan(user.id, plan, {
+            provider: 'manual',
+            recurring: false,
+            skipCookie: true,
+            amount,
+            currency,
+        });
+
+        const payment = await prisma.payment.create({
+            data: {
+                userId: user.id,
+                planType: plan.dbPlanType,
+                planKey: plan.key,
+                amount,
+                currency,
+                status: PaymentStatus.PAID,
+                provider: method,
+                providerPaymentId: `${method}_${Date.now()}`,
+            },
+        });
+
+        const audit = auditAs(admin, request);
+        await audit({
+            action: 'member.register',
+            entity: 'User',
+            entityId: user.id,
+            after: { name, email, phone, planKey: plan.key, amount, currency, method, note },
+        });
+        await audit({
+            action: 'payment.manual.create',
+            entity: 'Payment',
+            entityId: payment.id,
+            after: { userId: user.id, amount, currency, planKey: plan.key, method, note },
+        });
+        void issueInvoiceForPayment(payment.id).catch(() => {});
+
+        return NextResponse.json({ id: user.id, tempPassword });
+    } catch (error) {
+        if (error instanceof ValidationError) return handleValidationError(error);
+        console.error('Admin members POST error:', error);
+        return NextResponse.json({ error: 'Could not register the student.' }, { status: 500 });
     }
 }

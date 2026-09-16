@@ -6,8 +6,21 @@ import { LuFlower2, LuHeart, LuMessageSquare, LuIndianRupee } from "react-icons/
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { StatCard } from "@/components/admin/StatCard";
-import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, ErrorState } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, ErrorState, Button } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { PLAN_OPTIONS } from "@/lib/pricing";
+
+const REGISTER_FIELDS = [
+    { name: "name", label: "Full name", type: "text" as const, required: true },
+    { name: "email", label: "Email", type: "email" as const, required: true },
+    { name: "phone", label: "Phone", type: "text" as const },
+    { name: "planKey", label: "Plan", type: "select" as const, required: true, options: PLAN_OPTIONS },
+    { name: "amount", label: "Amount collected (₹)", type: "number" as const, required: true, placeholder: "e.g. 2000" },
+    { name: "method", label: "Payment method", type: "select" as const, required: true, options: [
+        { label: "Cash", value: "cash" }, { label: "UPI", value: "upi" }, { label: "Bank transfer", value: "bank_transfer" },
+    ] },
+    { name: "note", label: "Note (e.g. UPI ref / receipt no.)", type: "text" as const },
+];
 
 type Member = {
     id: string;
@@ -99,6 +112,8 @@ export function AdminMembersContent({ embedded = false }: { embedded?: boolean }
     const [loadError, setLoadError] = useState(false);
     const [tab, setTab] = useState<TabKey>("active");
     const [creditFor, setCreditFor] = useState<Member | null>(null);
+    const [registerOpen, setRegisterOpen] = useState(false);
+    const [credentials, setCredentials] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState("");
     const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -134,6 +149,20 @@ export function AdminMembersContent({ embedded = false }: { embedded?: boolean }
         setPage(1);
         setSearch("");
         setSort(null);
+    };
+
+    const registerStudent = async (values: EntityValues) => {
+        const res = await fetch("/api/admin/members", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Could not register the student");
+        setRegisterOpen(false);
+        setCredentials({ name: String(values.name), email: String(values.email), tempPassword: json.tempPassword });
+        showToast("success", "Student registered.");
+        fetchData();
     };
 
     const adjustCredits = async (values: EntityValues) => {
@@ -225,7 +254,15 @@ export function AdminMembersContent({ embedded = false }: { embedded?: boolean }
 
     return (
         <div>
-            {!embedded && <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy." />}
+            {embedded ? (
+                <div className="flex justify-end mb-4">
+                    <Button onClick={() => setRegisterOpen(true)}>+ Register student (Cash / Walk-in)</Button>
+                </div>
+            ) : (
+                <PageHeader title="Members" subtitle="Active members by track — group classes and 1:1 therapy.">
+                    <Button onClick={() => setRegisterOpen(true)}>+ Register student (Cash / Walk-in)</Button>
+                </PageHeader>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Active Members" value={data?.counts.active ?? 0} icon={<LuFlower2 />} accent="green" />
@@ -259,6 +296,56 @@ export function AdminMembersContent({ embedded = false }: { embedded?: boolean }
                     onSortChange: (key, direction) => setSort({ key, direction }),
                 }}
             />
+
+            {registerOpen && (
+                <EntityFormModal
+                    title="Register a new student"
+                    submitLabel="Register & activate"
+                    fields={REGISTER_FIELDS}
+                    initial={{ planKey: "everyday", amount: 2000, method: "cash" }}
+                    onCancel={() => setRegisterOpen(false)}
+                    onSubmit={registerStudent}
+                />
+            )}
+
+            {credentials && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+                    onClick={() => setCredentials(null)}
+                >
+                    <div
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="credentials-dialog-title"
+                        className="bg-surface border border-hairline rounded-card shadow-overlay w-full max-w-sm p-6 animate-slide-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 id="credentials-dialog-title" className="font-semibold text-ink text-lg mb-2">
+                            {credentials.name} is registered
+                        </h3>
+                        <p className="text-sm text-ink-muted mb-4">
+                            Share this temporary password with them to log in — it's shown only once here. They can change it
+                            after signing in, or use &ldquo;Forgot password&rdquo; on the login page at any time.
+                        </p>
+                        <div className="rounded-control border border-hairline bg-surface-sunken px-3 py-2 mb-1">
+                            <div className="text-xs text-ink-subtle">{credentials.email}</div>
+                            <div className="font-mono text-base text-ink font-semibold select-all">{credentials.tempPassword}</div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-5">
+                            <Button
+                                variant="secondary"
+                                onClick={() => {
+                                    navigator.clipboard?.writeText(credentials.tempPassword).catch(() => {});
+                                    showToast("success", "Password copied.");
+                                }}
+                            >
+                                Copy password
+                            </Button>
+                            <Button onClick={() => setCredentials(null)}>Done</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {creditFor && (
                 <EntityFormModal

@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { formatPrice } from "@/lib/pricing";
+import { formatPrice, PLAN_OPTIONS } from "@/lib/pricing";
 import { PageHeader, PageLoading, Badge, Button, TableActions, ActionButton, inputClass, labelClass, type Tone } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
@@ -57,12 +57,13 @@ const fmtDate = (iso: string) =>
 
 const MANUAL_FIELDS: FieldDef[] = [
     { name: "email", label: "Member email", type: "email", required: true },
-    { name: "amount", label: "Amount", type: "number", required: true },
+    { name: "planKey", label: "Plan", type: "select", required: true, options: PLAN_OPTIONS },
+    { name: "amount", label: "Amount collected", type: "number", required: true },
     { name: "currency", label: "Currency", type: "select", options: [{ label: "INR", value: "INR" }, { label: "USD", value: "USD" }] },
-    { name: "planType", label: "Plan", type: "select", options: [
-        { label: "Everyday Yoga", value: "EVERYDAY_YOGA" }, { label: "Yoga Therapy", value: "YOGA_THERAPY" },
-        { label: "Starter", value: "STARTER" }, { label: "Family", value: "FAMILY" }, { label: "Trial", value: "TRIAL" },
+    { name: "method", label: "Payment method", type: "select", required: true, options: [
+        { label: "Cash", value: "cash" }, { label: "UPI", value: "upi" }, { label: "Bank transfer", value: "bank_transfer" },
     ] },
+    { name: "renew", label: "Also renew their subscription from today (uncheck for a historical/backfill entry only)", type: "checkbox" },
     { name: "note", label: "Note (e.g. bank transfer ref)", type: "textarea" },
 ];
 
@@ -247,7 +248,7 @@ function PaymentsTable({ embedded = false }: { embedded?: boolean }) {
                     title="Record a payment"
                     submitLabel="Record"
                     fields={MANUAL_FIELDS}
-                    initial={{ currency: "INR", planType: "EVERYDAY_YOGA" }}
+                    initial={{ currency: "INR", planKey: "everyday", method: "cash", renew: true }}
                     onCancel={() => setManualOpen(false)}
                     onSubmit={recordManual}
                 />

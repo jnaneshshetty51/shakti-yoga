@@ -92,7 +92,8 @@ export async function activatePlan(
         subscriptionId?: string;
         renewalDate?: Date;
         region?: Region;
-        provider?: 'razorpay' | 'apple' | 'google';
+        /** 'manual' = an admin-recorded cash/UPI/bank-transfer activation — never auto-charged on renewal. */
+        provider?: 'razorpay' | 'apple' | 'google' | 'manual';
         store?: 'app_store' | 'play_store' | null;
         familyOwnerId?: string | null;
         /** override amount/currency (e.g. from a store receipt) */

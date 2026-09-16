@@ -45,3 +45,5 @@ db-backup-*.sql.gz
 
 # Raw root asset drops
 /*.png
+mobile/*.aab
+mobile/*.apk

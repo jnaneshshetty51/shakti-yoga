@@ -201,6 +201,12 @@ export const LADDER: PlanKey[] = [
     'starter', 'everyday', 'everyday_annual', 'family', 'family_annual', 'therapy', 'therapy_annual',
 ];
 
+/** Ladder plans as a `{label, value}` list, for admin form <select>s (walk-in registration, manual payments). */
+export const PLAN_OPTIONS = LADDER.map((key) => ({
+    label: `${PLANS[key].name} — ${formatPrice(PLANS[key].inr, 'INR')}${PLANS[key].interval === 'annual' ? '/yr' : '/mo'}`,
+    value: key as string,
+}));
+
 export function isPlanKey(key: string | null | undefined): key is PlanKey {
     return !!key && key in PLANS;
 }

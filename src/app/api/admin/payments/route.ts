@@ -3,11 +3,17 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { auditAs } from '@/lib/audit';
 import { issueInvoiceForPayment } from '@/lib/invoice';
+import { activatePlan } from '@/lib/subscription';
+import { getPlan, isPlanKey } from '@/lib/pricing';
 import { PaymentStatus, PlanType, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+const PAYMENT_METHODS = ['cash', 'upi', 'bank_transfer'] as const;
+type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+const isPaymentMethod = (v: unknown): v is PaymentMethod => PAYMENT_METHODS.includes(v as PaymentMethod);
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
@@ -102,10 +108,17 @@ export async function POST(request: Request) {
         }
         const amount = Number(body.amount);
         const currency = String(body.currency || 'INR').toUpperCase().slice(0, 3);
-        const planTypeRaw = String(body.planType || '').toUpperCase();
-        const planType = planTypeRaw in PlanType ? (planTypeRaw as PlanType) : PlanType.EVERYDAY_YOGA;
-        const planKey = body.planKey ? String(body.planKey).slice(0, 40) : null;
         const note = body.note ? String(body.note).slice(0, 200) : null;
+        const method = isPaymentMethod(body.method) ? body.method : null;
+        // A recognized plan key (e.g. 'everyday_annual') is the precise ladder rung and
+        // takes over from the coarser planType select; falls back to it for older callers.
+        const planKeyRaw = body.planKey ? String(body.planKey) : null;
+        const plan = planKeyRaw && isPlanKey(planKeyRaw) ? getPlan(planKeyRaw) : null;
+        const planTypeRaw = String(body.planType || '').toUpperCase();
+        const planType = plan ? plan.dbPlanType : planTypeRaw in PlanType ? (planTypeRaw as PlanType) : PlanType.EVERYDAY_YOGA;
+        const planKey = plan ? plan.key : planKeyRaw ? planKeyRaw.slice(0, 40) : null;
+        // Only renew when a real plan was picked — bookkeeping-only entries (no plan match) never touch the subscription.
+        const renew = plan != null && (body.renew === true || body.renew === 'true');
 
         const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
         if (!user) return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
@@ -121,16 +134,26 @@ export async function POST(request: Request) {
                 amount,
                 currency,
                 status: PaymentStatus.PAID,
-                provider: 'manual',
-                providerPaymentId: `manual_${Date.now()}`,
+                provider: method ?? 'manual',
+                providerPaymentId: `${method ?? 'manual'}_${Date.now()}`,
             },
         });
+
+        if (renew && plan) {
+            await activatePlan(userId, plan, {
+                provider: 'manual',
+                recurring: false,
+                skipCookie: true,
+                amount,
+                currency,
+            });
+        }
 
         await auditAs({ id: admin.id, email: admin.email }, request)({
             action: 'payment.manual.create',
             entity: 'Payment',
             entityId: payment.id,
-            after: { userId, amount, currency, planType, note },
+            after: { userId, amount, currency, planType, planKey, method, renewed: renew, note },
         });
         void issueInvoiceForPayment(payment.id).catch(() => {});
 

@@ -8,6 +8,7 @@ import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button, useConfirmDi
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { MeasurementsPanel } from "@/components/admin/MeasurementsPanel";
 import { useToast } from "@/components/admin/Toast";
+import { PLAN_OPTIONS } from "@/lib/pricing";
 
 type Data = {
     member: {
@@ -52,6 +53,7 @@ export default function MemberDetailPage() {
     const { confirm, dialog } = useConfirmDialog();
     const [data, setData] = useState<Data | null>(null);
     const [credit, setCredit] = useState(false);
+    const [takeCashOpen, setTakeCashOpen] = useState(false);
 
     const load = useCallback(async () => {
         const res = await fetch(`/api/admin/members/${id}`);
@@ -59,6 +61,27 @@ export default function MemberDetailPage() {
     }, [id]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
+
+    const recordPayment = async (values: EntityValues) => {
+        const res = await fetch("/api/admin/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: id,
+                planKey: values.planKey,
+                amount: Number(values.amount),
+                currency: "INR",
+                method: values.method || "cash",
+                renew: values.renew ?? true,
+                note: values.note,
+            }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Could not record payment");
+        setTakeCashOpen(false);
+        showToast("success", "Payment recorded and subscription updated.");
+        load();
+    };
 
     const adjustCredits = async (values: EntityValues) => {
         const res = await fetch(`/api/admin/members/${id}/credits`, {
@@ -100,6 +123,7 @@ export default function MemberDetailPage() {
                 <LuArrowLeft /> Members
             </Link>
             <PageHeader title={m.name} subtitle={m.email} eyebrow={<Badge tone="gray">{m.role.replace(/_/g, " ").toLowerCase()}</Badge>}>
+                <Button onClick={() => setTakeCashOpen(true)}>Take cash / payment</Button>
                 <Button variant="ghost" onClick={() => setCredit(true)}>Adjust credits</Button>
                 <Link href="/admin/finance?tab=subscriptions"><Button variant="ghost">Change plan</Button></Link>
                 <Button variant={m.active ? "ghost" : "primary"} onClick={toggleActive}>{m.active ? "Deactivate" : "Reactivate"}</Button>
@@ -248,6 +272,32 @@ export default function MemberDetailPage() {
                         { name: "note", label: "Reason", type: "text" },
                     ]}
                     initial={{ type: "session" }}
+                />
+            )}
+
+            {takeCashOpen && (
+                <EntityFormModal
+                    title={`Take cash / Record payment — ${m.name}`}
+                    submitLabel="Record & activate"
+                    onCancel={() => setTakeCashOpen(false)}
+                    onSubmit={recordPayment}
+                    fields={[
+                        { name: "planKey", label: "Plan", type: "select", required: true, options: PLAN_OPTIONS },
+                        { name: "amount", label: "Amount collected (₹)", type: "number", required: true },
+                        { name: "method", label: "Payment method", type: "select", required: true, options: [
+                            { label: "Cash", value: "cash" },
+                            { label: "UPI", value: "upi" },
+                            { label: "Bank transfer", value: "bank_transfer" },
+                        ] },
+                        { name: "renew", label: "Activate / renew subscription from today", type: "checkbox" },
+                        { name: "note", label: "Note (optional)", type: "textarea" },
+                    ]}
+                    initial={{
+                        planKey: data.subscription?.planKey || "everyday",
+                        amount: data.subscription?.amount || 2000,
+                        method: "cash",
+                        renew: true,
+                    }}
                 />
             )}
         </div>
