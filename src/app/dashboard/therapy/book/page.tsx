@@ -239,7 +239,19 @@ export default function TherapyBookingPage() {
                         Subscribe to Yoga Therapy
                     </Link>
                 </Card>
-            ) : null}
+            ) : (
+                <div className="mb-8 p-4 bg-amber-50/60 border border-amber-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800">
+                    <div>
+                        <span className="font-semibold">0 credits remaining.</span> You have booked all sessions for this cycle.
+                    </div>
+                    <Link
+                        href="/checkout?plan=therapy"
+                        className="text-xs font-semibold px-4 py-2 rounded-full bg-secondary text-white hover:bg-primary transition-colors shrink-0"
+                    >
+                        Get more credits
+                    </Link>
+                </div>
+            )}
 
             <section className="mb-8">
                 <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Upcoming</h2>
