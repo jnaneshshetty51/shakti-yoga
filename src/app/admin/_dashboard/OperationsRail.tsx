@@ -5,6 +5,7 @@ import { LuCalendarClock, LuVideo, LuMessageSquare } from "react-icons/lu";
 import { Card, CardHeader, EmptyState } from "@/components/admin/ui";
 import type { Dashboard } from "./lib";
 import { timeAgo, whenLabel } from "./lib";
+import { QuickActions } from "./QuickActions";
 
 const ACTIVITY_DOT: Record<string, string> = {
     signup: "rgb(var(--ok))", payment: "rgb(var(--ok))", booking: "rgb(var(--info))",
@@ -87,6 +88,8 @@ export function OperationsRail({ data }: { data: Dashboard }) {
                     </ul>
                 )}
             </Card>
+
+            <QuickActions />
 
             <Card>
                 <CardHeader

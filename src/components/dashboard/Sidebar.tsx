@@ -158,11 +158,16 @@ export default function Sidebar() {
     return (
         <>
             {/* Mobile top bar */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/90 backdrop-blur-md border-b border-gray-200/70 z-40 px-4 flex items-center justify-between">
+            <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-gray-200/70 z-50 px-4 flex items-center justify-between">
                 <Link href="/dashboard" className="font-serif text-xl text-primary font-bold">
                     Shakti<span className="text-secondary">.</span>
                 </Link>
-                <button onClick={() => setOpen(!open)} className="p-2 -mr-2 text-gray-600 rounded-lg hover:bg-gray-100" aria-label="Toggle menu">
+                <button
+                    type="button"
+                    onClick={() => setOpen((prev) => !prev)}
+                    className="p-2 min-h-[44px] min-w-[44px] -mr-2 flex items-center justify-center text-gray-700 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation cursor-pointer"
+                    aria-label={open ? "Close menu" : "Open menu"}
+                >
                     {open ? <LuX className="w-6 h-6" /> : <LuMenu className="w-6 h-6" />}
                 </button>
             </div>

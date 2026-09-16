@@ -40,7 +40,8 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="flex justify-between items-center px-4 py-3.5 md:px-8 lg:px-12 xl:px-16 md:py-5 bg-background/95 backdrop-blur-md sticky top-0 z-40 border-b border-primary/10 transition-all">
+        <>
+            <nav className="flex justify-between items-center px-4 py-3.5 md:px-8 lg:px-12 xl:px-16 md:py-5 bg-background/95 backdrop-blur-md sticky top-0 z-40 border-b border-primary/10 transition-all">
             {/* Brand Logo */}
             <Link
                 href="/"
@@ -171,31 +172,33 @@ export default function Navbar() {
                     </Link>
                 )}
                 <button
-                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-lg active:bg-primary/10 transition-colors"
-                    onClick={() => setIsMenuOpen(true)}
+                    type="button"
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-primary rounded-lg active:bg-primary/10 transition-colors touch-manipulation cursor-pointer"
+                    onClick={() => setIsMenuOpen((prev) => !prev)}
                     aria-label="Open menu"
                 >
                     <LuMenu className="w-6 h-6" />
                 </button>
             </div>
+        </nav>
 
-            {/* Responsive Tablet & Mobile Off-Canvas Drawer */}
-            {/* Backdrop Blur Overlay */}
-            <div
-                className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-300 ${
-                    isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-            />
+        {/* Responsive Tablet & Mobile Off-Canvas Drawer */}
+        {/* Backdrop Blur Overlay */}
+        <div
+            className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-300 ${
+                isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+            onClick={() => setIsMenuOpen(false)}
+        />
 
-            {/* Slide-out Sheet (Full width on phone, 420px elegant right drawer on tablet) */}
-            <div
-                className={`fixed inset-y-0 right-0 w-full sm:max-w-md bg-[#FAF8F5] z-50 shadow-2xl border-l border-primary/15 flex flex-col p-6 sm:p-8 overflow-y-auto transform transition-transform duration-300 ease-out ${
-                    isMenuOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
-                }`}
-                aria-modal="true"
-                role="dialog"
-            >
+        {/* Slide-out Sheet (Full width on phone, 420px elegant right drawer on tablet) */}
+        <div
+            className={`fixed inset-y-0 right-0 w-full sm:max-w-md bg-[#FAF8F5] z-[101] shadow-2xl border-l border-primary/15 flex flex-col p-6 sm:p-8 overflow-y-auto transform transition-transform duration-300 ease-out ${
+                isMenuOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+            }`}
+            aria-modal="true"
+            role="dialog"
+        >
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between pb-5 border-b border-primary/10">
                     <div>
@@ -356,6 +359,6 @@ export default function Navbar() {
                     </p>
                 </div>
             </div>
-        </nav>
+        </>
     );
 }
