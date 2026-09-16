@@ -65,6 +65,8 @@ export default function ClassAttendancePage({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [marks, setMarks] = useState<Record<string, Mark>>({});
+    const [addEmail, setAddEmail] = useState("");
+    const [adding, setAdding] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -132,6 +134,33 @@ export default function ClassAttendancePage({
         }
     };
 
+    const addForgottenCheckIn = async () => {
+        const email = addEmail.trim();
+        if (!email) return;
+        setAdding(true);
+        try {
+            const res = await fetch(`/api/teacher/classes/${instanceId}/attendance`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ decisions: [], addEmails: [email] }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                // The route can't tell "email didn't match anyone" apart from
+                // "nothing to do" any other way — but since this call always
+                // sends exactly one addEmails entry, a 400 here only ever
+                // means the email didn't resolve to an account.
+                showToast("error", res.status === 400 ? "No account found with that email." : (json.error || "Could not add that member."));
+                return;
+            }
+            setAddEmail("");
+            showToast("success", "Added and marked present.");
+            await load();
+        } finally {
+            setAdding(false);
+        }
+    };
+
     if (loading && !data) return <PageLoading />;
     if (error && !data) return <ErrorState message={error} onRetry={load} />;
     if (!data) return null;
@@ -167,6 +196,23 @@ export default function ClassAttendancePage({
                     </p>
                 </Card>
             )}
+
+            <Card padded className="mb-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Add a member who forgot to check in</p>
+                <div className="flex gap-2">
+                    <input
+                        value={addEmail}
+                        onChange={(e) => setAddEmail(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addForgottenCheckIn()}
+                        placeholder="member@email.com"
+                        disabled={windowClosed}
+                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <Button onClick={addForgottenCheckIn} disabled={adding || windowClosed || !addEmail.trim()}>
+                        {adding ? "Adding…" : "Add"}
+                    </Button>
+                </div>
+            </Card>
 
             <Card className="overflow-hidden mb-6">
                 {data.roster.length === 0 ? (

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
 import { liveSubWhere, leadSourceAttribution } from '@/lib/metrics';
+import { convertToInr, getUsdToInrRate } from '@/lib/fx';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function GET() {
         const [payments, users, subs, liveSubUserIds, leadAttribution] = await Promise.all([
             prisma.payment.findMany({
                 where: { status: 'PAID', createdAt: { gte: since } },
-                select: { amount: true, createdAt: true, planType: true },
+                select: { amount: true, currency: true, createdAt: true, planType: true },
             }),
             prisma.user.findMany({
                 where: { createdAt: { gte: since }, role: { in: ['MEMBER_EVERYDAY', 'MEMBER_THERAPY', 'TRIAL'] } },
@@ -44,9 +45,10 @@ export async function GET() {
         const zero = () => Object.fromEntries(keys.map((k) => [k, 0])) as Record<string, number>;
 
         const revenue = zero();
+        const fxRate = await getUsdToInrRate();
         for (const p of payments) {
             const k = monthKey(p.createdAt);
-            if (k in revenue) revenue[k] += p.amount;
+            if (k in revenue) revenue[k] += convertToInr(p.amount, p.currency, fxRate);
         }
         const signups = zero();
         for (const u of users) {
@@ -98,6 +100,7 @@ export async function GET() {
                     totalSignups,
                     overallRetention: totalSignups ? Math.round((totalRetained / totalSignups) * 100) : null,
                     liveSubscriptions: liveSet.size,
+                    fxUsdToInr: Math.round(fxRate * 100) / 100,
                 },
             },
             { headers: { 'Cache-Control': 'no-store' } },

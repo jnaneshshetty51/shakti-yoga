@@ -21,6 +21,7 @@ interface Reports {
         totalSignups: number;
         overallRetention: number | null;
         liveSubscriptions: number;
+        fxUsdToInr: number;
     };
 }
 
@@ -105,7 +106,7 @@ export function AdminReportsContent({ embedded = false }: { embedded?: boolean }
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
-                    <CardHeader title="Revenue by month" subtitle="Collected payments" />
+                    <CardHeader title="Revenue by month" subtitle={`Collected payments, normalized to INR (1 USD = ₹${summary.fxUsdToInr}, updated daily)`} />
                     <div className="p-5 sm:p-6">
                         {data.revenueByMonth.some((p) => p.value > 0) ? (
                             <TrendChart series={data.revenueByMonth} kind="bar" color={CHART_SECONDARY} format={inrShort} />

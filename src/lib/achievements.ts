@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { offsetMinutesFor } from '@/lib/timezone';
 
 export interface AchievementDef {
     key: string;
@@ -26,10 +27,12 @@ const BY_KEY = new Map(ACHIEVEMENTS.map((a) => [a.key, a]));
 
 const DAY = 86_400_000;
 const WEEK = 7 * DAY;
-function weekStart(d: Date): number {
-    const x = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+/** Start of this instant's calendar week (Monday), in the given timezone — not the server's UTC day. */
+function weekStart(d: Date, offsetMinutes: number): number {
+    const shifted = new Date(d.getTime() + offsetMinutes * 60_000);
+    const x = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
     const dow = (new Date(x).getUTCDay() + 6) % 7;
-    return x - dow * DAY;
+    return x - dow * DAY - offsetMinutes * 60_000;
 }
 
 /**
@@ -38,7 +41,8 @@ function weekStart(d: Date): number {
  * the defs newly earned (for a toast), [] if none.
  */
 export async function checkAchievements(userId: string): Promise<AchievementDef[]> {
-    const [attendance, saves, comments, practices, challengesDone, existing] = await Promise.all([
+    const [user, attendance, saves, comments, practices, challengesDone, existing] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
         prisma.classAttendance.findMany({ where: { userId }, select: { joinedAt: true } }),
         prisma.contentInteraction.count({ where: { userId, kind: 'save' } }),
         prisma.contentComment.count({ where: { userId } }),
@@ -46,9 +50,10 @@ export async function checkAchievements(userId: string): Promise<AchievementDef[
         prisma.challengeParticipant.count({ where: { userId, completedAt: { not: null } } }),
         prisma.userAchievement.findMany({ where: { userId }, select: { key: true } }),
     ]);
+    const offset = offsetMinutesFor(user?.timezone);
 
-    const weeks = new Set(attendance.map((a) => weekStart(a.joinedAt)));
-    const thisWeek = weekStart(new Date());
+    const weeks = new Set(attendance.map((a) => weekStart(a.joinedAt, offset)));
+    const thisWeek = weekStart(new Date(), offset);
     let streak = 0;
     let cursor = weeks.has(thisWeek) ? thisWeek : thisWeek - WEEK;
     while (weeks.has(cursor)) {

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma, type Role } from '@prisma/client';
+import { sumAsInr, convertToInr, getUsdToInrRate } from '@/lib/fx';
 
 /**
  * Single source of truth for the numbers shown on the admin dashboard and the
@@ -81,7 +82,7 @@ export async function headlineStats(now = new Date()): Promise<HeadlineStats> {
         // renewal date). A sub that's ACTIVE but lapsed on renewal is dead revenue.
         prisma.subscription.findMany({
             where: { status: 'ACTIVE', renewalDate: { gt: now } },
-            select: { amount: true },
+            select: { amount: true, currency: true },
         }),
         prisma.user.count({ where: { role: { in: MEMBER_ROLES }, createdAt: { gte: ago30 } } }),
         prisma.user.count({ where: { role: { in: MEMBER_ROLES }, createdAt: { gte: ago60, lt: ago30 } } }),
@@ -96,7 +97,7 @@ export async function headlineStats(now = new Date()): Promise<HeadlineStats> {
         everydayMembers,
         therapyMembers,
         trialUsers,
-        mrr: Math.round(activeSubs.reduce((s, x) => s + x.amount, 0)),
+        mrr: Math.round(await sumAsInr(activeSubs)),
         newMembers,
         newMembersPrev,
         newMembersDelta: pctDelta(newMembers, newMembersPrev),
@@ -174,9 +175,10 @@ export async function revenueSeries(range: RangeKey, now = new Date()): Promise<
     const { start, days } = rangeWindow(range, now);
     const rows = await prisma.revenueRecord.findMany({
         where: { status: 'SUCCESS', createdAt: { gte: start } },
-        select: { createdAt: true, amount: true },
+        select: { createdAt: true, amount: true, currency: true },
     });
-    return fold(rows.map((r) => ({ at: r.createdAt, value: r.amount })), start, now, bucketFor(days));
+    const rate = rows.some((r) => r.currency === 'USD') ? await getUsdToInrRate() : 1;
+    return fold(rows.map((r) => ({ at: r.createdAt, value: convertToInr(r.amount, r.currency, rate) })), start, now, bucketFor(days));
 }
 
 export async function signupSeries(range: RangeKey, now = new Date()): Promise<SeriesPoint[]> {
@@ -231,18 +233,18 @@ export async function membersGained(range: RangeKey, now = new Date()) {
 /** Actual revenue collected (RevenueRecord, SUCCESS) this range vs the prior one. */
 export async function revenueTotals(range: RangeKey, now = new Date()) {
     const { start, prevStart } = rangeWindow(range, now);
-    const [cur, prev] = await prisma.$transaction([
-        prisma.revenueRecord.aggregate({
-            _sum: { amount: true },
+    const [curRows, prevRows] = await Promise.all([
+        prisma.revenueRecord.findMany({
             where: { status: 'SUCCESS', createdAt: { gte: start } },
+            select: { amount: true, currency: true },
         }),
-        prisma.revenueRecord.aggregate({
-            _sum: { amount: true },
+        prisma.revenueRecord.findMany({
             where: { status: 'SUCCESS', createdAt: { gte: prevStart, lt: start } },
+            select: { amount: true, currency: true },
         }),
     ]);
-    const current = Math.round(cur._sum.amount ?? 0);
-    const previous = Math.round(prev._sum.amount ?? 0);
+    const current = Math.round(await sumAsInr(curRows));
+    const previous = Math.round(await sumAsInr(prevRows));
     return { current, previous, delta: pctDelta(current, previous) };
 }
 
@@ -270,10 +272,11 @@ export async function leadSourceAttribution() {
     if (convertedUserIds.length) {
         const payments = await prisma.payment.findMany({
             where: { userId: { in: convertedUserIds }, status: 'PAID' },
-            select: { userId: true, amount: true },
+            select: { userId: true, amount: true, currency: true },
         });
+        const rate = payments.some((p) => p.currency === 'USD') ? await getUsdToInrRate() : 1;
         const revenueByUser = new Map<string, number>();
-        for (const p of payments) revenueByUser.set(p.userId, (revenueByUser.get(p.userId) ?? 0) + p.amount);
+        for (const p of payments) revenueByUser.set(p.userId, (revenueByUser.get(p.userId) ?? 0) + convertToInr(p.amount, p.currency, rate));
 
         for (const l of leads) {
             if (!l.convertedToUserId) continue;

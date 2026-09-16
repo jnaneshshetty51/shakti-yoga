@@ -1,16 +1,11 @@
-import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
-import { hashPassword } from '@/lib/auth';
-import { activatePlan } from '@/lib/subscription';
 import { getPlan, isPlanKey } from '@/lib/pricing';
-import { issueInvoiceForPayment } from '@/lib/invoice';
-import { auditAs } from '@/lib/audit';
+import { sumAsInr } from '@/lib/fx';
+import { registerWalkInMember, WalkInConflictError, PAYMENT_METHODS } from '@/lib/walkin';
 import { readJson, str, optStr, email as parseEmail, oneOf, ValidationError, handleValidationError } from '@/lib/validation';
-import { Prisma, PaymentStatus } from '@prisma/client';
-
-const PAYMENT_METHODS = ['cash', 'upi', 'bank_transfer'] as const;
+import { Prisma } from '@prisma/client';
 
 const IST = 'Asia/Kolkata';
 
@@ -127,9 +122,9 @@ export async function GET(request: Request) {
             prisma.user.count({ where: liveWhere }),
             prisma.user.count({ where: { AND: [liveWhere, tabWhere.group] } }),
             prisma.user.count({ where: { AND: [liveWhere, tabWhere.therapy] } }),
-            prisma.subscription.aggregate({
+            prisma.subscription.findMany({
                 where: { status: 'ACTIVE', renewalDate: { gt: now }, user: { role: { not: 'VISITOR' } } },
-                _sum: { amount: true },
+                select: { amount: true, currency: true },
             }),
         ]);
 
@@ -191,7 +186,7 @@ export async function GET(request: Request) {
                 active: activeCount,
                 group: groupCount,
                 therapy: therapyCount,
-                mrr: mrrAgg._sum.amount ?? 0,
+                mrr: await sumAsInr(mrrAgg),
             },
         });
     } catch (error) {
@@ -227,57 +222,11 @@ export async function POST(request: Request) {
         const method = oneOf(body.method, PAYMENT_METHODS, 'Payment method');
         const note = optStr(body.note, { label: 'Note', max: 200 });
 
-        const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-        if (existing) return NextResponse.json({ error: 'A user with this email already exists.' }, { status: 409 });
-
-        // Random password; shown once to the front-desk admin. The student can
-        // also always set their own later via the public "Forgot password" flow.
-        const tempPassword = randomBytes(9).toString('base64url');
-        const passwordHash = await hashPassword(tempPassword);
-
-        const user = await prisma.user.create({
-            data: { name, email, passwordHash, phone: phone ?? null, role: 'VISITOR' },
-        });
-
-        await activatePlan(user.id, plan, {
-            provider: 'manual',
-            recurring: false,
-            skipCookie: true,
-            amount,
-            currency,
-        });
-
-        const payment = await prisma.payment.create({
-            data: {
-                userId: user.id,
-                planType: plan.dbPlanType,
-                planKey: plan.key,
-                amount,
-                currency,
-                status: PaymentStatus.PAID,
-                provider: method,
-                providerPaymentId: `${method}_${Date.now()}`,
-            },
-        });
-
-        const audit = auditAs(admin, request);
-        await audit({
-            action: 'member.register',
-            entity: 'User',
-            entityId: user.id,
-            after: { name, email, phone, planKey: plan.key, amount, currency, method, note },
-        });
-        await audit({
-            action: 'payment.manual.create',
-            entity: 'Payment',
-            entityId: payment.id,
-            after: { userId: user.id, amount, currency, planKey: plan.key, method, note },
-        });
-        void issueInvoiceForPayment(payment.id).catch(() => {});
-
-        return NextResponse.json({ id: user.id, tempPassword });
+        const result = await registerWalkInMember({ actor: admin, request, name, email, phone, plan, amount, currency, method, note });
+        return NextResponse.json({ id: result.userId, tempPassword: result.tempPassword });
     } catch (error) {
         if (error instanceof ValidationError) return handleValidationError(error);
+        if (error instanceof WalkInConflictError) return NextResponse.json({ error: error.message }, { status: 409 });
         console.error('Admin members POST error:', error);
         return NextResponse.json({ error: 'Could not register the student.' }, { status: 500 });
     }

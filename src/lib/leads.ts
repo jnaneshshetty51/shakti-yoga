@@ -78,25 +78,31 @@ export async function markLeadConverted(userId: string, planType?: PlanType): Pr
         });
         if (!lead) return;
 
-        await prisma.$transaction([
-            prisma.lead.update({
-                where: { id: lead.id },
-                data: {
-                    status: LeadStatus.CONVERTED,
-                    convertedToUserId: userId,
-                    convertedAt: new Date(),
-                    linkedUserId: lead.linkedUserId ?? userId,
-                },
-            }),
-            prisma.leadActivity.create({
-                data: {
-                    leadId: lead.id,
-                    type: 'STATUS_CHANGE',
-                    content: `${lead.status} → CONVERTED — first paid membership${planType ? ` (${planType})` : ''}`,
-                    performedBy: 'system',
-                },
-            }),
-        ]);
+        // Claim atomically — confirmAndActivate() can legitimately run twice
+        // for the same payment (the client's /api/checkout/verify call and the
+        // Razorpay webhook both call it, by design, so whichever arrives second
+        // reconciles a payment the other missed). Without this, a near-
+        // simultaneous double-call would both pass the findFirst above and each
+        // write a duplicate LeadActivity/AuditLog entry.
+        const claim = await prisma.lead.updateMany({
+            where: { id: lead.id, convertedAt: null },
+            data: {
+                status: LeadStatus.CONVERTED,
+                convertedToUserId: userId,
+                convertedAt: new Date(),
+                linkedUserId: lead.linkedUserId ?? userId,
+            },
+        });
+        if (claim.count === 0) return;
+
+        await prisma.leadActivity.create({
+            data: {
+                leadId: lead.id,
+                type: 'STATUS_CHANGE',
+                content: `${lead.status} → CONVERTED — first paid membership${planType ? ` (${planType})` : ''}`,
+                performedBy: 'system',
+            },
+        });
 
         await recordAudit({
             action: 'lead.converted',

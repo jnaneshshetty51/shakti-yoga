@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { Role, SubscriptionStatus } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { PLANS } from '@/lib/pricing';
 import { getSessionBalance, type SessionBalance } from '@/lib/sessionCredits';
+import { hasLiveAccess, LIVE_ACCESS_STATUSES } from '@/lib/subscription';
 
 const STARTER_WEEKLY_LIMIT = PLANS.starter.weeklyClassLimit ?? 2;
 
@@ -39,7 +40,6 @@ export type ClassAccess =
       };
 
 const STAFF_ROLES: Role[] = [Role.SUPER_ADMIN, Role.STAFF_ADMIN, Role.TEACHER];
-const VALID_SUB_STATUSES: SubscriptionStatus[] = [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL];
 
 export async function canJoinGroupClass(userId: string, excludeInstanceId?: string): Promise<ClassAccess> {
     const user = await prisma.user.findUnique({
@@ -69,10 +69,9 @@ export async function canJoinGroupClass(userId: string, excludeInstanceId?: stri
     }
 
     const sub = user.subscription;
-    const active =
-        !!sub &&
-        VALID_SUB_STATUSES.includes(sub.status) &&
-        sub.renewalDate.getTime() > Date.now();
+    // PAUSED and CANCELLED both keep access until renewalDate — same grace
+    // rule as content access and syncSubscriptionState (see hasLiveAccess).
+    const active = hasLiveAccess(sub);
 
     if (!active) {
         return {
@@ -149,7 +148,7 @@ export async function eligibleEverydayMembers(): Promise<{ id: string; email: st
         where: {
             role: { in: [Role.MEMBER_EVERYDAY, Role.MEMBER_STARTER, Role.TRIAL] },
             subscription: {
-                status: { in: VALID_SUB_STATUSES },
+                status: { in: LIVE_ACCESS_STATUSES },
                 renewalDate: { gt: new Date() },
             },
         },

@@ -8,7 +8,7 @@ import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button, useConfirmDi
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { MeasurementsPanel } from "@/components/admin/MeasurementsPanel";
 import { useToast } from "@/components/admin/Toast";
-import { PLAN_OPTIONS } from "@/lib/pricing";
+import { PLAN_OPTIONS, CURRENCY_OPTIONS } from "@/lib/pricing";
 
 type Data = {
     member: {
@@ -70,7 +70,7 @@ export default function MemberDetailPage() {
                 userId: id,
                 planKey: values.planKey,
                 amount: Number(values.amount),
-                currency: "INR",
+                currency: values.currency || "INR",
                 method: values.method || "cash",
                 renew: values.renew ?? true,
                 note: values.note,
@@ -283,7 +283,8 @@ export default function MemberDetailPage() {
                     onSubmit={recordPayment}
                     fields={[
                         { name: "planKey", label: "Plan", type: "select", required: true, options: PLAN_OPTIONS },
-                        { name: "amount", label: "Amount collected (₹)", type: "number", required: true },
+                        { name: "currency", label: "Currency", type: "select", required: true, options: CURRENCY_OPTIONS },
+                        { name: "amount", label: "Amount collected", type: "number", required: true },
                         { name: "method", label: "Payment method", type: "select", required: true, options: [
                             { label: "Cash", value: "cash" },
                             { label: "UPI", value: "upi" },
@@ -294,6 +295,7 @@ export default function MemberDetailPage() {
                     ]}
                     initial={{
                         planKey: data.subscription?.planKey || "everyday",
+                        currency: data.subscription?.currency || "INR",
                         amount: data.subscription?.amount || 2000,
                         method: "cash",
                         renew: true,

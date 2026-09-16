@@ -7,6 +7,7 @@ import {
     PageHeader, PageLoading, Tabs, Badge, StatusBadge, TableActions, ActionButton, useConfirmDialog,
 } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { CURRENCY_OPTIONS } from "@/lib/pricing";
 
 type Retreat = {
     id: string;
@@ -215,7 +216,7 @@ export function AdminRetreatsContent({ embedded = false }: { embedded?: boolean 
                         { name: "endDate", label: "End date", type: "date", required: true },
                         { name: "capacity", label: "Capacity", type: "number" },
                         { name: "price", label: "Price", type: "number" },
-                        { name: "currency", label: "Currency" },
+                        { name: "currency", label: "Currency", type: "select", options: CURRENCY_OPTIONS },
                         { name: "description", label: "Description", type: "textarea" },
                         ...(editing ? [{ name: "status", label: "Status", type: "select" as const, options: STATUS_OPTIONS }] : []),
                     ]}

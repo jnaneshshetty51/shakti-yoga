@@ -12,6 +12,16 @@ import { formatClassTime, formatDay } from "@/lib/format";
 import { colors, spacing } from "@/theme";
 import type { ClassesResponse, ClassView } from "@/lib/types";
 
+/** "Opens in 12 min" / "Opens at 6:45 PM" — derived from the real join-window
+ *  open time the server computed, never a hardcoded guess (that previously
+ *  said "30 min" while the server actually enforced 15). */
+function opensLabel(joinOpensAt: string): string {
+  const minutesUntil = Math.round((new Date(joinOpensAt).getTime() - Date.now()) / 60_000);
+  if (minutesUntil <= 0) return "Opens shortly";
+  if (minutesUntil <= 90) return `Opens in ${minutesUntil} min`;
+  return `Opens ${formatClassTime(joinOpensAt)}`;
+}
+
 function ClassCard({ item }: { item: ClassView }) {
   const { joiningId, joinClass } = useJoin();
   return (
@@ -26,7 +36,7 @@ function ClassCard({ item }: { item: ClassView }) {
         loading={joiningId === item.id}
         onPress={() => joinClass(item.id)}
       >
-        {item.status === "Cancelled" ? "Cancelled" : item.joinable ? "Join Class" : "Opens 30 min before"}
+        {item.status === "Cancelled" ? "Cancelled" : item.joinable ? "Join Class" : opensLabel(item.joinOpensAt)}
       </Button>
     </Card>
   );

@@ -26,4 +26,16 @@ export const pushTemplates = {
         url: '/dashboard/therapy/book',
         channelId: 'sessions',
     }),
+    classStartingSoon: (className: string, minutes: number, teacherName?: string): PushMessage => ({
+        title: `${className} starts in ${minutes} min`,
+        body: teacherName ? `With ${teacherName} — see you on the mat!` : 'See you on the mat!',
+        url: '/dashboard/classes',
+        channelId: 'classes',
+    }),
+    sessionStartingSoon: (minutes: number, teacherName?: string): PushMessage => ({
+        title: `Your 1:1 session starts in ${minutes} min`,
+        body: teacherName ? `With ${teacherName}` : 'Tap to open your session details.',
+        url: '/dashboard/therapy/book',
+        channelId: 'sessions',
+    }),
 };

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { localDayKey } from '@/lib/timezone';
 
 const DAY = 86_400_000;
 
@@ -19,7 +20,8 @@ export interface PracticeConsistency {
  */
 export async function getPracticeConsistency(userId: string): Promise<PracticeConsistency> {
     const since = new Date(Date.now() - 90 * DAY);
-    const [recent, total] = await Promise.all([
+    const [user, recent, total] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
         prisma.contentCompletion.findMany({
             where: { userId, completedAt: { gte: since } },
             select: { completedAt: true },
@@ -27,7 +29,10 @@ export async function getPracticeConsistency(userId: string): Promise<PracticeCo
         prisma.contentCompletion.count({ where: { userId } }),
     ]);
 
-    const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+    // Bucket by the user's own calendar day, not the server's UTC day — a
+    // practice done between midnight and 5:30am IST otherwise lands on
+    // "yesterday" in UTC and silently drops out of "did they practice today".
+    const dayKey = (d: Date) => localDayKey(d, user?.timezone);
     const days = new Set(recent.map((r) => dayKey(r.completedAt)));
 
     let streakDays = 0;

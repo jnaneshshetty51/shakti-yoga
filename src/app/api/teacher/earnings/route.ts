@@ -30,7 +30,13 @@ export async function GET() {
             prisma.setting.findMany({ where: { key: { in: [RATE_KEYS.class, RATE_KEYS.session] } } }),
             prisma.staffProfile.findUnique({ where: { userId: teacherId }, select: { classRate: true, sessionRate: true } }),
             prisma.classInstance.findMany({
-                where: { batch: { teacherId }, status: 'Completed', date: { gte: since } },
+                // Own batches, minus any occurrence covered by a substitute
+                // (that credit belongs to whoever actually taught it), plus
+                // any occurrence of someone else's batch this teacher covered.
+                where: {
+                    OR: [{ teacherId }, { teacherId: null, batch: { teacherId } }],
+                    status: 'Completed', date: { gte: since },
+                },
                 select: { date: true },
             }),
             prisma.booking.findMany({
@@ -38,7 +44,7 @@ export async function GET() {
                 select: { date: true },
             }),
             prisma.classAttendance.findMany({
-                where: { classInstance: { batch: { teacherId } } },
+                where: { classInstance: { OR: [{ teacherId }, { teacherId: null, batch: { teacherId } }] } },
                 select: { userId: true, joinedAt: true },
             }),
             prisma.booking.findMany({

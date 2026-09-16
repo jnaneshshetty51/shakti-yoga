@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { formatPrice } from "@/lib/pricing";
+import { formatPrice, CURRENCY_OPTIONS } from "@/lib/pricing";
 import { PageHeader, PageLoading, Button, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
@@ -190,6 +190,7 @@ export function AdminSubscriptionsContent({ embedded = false }: { embedded?: boo
         { name: "status", label: "Status", type: "select", required: true, options: STATUS_OPTIONS },
         { name: "planType", label: "Plan type", type: "select", options: PLAN_OPTIONS },
         { name: "amount", label: "Amount", type: "number" },
+        { name: "currency", label: "Currency", type: "select", options: CURRENCY_OPTIONS },
         { name: "renewalDate", label: "Renewal date", type: "date" },
         { name: "extendDays", label: "…or extend by N days", type: "number" },
         { name: "reason", label: "Reason (audit note)", type: "text" },
@@ -240,6 +241,7 @@ export function AdminSubscriptionsContent({ embedded = false }: { embedded?: boo
                         status: editing.status,
                         planType: editing.planType,
                         amount: editing.amount,
+                        currency: editing.currency,
                         renewalDate: editing.renewalDate.slice(0, 10),
                     }}
                 />
@@ -254,8 +256,10 @@ export function AdminSubscriptionsContent({ embedded = false }: { embedded?: boo
                     fields={[
                         { name: "email", label: "Member email", type: "email", required: true },
                         { name: "planKey", label: "Plan", type: "select", required: true, options: PLAN_KEY_OPTIONS },
+                        { name: "currency", label: "Currency", type: "select", options: CURRENCY_OPTIONS },
                         { name: "amount", label: "Amount (blank = list price)", type: "number" },
                     ]}
+                    initial={{ currency: "INR" }}
                 />
             )}
         </div>

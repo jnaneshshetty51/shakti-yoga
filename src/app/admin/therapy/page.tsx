@@ -3,9 +3,47 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
+import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { useToast } from "@/components/admin/Toast";
-import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, labelClass, inputClass } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, Button, labelClass, inputClass } from "@/components/admin/ui";
 import { AdminBookingsContent } from "@/app/admin/bookings/page";
+import { PLAN_OPTIONS, CURRENCY_OPTIONS } from "@/lib/pricing";
+
+const THERAPY_PLAN_OPTIONS = PLAN_OPTIONS.filter((o) => o.value === "therapy" || o.value === "therapy_annual");
+
+const WALKIN_FIELDS: FieldDef[] = [
+    { name: "name", label: "Full name", type: "text", required: true },
+    { name: "email", label: "Email", type: "email", required: true },
+    { name: "phone", label: "Phone", type: "text" },
+    { name: "planKey", label: "Plan", type: "select", required: true, options: THERAPY_PLAN_OPTIONS },
+    { name: "currency", label: "Currency", type: "select", required: true, options: CURRENCY_OPTIONS },
+    { name: "amount", label: "Amount collected", type: "number", required: true, placeholder: "e.g. 5000 (INR) or 69 (USD)" },
+    { name: "method", label: "Payment method", type: "select", required: true, options: [
+        { label: "Cash", value: "cash" }, { label: "UPI", value: "upi" }, { label: "Bank transfer", value: "bank_transfer" },
+    ] },
+    { name: "note", label: "Note (e.g. UPI ref / receipt no.)", type: "text" },
+];
+
+const INTAKE_FIELDS: FieldDef[] = [
+    { name: "email", label: "Member email", type: "email", required: true },
+    { name: "fullName", label: "Full name", type: "text" },
+    { name: "age", label: "Age", type: "number" },
+    { name: "gender", label: "Gender", type: "text" },
+    { name: "heightCm", label: "Height (cm)", type: "number" },
+    { name: "weightKg", label: "Weight (kg)", type: "number" },
+    { name: "primaryConcern", label: "Primary concern", type: "text" },
+    { name: "concernDuration", label: "How long has this been going on?", type: "text" },
+    { name: "concernDescription", label: "Describe the concern", type: "textarea" },
+    { name: "injuriesSurgeries", label: "Injuries / surgeries", type: "textarea" },
+    { name: "medicalConditions", label: "Medical conditions", type: "textarea" },
+    { name: "medications", label: "Medications", type: "textarea" },
+    { name: "familyHistory", label: "Family history", type: "textarea" },
+    { name: "priorYogaTherapy", label: "Prior yoga therapy experience", type: "textarea" },
+    { name: "emergencyContactName", label: "Emergency contact name", type: "text" },
+    { name: "emergencyContactPhone", label: "Emergency contact phone", type: "text" },
+    { name: "consentGiven", label: "Client has given consent for this assessment", type: "checkbox" },
+    { name: "submit", label: "Submit for review now (uncheck to save as a draft to finish later)", type: "checkbox" },
+];
 
 type Status = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "RECOMMENDED" | "RECOMMENDED_WITH_CONDITIONS" | "NOT_RECOMMENDED";
 
@@ -69,6 +107,9 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [registerOpen, setRegisterOpen] = useState(false);
+    const [credentials, setCredentials] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
+    const [intakeFor, setIntakeFor] = useState<{ email: string; fullName?: string } | null>(null);
 
     const fetchRows = useCallback(async () => {
         setLoading(true);
@@ -90,6 +131,32 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
     useEffect(() => {
         fetchRows();
     }, [fetchRows]);
+
+    const registerWalkin = async (values: EntityValues) => {
+        const res = await fetch("/api/admin/therapy/walkin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Could not register the client");
+        setRegisterOpen(false);
+        setCredentials({ name: String(values.name), email: String(values.email), tempPassword: json.tempPassword });
+        showToast("success", "Client registered.");
+    };
+
+    const saveIntake = async (values: EntityValues) => {
+        const res = await fetch("/api/admin/therapy/intakes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Could not save the assessment");
+        setIntakeFor(null);
+        showToast("success", values.submit ? "Assessment submitted." : "Draft saved.");
+        fetchRows();
+    };
 
     const openDetail = async (row: IntakeRow) => {
         setDetailLoading(true);
@@ -162,6 +229,11 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
     return (
         <div>
             {!embedded && <PageHeader title="Yoga Therapy & Patient Care" subtitle="Review member health intakes, medical conditions, and between-session progress updates." />}
+
+            <div className="flex justify-end gap-2 mb-4">
+                <Button variant="secondary" onClick={() => setIntakeFor({ email: "" })}>New intake</Button>
+                <Button onClick={() => setRegisterOpen(true)}>Register walk-in client</Button>
+            </div>
 
             <DTable
                 data={rows}
@@ -274,6 +346,78 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
                         )}
                     </div>
                 </div>
+            )}
+
+            {registerOpen && (
+                <EntityFormModal
+                    title="Register a walk-in client"
+                    submitLabel="Register & activate"
+                    fields={WALKIN_FIELDS}
+                    initial={{ planKey: "therapy", currency: "INR", amount: 5000, method: "cash" }}
+                    onCancel={() => setRegisterOpen(false)}
+                    onSubmit={registerWalkin}
+                />
+            )}
+
+            {credentials && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in"
+                    onClick={() => setCredentials(null)}
+                >
+                    <div
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="credentials-dialog-title"
+                        className="bg-white border border-hairline rounded-2xl shadow-xl w-full max-w-sm p-6 animate-slide-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 id="credentials-dialog-title" className="font-semibold text-gray-800 text-lg mb-2">
+                            {credentials.name} is registered
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Share this temporary password with them to log in — it&apos;s shown only once here. They can
+                            change it after signing in, or use &ldquo;Forgot password&rdquo; on the login page at any time.
+                        </p>
+                        <div className="rounded-control border border-hairline bg-gray-50 px-3 py-2 mb-1">
+                            <div className="text-xs text-gray-500">{credentials.email}</div>
+                            <div className="font-mono text-base text-gray-800 font-semibold select-all">{credentials.tempPassword}</div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-5">
+                            <button
+                                type="button"
+                                className="px-4 py-2 rounded-full border border-hairline text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                                onClick={() => {
+                                    navigator.clipboard?.writeText(credentials.tempPassword).catch(() => {});
+                                    showToast("success", "Password copied.");
+                                }}
+                            >
+                                Copy password
+                            </button>
+                            <button
+                                type="button"
+                                className="px-4 py-2 rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-strong transition-colors"
+                                onClick={() => {
+                                    const { name, email } = credentials;
+                                    setCredentials(null);
+                                    setIntakeFor({ email, fullName: name });
+                                }}
+                            >
+                                Start their case now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {intakeFor && (
+                <EntityFormModal
+                    title="Case history / assessment"
+                    submitLabel="Save"
+                    fields={INTAKE_FIELDS}
+                    initial={{ email: intakeFor.email, fullName: intakeFor.fullName ?? "", consentGiven: true, submit: true }}
+                    onCancel={() => setIntakeFor(null)}
+                    onSubmit={saveIntake}
+                />
             )}
         </div>
     );

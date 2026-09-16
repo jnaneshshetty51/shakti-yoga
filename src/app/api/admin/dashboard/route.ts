@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin-auth';
+import { sumAsInr } from '@/lib/fx';
 import {
     DAY,
     MEMBER_ROLES,
@@ -104,11 +105,11 @@ async function loadCounts(now: Date) {
         }),
         prisma.subscription.findMany({
             where: { status: 'ACTIVE', renewalDate: { gt: now, lt: in7 } },
-            select: { amount: true },
+            select: { amount: true, currency: true },
         }),
         prisma.subscription.findMany({
             where: { status: 'ACTIVE', renewalDate: { gt: now, lt: in30 } },
-            select: { amount: true },
+            select: { amount: true, currency: true },
         }),
     ]);
 
@@ -124,8 +125,8 @@ async function loadCounts(now: Date) {
             lapsed: headline.lapsed,
             lapsedDelta: headline.lapsedDelta,
             paused: headline.paused,
-            renewalRevenue7d: Math.round(renew7.reduce((s, x) => s + x.amount, 0)),
-            renewalRevenue30d: Math.round(renew30.reduce((s, x) => s + x.amount, 0)),
+            renewalRevenue7d: Math.round(await sumAsInr(renew7)),
+            renewalRevenue30d: Math.round(await sumAsInr(renew30)),
         },
         attention: {
             pendingBookings,

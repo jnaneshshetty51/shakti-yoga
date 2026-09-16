@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { readMinutes, CATEGORY_LABEL } from "@/lib/content";
+import { publishScheduledContent } from "@/lib/content-schedule";
+import type { ContentCategory } from "@prisma/client";
 
 export const revalidate = 300;
 
@@ -14,13 +17,38 @@ function formatDate(d: Date) {
     return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
 }
 
-export default async function BlogPage() {
+function hrefFor(category?: string, tag?: string) {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (tag) params.set("tag", tag);
+    const qs = params.toString();
+    return qs ? `/blog?${qs}` : "/blog";
+}
+
+export default async function BlogPage(props: { searchParams: Promise<{ category?: string; tag?: string }> }) {
+    const { category, tag } = await props.searchParams;
+    const activeCategory = category && category.toUpperCase() in CATEGORY_LABEL ? (category.toUpperCase() as ContentCategory) : null;
+
     let posts: Awaited<ReturnType<typeof prisma.content.findMany>> = [];
+    let categoriesWithPosts: string[] = [];
     try {
-        posts = await prisma.content.findMany({
-            where: { type: "ARTICLE", status: "PUBLISHED", access: "PUBLIC" },
-            orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-        });
+        // Safety net if the scheduled-publish cron isn't installed (see
+        // CONTENT_PLATFORM_PLAN.md) — this page only revalidates every 5 min,
+        // so the cost of checking here is negligible.
+        await publishScheduledContent().catch(() => {});
+        [posts, categoriesWithPosts] = await Promise.all([
+            prisma.content.findMany({
+                where: {
+                    type: "ARTICLE", status: "PUBLISHED", access: "PUBLIC",
+                    ...(activeCategory ? { category: activeCategory } : {}),
+                    ...(tag ? { tags: { has: tag } } : {}),
+                },
+                orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+            }),
+            prisma.content
+                .findMany({ where: { type: "ARTICLE", status: "PUBLISHED", access: "PUBLIC" }, select: { category: true }, distinct: ["category"] })
+                .then((rows) => rows.map((r) => r.category)),
+        ]);
     } catch {
         // DB unavailable at build/revalidate — render the empty state; ISR retries.
     }
@@ -38,11 +66,37 @@ export default async function BlogPage() {
                 </div>
             </section>
 
+            {categoriesWithPosts.length > 1 && (
+                <div className="max-w-6xl mx-auto px-4 pt-12 flex flex-wrap justify-center gap-2">
+                    <Link
+                        href="/blog"
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${!activeCategory ? "bg-secondary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                    >
+                        All
+                    </Link>
+                    {categoriesWithPosts.map((c) => (
+                        <Link
+                            key={c}
+                            href={hrefFor(c)}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${activeCategory === c ? "bg-secondary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                        >
+                            {CATEGORY_LABEL[c as ContentCategory] ?? c}
+                        </Link>
+                    ))}
+                </div>
+            )}
+
+            {tag && (
+                <div className="max-w-6xl mx-auto px-4 pt-6 text-center text-sm text-text/60">
+                    Tagged <span className="font-semibold text-text">#{tag}</span> · <Link href={hrefFor(category)} className="underline hover:text-secondary">clear</Link>
+                </div>
+            )}
+
             {/* Blog Grid */}
             <section className="py-20 px-4">
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                     {posts.length === 0 && (
-                        <p className="text-text/60 italic col-span-full text-center">No articles published yet.</p>
+                        <p className="text-text/60 italic col-span-full text-center">No articles found.</p>
                     )}
                     {posts.map((post) => (
                         <article key={post.id} className="group cursor-pointer">
@@ -57,11 +111,13 @@ export default async function BlogPage() {
                                         </div>
                                     )}
                                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded text-xs font-bold uppercase tracking-widest text-secondary">
-                                        {post.category}
+                                        {CATEGORY_LABEL[post.category] ?? post.category}
                                     </div>
                                 </div>
                                 <div className="space-y-3">
-                                    <div className="text-xs text-gray-500 uppercase tracking-widest">{formatDate(post.publishedAt ?? post.createdAt)}</div>
+                                    <div className="text-xs text-gray-500 uppercase tracking-widest">
+                                        {formatDate(post.publishedAt ?? post.createdAt)} · {readMinutes(post.body ?? "")} min read
+                                    </div>
                                     <h2 className="font-serif text-2xl text-gray-800 group-hover:text-primary transition-colors">
                                         {post.title}
                                     </h2>

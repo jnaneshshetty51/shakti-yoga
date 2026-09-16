@@ -419,6 +419,11 @@ export default function AdminContentPage() {
             {canApprove && r.status === "APPROVED" && !r.scheduledAt && (
                 <ActionButton onClick={() => setContentStatus(r.id, "PUBLISHED")}>Publish</ActionButton>
             )}
+            {r.contentType === "ARTICLE" && r.status === "PUBLISHED" && r.slug && (
+                <a href={`/blog/${r.slug}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand hover:text-brand-strong transition-colors">
+                    View live
+                </a>
+            )}
             <ActionButton onClick={() => setModal({ mode: "edit", id: r.id, initial: contentInitial(r), subtype: r.contentType })}>Edit</ActionButton>
             <ActionButton tone="danger" onClick={() => remove(r.id)}>{r.status === "ARCHIVED" ? "Delete" : r.status === "DRAFT" ? "Delete" : "Archive"}</ActionButton>
         </TableActions>

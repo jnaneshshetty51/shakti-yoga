@@ -13,6 +13,11 @@ export async function GET() {
     try {
         const [batches, teachers] = await Promise.all([
             prisma.classBatch.findMany({
+                // One-time classes (api/admin/schedule/one-time) are a
+                // throwaway batch shape purely to attach a single instance to
+                // — they belong in the schedule calendar, not this recurring
+                // "Batches" list.
+                where: { oneTime: false },
                 include: { teacher: { select: { id: true, name: true } } },
                 orderBy: { timeSlot: 'asc' },
             }),

@@ -16,6 +16,34 @@ export class SubscriptionProviderConflictError extends Error {
 }
 
 /**
+ * The single, authoritative "does this subscription still entitle its owner to
+ * anything" check — matches syncSubscriptionState's own grace-period rule
+ * below: CANCELLED and PAUSED both keep access until `renewalDate` (pausing
+ * stops recurring billing the same as cancelling does, it just offers a
+ * Resume button before the date passes — neither should cut access off
+ * immediately). Content access (lib/content-audience.ts) and group-class
+ * access (lib/class-access.ts) both delegate to this so they can never
+ * disagree with each other or with syncSubscriptionState about who still has
+ * access — they previously each had their own slightly different status
+ * list, which let a PAUSED member keep content access while being told their
+ * membership had "expired" when trying to join a class.
+ */
+export const LIVE_ACCESS_STATUSES: SubscriptionStatus[] = [
+    SubscriptionStatus.ACTIVE,
+    SubscriptionStatus.TRIAL,
+    SubscriptionStatus.PAUSED,
+    SubscriptionStatus.CANCELLED,
+];
+
+export function hasLiveAccess(
+    sub: { status: SubscriptionStatus; renewalDate: Date } | null | undefined,
+    now: Date = new Date(),
+): boolean {
+    if (!sub) return false;
+    return LIVE_ACCESS_STATUSES.includes(sub.status) && sub.renewalDate.getTime() > now.getTime();
+}
+
+/**
  * Lazily expire a user's subscription: if it is CANCELLED or already EXPIRED and
  * the renewal date has passed, mark it EXPIRED and drop the user back to VISITOR.
  * Safe to call on every auth check — it only writes when something actually changed.

@@ -39,7 +39,11 @@ export async function computeProgress(challenge: Challenge, userId: string): Pro
  * path would have — shared by updateChallengeProgress (goal reached) and the
  * admin "mark complete" override, so a manually-completed participant isn't
  * missing the certificate the certificates page's own copy promises.
- * No-op if already complete.
+ * No-op if already complete. Claims atomically (`completedAt: null` in the
+ * WHERE) rather than trusting the passed-in snapshot, so two concurrent calls
+ * for the same participant (e.g. a class-join and a practice-completion racing
+ * to update progress) can't both pass the guard and each issue a certificate —
+ * only the request that wins the row lock proceeds.
  */
 export async function markParticipantComplete(
     participant: ChallengeParticipant,
@@ -47,10 +51,11 @@ export async function markParticipantComplete(
     reason: string,
 ): Promise<void> {
     if (participant.completedAt) return;
-    await prisma.challengeParticipant.update({
-        where: { id: participant.id },
+    const claim = await prisma.challengeParticipant.updateMany({
+        where: { id: participant.id, completedAt: null },
         data: { completedAt: new Date() },
     });
+    if (claim.count === 0) return;
     await prisma.certificate.create({
         data: {
             userId: participant.userId,

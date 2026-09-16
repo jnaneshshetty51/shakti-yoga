@@ -7,6 +7,7 @@ import { PageHeader, PageLoading, Tabs, Card, EmptyState, ErrorState, Badge, But
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/admin/Toast";
 import { AdminAvailabilityContent } from "@/app/admin/availability/page";
+import { AdminPayoutsContent } from "@/app/admin/staff/payouts/page";
 
 const DEPARTMENT_LABEL: Record<string, string> = { CONTENT: "Content Team", SUPPORT: "Support Staff", TRAINER: "Everyday Trainer", THERAPIST: "Yoga Therapist" };
 
@@ -368,20 +369,21 @@ export function AdminStaffContent({ embedded = false }: { embedded?: boolean } =
     );
 }
 
-type TabKey = "staff" | "availability";
+type TabKey = "staff" | "availability" | "payouts";
 const TABS: { key: TabKey; label: string }[] = [
     { key: "staff", label: "Staff" },
     { key: "availability", label: "Availability" },
+    { key: "payouts", label: "Payouts" },
 ];
 
-/** Staff hub — accounts/roles/RBAC and 1:1 therapy booking availability windows. */
+/** Staff hub — accounts/roles/RBAC, 1:1 therapy booking availability windows, and teacher/therapist payouts. */
 function StaffHub() {
     const tabParam = useSearchParams().get("tab") as TabKey | null;
     const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "staff");
 
     return (
         <div>
-            <PageHeader title="Staff" subtitle="Everyone working inside Shakti — accounts, roles, and availability." />
+            <PageHeader title="Staff" subtitle="Everyone working inside Shakti — accounts, roles, availability, and payouts." />
 
             <div className="mb-6">
                 <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
@@ -389,6 +391,7 @@ function StaffHub() {
 
             {tab === "staff" && <AdminStaffContent embedded />}
             {tab === "availability" && <AdminAvailabilityContent embedded />}
+            {tab === "payouts" && <AdminPayoutsContent embedded />}
         </div>
     );
 }

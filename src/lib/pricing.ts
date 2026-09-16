@@ -201,9 +201,15 @@ export const LADDER: PlanKey[] = [
     'starter', 'everyday', 'everyday_annual', 'family', 'family_annual', 'therapy', 'therapy_annual',
 ];
 
-/** Ladder plans as a `{label, value}` list, for admin form <select>s (walk-in registration, manual payments). */
+/** Standard currency choices for admin forms and checkout inputs. */
+export const CURRENCY_OPTIONS = [
+    { label: "INR (₹)", value: "INR" },
+    { label: "USD ($)", value: "USD" },
+];
+
+/** Ladder plans as a `{label, value}` list showing both INR and USD prices for admin forms. */
 export const PLAN_OPTIONS = LADDER.map((key) => ({
-    label: `${PLANS[key].name} — ${formatPrice(PLANS[key].inr, 'INR')}${PLANS[key].interval === 'annual' ? '/yr' : '/mo'}`,
+    label: `${PLANS[key].name} — ₹${PLANS[key].inr.toLocaleString('en-IN')} / $${PLANS[key].usd}${PLANS[key].interval === 'annual' ? '/yr' : '/mo'}`,
     value: key as string,
 }));
 

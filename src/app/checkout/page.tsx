@@ -160,6 +160,19 @@ function CheckoutContent() {
         }
     };
 
+    const handleCurrencyChange = async (nextRegion: "IN" | "INTL") => {
+        try {
+            await fetch("/api/region", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ region: nextRegion }),
+            });
+        } catch {}
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("region", nextRegion);
+        router.replace(`/checkout?${params.toString()}`);
+    };
+
     return (
         <main className="min-h-screen bg-gray-50 py-12 px-4">
             <Script
@@ -170,7 +183,27 @@ function CheckoutContent() {
             <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Order Summary */}
                 <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 h-fit">
-                    <h2 className="font-serif text-2xl text-primary mb-6">Order Summary</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="font-serif text-2xl text-primary">Order Summary</h2>
+                        {!isFree && (
+                            <div className="inline-flex rounded-full border border-gray-200 p-0.5 bg-gray-50 text-xs font-semibold">
+                                <button
+                                    type="button"
+                                    onClick={() => handleCurrencyChange("IN")}
+                                    className={`px-2.5 py-1 rounded-full transition-colors ${region === "IN" ? "bg-primary text-white shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+                                >
+                                    ₹ INR
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleCurrencyChange("INTL")}
+                                    className={`px-2.5 py-1 rounded-full transition-colors ${region === "INTL" ? "bg-primary text-white shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+                                >
+                                    $ USD
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex justify-between items-baseline mb-4 pb-4 border-b border-gray-100">
                         <div>
                             <h3 className="font-bold text-lg text-gray-800">{selectedPlan.name}</h3>

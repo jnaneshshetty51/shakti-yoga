@@ -4,6 +4,8 @@ export interface ClassView {
   teacher: string;
   startsAt: string;
   endsAt: string;
+  /** When the join button actually becomes enabled — show this, not a hardcoded guess. */
+  joinOpensAt: string;
   status: string;
   joinable: boolean;
   /** Whether the caller has attended this instance — per-member, not the instance's own status. */

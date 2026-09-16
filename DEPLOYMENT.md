@@ -188,6 +188,25 @@ external scheduler:
 curl -H "x-cron-secret: $CRON_SECRET" http://localhost:3001/api/cron/ensure-instances
 ```
 
+### 4.4 Schedule the class/session reminder cron
+
+Sends a push ~30 minutes before a group class or 1:1 session starts. **This has
+the same "does the crontab actually exist" risk as 4.3 and content scheduling
+(see CONTENT_PLATFORM_PLAN.md) — confirm it's actually installed, don't assume
+it from the code existing:**
+
+```bash
+crontab -e
+# add:
+*/10 * * * * cd /root/shaktiyoga/app && node_modules/.bin/tsx scripts/class-reminders.ts >> /var/log/shakti-cron.log 2>&1
+```
+
+Or via the HTTP trigger:
+
+```bash
+curl -H "x-cron-secret: $CRON_SECRET" http://localhost:3001/api/cron/class-reminders
+```
+
 ## Step 5: Configure Nginx
 
 ### 5.1 Copy Nginx configuration

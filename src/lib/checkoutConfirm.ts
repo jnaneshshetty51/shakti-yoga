@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { PLANS, formatPrice, getPlan, regionFor } from '@/lib/pricing';
 import { fetchPayment } from '@/lib/razorpay';
+import { mapDatabaseRole } from '@/lib/auth';
 import { activatePlan, SubscriptionProviderConflictError } from '@/lib/subscription';
 import { issueInvoiceForPayment } from '@/lib/invoice';
 import { sendEmail, emailLayout } from '@/lib/email';
@@ -44,10 +45,26 @@ export async function confirmAndActivate(params: {
         return { ok: false as const, status: 400, error: 'Payment could not be confirmed.' };
     }
 
-    await prisma.payment.update({
-        where: { id: paymentRecord.id },
+    // Claim atomically — this function is called from both the client's
+    // /api/checkout/verify request and the Razorpay webhook for the same
+    // payment by design (see the docstring above), and neither caller's own
+    // `status === 'PAID'` pre-check is race-safe against the other arriving at
+    // nearly the same instant. Everything below (plan activation incl. credit
+    // grants, referral/lead conversion, invoicing, emails) must run exactly
+    // once per payment, so whichever call loses this race exits immediately
+    // instead of re-running those side effects a second time.
+    const claim = await prisma.payment.updateMany({
+        where: { id: paymentRecord.id, status: { not: 'PAID' } },
         data: { status: 'PAID', providerPaymentId: razorpayPaymentId, providerSignature: razorpaySignature ?? null },
     });
+    if (claim.count === 0) {
+        const already = await prisma.user.findUnique({ where: { id: userId } });
+        if (!already) return { ok: false as const, status: 404, error: 'User not found.' };
+        return {
+            ok: true as const,
+            user: { id: already.id, name: already.name, email: already.email, role: mapDatabaseRole(already.role) },
+        };
+    }
     void issueInvoiceForPayment(paymentRecord.id).catch(() => {});
 
     const plan = planForPayment(paymentRecord);
@@ -79,7 +96,7 @@ export async function confirmAndActivate(params: {
         await consumeCheckoutDiscount(userId, {
             creditApplied: paymentRecord.creditApplied,
             refereeDiscountApplied: paymentRecord.refereeDiscountApplied,
-        }).catch(() => {});
+        }, paymentRecord.id).catch(() => {});
     }
 
     recordEvent('SUBSCRIPTION', { userId, metadata: { plan: plan.key, recurring } });

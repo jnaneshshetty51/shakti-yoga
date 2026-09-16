@@ -129,8 +129,31 @@ export async function previewCheckoutDiscount(
     return { creditApplied, refereeDiscountApplied };
 }
 
-/** Consume whatever discount a just-paid Payment recorded — called once, at verification time. */
-export async function consumeCheckoutDiscount(userId: string, payment: { creditApplied: number; refereeDiscountApplied: number }): Promise<void> {
+/**
+ * Consume whatever discount a just-paid Payment recorded — called once, at
+ * verification time. Pass `paymentId` whenever one already exists (every
+ * caller except the ₹0-net-due instant-activation path, which creates its
+ * Payment row afterward and has no webhook counterpart to race against) —
+ * confirmAndActivate() has no idempotency guard of its own and can run twice
+ * for the same payment (the client's /api/checkout/verify call and the
+ * Razorpay webhook both call it by design), so without an atomic claim here a
+ * near-simultaneous double-call would decrement the wallet twice.
+ */
+export async function consumeCheckoutDiscount(
+    userId: string,
+    payment: { creditApplied: number; refereeDiscountApplied: number },
+    paymentId?: string,
+): Promise<void> {
+    if (payment.creditApplied <= 0 && payment.refereeDiscountApplied <= 0) return;
+
+    if (paymentId) {
+        const claim = await prisma.payment.updateMany({
+            where: { id: paymentId, discountConsumedAt: null },
+            data: { discountConsumedAt: new Date() },
+        });
+        if (claim.count === 0) return;
+    }
+
     const ops: Prisma.PrismaPromise<unknown>[] = [];
     if (payment.creditApplied > 0) {
         ops.push(prisma.user.update({
@@ -174,21 +197,28 @@ export async function markReferralConverted(refereeId: string, planDbType?: Plan
 
     const { referrerReward } = await getReferralSettings();
 
-    await prisma.$transaction([
-        prisma.referral.update({
-            where: { id: ref.id },
-            data: {
-                status: ReferralStatus.SUCCESSFUL,
-                convertedAt: new Date(),
-                rewardedAt: new Date(),
-                rewardAmount: referrerReward,
-            },
-        }),
-        prisma.user.update({
-            where: { id: ref.referrerId },
-            data: { referralCreditBalance: { increment: referrerReward } },
-        }),
-    ]);
+    // Claim atomically on `status: PENDING` — confirmAndActivate() (the caller,
+    // via lib/checkoutConfirm.ts) can legitimately run twice for the same
+    // payment: the client's /api/checkout/verify call and the Razorpay webhook
+    // both call it by design, so whichever arrives second reconciles a payment
+    // the other missed. Without this, a near-simultaneous double-call would
+    // both pass the PENDING check above and each increment the referrer's
+    // wallet — a real double-payout, not just a duplicate log entry.
+    const claim = await prisma.referral.updateMany({
+        where: { id: ref.id, status: ReferralStatus.PENDING },
+        data: {
+            status: ReferralStatus.SUCCESSFUL,
+            convertedAt: new Date(),
+            rewardedAt: new Date(),
+            rewardAmount: referrerReward,
+        },
+    });
+    if (claim.count === 0) return;
+
+    await prisma.user.update({
+        where: { id: ref.referrerId },
+        data: { referralCreditBalance: { increment: referrerReward } },
+    });
 
     void recordEvent('referral_converted', {
         userId: ref.referrerId,

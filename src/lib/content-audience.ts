@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getPlan } from '@/lib/pricing';
+import { syncSubscriptionState, hasLiveAccess } from '@/lib/subscription';
 import type { Prisma, PlanType, Role } from '@prisma/client';
 
 const TIER_BY_PLAN_TYPE: Record<PlanType, string> = {
@@ -29,12 +30,19 @@ export async function memberTier(userId: string | null): Promise<string | null> 
     if (!user) return null;
 
     const sub = user.subscription;
-    const live = sub && ['ACTIVE', 'TRIAL', 'PAUSED'].includes(sub.status) && sub.renewalDate > now;
+    const live = hasLiveAccess(sub, now);
     if (live && sub) {
         if (sub.planKey) return getPlan(sub.planKey).tier;
         return TIER_BY_PLAN_TYPE[sub.planType] ?? null;
     }
-    return TIER_BY_ROLE[user.role] ?? null;
+
+    // `user.role` can be stale here — nothing on the content-read path calls
+    // syncSubscriptionState, so a lapsed subscription's role fallback could
+    // otherwise keep granting membership-gated content indefinitely until the
+    // user happens to hit login/`/api/auth/me`/`/api/me/home`. Reconcile it
+    // before trusting it for a tier.
+    const role = await syncSubscriptionState(userId, user.role);
+    return TIER_BY_ROLE[role] ?? null;
 }
 
 /**

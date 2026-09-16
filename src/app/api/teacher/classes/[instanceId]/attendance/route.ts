@@ -11,14 +11,15 @@ const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 
 
 const DAY = 86_400_000;
 
-/** The teacher who owns this instance's batch, or null if the caller may not touch it. */
+/** The teacher who owns this instance's batch (or is covering it as a substitute), or null if the caller may not touch it. */
 async function loadInstanceForTeacher(instanceId: string, session: { id: string; role: string }) {
     const instance = await prisma.classInstance.findUnique({
         where: { id: instanceId },
         include: { batch: { select: { name: true, teacherId: true, durationMin: true } } },
     });
     if (!instance) return { error: NextResponse.json({ error: 'Class not found' }, { status: 404 }) };
-    if (session.role !== 'admin' && instance.batch.teacherId !== session.id) {
+    const owner = instance.teacherId ?? instance.batch.teacherId;
+    if (session.role !== 'admin' && owner !== session.id) {
         return { error: forbidden() };
     }
     return { instance };
@@ -107,6 +108,22 @@ export async function POST(request: Request, props: { params: Promise<{ instance
                 (d.status === 'PRESENT' || d.status === 'ABSENT')
             ) {
                 decisions.push({ userId: d.userId, status: d.status });
+            }
+        }
+    }
+
+    // Forgotten check-in: a member who was in class but never tapped Join —
+    // resolve by email straight to a PRESENT decision, same as the admin
+    // console's own AttendanceModal, so a teacher isn't dependent on an admin
+    // to add someone who simply forgot to check in.
+    if (Array.isArray(body.addEmails)) {
+        const addEmails: string[] = body.addEmails.map((e: unknown) => String(e).trim().toLowerCase()).filter(Boolean);
+        if (addEmails.length > 0) {
+            const users = await prisma.user.findMany({ where: { email: { in: addEmails } }, select: { id: true, email: true } });
+            const byEmail = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
+            for (const email of addEmails) {
+                const userId = byEmail.get(email);
+                if (userId && !decisions.some((d) => d.userId === userId)) decisions.push({ userId, status: 'PRESENT' });
             }
         }
     }

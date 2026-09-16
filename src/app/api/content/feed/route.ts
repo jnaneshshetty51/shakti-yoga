@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { serializeContent, feedSortValue, toContentCategory, type FeedItem } from '@/lib/content';
 import { audienceWhere } from '@/lib/content-audience';
+import { publishScheduledContent } from '@/lib/content-schedule';
 import type { ContentCategory, ContentType, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,12 @@ const TYPE_BY_KIND: Record<string, ContentType> = {
  *   type: all | video | audio | article | founder_message | announcement
  */
 export async function GET(request: Request) {
+    // Safety net for the scheduled-publish cron possibly not being installed
+    // (see CONTENT_PLATFORM_PLAN.md) — fire-and-forget so a rare due item never
+    // adds push-notification latency to a feed load; it'll appear on the very
+    // next request either way.
+    void publishScheduledContent().catch(() => {});
+
     const url = new URL(request.url);
     const cursor = Math.max(0, Math.trunc(Number(url.searchParams.get('cursor')) || 0));
     const limit = Math.min(MAX, Math.max(1, Math.trunc(Number(url.searchParams.get('limit')) || PAGE)));

@@ -8,14 +8,15 @@ import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFor
 import { StatCard } from "@/components/admin/StatCard";
 import { PageHeader, PageLoading, Tabs, Badge, TableActions, ActionButton, ErrorState, Button } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
-import { PLAN_OPTIONS } from "@/lib/pricing";
+import { PLAN_OPTIONS, CURRENCY_OPTIONS } from "@/lib/pricing";
 
 const REGISTER_FIELDS = [
     { name: "name", label: "Full name", type: "text" as const, required: true },
     { name: "email", label: "Email", type: "email" as const, required: true },
     { name: "phone", label: "Phone", type: "text" as const },
     { name: "planKey", label: "Plan", type: "select" as const, required: true, options: PLAN_OPTIONS },
-    { name: "amount", label: "Amount collected (₹)", type: "number" as const, required: true, placeholder: "e.g. 2000" },
+    { name: "currency", label: "Currency", type: "select" as const, required: true, options: CURRENCY_OPTIONS },
+    { name: "amount", label: "Amount collected", type: "number" as const, required: true, placeholder: "e.g. 2000 (INR) or 29 (USD)" },
     { name: "method", label: "Payment method", type: "select" as const, required: true, options: [
         { label: "Cash", value: "cash" }, { label: "UPI", value: "upi" }, { label: "Bank transfer", value: "bank_transfer" },
     ] },
@@ -302,7 +303,7 @@ export function AdminMembersContent({ embedded = false }: { embedded?: boolean }
                     title="Register a new student"
                     submitLabel="Register & activate"
                     fields={REGISTER_FIELDS}
-                    initial={{ planKey: "everyday", amount: 2000, method: "cash" }}
+                    initial={{ planKey: "everyday", currency: "INR", amount: 2000, method: "cash" }}
                     onCancel={() => setRegisterOpen(false)}
                     onSubmit={registerStudent}
                 />

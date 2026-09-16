@@ -90,22 +90,25 @@ export async function POST(request: Request) {
         const body = await request.json().catch(() => ({}));
         const email = String(body.email || '').trim().toLowerCase();
         const planKey = String(body.planKey || '');
-        const amount = body.amount != null ? Number(body.amount) : undefined;
+        const amount = body.amount != null && body.amount !== '' ? Number(body.amount) : undefined;
+        const currency = body.currency ? String(body.currency).toUpperCase().slice(0, 3) : undefined;
 
         if (!isPlanKey(planKey)) return NextResponse.json({ error: 'Pick a valid plan.' }, { status: 400 });
         const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
         if (!user) return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
 
         const { user: updated } = await activatePlan(user.id, await resolvedPlan(planKey), {
-            provider: 'razorpay',
+            provider: 'manual',
+            recurring: false,
             skipCookie: true,
             ...(amount != null && Number.isFinite(amount) ? { amount } : {}),
+            ...(currency ? { currency } : {}),
         });
 
         await recordAudit({
             actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
             action: 'subscription.manual.activate', entity: 'Subscription', entityId: user.id,
-            after: { planKey, amount, role: updated.role },
+            after: { planKey, amount, currency, role: updated.role },
         });
 
         return NextResponse.json({ ok: true, userId: user.id });
@@ -125,7 +128,7 @@ export async function PATCH(request: Request) {
     const admin = await requireAdmin();
     if (!admin) return forbidden();
     try {
-        const { id, status, planType, renewalDate, amount, extendDays, pause, reason } =
+        const { id, status, planType, renewalDate, amount, currency, extendDays, pause, reason } =
             await request.json().catch(() => ({}));
         if (!id) return NextResponse.json({ error: 'Missing subscription id' }, { status: 400 });
 
@@ -144,6 +147,7 @@ export async function PATCH(request: Request) {
         if (planType) data.planType = planType as PlanType;
         if (renewalDate) data.renewalDate = new Date(renewalDate);
         if (amount != null && Number.isFinite(Number(amount))) data.amount = Math.max(0, Number(amount));
+        if (currency && typeof currency === 'string') data.currency = currency.toUpperCase().slice(0, 3);
         if (typeof extendDays === 'number' && extendDays !== 0) {
             const base = data.renewalDate instanceof Date ? data.renewalDate : before.renewalDate;
             data.renewalDate = new Date(base.getTime() + extendDays * 86_400_000);
@@ -168,8 +172,8 @@ export async function PATCH(request: Request) {
         await recordAudit({
             actorId: admin.id, actorEmail: admin.email, ip: getClientIp(request),
             action: 'subscription.update', entity: 'Subscription', entityId: id,
-            before: { status: before.status, planType: before.planType, renewalDate: before.renewalDate, amount: before.amount },
-            after: { status: sub.status, planType: sub.planType, renewalDate: sub.renewalDate, amount: sub.amount, userRole: nextRole, reason: reason ?? null },
+            before: { status: before.status, planType: before.planType, renewalDate: before.renewalDate, amount: before.amount, currency: before.currency },
+            after: { status: sub.status, planType: sub.planType, renewalDate: sub.renewalDate, amount: sub.amount, currency: sub.currency, userRole: nextRole, reason: reason ?? null },
         });
 
         return NextResponse.json({ subscription: { id: sub.id, status: sub.status } });

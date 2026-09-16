@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { canJoinGroupClass, type ClassAccess } from '@/lib/class-access';
-import { ensureInstances, isJoinable, istParts } from '@/lib/class-schedule';
+import { ensureInstances, isJoinable, istParts, joinWindow } from '@/lib/class-schedule';
 import type { ClassView } from '@/types/class';
 
 export interface ClassFeed {
@@ -54,6 +54,7 @@ export async function getClassFeed(userId: string): Promise<ClassFeed> {
             teacher: inst.batch.teacher.name,
             startsAt: inst.date.toISOString(),
             endsAt: new Date(inst.date.getTime() + inst.batch.durationMin * 60_000).toISOString(),
+            joinOpensAt: joinWindow(inst, inst.batch).opensAt.toISOString(),
             status: inst.status,
             joinable: isJoinable(inst, inst.batch, now),
             attended: attendedIds.has(inst.id),

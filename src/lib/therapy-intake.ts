@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { ValidationError } from '@/lib/validation';
 import { TherapyIntakeStatus, type TherapyIntake } from '@prisma/client';
 
 /** Fields the applicant can fill in, one sitting, saved as they go. */
@@ -26,6 +27,50 @@ const EDITABLE_STATUSES: TherapyIntakeStatus[] = [TherapyIntakeStatus.DRAFT, The
 
 export function isEditable(status: TherapyIntakeStatus): boolean {
     return EDITABLE_STATUSES.includes(status);
+}
+
+function num(value: unknown, label: string): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    const n = Number(value);
+    if (!Number.isFinite(n)) throw new ValidationError(`${label} must be a number.`);
+    return n;
+}
+
+function txt(value: unknown): string | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== 'string') throw new ValidationError('Expected a string field.');
+    return value.trim() || undefined;
+}
+
+/**
+ * Parse a raw request body into draft fields, dropping unset keys so a
+ * partial save never clobbers previously-saved data. Shared by the
+ * applicant's own save route and the admin (THERAPIST) on-behalf-of route.
+ */
+export function parseIntakeFields(body: Record<string, unknown>): IntakeDraftFields {
+    const fields: IntakeDraftFields = {
+        fullName: txt(body.fullName),
+        age: num(body.age, 'Age'),
+        gender: txt(body.gender),
+        heightCm: num(body.heightCm, 'Height'),
+        weightKg: num(body.weightKg, 'Weight'),
+        primaryConcern: txt(body.primaryConcern),
+        concernDuration: txt(body.concernDuration),
+        concernDescription: txt(body.concernDescription),
+        injuriesSurgeries: txt(body.injuriesSurgeries),
+        medicalConditions: txt(body.medicalConditions),
+        medications: txt(body.medications),
+        familyHistory: txt(body.familyHistory),
+        priorYogaTherapy: txt(body.priorYogaTherapy),
+        emergencyContactName: txt(body.emergencyContactName),
+        emergencyContactPhone: txt(body.emergencyContactPhone),
+    };
+    if (typeof body.consentGiven === 'boolean') fields.consentGiven = body.consentGiven;
+
+    (Object.keys(fields) as (keyof IntakeDraftFields)[]).forEach((k) => {
+        if (fields[k] === undefined) delete fields[k];
+    });
+    return fields;
 }
 
 export async function getIntake(userId: string): Promise<TherapyIntake | null> {

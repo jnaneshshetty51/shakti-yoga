@@ -197,9 +197,10 @@ model User {
   therapyIntakesReviewed TherapyIntake[] @relation("TherapyIntakeReviewer")
 
   // For Teachers
-  classesTaught  ClassBatch[]
-  sessionsTaught Booking[]             @relation("TeacherBookings")
-  availability   TeacherAvailability[] @relation("TeacherAvailability")
+  classesTaught          ClassBatch[]
+  classInstancesCovering ClassInstance[]       @relation("ClassInstanceSubstituteTeacher")
+  sessionsTaught         Booking[]             @relation("TeacherBookings")
+  availability           TeacherAvailability[] @relation("TeacherAvailability")
 
   // For Students
   classAttendance      ClassAttendance[]
@@ -248,6 +249,9 @@ model User {
   measurementsRecorded   TherapyMeasurement[] @relation("MeasurementRecorder")
   patientUpdates         PatientUpdate[]
   patientUpdatesReviewed PatientUpdate[]      @relation("PatientUpdateReviewer")
+
+  teacherPayouts          TeacherPayout[] @relation("TeacherPayouts")
+  teacherPayoutsProcessed TeacherPayout[] @relation("TeacherPayoutProcessedBy")
 }
 
 /// One redeemed referral. Created (PENDING) when someone signs up with a code;
@@ -304,6 +308,41 @@ model StaffProfile {
   publicVisible   Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+enum TeacherPayoutStatus {
+  PENDING
+  PAID
+}
+
+/// A processed (or pending) payout for one teacher over one period — the actual
+/// record of what was owed and paid, distinct from the live estimate teachers
+/// see on their own Earnings screen (api/teacher/earnings, which recomputes
+/// from ClassInstance/Booking counts using *today's* rate and has no memory of
+/// what was actually paid). Rates are snapshotted here so a later rate change
+/// never rewrites a past payout's amount.
+model TeacherPayout {
+  id          String              @id @default(cuid())
+  teacherId   String
+  teacher     User                @relation("TeacherPayouts", fields: [teacherId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  classes     Int
+  sessions    Int
+  classRate   Float
+  sessionRate Float
+  amount      Float
+  currency    String              @default("INR")
+  status      TeacherPayoutStatus @default(PENDING)
+  paidAt      DateTime?
+  paidById    String?
+  paidBy      User?               @relation("TeacherPayoutProcessedBy", fields: [paidById], references: [id], onDelete: SetNull)
+  notes       String?
+  createdAt   DateTime            @default(now())
+
+  @@unique([teacherId, periodStart, periodEnd])
+  @@index([teacherId])
+  @@index([status])
 }
 
 model Subscription {
@@ -369,6 +408,7 @@ model Payment {
   creditApplied          Float         @default(0) // ₹ of the payer's own referral-credit wallet spent on this payment
   refereeDiscountApplied Float         @default(0) // ₹ one-time new-referee discount spent on this payment
   refundedAmount         Decimal       @default(0) @db.Decimal(10, 2) // ₹ refunded so far (cumulative across possibly multiple partial refunds) — Decimal, not Float, for the same reason as User.referralCreditBalance
+  discountConsumedAt     DateTime? // set once consumeCheckoutDiscount() has spent this payment's creditApplied/refereeDiscountApplied — confirmAndActivate has no idempotency guard of its own and can run twice for the same payment (webhook + client verify racing), so this is the claim that stops a double wallet-decrement
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 }
@@ -385,6 +425,8 @@ model ClassBatch {
   active      Boolean  @default(true)
   capacity    Int? // max attendees per instance; null = uncapped
   meetingLink String? // default Google Meet URL for every instance of this batch
+  oneTime     Boolean  @default(false) // created via the "one-time class" shortcut — hidden from the recurring-batch list, exactly one instance expected
+  openAccess  Boolean  @default(false) // free/special: bypasses the membership-required check in canJoinGroupClass for every instance of this batch
 
   instances ClassInstance[]
 }
@@ -399,6 +441,10 @@ model ClassInstance {
   meetingLink     String? // overrides batch.meetingLink for this one occurrence
   capacity        Int? // overrides batch.capacity for this one occurrence
   attendanceCount Int        @default(0)
+  remindedAt      DateTime? // claimed once the pre-class push reminder has gone out — see api/cron/class-reminders
+  teacherId       String? // substitute teacher for this occurrence only — overrides batch.teacherId when set
+  teacher         User?      @relation("ClassInstanceSubstituteTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  openAccess      Boolean?   // overrides batch.openAccess for this one occurrence when set; null = inherit the batch
 
   attendees ClassAttendance[]
 
@@ -462,6 +508,7 @@ model Booking {
   date        DateTime
   notes       String? // Session notes by teacher
   meetingLink String?
+  remindedAt  DateTime? // claimed once the pre-session push reminder has gone out — see api/cron/class-reminders
   createdAt   DateTime      @default(now())
 }
 

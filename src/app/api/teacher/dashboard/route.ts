@@ -30,7 +30,9 @@ export async function GET() {
         const [batches, instances, sessions, notesPending, weekInstances] = await Promise.all([
             prisma.classBatch.count({ where: { teacherId, active: true } }),
             prisma.classInstance.findMany({
-                where: { batch: { teacherId }, date: { gte: since3h, lt: in7 }, status: { not: 'Cancelled' } },
+                // Own batches, plus any occurrence someone else's batch has
+                // assigned this teacher to cover as a substitute.
+                where: { OR: [{ batch: { teacherId } }, { teacherId }], date: { gte: since3h, lt: in7 }, status: { not: 'Cancelled' } },
                 include: { batch: { select: { name: true, durationMin: true, meetingLink: true } } },
                 orderBy: { date: 'asc' },
                 take: 30,

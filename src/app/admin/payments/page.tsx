@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
-import { formatPrice, PLAN_OPTIONS } from "@/lib/pricing";
+import { formatPrice, PLAN_OPTIONS, CURRENCY_OPTIONS } from "@/lib/pricing";
 import { PageHeader, PageLoading, Badge, Button, TableActions, ActionButton, inputClass, labelClass, type Tone } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
@@ -59,7 +59,7 @@ const MANUAL_FIELDS: FieldDef[] = [
     { name: "email", label: "Member email", type: "email", required: true },
     { name: "planKey", label: "Plan", type: "select", required: true, options: PLAN_OPTIONS },
     { name: "amount", label: "Amount collected", type: "number", required: true },
-    { name: "currency", label: "Currency", type: "select", options: [{ label: "INR", value: "INR" }, { label: "USD", value: "USD" }] },
+    { name: "currency", label: "Currency", type: "select", required: true, options: CURRENCY_OPTIONS },
     { name: "method", label: "Payment method", type: "select", required: true, options: [
         { label: "Cash", value: "cash" }, { label: "UPI", value: "upi" }, { label: "Bank transfer", value: "bank_transfer" },
     ] },

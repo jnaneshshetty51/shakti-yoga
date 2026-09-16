@@ -141,10 +141,11 @@ export async function applyAttendance(
             const target =
                 decision.status === 'PRESENT' ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT;
 
+            const existingAtt = await tx.classAttendance.findUnique({
+                where: { userId_classInstanceId: { userId: decision.userId, classInstanceId } },
+            });
             const att =
-                (await tx.classAttendance.findUnique({
-                    where: { userId_classInstanceId: { userId: decision.userId, classInstanceId } },
-                })) ??
+                existingAtt ??
                 (await tx.classAttendance.create({
                     data: {
                         userId: decision.userId,
@@ -153,13 +154,31 @@ export async function applyAttendance(
                         addedByTeacher: true,
                     },
                 }));
+            // A brand-new row here means this member never tapped Join —
+            // attendanceCount (the capacity gate's cached counter) must stay
+            // in step with real attendance regardless of which path added it,
+            // or a teacher adding forgotten check-ins silently desyncs it
+            // from the room's actual headcount.
+            if (!existingAtt) {
+                await tx.classInstance.update({
+                    where: { id: classInstanceId },
+                    data: { attendanceCount: { increment: 1 } },
+                });
+            }
 
             // Net credit effect already recorded against this attendance row.
             const priorEntries = await tx.sessionCreditEntry.findMany({
                 where: { classAttendanceId: att.id },
-                select: { delta: true },
+                select: { delta: true, cycleStart: true },
             });
             const consumed = priorEntries.reduce((s, e) => s + e.delta, 0) < 0;
+            // If a correction lands after the original cycle has rolled over
+            // (renewal happened in between), the reversal must still credit
+            // back into the cycle the deduction actually came from — not the
+            // subscription's *current* cycle, which would otherwise leak a
+            // free session into an unrelated, later cycle while leaving the
+            // original cycle's ledger permanently short.
+            const deductionCycleStart = priorEntries.find((e) => e.delta < 0)?.cycleStart;
 
             if (att.status === target && (target !== AttendanceStatus.PRESENT || consumed)) {
                 continue; // nothing to do
@@ -189,7 +208,7 @@ export async function applyAttendance(
                         userId: decision.userId,
                         delta: 1,
                         reason: SessionCreditReason.CLASS_REVERSED,
-                        cycleStart: sub?.currentCycleStart ?? att.joinedAt,
+                        cycleStart: deductionCycleStart ?? sub?.currentCycleStart ?? att.joinedAt,
                         classAttendanceId: att.id,
                         createdById: confirmedById,
                     },

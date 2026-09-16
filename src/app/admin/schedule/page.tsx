@@ -2,30 +2,43 @@
 
 import { useCallback, useEffect, useState } from "react";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
-import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Button, ActionButton, useConfirmDialog } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Card, EmptyState, StatusBadge, Badge, Button, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { AttendanceModal } from "@/components/admin/AttendanceModal";
 import { useToast } from "@/components/admin/Toast";
-import { LuCalendarClock, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import { LuCalendarClock, LuChevronLeft, LuChevronRight, LuPlus } from "react-icons/lu";
 
 type ScheduleItem = {
     id: string;
     batchName: string;
     timeSlot: string;
     teacher: string;
+    teacherId: string;
+    isSubstitute: boolean;
     status: string;
     attendanceCount: number;
     capacity: number | null;
     meetingLink: string;
     batchMeetingLink: string;
+    date: string;
+    openAccess: boolean;
 };
 
 type Batch = { id: string; name: string; timeSlot: string; daysOfWeek: string[]; teacher: string };
+type Teacher = { id: string; name: string };
 
 type ScheduleData = {
     windowStart: string;
     schedule: Record<string, ScheduleItem[]>;
     batches: Batch[];
+    teachers: Teacher[];
 };
+
+/** "2026-09-17T13:30" — the value a datetime-local input needs, from a UTC ISO instant. */
+function toDatetimeLocal(iso: string): string {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 const todayStr = () => toDateStr(new Date());
@@ -43,6 +56,7 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
     const [weekStart, setWeekStart] = useState(todayStr());
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
+    const [creatingOneTime, setCreatingOneTime] = useState(false);
     const [editing, setEditing] = useState<ScheduleItem | null>(null);
     const [attendanceFor, setAttendanceFor] = useState<string | null>(null);
 
@@ -81,6 +95,20 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
         fetchSchedule();
     };
 
+    const addOneTimeClass = async (values: EntityValues) => {
+        const res = await fetch('/api/admin/schedule/one-time', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(values),
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Could not create the class');
+        }
+        setCreatingOneTime(false);
+        fetchSchedule();
+    };
+
     const editClass = async (values: EntityValues) => {
         const res = await fetch('/api/admin/schedule', {
             method: 'PATCH',
@@ -88,7 +116,9 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
             body: JSON.stringify({
                 id: editing?.id,
                 status: values.status,
-                attendanceCount: values.attendanceCount,
+                date: values.date,
+                teacherId: values.teacherId || null,
+                openAccess: values.openAccess === true,
                 meetingLink: values.meetingLink,
             }),
         });
@@ -150,6 +180,7 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
                         )}
                         <Button variant="secondary" size="sm" icon={LuChevronRight} onClick={() => shiftWeek(7)}>Next</Button>
                     </div>
+                    <Button variant="secondary" icon={LuPlus} onClick={() => setCreatingOneTime(true)}>One-time class</Button>
                     <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class instance</Button>
                 </div>
             ) : (
@@ -170,6 +201,7 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
                     >
                         Manage Master Batches →
                     </a>
+                    <Button variant="secondary" icon={LuPlus} onClick={() => setCreatingOneTime(true)}>One-time class</Button>
                     <Button icon={LuCalendarClock} onClick={() => setCreating(true)}>Add class instance</Button>
                 </PageHeader>
             )}
@@ -197,8 +229,14 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
                         >
                             <div>
                                 <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{item.timeSlot}</div>
-                                <div className="text-lg font-bold text-gray-800">{item.batchName}</div>
-                                <div className="text-sm text-gray-500">Instructor: {item.teacher}</div>
+                                <div className="text-lg font-bold text-gray-800 flex items-center gap-2 flex-wrap">
+                                    {item.batchName}
+                                    {item.openAccess && <Badge tone="blue">Open</Badge>}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                    Instructor: {item.teacher}
+                                    {item.isSubstitute && <span className="text-amber-600 font-medium"> (substitute)</span>}
+                                </div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
@@ -232,7 +270,28 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
                             name: "batchId", label: "Batch", type: "select", required: true,
                             options: batches.map(b => ({ label: `${b.name} (${b.timeSlot})`, value: b.id })),
                         },
-                        { name: "date", label: "Date & Time", type: "date", required: true },
+                        { name: "date", label: "Date & Time", type: "datetime-local", required: true },
+                    ]}
+                />
+            )}
+
+            {creatingOneTime && (
+                <EntityFormModal
+                    title="New One-Time Class"
+                    submitLabel="Create"
+                    onCancel={() => setCreatingOneTime(false)}
+                    onSubmit={addOneTimeClass}
+                    fields={[
+                        { name: "name", label: "Class name", required: true, placeholder: "e.g. New Year Special Session" },
+                        {
+                            name: "teacherId", label: "Teacher", type: "select", required: true,
+                            options: (scheduleData?.teachers ?? []).map(t => ({ label: t.name, value: t.id })),
+                        },
+                        { name: "date", label: "Date & Time", type: "datetime-local", required: true },
+                        { name: "durationMin", label: "Duration (minutes)", type: "number", placeholder: "60" },
+                        { name: "capacity", label: "Capacity (blank = unlimited)", type: "number" },
+                        { name: "meetingLink", label: "Google Meet link", placeholder: "https://meet.google.com/…" },
+                        { name: "openAccess", label: "Free / open — no membership required to join", type: "checkbox" },
                     ]}
                 />
             )}
@@ -244,7 +303,12 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
                     onSubmit={editClass}
                     fields={[
                         { name: "status", label: "Status", type: "select", required: true, options: STATUS_OPTIONS },
-                        { name: "attendanceCount", label: "Attendance", type: "number" },
+                        { name: "date", label: "Date & Time (reschedule this occurrence only)", type: "datetime-local", required: true },
+                        {
+                            name: "teacherId", label: "Teacher (substitute for this occurrence only)", type: "select",
+                            options: [{ label: `${editing.teacher} (default)`, value: "" }, ...(scheduleData?.teachers ?? []).map(t => ({ label: t.name, value: t.id }))],
+                        },
+                        { name: "openAccess", label: "Free / open — no membership required to join", type: "checkbox" },
                         {
                             name: "meetingLink",
                             label: "Google Meet link for this day (blank = use batch default)",
@@ -253,7 +317,9 @@ export function AdminScheduleContent({ embedded = false }: { embedded?: boolean 
                     ]}
                     initial={{
                         status: editing.status,
-                        attendanceCount: editing.attendanceCount,
+                        date: toDatetimeLocal(editing.date),
+                        teacherId: editing.isSubstitute ? editing.teacherId : "",
+                        openAccess: editing.openAccess,
                         meetingLink: editing.meetingLink,
                     }}
                 />

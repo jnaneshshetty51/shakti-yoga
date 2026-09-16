@@ -76,14 +76,66 @@ export function isJoinable(
 }
 
 /**
+ * Whether a teacher (their own batch's default, or an explicit per-instance
+ * substitute) is already committed to another class whose time range
+ * overlaps this one — checked whenever an admin creates a one-time instance
+ * or reschedules/reassigns an existing one, so ad-hoc scheduling gets the
+ * same protection recurring-batch creation already has (assertNoTeacherConflict
+ * in api/admin/classes). Returns a human-readable conflict description, or
+ * null if there's no clash.
+ */
+export async function assertNoInstanceConflict(params: {
+    teacherId: string;
+    date: Date;
+    durationMin: number;
+    excludeInstanceId?: string;
+}): Promise<string | null> {
+    const { teacherId, date, durationMin, excludeInstanceId } = params;
+    const start = date.getTime();
+    const end = start + durationMin * 60_000;
+    // A generous +/-24h window comfortably contains anything that could
+    // overlap this one, without scanning the whole table.
+    const windowStart = new Date(start - 24 * 60 * 60_000);
+    const windowEnd = new Date(start + 24 * 60 * 60_000);
+
+    const candidates = await prisma.classInstance.findMany({
+        where: {
+            date: { gte: windowStart, lte: windowEnd },
+            status: { not: 'Cancelled' },
+            ...(excludeInstanceId ? { id: { not: excludeInstanceId } } : {}),
+            OR: [
+                { teacherId }, // an explicit substitute assignment on some other instance
+                { teacherId: null, batch: { teacherId } }, // inherits its batch's own teacher
+            ],
+        },
+        select: { date: true, batch: { select: { name: true, durationMin: true } } },
+    });
+
+    for (const c of candidates) {
+        const cStart = c.date.getTime();
+        const cEnd = cStart + c.batch.durationMin * 60_000;
+        if (start < cEnd && cStart < end) {
+            const when = new Date(cStart).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short',
+            });
+            return `This teacher already has "${c.batch.name}" at ${when} IST, which overlaps.`;
+        }
+    }
+    return null;
+}
+
+/**
  * Materialise `ClassInstance` rows for every active batch across the next
  * `daysAhead` days (inclusive of today). Idempotent — safe to call on every
  * request and from cron. Returns the number of instances created.
  */
 export async function ensureInstances(daysAhead = 7): Promise<number> {
     // Only group classes are materialised — Yoga Therapy is strictly 1:1 (Booking).
+    // A `oneTime` batch already got its single explicit instance at creation
+    // time (see api/admin/schedule/one-time) and must never have another one
+    // generated for it just because its weekday/timeSlot happens to recur.
     const batches = await prisma.classBatch.findMany({
-        where: { active: true, planType: 'EVERYDAY_YOGA' },
+        where: { active: true, planType: 'EVERYDAY_YOGA', oneTime: false },
     });
     if (batches.length === 0) return 0;
 
