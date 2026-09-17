@@ -94,7 +94,7 @@ export default function PrivacyPage() {
                             <li><strong>Data Portability:</strong> Receive your data in a portable format</li>
                         </ul>
                         <p className="leading-relaxed mt-4">
-                            To exercise these rights, please contact us at contactus@shaktiyoga.in
+                            To delete your account and all associated personal data, you can do so directly in the mobile app under <strong>Profile &rarr; Delete Account</strong>, or submit an online request via our dedicated <a href="/delete-account" className="text-secondary font-semibold hover:underline">Account &amp; Data Deletion Request Page</a>. You may also email us directly at <a href="mailto:contactus@shaktiyoga.in" className="text-secondary font-semibold hover:underline">contactus@shaktiyoga.in</a>.
                         </p>
                     </section>
 
