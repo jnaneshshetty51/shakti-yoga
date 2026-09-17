@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
@@ -32,6 +32,8 @@ const PLAN_OPTIONS = [
     { label: "Trial", value: "TRIAL" },
 ];
 
+const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 export function AdminClassesContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
@@ -40,6 +42,7 @@ export function AdminClassesContent({ embedded = false }: { embedded?: boolean }
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<ClassBatch | null>(null);
     const [creating, setCreating] = useState(false);
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
     const fetchBatches = useCallback(async () => {
         try {
@@ -59,6 +62,32 @@ export function AdminClassesContent({ embedded = false }: { embedded?: boolean }
     useEffect(() => {
         fetchBatches();
     }, [fetchBatches]);
+
+    const filterConfigs = useMemo(() => [
+        {
+            key: "teacherId",
+            label: "Teacher",
+            options: teachers.map(t => ({ label: t.name, value: t.id })),
+        },
+        {
+            key: "active",
+            label: "Status",
+            options: [
+                { label: "Active", value: "true" },
+                { label: "Inactive", value: "false" },
+            ],
+        },
+        {
+            key: "planType",
+            label: "Plan",
+            options: PLAN_OPTIONS,
+        },
+    ], [teachers]);
+
+    const filteredBatches = useMemo(() => {
+        if (!selectedDay) return batches;
+        return batches.filter(b => b.days && b.days.includes(selectedDay));
+    }, [batches, selectedDay]);
 
     const columns = [
         { header: "Batch Name", accessor: "name" as keyof ClassBatch, className: "font-bold text-gray-800" },
@@ -146,10 +175,45 @@ export function AdminClassesContent({ embedded = false }: { embedded?: boolean }
                 </PageHeader>
             )}
 
+            {/* Day filter pills */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-subtle mr-1">Filter by Day:</span>
+                <button
+                    type="button"
+                    onClick={() => setSelectedDay(null)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border cursor-pointer ${
+                        selectedDay === null
+                            ? "bg-brand text-white border-brand shadow-sm"
+                            : "bg-surface text-ink-muted border-hairline hover:bg-surface-hover hover:text-ink"
+                    }`}
+                >
+                    All Days ({batches.length})
+                </button>
+                {DAYS_OF_WEEK.map((day) => {
+                    const count = batches.filter(b => b.days && b.days.includes(day)).length;
+                    const isSelected = selectedDay === day;
+                    return (
+                        <button
+                            key={day}
+                            type="button"
+                            onClick={() => setSelectedDay(isSelected ? null : day)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border cursor-pointer ${
+                                isSelected
+                                    ? "bg-brand text-white border-brand shadow-sm ring-2 ring-brand/30"
+                                    : "bg-surface text-ink-muted border-hairline hover:bg-surface-hover hover:text-ink"
+                            }`}
+                        >
+                            {day} {count > 0 && <span className={`ml-1 text-[10px] ${isSelected ? "text-white/80" : "text-gray-400"}`}>({count})</span>}
+                        </button>
+                    );
+                })}
+            </div>
+
             <DTable
-                data={batches}
+                data={filteredBatches}
                 columns={columns}
-                title="Recurring Batches"
+                filters={filterConfigs}
+                title={selectedDay ? `Recurring Batches (${selectedDay})` : "Recurring Batches"}
                 onCreate={() => setCreating(true)}
                 actions={(batch) => (
                     <TableActions>

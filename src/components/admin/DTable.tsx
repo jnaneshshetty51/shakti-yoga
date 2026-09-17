@@ -101,7 +101,14 @@ export default function DTable<T extends { id: string | number;[key: string]: un
             );
             const matchesFilters = Object.entries(activeFilters).every(([key, value]) => {
                 if (!value) return true;
-                return String(item[key]) === value;
+                const itemVal = item[key];
+                if (Array.isArray(itemVal)) {
+                    return itemVal.map(String).includes(value);
+                }
+                if (typeof itemVal === "boolean") {
+                    return String(itemVal) === value;
+                }
+                return String(itemVal) === value;
             });
             return matchesSearch && matchesFilters;
         });
