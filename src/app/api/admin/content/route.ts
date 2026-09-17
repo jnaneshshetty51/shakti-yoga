@@ -100,7 +100,7 @@ export async function GET(request: Request) {
         const contentOrderBy: Prisma.ContentOrderByWithRelationInput[] =
             sortKey === 'title' ? [{ title: sortDir }] : [{ pinned: 'desc' }, { createdAt: 'desc' }];
 
-        const [stories, groups, contentRows, contentTotalCount, draftsCount, inReviewCount, publishedCount, scheduledCount, archivedCount, classBatches, contentOptionsRaw] =
+        const [stories, groups, contentRows, contentTotalCount, draftsCount, inReviewCount, publishedCount, scheduledCount, archivedCount, classBatches, contentOptionsRaw, teachers] =
             await Promise.all([
                 prisma.story.findMany({ include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' } }),
                 prisma.whatsAppGroup.findMany({ where: { active: true } }),
@@ -113,6 +113,11 @@ export async function GET(request: Request) {
                 prisma.content.count({ where: { status: 'ARCHIVED' } }),
                 prisma.classBatch.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
                 prisma.content.findMany({ select: { id: true, title: true, type: true }, orderBy: { title: 'asc' }, take: 500 }),
+                prisma.user.findMany({
+                    where: { role: Role.TEACHER, active: true },
+                    select: { id: true, name: true },
+                    orderBy: { name: 'asc' },
+                }),
             ]);
 
         const formattedStories = stories.map((story) => ({
@@ -162,24 +167,26 @@ export async function GET(request: Request) {
                 ctaLabel: row.ctaLabel || '',
                 relatedContentId: row.relatedContentId || '',
                 relatedClassBatchId: row.relatedClassBatchId || '',
-                access: row.access,
-                author: row.author,
-                tags: row.tags.join(', '),
-                pinned: row.pinned,
-                featured: row.featured,
-                important: row.important,
-                audience: row.audience.join(', '),
-                mediaUrls: row.mediaUrls.join('\n'),
-                expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
-                notifyOnPublish: row.notifyOnPublish,
-                publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
-                scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
                 metaTitle: row.metaTitle || '',
                 metaDescription: row.metaDescription || '',
-                submittedForReviewAt: row.submittedForReviewAt ? row.submittedForReviewAt.toISOString() : null,
-                reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
-                reviewNote: row.reviewNote || '',
-                approvedAt: row.approvedAt ? row.approvedAt.toISOString() : null,
+                author: row.author,
+                createdByUserId: row.createdByUserId,
+                tags: row.tags,
+                pinned: row.pinned,
+                important: row.important,
+                featured: row.featured,
+                audience: row.audience,
+                access: row.access,
+                mediaUrls: row.mediaUrls,
+                scheduledAt: row.scheduledAt ? row.scheduledAt.toISOString() : null,
+                expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+                publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+                notifyOnPublish: row.notifyOnPublish,
+                viewCount: row.viewCount,
+                likeCount: row.likeCount,
+                saveCount: row.saveCount,
+                createdAt: row.createdAt.toISOString(),
+                updatedAt: row.updatedAt.toISOString(),
             };
         });
 
@@ -192,6 +199,7 @@ export async function GET(request: Request) {
             totalCount: contentTotalCount,
             classBatchOptions: classBatches.map((b) => ({ label: b.name, value: b.id })),
             contentOptions: contentOptionsRaw.map((c) => ({ label: `${c.title} (${c.type})`, value: c.id })),
+            teacherOptions: teachers.map((t) => ({ label: t.name, value: t.name, id: t.id })),
             canApprove: !!(await requireAdmin()),
             counts: {
                 drafts: draftsCount,
@@ -361,11 +369,12 @@ async function upsertContent(
 
         if (isCreate) {
             const slug = wantsSlug || explicitSlug ? await uniqueSlug(explicitSlug || slugify(titleCapped), undefined) : null;
+            const targetUserId = (typeof body.createdByUserId === 'string' && body.createdByUserId) ? body.createdByUserId : admin.id;
             const created = await prisma.content.create({
                 data: {
                     ...common,
                     slug,
-                    createdByUserId: admin.id,
+                    createdByUserId: targetUserId,
                     submittedByUserId: status === 'IN_REVIEW' ? admin.id : null,
                     submittedForReviewAt: status === 'IN_REVIEW' ? new Date() : null,
                     approvedByUserId: status === 'APPROVED' || status === 'PUBLISHED' ? admin.id : null,
@@ -383,6 +392,9 @@ async function upsertContent(
         await snapshotVersion(id!, admin.id);
         const current = await prisma.content.findUnique({ where: { id }, select: { publishedAt: true, status: true, slug: true } });
         const data: Record<string, unknown> = { ...common };
+        if (typeof body.createdByUserId === 'string') {
+            data.createdByUserId = body.createdByUserId || null;
+        }
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
         if (videoUrl !== undefined) data.videoUrl = videoUrl;
         if (audioUrl !== undefined) data.audioUrl = audioUrl;

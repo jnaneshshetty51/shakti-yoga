@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "./ui";
+import { StudentDropdown } from "./StudentDropdown";
 
-export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image" | "video" | "audio";
+export type FieldType = "text" | "email" | "number" | "textarea" | "select" | "date" | "datetime-local" | "checkbox" | "image" | "video" | "audio" | "student";
 
 export interface FieldDef {
     name: string;
@@ -101,7 +102,14 @@ export default function EntityFormModal({
                                 {f.label}{f.required && " *"}
                             </label>
 
-                            {f.type === "textarea" ? (
+                            {f.type === "student" ? (
+                                <StudentDropdown
+                                    value={String(values[f.name] ?? "")}
+                                    onChange={(student) => set(f.name, student ? student.email : "")}
+                                    placeholder={f.placeholder || "Select student…"}
+                                    required={f.required}
+                                />
+                            ) : f.type === "textarea" ? (
                                 <textarea
                                     id={`entity-field-${f.name}`}
                                     value={String(values[f.name] ?? "")}

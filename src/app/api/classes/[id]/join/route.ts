@@ -26,6 +26,14 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
             return NextResponse.json({ error: 'Class not found' }, { status: 404 });
         }
 
+        if (instance.status === 'Cancelled') {
+            return NextResponse.json({ error: 'This class has been cancelled.' }, { status: 400 });
+        }
+
+        if (instance.status === 'Completed') {
+            return NextResponse.json({ error: 'This class has already ended.' }, { status: 400 });
+        }
+
         if (instance.batch.planType !== 'EVERYDAY_YOGA') {
             return NextResponse.json({ error: 'This class is not a group class.' }, { status: 400 });
         }

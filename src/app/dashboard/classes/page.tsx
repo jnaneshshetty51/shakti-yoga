@@ -116,9 +116,11 @@ export default function ClassesPage() {
                                 {data.today.map((cls) => (
                                     <Card key={cls.id} padded className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-bold text-gray-800">{cls.batchName}</span>
                                                 {cls.joinable && <Badge tone="green">Open now</Badge>}
+                                                {cls.isSubstitute && <Badge tone="amber">Substitute: {cls.teacher}</Badge>}
+                                                {cls.attended && <Badge tone="blue">Checked in</Badge>}
                                             </div>
                                             <div className="text-sm text-gray-500 mt-0.5">
                                                 {fmtTime(cls.startsAt)} – {fmtTime(cls.endsAt)} IST · {cls.teacher}
@@ -131,7 +133,7 @@ export default function ClassesPage() {
                                                 cls.joinable ? "bg-primary text-white hover:bg-primary/90" : "bg-gray-100 text-gray-400 cursor-not-allowed"
                                             }`}
                                         >
-                                            {joiningId === cls.id ? "Opening…" : cls.joinable ? "Join Google Meet" : "Opens near start time"}
+                                            {joiningId === cls.id ? "Opening…" : cls.attended ? "Re-join Class" : cls.joinable ? "Join Google Meet" : "Opens near start time"}
                                         </button>
                                     </Card>
                                 ))}

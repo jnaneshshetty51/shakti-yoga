@@ -5,6 +5,7 @@ import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, Button, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { useAdminStudent } from "@/context/AdminStudentContext";
 
 export type Booking = {
     id: string;
@@ -46,6 +47,7 @@ const PAGE_SIZE = 25;
 export function AdminBookingsContent({ embedded = false }: { embedded?: boolean } = {}) {
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
+    const { selectedStudent } = useAdminStudent();
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
@@ -270,7 +272,7 @@ export function AdminBookingsContent({ embedded = false }: { embedded?: boolean 
                     onCancel={() => setCreating(false)}
                     onSubmit={create}
                     fields={[
-                        { name: "email", label: "Member email", type: "email", required: true },
+                        { name: "email", label: "Student / Member", type: "student", required: true },
                         { name: "teacherId", label: "Teacher", type: "select", required: true, options: teacherOptions },
                         { name: "type", label: "Type", type: "select", required: true, options: TYPE_OPTIONS },
                         { name: "dateStr", label: "Date (IST)", type: "date", required: true },
@@ -278,7 +280,7 @@ export function AdminBookingsContent({ embedded = false }: { embedded?: boolean 
                         { name: "chargeCredit", label: "Charge a 1:1 credit", type: "checkbox" },
                         { name: "notes", label: "Notes", type: "textarea" },
                     ]}
-                    initial={{ type: "THERAPY_SESSION" }}
+                    initial={{ type: "THERAPY_SESSION", email: selectedStudent?.email || "" }}
                 />
             )}
         </div>

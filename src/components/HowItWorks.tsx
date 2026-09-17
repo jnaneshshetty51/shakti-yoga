@@ -7,8 +7,8 @@ export default function HowItWorks() {
         },
         {
             number: "02",
-            title: "Book Trial / Consultation",
-            description: "Experience a free trial class or have a detailed consultation with our therapists."
+            title: "Join Free Trial Class",
+            description: "Experience 1 free Everyday Yoga group class or book a consultation for therapy."
         },
         {
             number: "03",

@@ -10,6 +10,11 @@ export interface ClassView {
     joinable: boolean;
     /** Whether this caller has a ClassAttendance row for this instance — per-member, not the instance's own Scheduled/Completed/Cancelled status. */
     attended: boolean;
+    isSubstitute?: boolean;
+    meetingLink?: string | null;
+    capacity?: number | null;
+    attendanceCount?: number;
+    openAccess?: boolean;
 }
 
 export interface SessionBalanceInfo {

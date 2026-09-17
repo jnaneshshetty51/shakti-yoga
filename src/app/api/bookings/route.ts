@@ -54,17 +54,26 @@ export async function POST(request: Request) {
         const user = await prisma.user.findUnique({ where: { id: session.id } });
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Everyday members join the group class directly — they don't book.
-        // Booking is for 1:1 therapy (members) and the one trial consultation.
+        // Everyday members and Trial users join the group class — they don't book 1:1 sessions.
+        // Free trial is strictly 1 Everyday Yoga group class, not a therapy session.
         if (user.role === 'MEMBER_EVERYDAY') {
             return NextResponse.json(
                 { error: 'Your plan is the daily group class — just tap Join on your dashboard, no booking needed.' },
                 { status: 400 },
             );
         }
-        if (user.role !== 'MEMBER_THERAPY' && user.role !== 'TRIAL') {
+        if (user.role === 'TRIAL') {
             return NextResponse.json(
-                { error: 'An active membership or trial is required to book a session.', paywall: true },
+                {
+                    error: 'Your free trial includes 1 Everyday Yoga group class, not 1:1 therapy sessions. Subscribe to Yoga Therapy to book personal sessions.',
+                    paywall: true,
+                },
+                { status: 403 },
+            );
+        }
+        if (user.role !== 'MEMBER_THERAPY') {
+            return NextResponse.json(
+                { error: 'An active Yoga Therapy membership is required to book a session.', paywall: true },
                 { status: 403 },
             );
         }
@@ -103,18 +112,7 @@ export async function POST(request: Request) {
             }
         }
 
-        // Trial users get a single consultation.
-        if (!isTherapy) {
-            const existing = await prisma.booking.count({
-                where: { userId: user.id, status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] } },
-            });
-            if (existing >= 1) {
-                return NextResponse.json(
-                    { error: 'Your trial includes one consultation. Subscribe to Yoga Therapy for ongoing 1:1 sessions.' },
-                    { status: 403 },
-                );
-            }
-        }
+
 
         // Resolve the teacher whose availability covers this slot (fall back to any teacher).
         const teachers = await prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true } });

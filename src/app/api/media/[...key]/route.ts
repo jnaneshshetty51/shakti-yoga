@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server';
 import { toStorageKey, getObjectStream, MEDIA_PREFIXES } from '@/lib/storage';
 import { getSession } from '@/lib/auth';
+import { requireDepartment } from '@/lib/admin-auth';
 
 /**
- * Every prefix currently in MEDIA_PREFIXES is meant to be publicly visible
- * (avatars, blog/story images, community content, ...), so this route serves
- * them with no auth check. Anything NOT in this explicit list requires a
- * session — a deliberate opt-in, so a future private prefix (invoices,
- * therapy attachments, ...) added to MEDIA_PREFIXES for upload/validation
- * purposes doesn't automatically become publicly readable here too.
+ * Every prefix in MEDIA_PREFIXES except `therapy` is meant to be publicly
+ * visible (avatars, blog/story images, community content, ...), so this
+ * route serves them with no auth check. Anything NOT in this explicit list
+ * requires a session — a deliberate opt-in, so a future private prefix
+ * (invoices, ...) added to MEDIA_PREFIXES for upload/validation purposes
+ * doesn't automatically become publicly readable here too. `therapy` is
+ * excluded on purpose (see storage.ts) and gets its own stricter check below:
+ * a logged-in session isn't enough — a therapy patient must never be able to
+ * fetch another patient's (or their own) staff-only module attachment.
  */
-const PUBLIC_MEDIA_PREFIXES = new Set<string>(MEDIA_PREFIXES);
+const PUBLIC_MEDIA_PREFIXES = new Set<string>(MEDIA_PREFIXES.filter((p) => p !== 'therapy'));
 
 /**
  * Media proxy. Serves a private MinIO object at a stable path
@@ -24,7 +28,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ key: string[] }
     if (!key) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const prefix = key.split('/')[0];
-    if (!PUBLIC_MEDIA_PREFIXES.has(prefix)) {
+    if (prefix === 'therapy') {
+        const staff = await requireDepartment(['THERAPIST']);
+        if (!staff) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    } else if (!PUBLIC_MEDIA_PREFIXES.has(prefix)) {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }

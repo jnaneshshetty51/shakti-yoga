@@ -285,7 +285,11 @@ export interface ReferralStats {
     referrals: ReferralRow[];
 }
 
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://shaktiyoga.in').replace(/\/$/, '');
+// Canonical public origin for referral links — always uses https://shaktiyoga.in
+const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+const APP_URL = (rawAppUrl && !rawAppUrl.includes('localhost') && !rawAppUrl.includes('your-domain.com')
+    ? rawAppUrl
+    : 'https://shaktiyoga.in').replace(/\/$/, '');
 
 export async function referralStats(userId: string): Promise<ReferralStats> {
     const [code, rows, me, settings] = await Promise.all([

@@ -35,15 +35,18 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.MINIO_BUCKET || "shakti-yoga-assets";
 
 /**
- * Object-key prefixes the app is allowed to read/write. Every one of these is
- * served by /api/media with NO auth check (see PUBLIC_MEDIA_PREFIXES there) —
- * they're all meant to be publicly visible (avatars, blog/story images,
- * community content, ...). If a genuinely private prefix is ever added here
- * (invoices, therapy attachments, ...), it must NOT be added to
- * PUBLIC_MEDIA_PREFIXES in src/app/api/media/[...key]/route.ts, or it will be
- * served to anyone who knows/guesses the key.
+ * Object-key prefixes the app is allowed to read/write. Every one of these
+ * except `therapy` is served by /api/media with NO auth check beyond "is
+ * logged in" (see PUBLIC_MEDIA_PREFIXES there) — they're meant to be publicly
+ * visible (avatars, blog/story images, community content, ...). `therapy` is
+ * the genuinely private exception flagged here since 2026-09-15: it holds
+ * TherapyModule attachments (assessment reports, scans, referral letters)
+ * that must stay staff-only, so it is deliberately excluded from
+ * PUBLIC_MEDIA_PREFIXES and gated to a THERAPIST-department/admin session in
+ * that route instead. Any other genuinely private prefix added here must get
+ * the same treatment, or it will be served to anyone who knows/guesses the key.
  */
-export const MEDIA_PREFIXES = ["avatars", "staff", "blog", "stories", "content", "content-audio", "practices", "challenges", "community"] as const;
+export const MEDIA_PREFIXES = ["avatars", "staff", "blog", "stories", "content", "content-audio", "practices", "challenges", "community", "therapy"] as const;
 const KEY_RE = new RegExp(`^(${MEDIA_PREFIXES.join("|")})/[A-Za-z0-9][A-Za-z0-9._-]{0,200}$`);
 
 let bucketReady: Promise<void> | null = null;

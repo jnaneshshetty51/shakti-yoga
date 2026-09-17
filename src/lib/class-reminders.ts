@@ -22,7 +22,13 @@ export async function sendDueClassReminders(now: Date = new Date()): Promise<{ c
 
     const dueInstances = await prisma.classInstance.findMany({
         where: { date: { gt: now, lte: dueBy }, status: { not: 'Cancelled' }, remindedAt: null },
-        select: { id: true, batchId: true, date: true, batch: { select: { name: true, teacher: { select: { name: true } } } } },
+        select: {
+            id: true,
+            batchId: true,
+            date: true,
+            teacher: { select: { name: true } },
+            batch: { select: { name: true, teacher: { select: { name: true } } } },
+        },
     });
 
     let classesSent = 0;
@@ -42,9 +48,10 @@ export async function sendDueClassReminders(now: Date = new Date()): Promise<{ c
         if (regulars.length === 0) continue;
 
         const minutes = Math.max(1, Math.round((instance.date.getTime() - now.getTime()) / 60_000));
+        const effectiveTeacherName = instance.teacher?.name ?? instance.batch.teacher?.name;
         await sendPush(
             regulars.map((r) => r.userId),
-            pushTemplates.classStartingSoon(instance.batch.name, minutes, instance.batch.teacher?.name),
+            pushTemplates.classStartingSoon(instance.batch.name, minutes, effectiveTeacherName),
         ).catch((e) => console.error('[class-reminders] push failed for instance', instance.id, e));
         classesSent += 1;
     }

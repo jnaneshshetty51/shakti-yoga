@@ -25,7 +25,7 @@ const WALKIN_FIELDS: FieldDef[] = [
 ];
 
 const INTAKE_FIELDS: FieldDef[] = [
-    { name: "email", label: "Member email", type: "email", required: true },
+    { name: "email", label: "Select Student / Member", type: "student", required: true },
     { name: "fullName", label: "Full name", type: "text" },
     { name: "age", label: "Age", type: "number" },
     { name: "gender", label: "Gender", type: "text" },
@@ -55,6 +55,28 @@ type IntakeRow = {
     createdAt: string;
     user: { id: string; name: string; email: string; phone: string | null; country: string | null };
 };
+
+/** A private, staff-only module attached to a patient — see prisma's TherapyModule doc comment. Never shown to the patient. */
+type ModuleRow = {
+    id: string;
+    title: string;
+    body: string | null;
+    enabled: boolean;
+    attachmentUrl: string | null;
+    attachmentName: string | null;
+    createdBy: string | null;
+    updatedBy: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+const MODULE_TITLE_PRESETS = [
+    "Diagnosis & Assessment",
+    "Treatment Plan",
+    "Precautions / Contraindications",
+    "Internal Notes",
+    "Progress Review",
+];
 
 type IntakeDetail = IntakeRow & {
     fullName: string | null;
@@ -103,6 +125,13 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
     const [detailLoading, setDetailLoading] = useState(false);
     const [notes, setNotes] = useState("");
     const [deciding, setDeciding] = useState(false);
+    const [modules, setModules] = useState<ModuleRow[]>([]);
+    const [modulesLoading, setModulesLoading] = useState(false);
+    const [moduleForm, setModuleForm] = useState<{
+        id: string | null; title: string; body: string; enabled: boolean; attachmentUrl: string; attachmentName: string;
+    } | null>(null);
+    const [moduleSaving, setModuleSaving] = useState(false);
+    const [moduleUploading, setModuleUploading] = useState(false);
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
@@ -161,6 +190,7 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
     const openDetail = async (row: IntakeRow) => {
         setDetailLoading(true);
         setNotes("");
+        setModules([]);
         try {
             const res = await fetch(`/api/admin/therapy/intakes/${row.id}`);
             const data = await res.json();
@@ -168,10 +198,85 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
             setDetail(data.intake);
             setNotes(data.intake.reviewNotes || "");
             fetchRows(); // status may have flipped to UNDER_REVIEW
+            fetchModules(data.intake.user.id);
         } catch (err) {
             showToast("error", err instanceof Error ? err.message : "Could not load assessment");
         } finally {
             setDetailLoading(false);
+        }
+    };
+
+    const fetchModules = async (patientId: string) => {
+        setModulesLoading(true);
+        try {
+            const res = await fetch(`/api/admin/members/${patientId}/therapy-modules`);
+            const data = await res.json();
+            if (res.ok) setModules(data.modules || []);
+        } finally {
+            setModulesLoading(false);
+        }
+    };
+
+    const saveModule = async () => {
+        if (!detail || !moduleForm || !moduleForm.title.trim()) return;
+        setModuleSaving(true);
+        try {
+            const payload = {
+                title: moduleForm.title.trim(),
+                body: moduleForm.body.trim(),
+                enabled: moduleForm.enabled,
+                attachmentUrl: moduleForm.attachmentUrl,
+                attachmentName: moduleForm.attachmentName,
+            };
+            const res = moduleForm.id
+                ? await fetch(`/api/admin/members/${detail.user.id}/therapy-modules`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ moduleId: moduleForm.id, ...payload }),
+                  })
+                : await fetch(`/api/admin/members/${detail.user.id}/therapy-modules`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                  });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Could not save the module");
+            showToast("success", moduleForm.id ? "Module updated." : "Module added.");
+            setModuleForm(null);
+            fetchModules(detail.user.id);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "Could not save the module");
+        } finally {
+            setModuleSaving(false);
+        }
+    };
+
+    const deleteModule = async (moduleId: string) => {
+        if (!detail) return;
+        const res = await fetch(`/api/admin/members/${detail.user.id}/therapy-modules?moduleId=${moduleId}`, { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast("error", data.error || "Could not delete the module");
+            return;
+        }
+        showToast("success", "Module deleted.");
+        fetchModules(detail.user.id);
+    };
+
+    const uploadModuleAttachment = async (file: File) => {
+        if (!detail || !moduleForm) return;
+        setModuleUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch(`/api/admin/members/${detail.user.id}/therapy-modules/upload`, { method: "POST", body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Upload failed");
+            setModuleForm((f) => (f ? { ...f, attachmentUrl: data.url, attachmentName: data.name } : f));
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "Upload failed");
+        } finally {
+            setModuleUploading(false);
         }
     };
 
@@ -341,6 +446,140 @@ function AdminTherapyIntakesContent({ embedded = false }: { embedded?: boolean }
                                         &ldquo;Not recommended&rdquo; is never shown to the applicant as a status — reach out
                                         to them directly to explain next steps.
                                     </p>
+                                </div>
+
+                                <div className="mt-6 pt-4 border-t border-gray-100">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h3 className="font-semibold text-gray-800 flex items-center gap-1.5">
+                                            🔒 Private Staff Modules
+                                        </h3>
+                                        {!moduleForm && (
+                                            <button
+                                                onClick={() => setModuleForm({ id: null, title: "", body: "", enabled: true, attachmentUrl: "", attachmentName: "" })}
+                                                className="text-xs font-semibold text-brand hover:text-brand-strong"
+                                            >
+                                                + Add module
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mb-3">
+                                        Visible only to admins and therapists — this patient never sees these on their own dashboard.
+                                    </p>
+
+                                    {modulesLoading ? (
+                                        <p className="text-sm text-gray-400">Loading…</p>
+                                    ) : modules.length === 0 && !moduleForm ? (
+                                        <p className="text-sm text-gray-400 italic">No private modules yet for this patient.</p>
+                                    ) : (
+                                        <div className="space-y-2 mb-3">
+                                            {modules.map((m) => (
+                                                <div key={m.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-sm text-gray-800">{m.title}</span>
+                                                                <Badge tone={m.enabled ? "green" : "gray"}>{m.enabled ? "On" : "Off"}</Badge>
+                                                            </div>
+                                                            {m.body && <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{m.body}</p>}
+                                                            {m.attachmentUrl && (
+                                                                <a href={m.attachmentUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand hover:text-brand-strong mt-1 inline-block">
+                                                                    📎 {m.attachmentName || "Attachment"}
+                                                                </a>
+                                                            )}
+                                                            <p className="text-[11px] text-gray-400 mt-1">
+                                                                {m.updatedBy ? `Last updated by ${m.updatedBy}` : m.createdBy ? `Added by ${m.createdBy}` : null}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-2 shrink-0">
+                                                            <button
+                                                                onClick={() => setModuleForm({ id: m.id, title: m.title, body: m.body || "", enabled: m.enabled, attachmentUrl: m.attachmentUrl || "", attachmentName: m.attachmentName || "" })}
+                                                                className="text-xs font-semibold text-brand hover:text-brand-strong"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button onClick={() => deleteModule(m.id)} className="text-xs font-semibold text-red-500 hover:text-red-600">
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {moduleForm && (
+                                        <div className="rounded-xl border border-hairline p-3 space-y-3">
+                                            <div>
+                                                <label className={labelClass}>Title</label>
+                                                <input
+                                                    list="module-title-presets"
+                                                    className={inputClass}
+                                                    value={moduleForm.title}
+                                                    onChange={(e) => setModuleForm((f) => (f ? { ...f, title: e.target.value } : f))}
+                                                    placeholder="e.g. Treatment Plan"
+                                                />
+                                                <datalist id="module-title-presets">
+                                                    {MODULE_TITLE_PRESETS.map((p) => <option key={p} value={p} />)}
+                                                </datalist>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Private note (optional)</label>
+                                                <textarea
+                                                    rows={3}
+                                                    className={inputClass}
+                                                    value={moduleForm.body}
+                                                    onChange={(e) => setModuleForm((f) => (f ? { ...f, body: e.target.value } : f))}
+                                                />
+                                            </div>
+                                            <label className="flex items-center gap-2 text-sm text-gray-600">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={moduleForm.enabled}
+                                                    onChange={(e) => setModuleForm((f) => (f ? { ...f, enabled: e.target.checked } : f))}
+                                                    className="h-4 w-4 accent-brand"
+                                                />
+                                                Enabled — use this to toggle a program/condition on or off for this patient
+                                            </label>
+                                            <div>
+                                                <label className={labelClass}>Private attachment (optional — JPEG/PNG/WebP/PDF)</label>
+                                                {moduleForm.attachmentUrl ? (
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <a href={moduleForm.attachmentUrl} target="_blank" rel="noreferrer" className="text-brand font-semibold">
+                                                            📎 {moduleForm.attachmentName || "Attachment"}
+                                                        </a>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setModuleForm((f) => (f ? { ...f, attachmentUrl: "", attachmentName: "" } : f))}
+                                                            className="text-xs text-gray-400 hover:text-red-500"
+                                                        >
+                                                            remove
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <input
+                                                        type="file"
+                                                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                                                        disabled={moduleUploading}
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            e.target.value = "";
+                                                            if (file) await uploadModuleAttachment(file);
+                                                        }}
+                                                        className="text-xs"
+                                                    />
+                                                )}
+                                                {moduleUploading && <p className="text-xs text-gray-400 mt-1">Uploading…</p>}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button size="sm" onClick={saveModule} loading={moduleSaving} disabled={!moduleForm.title.trim()}>
+                                                    {moduleForm.id ? "Save changes" : "Add module"}
+                                                </Button>
+                                                <Button size="sm" variant="secondary" onClick={() => setModuleForm(null)}>
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

@@ -115,8 +115,11 @@ export default async function BlogPage(props: { searchParams: Promise<{ category
                                     </div>
                                 </div>
                                 <div className="space-y-3">
-                                    <div className="text-xs text-gray-500 uppercase tracking-widest">
-                                        {formatDate(post.publishedAt ?? post.createdAt)} · {readMinutes(post.body ?? "")} min read
+                                    <div className="text-xs text-gray-500 uppercase tracking-widest flex items-center justify-between flex-wrap gap-1">
+                                        <span>{formatDate(post.publishedAt ?? post.createdAt)} · {readMinutes(post.body ?? "")} min read</span>
+                                        {post.author && post.author !== "Shakti Yoga" && (
+                                            <span className="text-secondary font-semibold normal-case">By {post.author}</span>
+                                        )}
                                     </div>
                                     <h2 className="font-serif text-2xl text-gray-800 group-hover:text-primary transition-colors">
                                         {post.title}
@@ -124,8 +127,10 @@ export default async function BlogPage(props: { searchParams: Promise<{ category
                                     <p className="text-text/70 line-clamp-3">
                                         {post.excerpt}
                                     </p>
-                                    <div className="pt-2 text-secondary font-bold uppercase tracking-widest text-xs group-hover:underline">
-                                        Read Article →
+                                    <div className="pt-2 flex items-center justify-between">
+                                        <div className="text-secondary font-bold uppercase tracking-widest text-xs group-hover:underline">
+                                            Read Article →
+                                        </div>
                                     </div>
                                 </div>
                             </Link>

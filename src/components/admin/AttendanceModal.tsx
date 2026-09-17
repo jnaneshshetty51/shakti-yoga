@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, ActionButton } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { StudentDropdown } from "@/components/admin/StudentDropdown";
 
 type Attendee = { userId: string; name: string; email: string; status: string; confirmed: boolean; addedByTeacher: boolean };
 
@@ -75,10 +76,15 @@ export function AttendanceModal({ instanceId, onClose }: { instanceId: string; o
                     </ul>
                 )}
 
-                <div className="flex gap-2 mb-4">
-                    <input value={addEmail} onChange={(e) => setAddEmail(e.target.value)}
-                        placeholder="Add a member by email (marks present)"
-                        className="flex-1 rounded-control border border-hairline px-3 py-1.5 text-sm" />
+                <div className="mb-4">
+                    <label className="block text-xs font-semibold text-ink-subtle uppercase tracking-wider mb-1">
+                        Add & Mark Student Present
+                    </label>
+                    <StudentDropdown
+                        value={addEmail}
+                        onChange={(student) => setAddEmail(student ? student.email : "")}
+                        placeholder="Select student to mark present…"
+                    />
                 </div>
 
                 <div className="flex justify-end gap-2">

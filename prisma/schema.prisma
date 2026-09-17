@@ -249,6 +249,9 @@ model User {
   measurementsRecorded   TherapyMeasurement[] @relation("MeasurementRecorder")
   patientUpdates         PatientUpdate[]
   patientUpdatesReviewed PatientUpdate[]      @relation("PatientUpdateReviewer")
+  therapyModules         TherapyModule[]      @relation("TherapyModulesForPatient")
+  therapyModulesCreated  TherapyModule[]      @relation("TherapyModuleCreatedBy")
+  therapyModulesUpdated  TherapyModule[]      @relation("TherapyModuleUpdatedBy")
 
   teacherPayouts          TeacherPayout[] @relation("TeacherPayouts")
   teacherPayoutsProcessed TeacherPayout[] @relation("TeacherPayoutProcessedBy")
@@ -444,7 +447,7 @@ model ClassInstance {
   remindedAt      DateTime? // claimed once the pre-class push reminder has gone out — see api/cron/class-reminders
   teacherId       String? // substitute teacher for this occurrence only — overrides batch.teacherId when set
   teacher         User?      @relation("ClassInstanceSubstituteTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
-  openAccess      Boolean?   // overrides batch.openAccess for this one occurrence when set; null = inherit the batch
+  openAccess      Boolean? // overrides batch.openAccess for this one occurrence when set; null = inherit the batch
 
   attendees ClassAttendance[]
 
@@ -1340,6 +1343,35 @@ model TherapyMeasurement {
   createdAt     DateTime @default(now())
 
   @@index([userId, takenAt])
+}
+
+/// A private, staff-only note/program/attachment attached to one therapy
+/// patient — added by an admin or therapist, NEVER exposed through any
+/// patient-facing API or screen (unlike Booking.notes and TherapyMeasurement,
+/// which the patient does see). Deliberately flexible: `body` covers a
+/// free-text clinical note, `enabled` covers an on/off program-membership
+/// flag (e.g. "Back Pain Program"), and `attachmentUrl` covers a private
+/// document (assessment report, scan, referral letter) — a module can use
+/// any combination of the three. Served only via /api/media/therapy/... ,
+/// which requires a THERAPIST-department or admin session (see the
+/// PUBLIC_MEDIA_PREFIXES exclusion in api/media/[...key]/route.ts).
+model TherapyModule {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation("TherapyModulesForPatient", fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  body           String?
+  enabled        Boolean  @default(true)
+  attachmentUrl  String?
+  attachmentName String?
+  createdById    String?
+  createdBy      User?    @relation("TherapyModuleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById    String?
+  updatedBy      User?    @relation("TherapyModuleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
 }
 
 enum PatientUpdateStatus {

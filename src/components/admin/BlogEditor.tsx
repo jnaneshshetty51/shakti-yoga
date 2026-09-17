@@ -220,6 +220,7 @@ interface PostFields {
     category: string;
     tags: string;
     author: string;
+    createdByUserId: string;
     language: string;
     ctaType: string;
     ctaLabel: string;
@@ -248,6 +249,7 @@ const BLANK: PostFields = {
     category: "YOGA",
     tags: "",
     author: "Shakti Yoga",
+    createdByUserId: "",
     language: "English",
     ctaType: "none",
     ctaLabel: "",
@@ -293,6 +295,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
     const [canApprove, setCanApprove] = useState(false);
     const [contentOptions, setContentOptions] = useState<{ label: string; value: string }[]>([]);
     const [classBatchOptions, setClassBatchOptions] = useState<{ label: string; value: string }[]>([]);
+    const [teacherOptions, setTeacherOptions] = useState<{ label: string; value: string; id: string }[]>([]);
     const [showHelpModal, setShowHelpModal] = useState(false);
     const [linkModalOpen, setLinkModalOpen] = useState(false);
     const [linkUrl, setLinkUrl] = useState("");
@@ -331,8 +334,9 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
             body: r.body || "",
             imageUrl: r.imageUrl || "",
             category: r.category || "YOGA",
-            tags: r.tags || "",
+            tags: Array.isArray(r.tags) ? r.tags.join(", ") : r.tags || "",
             author: r.author || "Shakti Yoga",
+            createdByUserId: r.createdByUserId || "",
             language: r.language || "English",
             ctaType: r.ctaType || "none",
             ctaLabel: r.ctaLabel || "",
@@ -361,6 +365,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         setCanApprove(!!data.canApprove);
         setContentOptions((data.contentOptions || []).filter((o: { value: string }) => o.value !== id));
         setClassBatchOptions(data.classBatchOptions || []);
+        setTeacherOptions(data.teacherOptions || []);
     }, [id]);
 
     const handleEditorWheel = useCallback((e: React.WheelEvent) => {
@@ -1544,12 +1549,51 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                         </div>
 
                                         <div>
-                                            <label className={labelClass}>Public Author</label>
-                                            <input
-                                                value={fields.author}
-                                                onChange={(e) => set("author", e.target.value)}
+                                            <label className={labelClass}>Author / Trainer</label>
+                                            <select
+                                                value={
+                                                    teacherOptions.some((t) => t.value === fields.author)
+                                                        ? fields.author
+                                                        : fields.author === "Shakti Yoga"
+                                                        ? "Shakti Yoga"
+                                                        : "__custom__"
+                                                }
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === "__custom__") {
+                                                        // keep current or allow typing custom below
+                                                    } else if (val === "Shakti Yoga") {
+                                                        set("author", "Shakti Yoga");
+                                                        set("createdByUserId", "");
+                                                    } else {
+                                                        const found = teacherOptions.find((t) => t.value === val);
+                                                        set("author", val);
+                                                        if (found) set("createdByUserId", found.id);
+                                                    }
+                                                }}
                                                 className={inputClass}
-                                            />
+                                            >
+                                                <option value="Shakti Yoga">Shakti Yoga (Default)</option>
+                                                {teacherOptions.length > 0 && (
+                                                    <optgroup label="Trainers & Teachers">
+                                                        {teacherOptions.map((t) => (
+                                                            <option key={t.id} value={t.value}>
+                                                                {t.label} (Trainer)
+                                                            </option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                                <option value="__custom__">Custom Author Name...</option>
+                                            </select>
+                                            {!teacherOptions.some((t) => t.value === fields.author) && fields.author !== "Shakti Yoga" && (
+                                                <input
+                                                    type="text"
+                                                    value={fields.author}
+                                                    onChange={(e) => set("author", e.target.value)}
+                                                    placeholder="Enter custom author name"
+                                                    className={`${inputClass} mt-2`}
+                                                />
+                                            )}
                                         </div>
 
                                         <div>

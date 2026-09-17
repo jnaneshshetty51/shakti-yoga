@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { IconType } from "react-icons";
 import {
-    LuCalendarDays, LuMessageSquare, LuClock, LuWallet, LuMenu, LuX, LuLogOut,
+    LuCalendarDays, LuMessageSquare, LuClock, LuWallet, LuMenu, LuX, LuLogOut, LuPenLine,
 } from "react-icons/lu";
 import { ToastProvider } from "@/components/admin/Toast";
 
@@ -15,6 +15,7 @@ type NavItem = { name: string; href: string; icon: IconType };
 const NAV: NavItem[] = [
     { name: "Today", href: "/teacher", icon: LuCalendarDays },
     { name: "My Sessions", href: "/teacher/sessions", icon: LuMessageSquare },
+    { name: "Articles & Blog", href: "/teacher/blog", icon: LuPenLine },
     { name: "Availability", href: "/teacher/availability", icon: LuClock },
     { name: "Earnings & Roster", href: "/teacher/earnings", icon: LuWallet },
 ];
@@ -23,7 +24,7 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate: () =>
     return (
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
             {NAV.map((item) => {
-                const active = pathname === item.href;
+                const active = item.href === "/teacher" ? pathname === "/teacher" : pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
                     <Link

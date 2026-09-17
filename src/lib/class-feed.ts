@@ -30,7 +30,10 @@ export async function getClassFeed(userId: string): Promise<ClassFeed> {
             status: { not: 'Cancelled' },
             batch: { active: true, planType: 'EVERYDAY_YOGA' },
         },
-        include: { batch: { include: { teacher: { select: { name: true } } } } },
+        include: {
+            teacher: { select: { id: true, name: true } },
+            batch: { include: { teacher: { select: { id: true, name: true } } } },
+        },
         orderBy: { date: 'asc' },
     });
 
@@ -51,13 +54,17 @@ export async function getClassFeed(userId: string): Promise<ClassFeed> {
         const view: ClassView = {
             id: inst.id,
             batchName: inst.batch.name,
-            teacher: inst.batch.teacher.name,
+            teacher: inst.teacher?.name ?? inst.batch.teacher.name,
             startsAt: inst.date.toISOString(),
             endsAt: new Date(inst.date.getTime() + inst.batch.durationMin * 60_000).toISOString(),
             joinOpensAt: joinWindow(inst, inst.batch).opensAt.toISOString(),
             status: inst.status,
             joinable: isJoinable(inst, inst.batch, now),
             attended: attendedIds.has(inst.id),
+            isSubstitute: Boolean(inst.teacherId),
+            capacity: inst.capacity ?? inst.batch.capacity ?? null,
+            attendanceCount: inst.attendanceCount,
+            openAccess: inst.openAccess ?? inst.batch.openAccess,
         };
         const d = istParts(inst.date);
         const isToday = d.year === todayIst.year && d.month1 === todayIst.month1 && d.day === todayIst.day;

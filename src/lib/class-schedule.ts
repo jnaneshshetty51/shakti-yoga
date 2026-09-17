@@ -13,19 +13,59 @@ const IST_OFFSET_MIN = 5 * 60 + 30; // +05:30
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 /**
- * Parse a "06:30 AM" / "6:00 PM" time-slot string into { hour, minute } (24h).
- * Tolerates a trailing timezone label (e.g. "06:00 AM IST") since some stored
- * rows carry one.
+ * Parse a "06:30 AM" / "6:00 PM" / "18:30" / "6 PM" time-slot string into { hour, minute } (24h in IST).
+ * Robust to:
+ * - Time ranges: "06:00 AM - 07:00 AM" (extracts start time)
+ * - 24-hour military time: "18:30", "06:00"
+ * - Compact times without minutes: "6 PM", "6am"
+ * - Trailing timezone labels (e.g. "06:00 AM IST")
  */
 export function parseTimeSlot(slot: string): { hour: number; minute: number } {
-    const m = slot.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?(?:\s+[A-Za-z]{2,4})?$/i);
-    if (!m) throw new Error(`Unrecognised time slot: "${slot}"`);
-    let hour = parseInt(m[1], 10);
-    const minute = parseInt(m[2], 10);
-    const ampm = m[3]?.toUpperCase();
-    if (ampm === 'PM' && hour !== 12) hour += 12;
-    if (ampm === 'AM' && hour === 12) hour = 0;
-    return { hour, minute };
+    if (!slot || typeof slot !== 'string') {
+        throw new Error('Time slot must be a non-empty string');
+    }
+    // If range like "06:00 AM - 07:00 AM" or "6:30 - 7:30 PM", take the start part
+    const parts = slot.trim().split(/[-–—]/);
+    let trimmed = parts[0].trim();
+    const endPart = parts[1]?.trim() || '';
+
+    // If start part lacks AM/PM but end part has AM/PM, inherit it
+    if (!/(AM|PM)/i.test(trimmed) && /(AM|PM)/i.test(endPart)) {
+        const ampmMatch = endPart.match(/(AM|PM)/i);
+        if (ampmMatch) {
+            trimmed = `${trimmed} ${ampmMatch[1]}`;
+        }
+    }
+
+    // 1. Try HH:MM [AM/PM]
+    const m1 = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?(?:\s+[A-Za-z]{2,4})?$/i);
+    if (m1) {
+        let hour = parseInt(m1[1], 10);
+        const minute = parseInt(m1[2], 10);
+        const ampm = m1[3]?.toUpperCase();
+
+        if (ampm === 'PM' && hour !== 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+
+        if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+            return { hour, minute };
+        }
+    }
+
+    // 2. Try H [AM/PM] (e.g. "6 PM", "6am")
+    const m2 = trimmed.match(/^(\d{1,2})\s*(AM|PM)(?:\s+[A-Za-z]{2,4})?$/i);
+    if (m2) {
+        let hour = parseInt(m2[1], 10);
+        const ampm = m2[2].toUpperCase();
+        if (ampm === 'PM' && hour !== 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+
+        if (hour >= 0 && hour < 24) {
+            return { hour, minute: 0 };
+        }
+    }
+
+    throw new Error(`Unrecognised time slot: "${slot}"`);
 }
 
 /** The UTC instant for a given IST wall-clock date + time. */
@@ -67,22 +107,32 @@ export function joinWindow(
 }
 
 export function isJoinable(
-    instance: Pick<ClassInstance, 'date'>,
+    instance: Pick<ClassInstance, 'date'> & { status?: string | null },
     batch: Pick<ClassBatch, 'durationMin'>,
     now: Date = new Date(),
 ): boolean {
+    if (instance.status) {
+        const s = instance.status.toLowerCase();
+        if (s === 'cancelled' || s === 'completed') {
+            return false;
+        }
+    }
     const { opensAt, closesAt } = joinWindow(instance, batch);
     return now >= opensAt && now <= closesAt;
 }
 
+/** Helper to match a weekday against day strings of various formats ("Mon", "Monday", "mon"). */
+function matchesDayOfWeek(days: string[], weekday: string): boolean {
+    const target = weekday.toLowerCase().slice(0, 3);
+    return days.some((d) => d.trim().toLowerCase().slice(0, 3) === target);
+}
+
 /**
  * Whether a teacher (their own batch's default, or an explicit per-instance
- * substitute) is already committed to another class whose time range
- * overlaps this one — checked whenever an admin creates a one-time instance
- * or reschedules/reassigns an existing one, so ad-hoc scheduling gets the
- * same protection recurring-batch creation already has (assertNoTeacherConflict
- * in api/admin/classes). Returns a human-readable conflict description, or
- * null if there's no clash.
+ * substitute) is already committed to another class OR a 1:1 therapy session
+ * whose time range overlaps this one. Checked whenever an admin creates a
+ * one-time instance or reschedules/reassigns an existing one. Returns a
+ * human-readable conflict description, or null if there's no clash.
  */
 export async function assertNoInstanceConflict(params: {
     teacherId: string;
@@ -98,6 +148,7 @@ export async function assertNoInstanceConflict(params: {
     const windowStart = new Date(start - 24 * 60 * 60_000);
     const windowEnd = new Date(start + 24 * 60 * 60_000);
 
+    // 1. Check overlapping group class instances
     const candidates = await prisma.classInstance.findMany({
         where: {
             date: { gte: windowStart, lte: windowEnd },
@@ -121,6 +172,32 @@ export async function assertNoInstanceConflict(params: {
             return `This teacher already has "${c.batch.name}" at ${when} IST, which overlaps.`;
         }
     }
+
+    // 2. Check overlapping 1:1 therapy / consultation bookings
+    const bookings = await prisma.booking.findMany({
+        where: {
+            teacherId,
+            status: { in: ['PENDING', 'CONFIRMED'] },
+            date: {
+                gte: new Date(start - 4 * 3_600_000),
+                lte: new Date(end + 4 * 3_600_000),
+            },
+        },
+        select: { date: true, type: true, user: { select: { name: true } } },
+    });
+
+    for (const b of bookings) {
+        const bStart = b.date.getTime();
+        const bEnd = bStart + 60 * 60_000; // standard 1:1 session is ~60 mins
+        if (start < bEnd && bStart < end) {
+            const when = new Date(bStart).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short',
+            });
+            const typeLabel = b.type.replace(/_/g, ' ').toLowerCase();
+            return `This teacher already has a 1:1 ${typeLabel} with ${b.user?.name || 'a member'} at ${when} IST, which overlaps.`;
+        }
+    }
+
     return null;
 }
 
@@ -147,7 +224,11 @@ export async function ensureInstances(daysAhead = 7): Promise<number> {
     for (let offset = 0; offset <= daysAhead; offset++) {
         const { year, month1, day, weekday } = istParts(new Date(anchor.getTime() + offset * 86_400_000));
         for (const batch of batches) {
-            if (!batch.daysOfWeek.includes(weekday)) continue;
+            const batchDays = Array.isArray(batch.daysOfWeek)
+                ? batch.daysOfWeek
+                : String(batch.daysOfWeek || '').split(',');
+            if (!matchesDayOfWeek(batchDays, weekday)) continue;
+
             let time: { hour: number; minute: number };
             try {
                 time = parseTimeSlot(batch.timeSlot);

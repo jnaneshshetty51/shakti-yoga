@@ -122,6 +122,15 @@ export async function canJoinGroupClass(userId: string, excludeInstanceId?: stri
             : 0;
         const effectiveRemaining = sessionBalance.remaining - pendingCheckIns;
         if (effectiveRemaining <= 0) {
+            if (user.role === Role.TRIAL) {
+                return {
+                    ok: false,
+                    reason: "You've used your 1 free trial Everyday Yoga class. Choose a membership plan to continue practicing with us daily.",
+                    paywall: true,
+                    outOfSessions: true,
+                    sessionBalance,
+                };
+            }
             const refresh = new Date(sessionBalance.cycleEnd).toLocaleDateString('en-IN', {
                 day: 'numeric',
                 month: 'long',

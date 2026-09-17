@@ -8,7 +8,8 @@ import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button, useConfirmDi
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { MeasurementsPanel } from "@/components/admin/MeasurementsPanel";
 import { useToast } from "@/components/admin/Toast";
-import { PLAN_OPTIONS, CURRENCY_OPTIONS } from "@/lib/pricing";
+import { useAdminStudent } from "@/context/AdminStudentContext";
+import { PLAN_OPTIONS, CURRENCY_OPTIONS, getPlan, priceFor } from "@/lib/pricing";
 
 type Data = {
     member: {
@@ -51,6 +52,7 @@ export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
+    const { selectedStudent, setSelectedStudent } = useAdminStudent();
     const [data, setData] = useState<Data | null>(null);
     const [credit, setCredit] = useState(false);
     const [takeCashOpen, setTakeCashOpen] = useState(false);
@@ -61,6 +63,26 @@ export default function MemberDetailPage() {
     }, [id]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
+
+    // Sync currently viewed member into global student context
+    useEffect(() => {
+        if (data?.member && (!selectedStudent || selectedStudent.id !== data.member.id)) {
+            setSelectedStudent({
+                id: data.member.id,
+                name: data.member.name,
+                email: data.member.email,
+                phone: data.member.phone,
+                avatarUrl: null,
+                role: data.member.role,
+                active: data.member.active,
+                status: (data.subscription?.status === "ACTIVE" ? "Active" : data.subscription?.status === "TRIAL" ? "Trial" : "Inactive"),
+                plan: data.subscription?.planType ? (data.subscription.planType === "EVERYDAY_YOGA" ? "Everyday Yoga" : data.subscription.planType === "YOGA_THERAPY" ? "Yoga Therapy" : data.subscription.planType) : "No active plan",
+                therapyCredits: data.member.therapyCredits || 0,
+                renewalDate: data.subscription?.renewalDate || null,
+                country: data.member.country || null,
+            });
+        }
+    }, [data, selectedStudent, setSelectedStudent]);
 
     const recordPayment = async (values: EntityValues) => {
         const res = await fetch("/api/admin/payments", {
@@ -293,13 +315,27 @@ export default function MemberDetailPage() {
                         { name: "renew", label: "Activate / renew subscription from today", type: "checkbox" },
                         { name: "note", label: "Note (optional)", type: "textarea" },
                     ]}
-                    initial={{
-                        planKey: data.subscription?.planKey || "everyday",
-                        currency: data.subscription?.currency || "INR",
-                        amount: data.subscription?.amount || 2000,
-                        method: "cash",
-                        renew: true,
-                    }}
+                    initial={(() => {
+                        // Cash/manual payments are collected domestically, so
+                        // default to INR list pricing for the member's plan
+                        // regardless of what currency their on-file
+                        // subscription happens to be in (e.g. an NRI member
+                        // who originally subscribed on the USD ladder) —
+                        // matches every other manual-payment form in this
+                        // app (walk-in registration, therapy walk-in, ...),
+                        // which all default to INR unconditionally. The admin
+                        // can still switch the dropdown to USD when a cash
+                        // payment genuinely was collected in dollars.
+                        const planKey = data.subscription?.planKey || "everyday";
+                        const inrPrice = priceFor(getPlan(planKey), "IN");
+                        return {
+                            planKey,
+                            currency: inrPrice.currency,
+                            amount: inrPrice.amount,
+                            method: "cash",
+                            renew: true,
+                        };
+                    })()}
                 />
             )}
         </div>

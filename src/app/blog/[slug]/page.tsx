@@ -6,6 +6,7 @@ import { readMinutes } from "@/lib/content";
 import { resolveContentCta } from "@/lib/content-cta";
 import { publishScheduledContent } from "@/lib/content-schedule";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import ShareButtons from "@/components/blog/ShareButtons";
 import type { Metadata } from "next";
 
 // Rendered once then served from cache, refreshed at most every 5 min.
@@ -58,10 +59,62 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
     // CONTENT_PLATFORM_PLAN.md) — must run before the lookup below, or a
     // just-due scheduled post 404s instead of publishing.
     await publishScheduledContent().catch(() => {});
-    const post = await prisma.content.findFirst({ where: { type: "ARTICLE", slug: params.slug } });
+    const post = await prisma.content.findFirst({
+        where: { type: "ARTICLE", slug: params.slug },
+        include: {
+            createdBy: {
+                select: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                    role: true,
+                    staffProfile: {
+                        select: {
+                            title: true,
+                            bio: true,
+                            specialties: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
 
     if (!post || post.status !== "PUBLISHED" || post.access !== "PUBLIC") {
         notFound();
+    }
+
+    // Resolve author profile (either via createdBy or matching trainer name)
+    let authorUser = post.createdBy;
+    let authorProfile = authorUser?.staffProfile;
+    if (!authorProfile && post.author && post.author !== "Shakti Yoga") {
+        try {
+            const matchingTeacher = await prisma.user.findFirst({
+                where: {
+                    name: { equals: post.author, mode: "insensitive" },
+                    role: { in: ["TEACHER", "STAFF_ADMIN", "SUPER_ADMIN"] },
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                    role: true,
+                    staffProfile: {
+                        select: {
+                            title: true,
+                            bio: true,
+                            specialties: true,
+                        },
+                    },
+                },
+            });
+            if (matchingTeacher) {
+                authorUser = matchingTeacher;
+                authorProfile = matchingTeacher.staffProfile;
+            }
+        } catch {
+            // Safe fallback
+        }
     }
 
     const dateLabel = new Intl.DateTimeFormat("en-US", {
@@ -96,7 +149,24 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                     <h1 className="font-serif text-4xl md:text-5xl text-gray-900 mb-6 leading-tight">
                         {post.title}
                     </h1>
-                    <p className="text-sm text-gray-500 font-medium normal-case tracking-normal">By {post.author}</p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <div className="flex items-center gap-2">
+                            {authorUser?.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={authorUser.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+                            ) : (
+                                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                                    {post.author.charAt(0)}
+                                </div>
+                            )}
+                            <p className="text-sm text-gray-600 font-medium normal-case tracking-normal">
+                                By <span className="text-gray-900 font-semibold">{post.author}</span>
+                                {authorProfile?.title ? ` · ${authorProfile.title}` : ""}
+                            </p>
+                        </div>
+                        <span className="hidden sm:inline text-gray-300">•</span>
+                        <ShareButtons title={post.title} variant="compact" />
+                    </div>
                     <div className="w-24 h-1 bg-secondary mx-auto rounded-full mt-6"></div>
                 </header>
 
@@ -127,11 +197,46 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                     </div>
                 )}
 
-                {/* Footer / Share */}
-                <div className="mt-16 pt-8 border-t border-gray-100 text-center">
-                    <p className="text-gray-500 mb-6 italic">
-                        Did you find this helpful? Share it with a friend.
-                    </p>
+                {/* Author Bio Card for Trainers / Staff */}
+                {(authorProfile || (authorUser && authorUser.role === "TEACHER")) && (
+                    <div className="mt-14 p-6 sm:p-8 rounded-2xl bg-[#FBFAF7] border border-gray-200/70 flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                        <div className="w-20 h-20 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl shrink-0">
+                            {authorUser?.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={authorUser.avatarUrl} alt={post.author} className="w-full h-full object-cover" />
+                            ) : (
+                                post.author.charAt(0)
+                            )}
+                        </div>
+                        <div className="text-center sm:text-left flex-1">
+                            <div className="text-xs font-bold uppercase tracking-widest text-secondary mb-1">Written by Trainer</div>
+                            <h3 className="font-serif text-xl font-bold text-gray-900 mb-1">{post.author}</h3>
+                            {authorProfile?.title && (
+                                <div className="text-xs font-semibold text-primary mb-2.5">{authorProfile.title}</div>
+                            )}
+                            {authorProfile?.bio && (
+                                <p className="text-sm text-text/80 leading-relaxed mb-3">{authorProfile.bio}</p>
+                            )}
+                            {authorProfile?.specialties && authorProfile.specialties.length > 0 && (
+                                <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 pt-1">
+                                    {authorProfile.specialties.map((spec) => (
+                                        <span key={spec} className="px-2.5 py-0.5 rounded-full bg-white border border-gray-200 text-[11px] font-medium text-text/70">
+                                            {spec}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Share Card */}
+                <div className="mt-12">
+                    <ShareButtons title={post.title} variant="card" />
+                </div>
+
+                {/* Back Link */}
+                <div className="mt-10 text-center">
                     <Link href="/blog" className="text-sm font-bold text-primary uppercase tracking-widest hover:underline">
                         ← Back to Journal
                     </Link>

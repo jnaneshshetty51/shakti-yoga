@@ -101,8 +101,8 @@ function TrialContent() {
     return (
         <main className="min-h-screen bg-gray-50 py-12 sm:py-16 px-4">
             <div className="max-w-lg mx-auto">
-                <h1 className="font-serif text-3xl text-primary mb-2 text-center">Your 7-Day Free Trial</h1>
-                <p className="text-center text-text/60 mb-10">Full access to every Everyday Yoga class. No card required.</p>
+                <h1 className="font-serif text-3xl text-primary mb-2 text-center">Your Free Trial Class</h1>
+                <p className="text-center text-text/60 mb-10">Includes 1 live Everyday Yoga group class. No card required.</p>
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sm:p-8">
                     {alreadyMember ? (
@@ -151,7 +151,7 @@ function TrialContent() {
                                 {submitting ? "Activating…" : "Start Free Trial"}
                             </button>
                             <p className="text-xs text-center text-gray-400 mt-4">
-                                Your trial runs for 7 days. We&apos;ll remind you before it ends — no automatic charge.
+                                Your free trial includes 1 live Everyday Yoga group class. We&apos;ll remind you before it ends — no automatic charge.
                             </p>
                         </>
                     )}

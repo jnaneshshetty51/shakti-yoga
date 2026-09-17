@@ -4,6 +4,7 @@ import { requireDepartment } from '@/lib/admin-auth';
 import { recordAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
 import { toMinutes, rangesOverlap } from '@/lib/timeOverlap';
+import { ensureInstances } from '@/lib/class-schedule';
 import { PlanType } from '@prisma/client';
 
 const forbidden = () => NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -173,6 +174,9 @@ export async function POST(request: Request) {
             action: 'class.batch.create', entity: 'ClassBatch', entityId: batch.id,
             after: { name: batch.name, timeSlot, durationMin, teacherId, daysOfWeek },
         });
+        if (batch.active) {
+            void ensureInstances(7).catch((e) => console.error('[admin] ensureInstances on create failed', e));
+        }
         return NextResponse.json({ batch: { id: batch.id } });
     } catch (error) {
         console.error('Admin classes POST error:', error);
@@ -211,6 +215,9 @@ export async function PATCH(request: Request) {
             action: 'class.batch.update', entity: 'ClassBatch', entityId: body.id,
             before, after: { name: batch.name, meetingLink: batch.meetingLink, timeSlot: batch.timeSlot, teacherId: batch.teacherId, active: batch.active },
         });
+        if (batch.active) {
+            void ensureInstances(7).catch((e) => console.error('[admin] ensureInstances on update failed', e));
+        }
         return NextResponse.json({ batch: { id: batch.id } });
     } catch (error) {
         console.error('Admin classes PATCH error:', error);

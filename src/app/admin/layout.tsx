@@ -12,6 +12,8 @@ import { NotificationsBell } from "@/components/admin/NotificationsBell";
 import { ToastProvider } from "@/components/admin/Toast";
 import { Menu, MenuItem, MenuLabel, MenuSep } from "@/components/admin/ui";
 import { visibleNavGroups, type NavGroup } from "@/components/admin/nav";
+import { AdminStudentProvider } from "@/context/AdminStudentContext";
+import { GlobalStudentSelector } from "@/components/admin/GlobalStudentSelector";
 
 function Avatar({ url, name }: { url?: string | null; name?: string | null }) {
     return (
@@ -130,93 +132,104 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const isBlogEditor = pathname.startsWith("/admin/blog/");
 
     return (
-        <ToastProvider>
-            <div data-app-shell className="min-h-screen flex bg-surface">
-                {/* Desktop sidebar */}
-                <aside className="w-64 bg-surface border-r border-hairline hidden lg:flex flex-col fixed h-full z-10">
-                    <div className="px-5 pt-5 pb-3">
-                        <Link href="/" className="text-xl font-semibold text-brand tracking-tight">
-                            Shakti<span className="text-secondary">.</span>
-                        </Link>
-                        <button
-                            onClick={() => cmd.setIsOpen(true)}
-                            className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-control border border-hairline text-xs text-ink-subtle hover:border-brand/30 hover:text-ink-muted transition-colors"
-                        >
-                            <LuSearch className="text-sm" />
-                            <span className="flex-1 text-left">Quick search…</span>
-                            <kbd className="px-1.5 py-0.5 bg-black/[0.05] rounded text-[10px]">⌘K</kbd>
-                        </button>
-                    </div>
+        <AdminStudentProvider>
+            <ToastProvider>
+                <div data-app-shell className="min-h-screen flex bg-surface">
+                    {/* Desktop sidebar */}
+                    <aside className="w-64 bg-surface border-r border-hairline hidden lg:flex flex-col fixed h-full z-10">
+                        <div className="px-5 pt-5 pb-3">
+                            <Link href="/" className="text-xl font-semibold text-brand tracking-tight">
+                                Shakti<span className="text-secondary">.</span>
+                            </Link>
+                            <button
+                                onClick={() => cmd.setIsOpen(true)}
+                                className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-control border border-hairline text-xs text-ink-subtle hover:border-brand/30 hover:text-ink-muted transition-colors"
+                            >
+                                <LuSearch className="text-sm" />
+                                <span className="flex-1 text-left">Quick search…</span>
+                                <kbd className="px-1.5 py-0.5 bg-black/[0.05] rounded text-[10px]">⌘K</kbd>
+                            </button>
+                        </div>
 
-                    <NavList groups={groups} pathname={pathname} />
-                    <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
-                </aside>
+                        <NavList groups={groups} pathname={pathname} />
+                        <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
+                    </aside>
 
-                {/* Mobile drawer */}
-                {isMenuOpen && (
-                    <div className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-fade-in" onClick={() => setIsMenuOpen(false)} />
-                )}
-                <aside
-                    className={`lg:hidden fixed left-0 top-0 h-full w-64 bg-surface border-r border-hairline z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
-                >
-                    <div className="px-5 pt-5 pb-3 flex items-start justify-between">
-                        <Link href="/" className="text-xl font-semibold text-brand tracking-tight" onClick={() => setIsMenuOpen(false)}>
-                            Shakti<span className="text-secondary">.</span>
-                        </Link>
-                        <button onClick={() => setIsMenuOpen(false)} className="p-2 -mr-2 hover:bg-surface-hover rounded-control" aria-label="Close menu">
-                            <LuX className="w-5 h-5 text-ink-muted" />
-                        </button>
-                    </div>
-                    <NavList groups={groups} pathname={pathname} onNavigate={() => setIsMenuOpen(false)} />
-                    <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
-                </aside>
-
-                {/* Main */}
-                <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-                    {!isBlogEditor && (
-                        <header className="sticky top-0 z-30 bg-surface-sunken/85 backdrop-blur-md border-b border-hairline">
-                            <div className="flex items-center gap-2 sm:gap-3 px-4 lg:px-8 h-16">
-                                <button
-                                    className="lg:hidden p-2 -ml-2 shrink-0 text-ink-muted hover:bg-surface-hover rounded-control"
-                                    onClick={() => setIsMenuOpen(true)}
-                                    aria-label="Open menu"
-                                >
-                                    <LuMenu className="w-6 h-6" />
-                                </button>
-                                <button
-                                    onClick={() => cmd.setIsOpen(true)}
-                                    className="min-w-0 flex-1 max-w-xl flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-surface border border-hairline text-sm text-ink-subtle hover:border-brand/30 transition-colors"
-                                >
-                                    <LuSearch className="text-base shrink-0" />
-                                    <span className="flex-1 text-left truncate">
-                                        <span className="sm:hidden">Search…</span>
-                                        <span className="hidden sm:inline">Search members, leads, bookings…</span>
-                                    </span>
-                                    <kbd className="hidden sm:inline px-1.5 py-0.5 bg-black/[0.05] rounded text-[10px]">⌘K</kbd>
-                                </button>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <NotificationsBell />
-                                    <a
-                                        href="/contact"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hidden sm:flex p-2 text-ink-subtle hover:bg-surface-hover rounded-full transition-colors"
-                                        aria-label="Help & support"
-                                        title="Help & support"
-                                    >
-                                        <LuCircleHelp className="w-5 h-5" />
-                                    </a>
-                                    <UserMenu url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} onLogout={() => logout()} />
-                                </div>
-                            </div>
-                        </header>
+                    {/* Mobile drawer */}
+                    {isMenuOpen && (
+                        <div className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-fade-in" onClick={() => setIsMenuOpen(false)} />
                     )}
+                    <aside
+                        className={`lg:hidden fixed left-0 top-0 h-full w-64 bg-surface border-r border-hairline z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+                    >
+                        <div className="px-5 pt-5 pb-3 flex items-start justify-between">
+                            <Link href="/" className="text-xl font-semibold text-brand tracking-tight" onClick={() => setIsMenuOpen(false)}>
+                                Shakti<span className="text-secondary">.</span>
+                            </Link>
+                            <button onClick={() => setIsMenuOpen(false)} className="p-2 -mr-2 hover:bg-surface-hover rounded-control" aria-label="Close menu">
+                                <LuX className="w-5 h-5 text-ink-muted" />
+                            </button>
+                        </div>
+                        <div className="px-4 pb-2">
+                            <GlobalStudentSelector />
+                        </div>
+                        <NavList groups={groups} pathname={pathname} onNavigate={() => setIsMenuOpen(false)} />
+                        <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
+                    </aside>
 
-                    <main className={`flex-1 flex flex-col min-w-0 ${isBlogEditor ? "" : "p-4 lg:p-8"}`}>{children}</main>
+                    {/* Main */}
+                    <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
+                        {!isBlogEditor && (
+                            <header className="sticky top-0 z-30 bg-surface-sunken/85 backdrop-blur-md border-b border-hairline">
+                                <div className="flex items-center gap-2 sm:gap-3 px-4 lg:px-8 h-16">
+                                    <button
+                                        className="lg:hidden p-2 -ml-2 shrink-0 text-ink-muted hover:bg-surface-hover rounded-control"
+                                        onClick={() => setIsMenuOpen(true)}
+                                        aria-label="Open menu"
+                                    >
+                                        <LuMenu className="w-6 h-6" />
+                                    </button>
+                                    <button
+                                        onClick={() => cmd.setIsOpen(true)}
+                                        className="min-w-0 flex-1 max-w-sm sm:max-w-md lg:max-w-xl flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-surface border border-hairline text-sm text-ink-subtle hover:border-brand/30 transition-colors"
+                                    >
+                                        <LuSearch className="text-base shrink-0" />
+                                        <span className="flex-1 text-left truncate">
+                                            <span className="sm:hidden">Search…</span>
+                                            <span className="hidden sm:inline">Search pages, actions…</span>
+                                        </span>
+                                        <kbd className="hidden sm:inline px-1.5 py-0.5 bg-black/[0.05] rounded text-[10px]">⌘K</kbd>
+                                    </button>
+
+                                    {/* Everywhere Student Dropdown */}
+                                    <div className="shrink-0">
+                                        <GlobalStudentSelector />
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <NotificationsBell />
+                                        <a
+                                            href="/contact"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hidden sm:flex p-2 text-ink-subtle hover:bg-surface-hover rounded-full transition-colors"
+                                            aria-label="Help & support"
+                                            title="Help & support"
+                                        >
+                                            <LuCircleHelp className="w-5 h-5" />
+                                        </a>
+                                        <UserMenu url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} onLogout={() => logout()} />
+                                    </div>
+                                </div>
+                            </header>
+                        )}
+
+                        <main className={`flex-1 flex flex-col min-w-0 ${isBlogEditor ? "" : "p-4 lg:p-8"}`}>{children}</main>
+                    </div>
+
+                    <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} department={department} isSuper={isSuper} />
                 </div>
-
-                <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} department={department} isSuper={isSuper} />
-            </div>
-        </ToastProvider>
+            </ToastProvider>
+        </AdminStudentProvider>
     );
 }

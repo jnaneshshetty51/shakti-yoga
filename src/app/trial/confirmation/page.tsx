@@ -8,9 +8,9 @@ export default function TrialConfirmationPage() {
                     ✓
                 </div>
 
-                <h1 className="font-serif text-3xl text-primary mb-4">Your Trial Is Active</h1>
+                <h1 className="font-serif text-3xl text-primary mb-4">Your Free Trial Is Active</h1>
                 <p className="text-text/70 mb-8">
-                    You have full access to every Everyday Yoga class for the next 7 days. Your dashboard shows today&apos;s class and the schedule.
+                    You have access to 1 live Everyday Yoga group class. Your dashboard shows today&apos;s class and the schedule.
                 </p>
 
                 <div className="bg-gray-50 p-6 rounded-lg border border-gray-100 mb-8 text-left">
