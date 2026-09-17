@@ -158,7 +158,9 @@ export async function middleware(request: NextRequest) {
 export const runtime = 'nodejs';
 
 export const config = {
-    // Everything except Next internals and static files (so the region cookie
-    // is set on the first marketing pageview).
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:png|jpg|jpeg|gif|webp|avif|svg|ico|txt|xml|woff2?)$).*)'],
+    // Everything except API routes, Next internals, and static files.
+    // Excluding /api preserves native HTTP streaming and prevents the Edge
+    // proxy from disturbing/locking multipart/form-data upload streams.
+    // All API routes enforce their own requireAdmin/requireTeacher/getSession guards.
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:png|jpg|jpeg|gif|webp|avif|svg|ico|txt|xml|woff2?)$).*)'],
 };
