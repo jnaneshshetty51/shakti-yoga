@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues, type FieldDef } from "@/components/admin/EntityFormModal";
 import { PageHeader, PageLoading, Tabs, StatusBadge, TableActions, ActionButton, useConfirmDialog } from "@/components/admin/ui";
@@ -187,6 +188,7 @@ function toLocalInput(iso: string): string {
 }
 
 export default function AdminContentPage() {
+    const router = useRouter();
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
     const [activeTab, setActiveTab] = useState<ContentTab>("content");
@@ -424,7 +426,17 @@ export default function AdminContentPage() {
                     View live
                 </a>
             )}
-            <ActionButton onClick={() => setModal({ mode: "edit", id: r.id, initial: contentInitial(r), subtype: r.contentType })}>Edit</ActionButton>
+            <ActionButton
+                onClick={() => {
+                    if (r.contentType === "ARTICLE") {
+                        router.push(`/admin/blog/${r.id}`);
+                    } else {
+                        setModal({ mode: "edit", id: r.id, initial: contentInitial(r), subtype: r.contentType });
+                    }
+                }}
+            >
+                Edit
+            </ActionButton>
             <ActionButton tone="danger" onClick={() => remove(r.id)}>{r.status === "ARCHIVED" ? "Delete" : r.status === "DRAFT" ? "Delete" : "Archive"}</ActionButton>
         </TableActions>
     );
@@ -517,7 +529,13 @@ export default function AdminContentPage() {
                             {CONTENT_TYPES.map((s) => (
                                 <button
                                     key={s}
-                                    onClick={() => setModal({ mode: "create", subtype: s })}
+                                    onClick={() => {
+                                        if (s === "ARTICLE") {
+                                            router.push("/admin/blog/new");
+                                        } else {
+                                            setModal({ mode: "create", subtype: s });
+                                        }
+                                    }}
                                     className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
                                 >
                                     + {CONTENT_TYPE_LABEL[s]}
@@ -526,9 +544,21 @@ export default function AdminContentPage() {
                         </div>
                     </div>
                     {contentView === "calendar" ? (
-                        <ContentCalendar rows={calendarContent} onOpen={(r) => setModal({
-                            mode: "edit", id: r.id, subtype: r.contentType, initial: contentInitial(r),
-                        })} />
+                        <ContentCalendar
+                            rows={calendarContent}
+                            onOpen={(r) => {
+                                if (r.contentType === "ARTICLE") {
+                                    router.push(`/admin/blog/${r.id}`);
+                                } else {
+                                    setModal({
+                                        mode: "edit",
+                                        id: r.id,
+                                        subtype: r.contentType,
+                                        initial: contentInitial(r),
+                                    });
+                                }
+                            }}
+                        />
                     ) : (
                         <DTable
                             data={content}

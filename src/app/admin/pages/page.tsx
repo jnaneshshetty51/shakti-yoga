@@ -89,10 +89,10 @@ export function AdminPagesContent({ embedded = false }: { embedded?: boolean } =
                         <p className="text-ink-subtle mt-0.5">Publish long-form yogic wisdom articles, essays, and stories with custom slugs &amp; CTAs.</p>
                     </div>
                     <Link
-                        href="/admin/content"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-control bg-brand text-white font-semibold hover:bg-brand-hover transition-colors shrink-0"
+                        href="/admin/blog"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-control bg-primary text-white font-semibold hover:bg-primary/90 transition-colors shrink-0"
                     >
-                        <span>Write &amp; Manage Content</span>
+                        <span>Open Blog Studio</span>
                         <LuExternalLink className="text-xs" />
                     </Link>
                 </div>

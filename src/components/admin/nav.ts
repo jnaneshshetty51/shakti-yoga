@@ -2,7 +2,7 @@ import type { IconType } from "react-icons";
 import {
     LuLayoutDashboard, LuFlower2, LuTarget, LuCreditCard,
     LuCalendarDays, LuClock, LuClipboardList, LuGraduationCap,
-    LuFileText, LuChartLine, LuArchive, LuLifeBuoy,
+    LuFileText, LuChartLine, LuArchive, LuLifeBuoy, LuNewspaper,
 } from "react-icons/lu";
 
 /**
@@ -10,10 +10,15 @@ import {
  * (src/app/admin/layout.tsx) and the command palette (CommandPalette.tsx) so
  * the two never drift out of sync on destinations or permission gating.
  *
- * Frozen at 11 modules (Dashboard + 10 hubs) per the "Final Admin Dashboard"
- * scope decision — every admin screen lives inside one of these as a tab,
- * reached via `?tab=`, rather than as its own top-level nav item. See each
- * hub's own page.tsx for the tabs it bundles.
+ * Was frozen at 11 modules (Dashboard + 10 hubs) per the "Final Admin
+ * Dashboard" scope decision — every admin screen lived inside one of these as
+ * a tab, reached via `?tab=`, rather than as its own top-level nav item. On
+ * 2026-09-17 the user explicitly asked for Blog to break that freeze as a
+ * deliberate 12th top-level module with its own dedicated (WordPress-style)
+ * editor, rather than living as a tab inside Content & Communication. Blog
+ * posts are still `Content` rows of type ARTICLE under the hood — this is a
+ * new admin surface over existing data, not a new model. Everything else
+ * still belongs inside one of the original 11 — ask before adding a 13th.
  */
 
 export type Department = "CONTENT" | "SUPPORT" | "TRAINER" | "THERAPIST";
@@ -63,6 +68,7 @@ export const NAV: NavGroup[] = [
     {
         label: "Engagement",
         items: [
+            { name: "Blog", description: "Write and publish blog articles — a dedicated WordPress-style editor", href: "/admin/blog", icon: LuNewspaper, departments: ["CONTENT"] },
             { name: "Content & Communication", description: "Library, testimonials, community, inbox, broadcast, WhatsApp, FAQ, pages", href: "/admin/content", icon: LuFileText, departments: ["CONTENT"] },
             { name: "Support Inbox", description: "Member support conversations", href: "/admin/content?tab=support", icon: LuLifeBuoy, departments: ["SUPPORT"], deepLinkOnly: true },
             { name: "Progress & Achievements", description: "Challenges and badge grants", href: "/admin/students?tab=challenges", icon: LuTarget, departments: ["CONTENT"], deepLinkOnly: true },
