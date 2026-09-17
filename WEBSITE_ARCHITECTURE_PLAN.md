@@ -19,9 +19,9 @@ Legend: ✅ built · 🟡 partial · ⬜ missing.
 
 | # | Area | Status | Notes |
 |---|---|---|---|
-| 1 | Homepage hero + CTAs | 🟡 | `Hero.tsx` has "Start Free Trial" / "Book 1:1 Yoga Therapy", not "Explore Everyday Yoga" / "Meet Acharya Swastik". Headline is generic, no founder mention. |
+| 1 | Homepage hero + CTAs | 🟡 | `Hero.tsx` has "Start Free Trial" / "Book 1:1 Yoga Therapy", not "Explore Everyday Yoga" / "Meet Acharya Swasthik". Headline is generic, no founder mention. |
 | 2 | Shakti Story / Why Shakti | ✅ | `about/page.tsx` "Our Story" + `WhyUs.tsx` (home + about). Good enough as-is. |
-| 3 | Founder (Acharya Swastik) page | ⬜ | No founder page/section anywhere. **Needs real bio/photo content from the studio — not something to fabricate.** |
+| 3 | Founder (Acharya Swasthik) page | ⬜ | No founder page/section anywhere. **Needs real bio/photo content from the studio — not something to fabricate.** |
 | 4 | Programs pages | ✅ | `everyday-yoga/`, `yoga-therapy/`, `programs/` exist with copy + CTAs. |
 | 5 | Everyday Yoga trial flow | 🟡 | `trial/page.tsx` grants trial access; **no batch/timetable picker** — `ClassBatch`/`ClassInstance`/`Booking` schema exists and supports it, UI doesn't use it yet. |
 | 6 | Yoga Therapy intake/assessment | ✅ **built 2026-09-10** | New `TherapyIntake` model + 5-step assessment at `yoga-therapy/intake`, admin review at `admin/therapy`. See Phase B below — migration not yet applied to a real DB. |
@@ -95,7 +95,7 @@ this one *does* need a migration (`20260910000000_therapy_intake`) applied befor
   text.
 
 ### Phase D — Founder page
-- Dedicated `/founder` (or `/about/swastik`) page: story, education, philosophy, video.
+- Dedicated `/founder` (or `/about/swasthik`) page: story, education, philosophy, video.
 - **Blocked on real content** — do not fabricate biographical claims about a real person.
   Build the page shell + CMS-editable fields (reuse the `Story`/`BlogPost` admin pattern, or
   a new singleton `FounderProfile` row) once bio/photo/video are supplied.

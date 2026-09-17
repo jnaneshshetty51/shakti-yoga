@@ -44,11 +44,11 @@ export const CMS_DEFAULTS = {
     about_story_p2: "While modern yoga is often reduced to fast-paced physical acrobatics, we created Shakti Yoga to preserve yoga’s true essence: a holistic discipline unifying the physical sheath (Annamaya), breath energy (Pranamaya), and contemplative mind (Manomaya).",
     about_story_p3: "Today, our teachers broadcast live every day from India to dedicated students, NRIs, and seekers across North America, the UK, Europe, Australia, and the Middle East — cultivating personal connection across continents.",
     about_mission_quote: "To empower seekers worldwide to rediscover their dormant inner vitality (Shakti) through the living science of traditional yoga, bringing balance, healing, and peace to modern life.",
-    about_founder_title: "Meet Acharya Swastik",
+    about_founder_title: "Meet Acharya Swasthik",
     about_founder_tagline: "Yoga was not merely a career decision. It completely rewired how I perceive vitality, human suffering, and spiritual freedom.",
-    about_founder_bio_p1: "Acharya Swastik’s path to yoga began far from a mat — in the demanding field of engineering. Experiencing firsthand the cognitive strain, physical stagnation, and inner restlessness of modern work, a deeper calling led him to walk away from corporate life and dedicate himself fully to the traditional yogic sciences.",
+    about_founder_bio_p1: "Acharya Swasthik’s path to yoga began far from a mat — in the demanding field of engineering. Experiencing firsthand the cognitive strain, physical stagnation, and inner restlessness of modern work, a deeper calling led him to walk away from corporate life and dedicate himself fully to the traditional yogic sciences.",
     about_founder_bio_p2: "He earned his Master of Science (M.Sc.) in Yogic Science from Mangalore University, immersing himself in classical texts, human anatomy, therapeutic yoga protocols, and Sanskrit scriptures.",
-    about_founder_bio_p3: "Steeped in the coastal Devi tradition, Acharya Swastik established Shakti Yoga Kendra as a sanctuary where seekers are recognized, corrected, and nurtured through disciplined, compassionate daily sadhana.",
+    about_founder_bio_p3: "Steeped in the coastal Devi tradition, Acharya Swasthik established Shakti Yoga Kendra as a sanctuary where seekers are recognized, corrected, and nurtured through disciplined, compassionate daily sadhana.",
 
     // Home
     home_hero_headline: "Authentic Yoga & Personalized Therapy, Guided Live from India to the World",

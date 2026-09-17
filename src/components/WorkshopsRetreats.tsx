@@ -66,7 +66,7 @@ export default function WorkshopsRetreats() {
                             <div>
                                 <h3 className="font-serif text-2xl text-primary mb-2">Sanctuary Retreats</h3>
                                 <p className="font-sans text-text/80 leading-relaxed text-sm sm:text-base">
-                                    Step away from the noise. Join Acharya Swastik in the sacred foothills of Rishikesh and Udupi for transformative in-person sadhana.
+                                    Step away from the noise. Join Acharya Swasthik in the sacred foothills of Rishikesh and Udupi for transformative in-person sadhana.
                                 </p>
                             </div>
                             <div className="mt-4 pt-4 border-t border-primary/10 flex items-center justify-between text-xs text-text/60">

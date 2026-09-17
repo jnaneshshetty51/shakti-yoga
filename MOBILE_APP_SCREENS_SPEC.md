@@ -447,7 +447,7 @@ card should show attendance count, not a credit balance, as noted above.
 ### CONT-6 — Content attribution
 - No screen — a display rule: regardless of actual author, `Content.author` field is
   always rendered (defaults to `"Shakti Yoga"` in the schema; confirm the actual displayed
-  value is literally `"Acharya Swastik"` per the vision, or whether `author` needs to be
+  value is literally `"Acharya Swasthik"` per the vision, or whether `author` needs to be
   set per-item to that name specifically — currently it's a free-text field so this is a
   content-authoring convention, not a code change).
 

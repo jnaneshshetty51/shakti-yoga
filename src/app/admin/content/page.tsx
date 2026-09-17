@@ -138,7 +138,7 @@ function contentFields(subtype: Subtype, contentOptions: { label: string; value:
         { name: "relatedContentId", label: "Pairs with (related content)", type: "select", options: contentOptions },
         { name: "relatedClassBatchId", label: "Pairs with class", type: "select", options: classBatchOptions },
         { name: "tags", label: "Tags (comma separated)" },
-        { name: "author", label: "Public author", placeholder: "e.g. Acharya Swastik" },
+        { name: "author", label: "Public author", placeholder: "e.g. Acharya Swasthik" },
         { name: "language", label: "Language", placeholder: "English" },
         { name: "access", label: "Who can access this?", type: "select", options: ACCESS_OPTIONS },
         { name: "audience", label: "Specific plan tiers (only used when Access = Membership required)", placeholder: "starter, everyday, family, therapy, trial" },

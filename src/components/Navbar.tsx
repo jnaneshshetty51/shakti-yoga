@@ -319,7 +319,7 @@ export default function Navbar() {
                             {[
                                 { label: "Workshops & Retreats", href: "/retreats", desc: "Udupi coastal retreats & intensive workshops" },
                                 { label: "Corporate Wellness", href: "/corporate", desc: "Desk recovery & vitality for global teams" },
-                                { label: "About Shakti Yoga", href: "/about", desc: "Ancient roots, philosophy, and Acharya Swastik" },
+                                { label: "About Shakti Yoga", href: "/about", desc: "Ancient roots, philosophy, and Acharya Swasthik" },
                                 { label: "The Journal (Blog)", href: "/blog", desc: "Asana science, pranayama, and healing articles" },
                             ].map((item) => (
                                 <Link

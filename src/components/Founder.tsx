@@ -10,7 +10,7 @@ export default function Founder() {
                     <div className="relative aspect-[4/5] w-full max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
                         <Image
                             src="/founder.webp"
-                            alt="Acharya Swastik, Founder of Shakti Yoga Kendra"
+                            alt="Acharya Swasthik, Founder of Shakti Yoga Kendra"
                             fill
                             className="object-cover"
                             sizes="(min-width: 768px) 40vw, 90vw"
@@ -23,7 +23,7 @@ export default function Founder() {
                                 Yoga changed the direction of my life. My purpose is to share that journey with others.
                             </p>
                             <p className="mt-3 font-sans text-xs uppercase tracking-widest text-secondary font-semibold">
-                                — Acharya Swastik, Founder
+                                — Acharya Swasthik, Founder
                             </p>
                         </div>
                     </div>
@@ -34,9 +34,9 @@ export default function Founder() {
                     <div className="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-widest mb-4 rounded">
                         Our Founder
                     </div>
-                    <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4 sm:mb-6">Meet Acharya Swastik</h2>
+                    <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4 sm:mb-6">Meet Acharya Swasthik</h2>
                     <p className="font-sans text-text/80 leading-relaxed mb-4 text-sm sm:text-base">
-                        Acharya Swastik&rsquo;s path to yoga began far from a mat — in engineering — before a deeper calling
+                        Acharya Swasthik&rsquo;s path to yoga began far from a mat — in engineering — before a deeper calling
                         led him to leave that path behind and pursue yoga as his life&rsquo;s work, earning an MSc in Yoga
                         from Mangalore University.
                     </p>

@@ -18,7 +18,7 @@ const KIND_TITLE: Record<FeedItem["kind"], string> = {
   video: "Video",
   audio: "Audio",
   article: "Article",
-  founder_message: "From Acharya Swastik",
+  founder_message: "From Acharya Swasthik",
   announcement: "Announcement",
 };
 

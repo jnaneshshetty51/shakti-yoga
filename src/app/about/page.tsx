@@ -103,7 +103,7 @@ export default async function AboutPage() {
                         <div className="relative aspect-[4/5] w-full max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
                             <Image
                                 src="/founder.webp"
-                                alt="Acharya Swastik, Founder of Shakti Yoga Kendra"
+                                alt="Acharya Swasthik, Founder of Shakti Yoga Kendra"
                                 fill
                                 className="object-cover"
                                 sizes="(min-width: 768px) 40vw, 90vw"
@@ -115,7 +115,7 @@ export default async function AboutPage() {
                                     A centre where every student is known, supported, and encouraged throughout their journey.
                                 </p>
                                 <p className="mt-3 font-sans text-xs uppercase tracking-widest text-secondary font-semibold">
-                                    — Acharya Swastik, Founder
+                                    — Acharya Swasthik, Founder
                                 </p>
                             </div>
                         </div>

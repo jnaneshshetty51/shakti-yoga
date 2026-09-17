@@ -39,7 +39,7 @@ export async function notifyContentPublished(id: string): Promise<boolean> {
         c.type === 'ANNOUNCEMENT'
             ? { title: c.title, body: snippet(c.body, 'Tap to read the announcement.'), url }
             : c.type === 'FOUNDER_MESSAGE'
-              ? { title: 'A message from Acharya Swastik', body: snippet(c.body ?? c.caption, c.title), url }
+              ? { title: 'A message from Acharya Swasthik', body: snippet(c.body ?? c.caption, c.title), url }
               : c.type === 'VIDEO'
                 ? { title: 'New video on Shakti Yoga', body: snippet(c.caption, c.title), url }
                 : c.type === 'AUDIO'

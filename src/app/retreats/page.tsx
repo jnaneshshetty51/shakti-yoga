@@ -36,7 +36,7 @@ const FEATURED_COHORTS = [
         image: "/workshops/retreat.webp",
         highlights: [
             "Dawn meditation & Ganga Aarti reflections",
-            "Advanced Pranayama & Kriya Sadhana with Acharya Swastik",
+            "Advanced Pranayama & Kriya Sadhana with Acharya Swasthik",
             "Silent contemplative mountain walks & Ayurvedic meals",
             "Intimate cohort limited to 14 participants",
         ],
@@ -145,7 +145,7 @@ export default function RetreatsPage() {
                     <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-2">Signature Gatherings</span>
                     <h2 className="font-serif text-3xl sm:text-4xl text-primary">In-Person Sadhana Immersions</h2>
                     <p className="text-text/70 text-sm sm:text-base mt-3">
-                        Curated residential retreats led by Acharya Swastik and senior teachers in India’s most spiritually resonant sanctuaries.
+                        Curated residential retreats led by Acharya Swasthik and senior teachers in India’s most spiritually resonant sanctuaries.
                     </p>
                 </div>
 
@@ -233,7 +233,7 @@ export default function RetreatsPage() {
                         { icon: "🏡", title: "Sacred Accommodations", desc: "Private and twin-share eco-luxury rooms surrounded by tranquil natural landscapes." },
                         { icon: "🥗", title: "Ayurvedic Sattvic Cuisine", desc: "Three daily organic meals customized to balance Pitta, Vata, and Kapha doshas." },
                         { icon: "🧘", title: "All Mats & Props Provided", desc: "Handcrafted cotton mats, cork blocks, straps, and meditation bolsters ready for you." },
-                        { icon: "🌿", title: "Personal Health Consultation", desc: "Comprehensive 1:1 nadi pariksha (pulse) and spine assessment with Acharya Swastik." },
+                        { icon: "🌿", title: "Personal Health Consultation", desc: "Comprehensive 1:1 nadi pariksha (pulse) and spine assessment with Acharya Swasthik." },
                         { icon: "🌊", title: "Sacred Excursions", desc: "Private sunrise boat ceremonies on the holy river and serene quiet forest walks." },
                         { icon: "🤝", title: "Lifelong Alumni Circle", desc: "Join our dedicated alumni WhatsApp sangha for continuing guidance post-retreat." },
                     ].map((inc, i) => (

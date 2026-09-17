@@ -121,17 +121,17 @@ async function main() {
     throw error;
   }
 
-  // 1. SUPER_ADMIN (Acharya Swastik - Founder & Master Acharya)
+  // 1. SUPER_ADMIN (Acharya Swasthik - Founder & Master Acharya)
   const superAdmin = await prisma.user.create({
     data: {
-      name: 'Acharya Swastik',
+      name: 'Acharya Swasthik',
       email: 'superadmin@shaktiyoga.com',
       passwordHash: hashedPassword,
       role: Role.SUPER_ADMIN,
       phone: '+1234567890',
       country: 'India',
       timezone: 'Asia/Kolkata',
-      avatarUrl: '/teachers/swastik.webp',
+      avatarUrl: '/teachers/swasthik.webp',
       staffProfile: {
         create: {
           title: 'Founder & Lead Acharya',
@@ -144,7 +144,7 @@ async function main() {
       },
     },
   });
-  console.log('✅ Created SUPER_ADMIN (Acharya Swastik):', superAdmin.email);
+  console.log('✅ Created SUPER_ADMIN (Acharya Swasthik):', superAdmin.email);
 
   // 2. STAFF_ADMIN
   const staffAdmin = await prisma.user.create({
@@ -575,9 +575,9 @@ async function main() {
     data: {
       type: ContentType.FOUNDER_MESSAGE, status: 'PUBLISHED',
       title: 'Welcome to Shakti', slug: 'welcome-to-shakti',
-      body: 'A short note from Acharya Swastik on why we built Shakti — and what steady practice, not perfect practice, can do for you.',
+      body: 'A short note from Acharya Swasthik on why we built Shakti — and what steady practice, not perfect practice, can do for you.',
       category: ContentCategory.PHILOSOPHY,
-      author: 'Acharya Swastik', access: 'PUBLIC', publishedAt: now,
+      author: 'Acharya Swasthik', access: 'PUBLIC', publishedAt: now,
     },
   });
   console.log('✅ Created 1 Founder Message');

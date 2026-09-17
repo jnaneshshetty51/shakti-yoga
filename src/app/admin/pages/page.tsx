@@ -226,7 +226,7 @@ export function AdminPagesContent({ embedded = false }: { embedded?: boolean } =
                     <Card padded className="space-y-4">
                         <div className="border-b border-border-subtle pb-3">
                             <h3 className="font-serif text-lg font-bold text-ink-base">Founder Biography</h3>
-                            <p className="text-xs text-ink-subtle">Acharya Swastik's biography, background, and personal quote.</p>
+                            <p className="text-xs text-ink-subtle">Acharya Swasthik's biography, background, and personal quote.</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>

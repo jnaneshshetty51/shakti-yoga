@@ -30,7 +30,7 @@ const CLIPS: VideoClip[] = [
             "Opening the heart with supported reverse prayer alignment",
             "Coordinating smooth inhalation with lengthening spine",
         ],
-        teacher: "Acharya Swastik & Priya Sharma",
+        teacher: "Acharya Swasthik & Priya Sharma",
     },
     {
         id: "breath-flow",

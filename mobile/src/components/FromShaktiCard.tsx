@@ -9,7 +9,7 @@ const EYEBROW: Record<FeedItem["kind"], string> = {
   video: "New Practice",
   audio: "New Audio",
   article: "New Article",
-  founder_message: "From Acharya Swastik",
+  founder_message: "From Acharya Swasthik",
   announcement: "From Shakti",
 };
 

@@ -12,7 +12,7 @@ const META: Record<FeedItem["kind"], string> = {
   audio: "Audio",
   announcement: "Announcement",
   article: "Article",
-  founder_message: "From Acharya Swastik",
+  founder_message: "From Acharya Swasthik",
 };
 
 export function FeedCard({ item }: { item: FeedItem }) {
