@@ -132,51 +132,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <ToastProvider>
             <div data-app-shell className="min-h-screen flex bg-surface">
-                {/* Desktop sidebar (hidden in blog studio for maximum writing space) */}
-                {!isBlogEditor && (
-                    <aside className="w-64 bg-surface border-r border-hairline hidden lg:flex flex-col fixed h-full z-10">
-                        <div className="px-5 pt-5 pb-3">
-                            <Link href="/" className="text-xl font-semibold text-brand tracking-tight">
-                                Shakti<span className="text-secondary">.</span>
-                            </Link>
-                            <button
-                                onClick={() => cmd.setIsOpen(true)}
-                                className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-control border border-hairline text-xs text-ink-subtle hover:border-brand/30 hover:text-ink-muted transition-colors"
-                            >
-                                <LuSearch className="text-sm" />
-                                <span className="flex-1 text-left">Quick search…</span>
-                                <kbd className="px-1.5 py-0.5 bg-black/[0.05] rounded text-[10px]">⌘K</kbd>
-                            </button>
-                        </div>
+                {/* Desktop sidebar */}
+                <aside className="w-64 bg-surface border-r border-hairline hidden lg:flex flex-col fixed h-full z-10">
+                    <div className="px-5 pt-5 pb-3">
+                        <Link href="/" className="text-xl font-semibold text-brand tracking-tight">
+                            Shakti<span className="text-secondary">.</span>
+                        </Link>
+                        <button
+                            onClick={() => cmd.setIsOpen(true)}
+                            className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-control border border-hairline text-xs text-ink-subtle hover:border-brand/30 hover:text-ink-muted transition-colors"
+                        >
+                            <LuSearch className="text-sm" />
+                            <span className="flex-1 text-left">Quick search…</span>
+                            <kbd className="px-1.5 py-0.5 bg-black/[0.05] rounded text-[10px]">⌘K</kbd>
+                        </button>
+                    </div>
 
-                        <NavList groups={groups} pathname={pathname} />
-                        <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
-                    </aside>
-                )}
+                    <NavList groups={groups} pathname={pathname} />
+                    <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
+                </aside>
 
                 {/* Mobile drawer */}
-                {!isBlogEditor && isMenuOpen && (
+                {isMenuOpen && (
                     <div className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-fade-in" onClick={() => setIsMenuOpen(false)} />
                 )}
-                {!isBlogEditor && (
-                    <aside
-                        className={`lg:hidden fixed left-0 top-0 h-full w-64 bg-surface border-r border-hairline z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
-                    >
-                        <div className="px-5 pt-5 pb-3 flex items-start justify-between">
-                            <Link href="/" className="text-xl font-semibold text-brand tracking-tight" onClick={() => setIsMenuOpen(false)}>
-                                Shakti<span className="text-secondary">.</span>
-                            </Link>
-                            <button onClick={() => setIsMenuOpen(false)} className="p-2 -mr-2 hover:bg-surface-hover rounded-control" aria-label="Close menu">
-                                <LuX className="w-5 h-5 text-ink-muted" />
-                            </button>
-                        </div>
-                        <NavList groups={groups} pathname={pathname} onNavigate={() => setIsMenuOpen(false)} />
-                        <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
-                    </aside>
-                )}
+                <aside
+                    className={`lg:hidden fixed left-0 top-0 h-full w-64 bg-surface border-r border-hairline z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+                >
+                    <div className="px-5 pt-5 pb-3 flex items-start justify-between">
+                        <Link href="/" className="text-xl font-semibold text-brand tracking-tight" onClick={() => setIsMenuOpen(false)}>
+                            Shakti<span className="text-secondary">.</span>
+                        </Link>
+                        <button onClick={() => setIsMenuOpen(false)} className="p-2 -mr-2 hover:bg-surface-hover rounded-control" aria-label="Close menu">
+                            <LuX className="w-5 h-5 text-ink-muted" />
+                        </button>
+                    </div>
+                    <NavList groups={groups} pathname={pathname} onNavigate={() => setIsMenuOpen(false)} />
+                    <SidebarFooter url={user?.avatarUrl} name={user?.name} tierLabel={tierLabel} />
+                </aside>
 
                 {/* Main */}
-                <div className={`flex-1 flex flex-col min-w-0 ${isBlogEditor ? "" : "lg:ml-64"}`}>
+                <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
                     {!isBlogEditor && (
                         <header className="sticky top-0 z-30 bg-surface-sunken/85 backdrop-blur-md border-b border-hairline">
                             <div className="flex items-center gap-2 sm:gap-3 px-4 lg:px-8 h-16">

@@ -363,15 +363,27 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         setClassBatchOptions(data.classBatchOptions || []);
     }, [id]);
 
+    const handleEditorWheel = useCallback((e: React.WheelEvent) => {
+        if (Math.abs(e.deltaY) > 0) {
+            window.scrollBy({ top: e.deltaY, behavior: "auto" });
+        }
+    }, []);
+
     const adjustTextareaHeight = useCallback(() => {
         const el = textareaRef.current;
         if (!el) return;
         el.style.height = "auto";
-        el.style.height = `${Math.max(el.scrollHeight, 550)}px`;
+        el.style.height = `${Math.max(el.scrollHeight, 650)}px`;
     }, []);
 
     useEffect(() => {
         adjustTextareaHeight();
+        const t1 = setTimeout(adjustTextareaHeight, 60);
+        const t2 = setTimeout(adjustTextareaHeight, 300);
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+        };
     }, [fields.body, viewMode, adjustTextareaHeight]);
 
     useEffect(() => {
@@ -1031,6 +1043,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                         {/* Editor Canvas (shown in "write" or "split") */}
                         {(viewMode === "write" || viewMode === "split") && (
                             <div
+                                onWheel={handleEditorWheel}
                                 className={`px-4 sm:px-8 lg:px-12 py-6 sm:py-8 transition-all flex flex-col ${
                                     viewMode === "split"
                                         ? "w-full md:w-1/2 border-r border-hairline bg-surface min-h-[calc(100vh-106px)]"
@@ -1166,8 +1179,10 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                     }}
                                     onDrop={handleDrop}
                                     onKeyDown={handleKeyDownInTextarea}
+                                    onWheel={handleEditorWheel}
                                     placeholder="Paste your ChatGPT article or write directly here… (All headings, bold, italics, lists, and blockquotes from ChatGPT are preserved automatically on paste!)"
-                                    className="w-full text-base sm:text-lg leading-relaxed text-ink font-serif bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none overflow-hidden min-h-[550px]"
+                                    style={{ fieldSizing: "content" } as React.CSSProperties}
+                                    className="w-full text-base sm:text-lg leading-relaxed text-ink font-serif bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none min-h-[650px] flex-1"
                                 />
                             </div>
                         )}
