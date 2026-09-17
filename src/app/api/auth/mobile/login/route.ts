@@ -16,6 +16,19 @@ import { adminTier } from '@/lib/permissions';
 const DUMMY_HASH = '$2b$10$0S48M5ziT7bDXCqOziuTZ.Ep36snEw6Fhzj37duUF1DMLmiD0nYWy';
 
 /**
+ * GET handler to provide endpoint information and avoid 405 Method Not Allowed
+ * when accessed via browser or automated test crawlers.
+ */
+export async function GET() {
+    return NextResponse.json({
+        status: 'ok',
+        endpoint: '/api/auth/mobile/login',
+        method: 'POST',
+        message: 'This endpoint accepts POST requests with { email, password } JSON body for authentication.',
+    });
+}
+
+/**
  * Native-app login. Same credential check as POST /api/auth/login, but the
  * session JWT comes back in the response body (the app stores it in the device
  * keychain and sends it as `Authorization: Bearer`) — no cookie is set.

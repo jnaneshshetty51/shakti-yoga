@@ -18,6 +18,19 @@ import { adminTier } from '@/lib/permissions';
 const TIMEZONES = ['IST', 'PST', 'EST', 'CST', 'MST', 'GMT', 'CET', 'AEDT', 'AEST', 'NZDT'] as const;
 
 /**
+ * GET handler to provide endpoint information and avoid 405 Method Not Allowed
+ * when accessed via browser or automated test crawlers.
+ */
+export async function GET() {
+    return NextResponse.json({
+        status: 'ok',
+        endpoint: '/api/auth/mobile/register',
+        method: 'POST',
+        message: 'This endpoint accepts POST requests with user registration details.',
+    });
+}
+
+/**
  * Native-app signup. Mirrors POST /api/auth/register but returns the session
  * JWT in the body instead of setting a cookie.
  */
