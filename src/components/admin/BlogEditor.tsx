@@ -8,7 +8,7 @@ import {
     LuList, LuListOrdered, LuSquareCheck, LuQuote, LuCode, LuLink, LuImage, LuMinus,
     LuTable, LuEye, LuPenLine, LuColumns2, LuSettings, LuCheck, LuCopy, LuExternalLink,
     LuCalendar, LuUpload, LuTrash2, LuSparkles, LuCircleHelp, LuClock, LuFileText,
-    LuX, LuChevronDown, LuChevronRight, LuGlobe, LuLock, LuShieldCheck,
+    LuX, LuChevronDown, LuChevronRight, LuGlobe, LuLock, LuShieldCheck, LuUndo,
 } from "react-icons/lu";
 import { Button, Badge, labelClass, inputClass } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
@@ -43,6 +43,172 @@ function toLocalInput(iso: string): string {
     if (Number.isNaN(+d)) return "";
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Check whether pasted HTML contains rich formatting tags (e.g. from ChatGPT, Google Docs, Word). */
+function hasRichFormatting(html: string): boolean {
+    return /<(h[1-6]|p|strong|b|em|i|del|s|strike|ul|ol|li|blockquote|pre|code|table|a|img|hr)\b/i.test(html);
+}
+
+/** Convert clipboard HTML (ChatGPT, Google Docs, web articles) to clean, standard Markdown. */
+function htmlToMarkdown(htmlString: string): string {
+    if (typeof window === "undefined") return "";
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, "text/html");
+
+        function processChildren(node: Node, depth = 0): string {
+            let res = "";
+            node.childNodes.forEach((child) => {
+                res += processNode(child, depth);
+            });
+            return res;
+        }
+
+        function processNode(node: Node, depth = 0): string {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent || "";
+            }
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return "";
+            }
+
+            const el = node as HTMLElement;
+            const tag = el.tagName.toLowerCase();
+
+            switch (tag) {
+                case "h1":
+                    return `\n\n# ${processChildren(el, depth).trim()}\n\n`;
+                case "h2":
+                    return `\n\n## ${processChildren(el, depth).trim()}\n\n`;
+                case "h3":
+                    return `\n\n### ${processChildren(el, depth).trim()}\n\n`;
+                case "h4":
+                    return `\n\n#### ${processChildren(el, depth).trim()}\n\n`;
+                case "h5":
+                case "h6":
+                    return `\n\n##### ${processChildren(el, depth).trim()}\n\n`;
+                case "p": {
+                    const text = processChildren(el, depth).trim();
+                    return text ? `\n\n${text}\n\n` : "";
+                }
+                case "strong":
+                case "b": {
+                    const text = processChildren(el, depth).trim();
+                    return text ? `**${text}**` : "";
+                }
+                case "em":
+                case "i": {
+                    const text = processChildren(el, depth).trim();
+                    return text ? `*${text}*` : "";
+                }
+                case "del":
+                case "s":
+                case "strike": {
+                    const text = processChildren(el, depth).trim();
+                    return text ? `~~${text}~~` : "";
+                }
+                case "code": {
+                    if (el.parentElement?.tagName.toLowerCase() === "pre") {
+                        return el.textContent || "";
+                    }
+                    const code = el.textContent || "";
+                    return code ? `\`${code}\`` : "";
+                }
+                case "pre": {
+                    const lang = el.querySelector("code")?.className?.match(/language-(\w+)/)?.[1] || "";
+                    const code = (el.textContent || "").trim();
+                    return `\n\n\`\`\`${lang}\n${code}\n\`\`\`\n\n`;
+                }
+                case "blockquote": {
+                    const text = processChildren(el, depth).trim();
+                    const quoted = text
+                        .split("\n")
+                        .map((l) => `> ${l}`)
+                        .join("\n");
+                    return `\n\n${quoted}\n\n`;
+                }
+                case "ul": {
+                    let items = "";
+                    el.childNodes.forEach((child) => {
+                        if (child.nodeType === Node.ELEMENT_NODE && (child as HTMLElement).tagName.toLowerCase() === "li") {
+                            const liText = processChildren(child, depth + 1).trim();
+                            if (liText) items += `${"  ".repeat(depth)}- ${liText}\n`;
+                        }
+                    });
+                    return `\n\n${items}\n\n`;
+                }
+                case "ol": {
+                    let items = "";
+                    let idx = 1;
+                    el.childNodes.forEach((child) => {
+                        if (child.nodeType === Node.ELEMENT_NODE && (child as HTMLElement).tagName.toLowerCase() === "li") {
+                            const liText = processChildren(child, depth + 1).trim();
+                            if (liText) {
+                                items += `${"  ".repeat(depth)}${idx}. ${liText}\n`;
+                                idx++;
+                            }
+                        }
+                    });
+                    return `\n\n${items}\n\n`;
+                }
+                case "li": {
+                    const checkbox = el.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        const isChecked = (checkbox as HTMLInputElement).checked;
+                        const label = processChildren(el, depth).replace(/\[[ xX]?\]/, "").trim();
+                        return `- [${isChecked ? "x" : " "}] ${label}\n`;
+                    }
+                    return `- ${processChildren(el, depth).trim()}\n`;
+                }
+                case "a": {
+                    const href = el.getAttribute("href") || "";
+                    const text = processChildren(el, depth).trim() || href;
+                    return href ? `[${text}](${href})` : text;
+                }
+                case "img": {
+                    const src = el.getAttribute("src") || "";
+                    const alt = el.getAttribute("alt") || "image";
+                    return src ? `![${alt}](${src})` : "";
+                }
+                case "hr":
+                    return "\n\n---\n\n";
+                case "br":
+                    return "\n";
+                case "table": {
+                    const rows: string[][] = [];
+                    el.querySelectorAll("tr").forEach((tr) => {
+                        const row: string[] = [];
+                        tr.querySelectorAll("th, td").forEach((cell) => {
+                            row.push(cell.textContent?.trim().replace(/\|/g, "\\|") || "");
+                        });
+                        if (row.length > 0) rows.push(row);
+                    });
+                    if (rows.length === 0) return "";
+                    const colCount = Math.max(...rows.map((r) => r.length));
+                    let mdTable = "\n\n";
+                    const header = rows[0];
+                    while (header.length < colCount) header.push("");
+                    mdTable += `| ${header.join(" | ")} |\n`;
+                    mdTable += `| ${header.map(() => "---").join(" | ")} |\n`;
+                    for (let i = 1; i < rows.length; i++) {
+                        const r = rows[i];
+                        while (r.length < colCount) r.push("");
+                        mdTable += `| ${r.join(" | ")} |\n`;
+                    }
+                    mdTable += "\n";
+                    return mdTable;
+                }
+                default:
+                    return processChildren(el, depth);
+            }
+        }
+
+        const md = processChildren(doc.body);
+        return md.replace(/\n{3,}/g, "\n\n").trim();
+    } catch {
+        return "";
+    }
 }
 
 interface PostFields {
@@ -113,9 +279,9 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
     const [isDirty, setIsDirty] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-    // Editor View Modes: "write" (distraction-free), "split" (side-by-side), "preview" (full article preview)
+    // View Modes: "write" (distraction-free), "split" (side-by-side on desktop), "preview" (full preview)
     const [viewMode, setViewMode] = useState<"write" | "split" | "preview">("split");
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeSidebarTab, setActiveSidebarTab] = useState<"publish" | "cover" | "seo" | "taxonomies" | "cta">("publish");
 
     const [slugEditing, setSlugEditing] = useState(false);
@@ -131,6 +297,18 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
     const [linkModalOpen, setLinkModalOpen] = useState(false);
     const [linkUrl, setLinkUrl] = useState("");
     const [linkText, setLinkText] = useState("");
+
+    // Auto-adjust viewMode on mobile screens
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            if (window.innerWidth < 1024 && viewMode === "split") {
+                setViewMode("write");
+            }
+            if (window.innerWidth >= 1280) {
+                setSidebarOpen(true);
+            }
+        }
+    }, []);
 
     const set = <K extends keyof PostFields>(key: K, value: PostFields[K]) => {
         setFields((f) => ({ ...f, [key]: value }));
@@ -237,7 +415,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         }
     };
 
-    // Keyboard Shortcuts (Cmd+S to save draft, Cmd+B bold, Cmd+I italic, Cmd+K link)
+    // Keyboard Shortcuts (Cmd+S save draft, Cmd+B bold, Cmd+I italic, Cmd+K link)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
@@ -247,13 +425,13 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
                 if (document.activeElement === textareaRef.current) {
                     e.preventDefault();
-                    wrapSelection("**", "**", "bold text");
+                    toggleWrap("**", "**", "bold text");
                 }
             }
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "i") {
                 if (document.activeElement === textareaRef.current) {
                     e.preventDefault();
-                    wrapSelection("*", "*", "italic text");
+                    toggleWrap("*", "*", "italic text");
                 }
             }
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -268,23 +446,48 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
     });
 
     // Formatting Toolbar Helpers
-    const wrapSelection = (before: string, after: string = before, placeholder = "text") => {
+    const toggleWrap = (prefix: string, suffix: string = prefix, placeholder = "text") => {
         const el = textareaRef.current;
         if (!el) return;
         const start = el.selectionStart;
         const end = el.selectionEnd;
         const val = el.value;
-        const selected = val.slice(start, end) || placeholder;
-        const replacement = `${before}${selected}${after}`;
-        const next = val.slice(0, start) + replacement + val.slice(end);
-        set("body", next);
-        setTimeout(() => {
-            el.focus();
-            el.setSelectionRange(start + before.length, start + before.length + selected.length);
-        }, 10);
+        const sel = val.slice(start, end);
+
+        if (sel) {
+            // Check if already wrapped -> toggle unwrap
+            if (
+                val.slice(start - prefix.length, start) === prefix &&
+                val.slice(end, end + suffix.length) === suffix
+            ) {
+                const next = val.slice(0, start - prefix.length) + sel + val.slice(end + suffix.length);
+                set("body", next);
+                setTimeout(() => {
+                    el.focus();
+                    el.setSelectionRange(start - prefix.length, end - prefix.length);
+                }, 10);
+                return;
+            }
+            // Wrap selection
+            const next = val.slice(0, start) + prefix + sel + suffix + val.slice(end);
+            set("body", next);
+            setTimeout(() => {
+                el.focus();
+                el.setSelectionRange(start + prefix.length, end + prefix.length);
+            }, 10);
+        } else {
+            // Insert placeholder and highlight it
+            const text = `${prefix}${placeholder}${suffix}`;
+            const next = val.slice(0, start) + text + val.slice(end);
+            set("body", next);
+            setTimeout(() => {
+                el.focus();
+                el.setSelectionRange(start + prefix.length, start + prefix.length + placeholder.length);
+            }, 10);
+        }
     };
 
-    const prefixLines = (prefix: string) => {
+    const toggleHeading = (level: 1 | 2 | 3) => {
         const el = textareaRef.current;
         if (!el) return;
         const start = el.selectionStart;
@@ -293,16 +496,78 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         const lineStart = val.lastIndexOf("\n", start - 1) + 1;
         const lineEnd = val.indexOf("\n", end);
         const actualEnd = lineEnd === -1 ? val.length : lineEnd;
-        const selectedBlock = val.slice(lineStart, actualEnd);
-        const modified = selectedBlock
-            .split("\n")
-            .map((line) => (line.startsWith(prefix) ? line.slice(prefix.length) : `${prefix}${line}`))
-            .join("\n");
-        const next = val.slice(0, lineStart) + modified + val.slice(actualEnd);
+        const line = val.slice(lineStart, actualEnd);
+
+        const targetPrefix = `${"#".repeat(level)} `;
+        let newLine = "";
+        if (line.startsWith(targetPrefix)) {
+            newLine = line.slice(targetPrefix.length); // toggle off
+        } else {
+            const clean = line.replace(/^(#{1,6}\s*|[-*+]\s*|\d+\.\s*|>\s*)/, "");
+            newLine = `${targetPrefix}${clean}`;
+        }
+        const next = val.slice(0, lineStart) + newLine + val.slice(actualEnd);
         set("body", next);
         setTimeout(() => {
             el.focus();
-            el.setSelectionRange(lineStart, lineStart + modified.length);
+            el.setSelectionRange(lineStart + newLine.length, lineStart + newLine.length);
+        }, 10);
+    };
+
+    const toggleList = (type: "bullet" | "ordered" | "check") => {
+        const el = textareaRef.current;
+        if (!el) return;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const val = el.value;
+        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+        const lineEnd = val.indexOf("\n", end);
+        const actualEnd = lineEnd === -1 ? val.length : lineEnd;
+        const lines = val.slice(lineStart, actualEnd).split("\n");
+
+        const prefixFor = (i: number) =>
+            type === "bullet" ? "- " : type === "ordered" ? `${i + 1}. ` : "- [ ] ";
+
+        const isAlreadyThisType = lines.every((l) =>
+            type === "bullet"
+                ? l.startsWith("- ") || l.startsWith("* ")
+                : type === "ordered"
+                  ? /^\d+\.\s/.test(l)
+                  : l.startsWith("- [ ] ") || l.startsWith("- [x] "),
+        );
+
+        const modified = lines.map((line, i) => {
+            const clean = line.replace(/^([-*+]\s+|\d+\.\s+|-\s*\[[ xX]\]\s+)/, "");
+            if (isAlreadyThisType) return clean;
+            return `${prefixFor(i)}${clean}`;
+        });
+
+        const next = val.slice(0, lineStart) + modified.join("\n") + val.slice(actualEnd);
+        set("body", next);
+        setTimeout(() => {
+            el.focus();
+            el.setSelectionRange(lineStart, lineStart + modified.join("\n").length);
+        }, 10);
+    };
+
+    const toggleBlockquote = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const val = el.value;
+        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+        const lineEnd = val.indexOf("\n", end);
+        const actualEnd = lineEnd === -1 ? val.length : lineEnd;
+        const lines = val.slice(lineStart, actualEnd).split("\n");
+
+        const allQuoted = lines.every((l) => l.startsWith("> "));
+        const modified = lines.map((l) => (allQuoted ? l.replace(/^>\s?/, "") : `> ${l}`));
+        const next = val.slice(0, lineStart) + modified.join("\n") + val.slice(actualEnd);
+        set("body", next);
+        setTimeout(() => {
+            el.focus();
+            el.setSelectionRange(lineStart, lineStart + modified.join("\n").length);
         }, 10);
     };
 
@@ -323,7 +588,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
     const openLinkModal = () => {
         const el = textareaRef.current;
         const sel = el ? el.value.slice(el.selectionStart, el.selectionEnd) : "";
-        setLinkText(sel || "Link description");
+        setLinkText(sel || "Link text");
         setLinkUrl("");
         setLinkModalOpen(true);
     };
@@ -366,20 +631,36 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         }
     };
 
-    // Paste & Drag-and-drop Image Handler
+    // SMART PASTE: ChatGPT / Google Docs / Word HTML-to-Markdown preservation
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        // 1. Check for image files in clipboard
         const items = e.clipboardData?.items;
-        if (!items) return;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
-                const file = items[i].getAsFile();
-                if (file) {
-                    e.preventDefault();
-                    uploadImageFile(file, "inline");
-                    break;
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        e.preventDefault();
+                        uploadImageFile(file, "inline");
+                        return;
+                    }
                 }
             }
         }
+
+        // 2. Check for rich HTML (e.g. copied from ChatGPT, Google Docs, Notion, web pages)
+        const html = e.clipboardData?.getData("text/html");
+        if (html && hasRichFormatting(html)) {
+            e.preventDefault();
+            const markdown = htmlToMarkdown(html);
+            if (markdown.trim()) {
+                insertTextAtCursor(markdown);
+                showToast("success", "Pasted from ChatGPT with headings, bold, and formatting preserved.");
+                return;
+            }
+        }
+
+        // 3. Plain text fallback: allow default paste (which preserves any native markdown)
     };
 
     const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
@@ -387,6 +668,14 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         if (files && files.length > 0 && files[0].type.startsWith("image/")) {
             e.preventDefault();
             uploadImageFile(files[0], "inline");
+        }
+    };
+
+    // Handle Tab key in textarea
+    const handleKeyDownInTextarea = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Tab") {
+            e.preventDefault();
+            insertTextAtCursor("  ");
         }
     };
 
@@ -414,18 +703,19 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
               : { label: "Submit for Review", status: "IN_REVIEW" };
 
     return (
-        <div className="min-h-screen -mx-4 -mt-6 sm:-mx-8 sm:-mt-8 flex flex-col bg-surface">
+        <div className="min-h-screen -mx-4 -mt-6 sm:-mx-8 sm:-mt-8 flex flex-col bg-surface select-text">
             {/* ---------------------------------------------------- TOP STUDIO NAVIGATION BAR */}
-            <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-hairline px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 shadow-xs">
+            <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-hairline px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs">
                 {/* Left: Back & Document Status */}
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <Link
                         href="/admin/blog"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-ink-subtle hover:text-ink px-2.5 py-1.5 rounded-full hover:bg-surface-sunken transition-colors shrink-0"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-ink-subtle hover:text-ink p-1.5 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-surface-sunken transition-colors shrink-0"
+                        title="Back to all posts"
                     >
-                        <LuArrowLeft /> All Posts
+                        <LuArrowLeft /> <span className="hidden sm:inline">All Posts</span>
                     </Link>
-                    <div className="h-4 w-px bg-hairline hidden sm:block" />
+                    <div className="h-4 w-px bg-hairline hidden md:block" />
                     <Badge
                         tone={
                             fields.status === "PUBLISHED"
@@ -439,20 +729,15 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                     >
                         {STATUS_LABEL[fields.status] ?? fields.status}
                     </Badge>
-                    <span className="hidden md:inline-flex items-center gap-1.5 text-xs text-ink-subtle">
+                    <span className="hidden lg:inline-flex items-center gap-1.5 text-xs text-ink-subtle">
                         <LuClock className="text-xs" />
                         <span>{wordsCount} words</span>
                         <span>·</span>
                         <span>{estMinutes} min read</span>
                     </span>
                     {isDirty && (
-                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 hidden lg:inline">
+                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 hidden xl:inline">
                             ● Unsaved changes
-                        </span>
-                    )}
-                    {!isDirty && lastSaved && (
-                        <span className="text-[11px] text-ink-subtle hidden lg:inline">
-                            Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                     )}
                 </div>
@@ -462,45 +747,46 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                     <button
                         type="button"
                         onClick={() => setViewMode("write")}
-                        className={`flex items-center gap-1 px-3 py-1 rounded-full transition-all ${
+                        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full transition-all ${
                             viewMode === "write" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
                         }`}
                         title="Distraction-free Writing Canvas"
                     >
                         <LuPenLine />
-                        <span className="hidden sm:inline">Write</span>
+                        <span>Write</span>
                     </button>
+                    {/* Hide split on small mobile (< 768px) where side-by-side cannot fit */}
                     <button
                         type="button"
                         onClick={() => setViewMode("split")}
-                        className={`flex items-center gap-1 px-3 py-1 rounded-full transition-all ${
+                        className={`hidden md:flex items-center gap-1 px-3 py-1 rounded-full transition-all ${
                             viewMode === "split" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
                         }`}
                         title="Side-by-side Editor & Live Preview"
                     >
                         <LuColumns2 />
-                        <span className="hidden sm:inline">Split</span>
+                        <span>Split</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setViewMode("preview")}
-                        className={`flex items-center gap-1 px-3 py-1 rounded-full transition-all ${
+                        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full transition-all ${
                             viewMode === "preview" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
                         }`}
                         title="Full Public Article Preview"
                     >
                         <LuEye />
-                        <span className="hidden sm:inline">Preview</span>
+                        <span>Preview</span>
                     </button>
                 </div>
 
                 {/* Right: Actions & Inspector Toggle */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <button
                         type="button"
                         onClick={() => setShowHelpModal(true)}
                         className="p-1.5 text-ink-subtle hover:text-ink rounded-full hover:bg-surface-sunken transition-colors text-sm"
-                        title="Markdown Cheatsheet"
+                        title="Markdown & ChatGPT Paste Help"
                     >
                         <LuCircleHelp />
                     </button>
@@ -518,14 +804,14 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                         variant="secondary"
                         onClick={() => save("DRAFT")}
                         loading={saving === "DRAFT"}
-                        className="text-xs px-3 py-1.5"
+                        className="text-xs px-2.5 sm:px-3 py-1.5"
                     >
-                        Save Draft
+                        Save
                     </Button>
                     <Button
                         onClick={() => save(primaryAction.status)}
                         loading={saving === primaryAction.status}
-                        className="text-xs px-3.5 py-1.5 font-semibold"
+                        className="text-xs px-3 sm:px-3.5 py-1.5 font-semibold"
                     >
                         {primaryAction.label}
                     </Button>
@@ -537,7 +823,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                 ? "bg-primary text-white border-primary"
                                 : "bg-surface text-ink-muted border-hairline hover:text-ink"
                         }`}
-                        title="Toggle Post Settings"
+                        title="Post Settings (SEO, Slug, Cover, Tags)"
                     >
                         <LuSettings />
                     </button>
@@ -554,34 +840,34 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
             )}
 
             {/* ---------------------------------------------------- MAIN BODY WORKSPACE */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden relative">
                 {/* ----------------- Editor / Split / Preview Viewport */}
-                <div className="flex-1 overflow-y-auto flex flex-col">
+                <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
                     {/* FORMATTING TOOLBAR (shown in Write & Split views) */}
                     {viewMode !== "preview" && (
-                        <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-hairline px-4 sm:px-8 py-2 flex flex-wrap items-center gap-1 shadow-2xs">
+                        <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-hairline px-3 sm:px-8 py-2 flex items-center gap-1 shadow-2xs overflow-x-auto no-scrollbar flex-nowrap">
                             {/* Headings */}
-                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1">
+                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("# ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-semibold"
+                                    onClick={() => toggleHeading(1)}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
                                     title="Heading 1 (#)"
                                 >
                                     <LuHeading1 />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("## ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-semibold"
+                                    onClick={() => toggleHeading(2)}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
                                     title="Heading 2 (##)"
                                 >
                                     <LuHeading2 />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("### ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-semibold"
+                                    onClick={() => toggleHeading(3)}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
                                     title="Heading 3 (###)"
                                 >
                                     <LuHeading3 />
@@ -589,35 +875,35 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                             </div>
 
                             {/* Inline styles */}
-                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1">
+                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
                                 <button
                                     type="button"
-                                    onClick={() => wrapSelection("**", "**", "bold text")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleWrap("**", "**", "bold text")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Bold (Cmd+B)"
                                 >
                                     <LuBold />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => wrapSelection("*", "*", "italic text")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleWrap("*", "*", "italic text")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Italic (Cmd+I)"
                                 >
                                     <LuItalic />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => wrapSelection("~~", "~~", "strikethrough")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleWrap("~~", "~~", "strikethrough text")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Strikethrough (~~)"
                                 >
                                     <LuStrikethrough />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => wrapSelection("`", "`", "code")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleWrap("`", "`", "code")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Inline Code (`)"
                                 >
                                     <LuCode />
@@ -625,35 +911,35 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                             </div>
 
                             {/* Lists & Quotes */}
-                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1">
+                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("- ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleList("bullet")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Bullet List (-)"
                                 >
                                     <LuList />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("1. ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleList("ordered")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Numbered List (1.)"
                                 >
                                     <LuListOrdered />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("- [ ] ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={() => toggleList("check")}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Task Checklist (- [ ])"
                                 >
                                     <LuSquareCheck />
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => prefixLines("> ")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    onClick={toggleBlockquote}
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Blockquote (>)"
                                 >
                                     <LuQuote />
@@ -661,11 +947,11 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                             </div>
 
                             {/* Inserts: Links, Media, Tables, Callouts */}
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex items-center gap-0.5 shrink-0">
                                 <button
                                     type="button"
                                     onClick={openLinkModal}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Insert Link (Cmd+K)"
                                 >
                                     <LuLink />
@@ -674,11 +960,11 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                     type="button"
                                     disabled={uploadingInline}
                                     onClick={() => inlineImageInputRef.current?.click()}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm flex items-center gap-1"
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Upload & Insert Inline Image"
                                 >
                                     <LuImage />
-                                    {uploadingInline && <span className="text-[10px] animate-pulse">…</span>}
+                                    {uploadingInline && <span className="text-[10px] animate-pulse ml-0.5">…</span>}
                                 </button>
                                 <input
                                     ref={inlineImageInputRef}
@@ -698,7 +984,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                             "\n\n| Concept | Meaning | Practice |\n| :--- | :--- | :--- |\n| Asana | Physical posture | Stability & ease |\n| Pranayama | Breath control | Energy balance |\n\n",
                                         )
                                     }
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Insert Markdown Table"
                                 >
                                     <LuTable />
@@ -706,7 +992,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                 <button
                                     type="button"
                                     onClick={() => insertTextAtCursor("\n\n---\n\n")}
-                                    className="p-1.5 rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
                                     title="Insert Horizontal Divider"
                                 >
                                     <LuMinus />
@@ -718,11 +1004,11 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                             "\n\n> 💡 **Yogic Insight:** \n> The breath is the bridge which connects life to consciousness, which unites your body to your thoughts.\n\n",
                                         )
                                     }
-                                    className="px-2 py-1 rounded hover:bg-surface-sunken text-ink-muted hover:text-primary text-xs font-semibold flex items-center gap-1"
+                                    className="px-2 py-1 rounded hover:bg-surface-sunken text-ink-muted hover:text-primary text-xs font-semibold flex items-center gap-1 shrink-0"
                                     title="Insert Callout Card"
                                 >
                                     <LuSparkles className="text-secondary" />
-                                    <span>Callout</span>
+                                    <span className="hidden sm:inline">Callout</span>
                                 </button>
                             </div>
                         </div>
@@ -730,18 +1016,18 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
 
                     {/* WRITING WORKSPACE */}
                     <div className="flex-1 flex overflow-hidden">
-                        {/* Editor Pane (shown in "write" or "split") */}
+                        {/* Editor Canvas (shown in "write" or "split") */}
                         {(viewMode === "write" || viewMode === "split") && (
                             <div
-                                className={`overflow-y-auto px-6 sm:px-12 py-8 transition-all ${
+                                className={`overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 transition-all ${
                                     viewMode === "split"
-                                        ? "w-1/2 border-r border-hairline bg-surface"
+                                        ? "w-full md:w-1/2 border-r border-hairline bg-surface"
                                         : "max-w-4xl mx-auto w-full bg-surface"
                                 }`}
                             >
                                 {/* Cover Photo Banner */}
                                 {fields.imageUrl ? (
-                                    <div className="relative group mb-8 rounded-2xl overflow-hidden aspect-21/9 bg-surface-sunken border border-hairline shadow-xs">
+                                    <div className="relative group mb-6 sm:mb-8 rounded-2xl overflow-hidden aspect-21/9 bg-surface-sunken border border-hairline shadow-xs">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img src={fields.imageUrl} alt="" className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
@@ -762,7 +1048,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="mb-6 flex items-center gap-2">
+                                    <div className="mb-4 sm:mb-6 flex items-center gap-2">
                                         <button
                                             type="button"
                                             onClick={() => coverImageInputRef.current?.click()}
@@ -792,7 +1078,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                         value={fields.title}
                                         onChange={(e) => set("title", e.target.value)}
                                         placeholder="Article Title…"
-                                        className="w-full font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-ink placeholder:text-ink-subtle/30 bg-transparent border-0 outline-none p-0 focus:ring-0 leading-tight"
+                                        className="w-full font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-ink placeholder:text-ink-subtle/30 bg-transparent border-0 outline-none p-0 focus:ring-0 leading-tight"
                                     />
 
                                     {/* Subtitle / Excerpt */}
@@ -801,7 +1087,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                         onChange={(e) => set("excerpt", e.target.value)}
                                         placeholder="Write an inviting lead paragraph or excerpt…"
                                         rows={2}
-                                        className="w-full text-base sm:text-lg text-ink-muted placeholder:text-ink-subtle/40 bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none leading-relaxed"
+                                        className="w-full text-sm sm:text-base lg:text-lg text-ink-muted placeholder:text-ink-subtle/40 bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none leading-relaxed"
                                     />
 
                                     {/* Permalink Slug Bar */}
@@ -836,7 +1122,9 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                             </>
                                         ) : (
                                             <>
-                                                <span className="font-mono text-ink font-medium">{effectiveSlug || "…"}</span>
+                                                <span className="font-mono text-ink font-medium truncate max-w-[200px] sm:max-w-xs">
+                                                    {effectiveSlug || "…"}
+                                                </span>
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -859,9 +1147,10 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                     onChange={(e) => set("body", e.target.value)}
                                     onPaste={handlePaste}
                                     onDrop={handleDrop}
-                                    placeholder="Begin writing your story or yogic wisdom here… (You can drag and drop or paste images directly into this area, or use the toolbar above)"
+                                    onKeyDown={handleKeyDownInTextarea}
+                                    placeholder="Paste your ChatGPT article or write directly here… (All headings, bold, italics, lists, and blockquotes from ChatGPT are preserved automatically on paste!)"
                                     rows={28}
-                                    className="w-full text-base leading-relaxed text-ink font-serif sm:text-lg bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none min-h-[500px]"
+                                    className="w-full text-base sm:text-lg leading-relaxed text-ink font-serif bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none min-h-[500px]"
                                 />
                             </div>
                         )}
@@ -869,11 +1158,11 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                         {/* Live Rendered Article Preview (shown in "split" or "preview") */}
                         {(viewMode === "split" || viewMode === "preview") && (
                             <div
-                                className={`overflow-y-auto px-6 sm:px-12 py-8 bg-surface-subtle transition-all ${
-                                    viewMode === "split" ? "w-1/2" : "max-w-4xl mx-auto w-full"
+                                className={`overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 bg-surface-subtle transition-all ${
+                                    viewMode === "split" ? "hidden md:block md:w-1/2" : "max-w-4xl mx-auto w-full"
                                 }`}
                             >
-                                <div className="max-w-3xl mx-auto space-y-8">
+                                <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
                                     {/* Preview Label Pill */}
                                     <div className="flex items-center justify-between text-xs text-ink-subtle border-b border-hairline pb-2">
                                         <span className="font-semibold uppercase tracking-wider text-[10px] text-primary flex items-center gap-1.5">
@@ -892,15 +1181,15 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
 
                                     {/* Title Header */}
                                     <div className="space-y-4">
-                                        <h1 className="font-serif text-3xl sm:text-4xl font-bold text-ink leading-tight">
+                                        <h1 className="font-serif text-2xl sm:text-4xl font-bold text-ink leading-tight">
                                             {fields.title || "Untitled Post"}
                                         </h1>
                                         {fields.excerpt && (
-                                            <p className="text-lg text-ink-muted leading-relaxed font-serif italic border-l-2 border-secondary pl-4">
+                                            <p className="text-base sm:text-lg text-ink-muted leading-relaxed font-serif italic border-l-2 border-secondary pl-4">
                                                 {fields.excerpt}
                                             </p>
                                         )}
-                                        <div className="flex flex-wrap items-center gap-3 text-xs text-ink-subtle pt-2">
+                                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-ink-subtle pt-2">
                                             <span className="font-semibold text-ink">{fields.author || "Shakti Yoga"}</span>
                                             <span>·</span>
                                             <span>{estMinutes} min read</span>
@@ -911,11 +1200,11 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
 
                                     {/* Article Body HTML Render */}
                                     <article
-                                        className="prose prose-lg max-w-none text-ink font-serif prose-headings:font-serif prose-headings:text-ink prose-a:text-secondary prose-img:rounded-xl prose-blockquote:border-secondary prose-blockquote:bg-surface-sunken/40 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg"
+                                        className="prose prose-base sm:prose-lg max-w-none text-ink font-serif prose-headings:font-serif prose-headings:text-ink prose-a:text-secondary prose-img:rounded-xl prose-blockquote:border-secondary prose-blockquote:bg-surface-sunken/40 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg"
                                         dangerouslySetInnerHTML={{
                                             __html: fields.body
                                                 ? renderMarkdown(fields.body)
-                                                : "<p class='text-ink-subtle italic font-sans'>Start writing in the editor to see your live preview here…</p>",
+                                                : "<p class='text-ink-subtle italic font-sans'>Start writing or paste from ChatGPT to see your live preview here…</p>",
                                         }}
                                     />
 
@@ -937,349 +1226,356 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                     </div>
                 </div>
 
-                {/* ----------------- INSPECTOR / SETTINGS DRAWER */}
+                {/* ----------------- INSPECTOR / SETTINGS DRAWER (Responsive Slide-over or Docked) */}
                 {sidebarOpen && (
-                    <aside className="w-80 sm:w-88 border-l border-hairline bg-surface overflow-y-auto flex flex-col shrink-0">
-                        {/* Sidebar Header */}
-                        <div className="p-4 border-b border-hairline flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
-                                <LuSettings className="text-primary" /> Post Settings
-                            </h3>
-                            <button
-                                type="button"
-                                onClick={() => setSidebarOpen(false)}
-                                className="p-1 text-ink-subtle hover:text-ink rounded hover:bg-surface-sunken"
-                            >
-                                <LuX />
-                            </button>
-                        </div>
+                    <>
+                        {/* Backdrop on mobile/tablets (< 1280px) */}
+                        <div
+                            className="fixed inset-0 bg-black/40 z-40 xl:hidden backdrop-blur-xs animate-fade-in"
+                            onClick={() => setSidebarOpen(false)}
+                        />
+                        <aside className="fixed inset-y-0 right-0 z-50 xl:static xl:z-auto w-80 sm:w-92 border-l border-hairline bg-surface overflow-y-auto flex flex-col shrink-0 shadow-2xl xl:shadow-none animate-slide-left xl:animate-none">
+                            {/* Sidebar Header */}
+                            <div className="p-4 border-b border-hairline flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
+                                    <LuSettings className="text-primary" /> Post Settings
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setSidebarOpen(false)}
+                                    className="p-1 text-ink-subtle hover:text-ink rounded hover:bg-surface-sunken"
+                                >
+                                    <LuX />
+                                </button>
+                            </div>
 
-                        {/* Sidebar Tab Selector */}
-                        <div className="flex border-b border-hairline text-xs font-semibold text-ink-muted">
-                            <button
-                                type="button"
-                                onClick={() => setActiveSidebarTab("publish")}
-                                className={`flex-1 py-2 text-center border-b-2 transition-colors ${
-                                    activeSidebarTab === "publish" ? "border-primary text-primary" : "border-transparent hover:text-ink"
-                                }`}
-                            >
-                                Status
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveSidebarTab("seo")}
-                                className={`flex-1 py-2 text-center border-b-2 transition-colors ${
-                                    activeSidebarTab === "seo" ? "border-primary text-primary" : "border-transparent hover:text-ink"
-                                }`}
-                            >
-                                SEO
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveSidebarTab("taxonomies")}
-                                className={`flex-1 py-2 text-center border-b-2 transition-colors ${
-                                    activeSidebarTab === "taxonomies" ? "border-primary text-primary" : "border-transparent hover:text-ink"
-                                }`}
-                            >
-                                Taxonomies
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveSidebarTab("cta")}
-                                className={`flex-1 py-2 text-center border-b-2 transition-colors ${
-                                    activeSidebarTab === "cta" ? "border-primary text-primary" : "border-transparent hover:text-ink"
-                                }`}
-                            >
-                                CTA
-                            </button>
-                        </div>
+                            {/* Sidebar Tab Selector */}
+                            <div className="flex border-b border-hairline text-xs font-semibold text-ink-muted">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveSidebarTab("publish")}
+                                    className={`flex-1 py-2 text-center border-b-2 transition-colors ${
+                                        activeSidebarTab === "publish" ? "border-primary text-primary" : "border-transparent hover:text-ink"
+                                    }`}
+                                >
+                                    Status
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveSidebarTab("seo")}
+                                    className={`flex-1 py-2 text-center border-b-2 transition-colors ${
+                                        activeSidebarTab === "seo" ? "border-primary text-primary" : "border-transparent hover:text-ink"
+                                    }`}
+                                >
+                                    SEO
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveSidebarTab("taxonomies")}
+                                    className={`flex-1 py-2 text-center border-b-2 transition-colors ${
+                                        activeSidebarTab === "taxonomies" ? "border-primary text-primary" : "border-transparent hover:text-ink"
+                                    }`}
+                                >
+                                    Category
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveSidebarTab("cta")}
+                                    className={`flex-1 py-2 text-center border-b-2 transition-colors ${
+                                        activeSidebarTab === "cta" ? "border-primary text-primary" : "border-transparent hover:text-ink"
+                                    }`}
+                                >
+                                    CTA
+                                </button>
+                            </div>
 
-                        {/* Sidebar Content */}
-                        <div className="p-4 space-y-5 flex-1">
-                            {/* TAB: PUBLISH & ACCESS */}
-                            {activeSidebarTab === "publish" && (
-                                <div className="space-y-4 text-xs">
-                                    <div>
-                                        <label className={labelClass}>Workflow Status</label>
-                                        <select
-                                            value={fields.status}
-                                            onChange={(e) => set("status", e.target.value)}
-                                            className={inputClass}
-                                        >
-                                            <option value="DRAFT">Draft</option>
-                                            <option value="IN_REVIEW">In Review</option>
-                                            {canApprove && <option value="APPROVED">Approved</option>}
-                                            {canApprove && <option value="PUBLISHED">Published</option>}
-                                            <option value="ARCHIVED">Archived</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Visibility & Access</label>
-                                        <select
-                                            value={fields.access}
-                                            onChange={(e) => set("access", e.target.value)}
-                                            className={inputClass}
-                                        >
-                                            {ACCESS_OPTIONS.map((o) => (
-                                                <option key={o.value} value={o.value}>
-                                                    {o.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {fields.access === "MEMBERSHIP_REQUIRED" && (
+                            {/* Sidebar Content */}
+                            <div className="p-4 space-y-5 flex-1">
+                                {/* TAB: PUBLISH & ACCESS */}
+                                {activeSidebarTab === "publish" && (
+                                    <div className="space-y-4 text-xs">
                                         <div>
-                                            <label className={labelClass}>Specific Tiers (blank = all members)</label>
-                                            <input
-                                                value={fields.audience}
-                                                onChange={(e) => set("audience", e.target.value)}
-                                                placeholder="starter, everyday, family, therapy"
+                                            <label className={labelClass}>Workflow Status</label>
+                                            <select
+                                                value={fields.status}
+                                                onChange={(e) => set("status", e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                <option value="DRAFT">Draft</option>
+                                                <option value="IN_REVIEW">In Review</option>
+                                                {canApprove && <option value="APPROVED">Approved</option>}
+                                                {canApprove && <option value="PUBLISHED">Published</option>}
+                                                <option value="ARCHIVED">Archived</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Visibility & Access</label>
+                                            <select
+                                                value={fields.access}
+                                                onChange={(e) => set("access", e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                {ACCESS_OPTIONS.map((o) => (
+                                                    <option key={o.value} value={o.value}>
+                                                        {o.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {fields.access === "MEMBERSHIP_REQUIRED" && (
+                                            <div>
+                                                <label className={labelClass}>Specific Tiers (blank = all members)</label>
+                                                <input
+                                                    value={fields.audience}
+                                                    onChange={(e) => set("audience", e.target.value)}
+                                                    placeholder="starter, everyday, family, therapy"
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className={labelClass}>Schedule Publish</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="datetime-local"
+                                                    value={fields.scheduledAt}
+                                                    onChange={(e) => set("scheduledAt", e.target.value)}
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                            <p className="text-[11px] text-ink-subtle mt-1">Automatically publishes when date/time arrives.</p>
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Internal Review Note</label>
+                                            <textarea
+                                                value={fields.reviewNote}
+                                                onChange={(e) => set("reviewNote", e.target.value)}
+                                                rows={3}
+                                                placeholder="Optional note for editors or reviewers…"
                                                 className={inputClass}
                                             />
                                         </div>
-                                    )}
 
-                                    <div>
-                                        <label className={labelClass}>Schedule Publish</label>
-                                        <div className="relative">
-                                            <input
-                                                type="datetime-local"
-                                                value={fields.scheduledAt}
-                                                onChange={(e) => set("scheduledAt", e.target.value)}
-                                                className={inputClass}
-                                            />
+                                        <div className="pt-2 border-t border-hairline space-y-2">
+                                            <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={fields.notifyOnPublish}
+                                                    onChange={(e) => set("notifyOnPublish", e.target.checked)}
+                                                    className="h-3.5 w-3.5 accent-primary rounded"
+                                                />
+                                                <span>Send push notification on publish</span>
+                                            </label>
                                         </div>
-                                        <p className="text-[11px] text-ink-subtle mt-1">Automatically publishes when date/time arrives.</p>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <label className={labelClass}>Internal Review Note</label>
-                                        <textarea
-                                            value={fields.reviewNote}
-                                            onChange={(e) => set("reviewNote", e.target.value)}
-                                            rows={3}
-                                            placeholder="Optional note for editors or reviewers…"
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div className="pt-2 border-t border-hairline space-y-2">
-                                        <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={fields.notifyOnPublish}
-                                                onChange={(e) => set("notifyOnPublish", e.target.checked)}
-                                                className="h-3.5 w-3.5 accent-primary rounded"
-                                            />
-                                            <span>Send push notification on publish</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* TAB: SEO & GOOGLE PREVIEW */}
-                            {activeSidebarTab === "seo" && (
-                                <div className="space-y-4 text-xs">
-                                    <div>
-                                        <div className="flex justify-between items-center mb-1">
-                                            <label className={labelClass}>SEO Meta Title</label>
-                                            <span
-                                                className={`text-[10px] ${
-                                                    fields.metaTitle.length > 60 ? "text-amber-600 font-semibold" : "text-ink-subtle"
-                                                }`}
-                                            >
-                                                {fields.metaTitle.length}/60 chars
-                                            </span>
-                                        </div>
-                                        <input
-                                            value={fields.metaTitle}
-                                            onChange={(e) => set("metaTitle", e.target.value)}
-                                            placeholder={fields.title || "Custom search title…"}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <div className="flex justify-between items-center mb-1">
-                                            <label className={labelClass}>SEO Meta Description</label>
-                                            <span
-                                                className={`text-[10px] ${
-                                                    fields.metaDescription.length > 160 ? "text-amber-600 font-semibold" : "text-ink-subtle"
-                                                }`}
-                                            >
-                                                {fields.metaDescription.length}/160 chars
-                                            </span>
-                                        </div>
-                                        <textarea
-                                            value={fields.metaDescription}
-                                            onChange={(e) => set("metaDescription", e.target.value)}
-                                            rows={3}
-                                            placeholder={fields.excerpt || "Teaser shown in Google search results…"}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    {/* Google SERP Simulator Card */}
-                                    <div className="pt-2">
-                                        <label className="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-                                            Google Search Snippet Preview
-                                        </label>
-                                        <div className="p-3 bg-surface-sunken border border-hairline rounded-xl space-y-1">
-                                            <div className="flex items-center gap-1.5 text-[11px] text-ink-subtle truncate">
-                                                <span className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[9px]">
-                                                    SY
+                                {/* TAB: SEO & GOOGLE PREVIEW */}
+                                {activeSidebarTab === "seo" && (
+                                    <div className="space-y-4 text-xs">
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className={labelClass}>SEO Meta Title</label>
+                                                <span
+                                                    className={`text-[10px] ${
+                                                        fields.metaTitle.length > 60 ? "text-amber-600 font-semibold" : "text-ink-subtle"
+                                                    }`}
+                                                >
+                                                    {fields.metaTitle.length}/60 chars
                                                 </span>
-                                                <span className="truncate">shaktiyoga.in › blog › {effectiveSlug || "post"}</span>
                                             </div>
-                                            <div className="text-xs font-medium text-blue-700 hover:underline line-clamp-1 leading-snug">
-                                                {fields.metaTitle || fields.title || "Article Title — Shakti Yoga"}
-                                            </div>
-                                            <div className="text-[11px] text-ink-muted line-clamp-2 leading-relaxed">
-                                                {fields.metaDescription ||
-                                                    fields.excerpt ||
-                                                    "Discover holistic yogic wisdom, evidence-based practices, and guidance from master teachers at Shakti Yoga."}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* TAB: TAXONOMIES & AUTHOR */}
-                            {activeSidebarTab === "taxonomies" && (
-                                <div className="space-y-4 text-xs">
-                                    <div>
-                                        <label className={labelClass}>Category</label>
-                                        <select
-                                            value={fields.category}
-                                            onChange={(e) => set("category", e.target.value)}
-                                            className={inputClass}
-                                        >
-                                            {CATEGORY_OPTIONS.map((o) => (
-                                                <option key={o.value} value={o.value}>
-                                                    {o.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Tags (comma separated)</label>
-                                        <input
-                                            value={fields.tags}
-                                            onChange={(e) => set("tags", e.target.value)}
-                                            placeholder="pranayama, vinyasa, spine health"
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Public Author</label>
-                                        <input
-                                            value={fields.author}
-                                            onChange={(e) => set("author", e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className={labelClass}>Language</label>
-                                        <input
-                                            value={fields.language}
-                                            onChange={(e) => set("language", e.target.value)}
-                                            className={inputClass}
-                                        />
-                                    </div>
-
-                                    <div className="pt-2 border-t border-hairline space-y-2">
-                                        <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
                                             <input
-                                                type="checkbox"
-                                                checked={fields.featured}
-                                                onChange={(e) => set("featured", e.target.checked)}
-                                                className="h-3.5 w-3.5 accent-primary rounded"
-                                            />
-                                            <span>Featured — highlight on homepage</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={fields.pinned}
-                                                onChange={(e) => set("pinned", e.target.checked)}
-                                                className="h-3.5 w-3.5 accent-primary rounded"
-                                            />
-                                            <span>Pin to top of blog list</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* TAB: CALL TO ACTION & PAIRING */}
-                            {activeSidebarTab === "cta" && (
-                                <div className="space-y-4 text-xs">
-                                    <div>
-                                        <label className={labelClass}>Call to Action Type</label>
-                                        <select
-                                            value={fields.ctaType}
-                                            onChange={(e) => set("ctaType", e.target.value)}
-                                            className={inputClass}
-                                        >
-                                            {CTA_OPTIONS.map((o) => (
-                                                <option key={o.value} value={o.value}>
-                                                    {o.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {fields.ctaType !== "none" && (
-                                        <div>
-                                            <label className={labelClass}>Custom Button Label (optional)</label>
-                                            <input
-                                                value={fields.ctaLabel}
-                                                onChange={(e) => set("ctaLabel", e.target.value)}
-                                                placeholder="e.g. Join Evening Yoga"
+                                                value={fields.metaTitle}
+                                                onChange={(e) => set("metaTitle", e.target.value)}
+                                                placeholder={fields.title || "Custom search title…"}
                                                 className={inputClass}
                                             />
                                         </div>
-                                    )}
 
-                                    <div>
-                                        <label className={labelClass}>Pairs with Related Content</label>
-                                        <select
-                                            value={fields.relatedContentId}
-                                            onChange={(e) => set("relatedContentId", e.target.value)}
-                                            className={inputClass}
-                                        >
-                                            <option value="">None</option>
-                                            {contentOptions.map((o) => (
-                                                <option key={o.value} value={o.value}>
-                                                    {o.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className={labelClass}>SEO Meta Description</label>
+                                                <span
+                                                    className={`text-[10px] ${
+                                                        fields.metaDescription.length > 160 ? "text-amber-600 font-semibold" : "text-ink-subtle"
+                                                    }`}
+                                                >
+                                                    {fields.metaDescription.length}/160 chars
+                                                </span>
+                                            </div>
+                                            <textarea
+                                                value={fields.metaDescription}
+                                                onChange={(e) => set("metaDescription", e.target.value)}
+                                                rows={3}
+                                                placeholder={fields.excerpt || "Teaser shown in Google search results…"}
+                                                className={inputClass}
+                                            />
+                                        </div>
 
-                                    <div>
-                                        <label className={labelClass}>Pairs with Class Batch</label>
-                                        <select
-                                            value={fields.relatedClassBatchId}
-                                            onChange={(e) => set("relatedClassBatchId", e.target.value)}
-                                            className={inputClass}
-                                        >
-                                            <option value="">None</option>
-                                            {classBatchOptions.map((o) => (
-                                                <option key={o.value} value={o.value}>
-                                                    {o.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {/* Google SERP Simulator Card */}
+                                        <div className="pt-2">
+                                            <label className="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+                                                Google Search Snippet Preview
+                                            </label>
+                                            <div className="p-3 bg-surface-sunken border border-hairline rounded-xl space-y-1">
+                                                <div className="flex items-center gap-1.5 text-[11px] text-ink-subtle truncate">
+                                                    <span className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[9px]">
+                                                        SY
+                                                    </span>
+                                                    <span className="truncate">shaktiyoga.in › blog › {effectiveSlug || "post"}</span>
+                                                </div>
+                                                <div className="text-xs font-medium text-blue-700 hover:underline line-clamp-1 leading-snug">
+                                                    {fields.metaTitle || fields.title || "Article Title — Shakti Yoga"}
+                                                </div>
+                                                <div className="text-[11px] text-ink-muted line-clamp-2 leading-relaxed">
+                                                    {fields.metaDescription ||
+                                                        fields.excerpt ||
+                                                        "Discover holistic yogic wisdom, evidence-based practices, and guidance from master teachers at Shakti Yoga."}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    </aside>
+                                )}
+
+                                {/* TAB: TAXONOMIES & AUTHOR */}
+                                {activeSidebarTab === "taxonomies" && (
+                                    <div className="space-y-4 text-xs">
+                                        <div>
+                                            <label className={labelClass}>Category</label>
+                                            <select
+                                                value={fields.category}
+                                                onChange={(e) => set("category", e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                {CATEGORY_OPTIONS.map((o) => (
+                                                    <option key={o.value} value={o.value}>
+                                                        {o.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Tags (comma separated)</label>
+                                            <input
+                                                value={fields.tags}
+                                                onChange={(e) => set("tags", e.target.value)}
+                                                placeholder="pranayama, vinyasa, spine health"
+                                                className={inputClass}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Public Author</label>
+                                            <input
+                                                value={fields.author}
+                                                onChange={(e) => set("author", e.target.value)}
+                                                className={inputClass}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Language</label>
+                                            <input
+                                                value={fields.language}
+                                                onChange={(e) => set("language", e.target.value)}
+                                                className={inputClass}
+                                            />
+                                        </div>
+
+                                        <div className="pt-2 border-t border-hairline space-y-2">
+                                            <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={fields.featured}
+                                                    onChange={(e) => set("featured", e.target.checked)}
+                                                    className="h-3.5 w-3.5 accent-primary rounded"
+                                                />
+                                                <span>Featured — highlight on homepage</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={fields.pinned}
+                                                    onChange={(e) => set("pinned", e.target.checked)}
+                                                    className="h-3.5 w-3.5 accent-primary rounded"
+                                                />
+                                                <span>Pin to top of blog list</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB: CALL TO ACTION & PAIRING */}
+                                {activeSidebarTab === "cta" && (
+                                    <div className="space-y-4 text-xs">
+                                        <div>
+                                            <label className={labelClass}>Call to Action Type</label>
+                                            <select
+                                                value={fields.ctaType}
+                                                onChange={(e) => set("ctaType", e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                {CTA_OPTIONS.map((o) => (
+                                                    <option key={o.value} value={o.value}>
+                                                        {o.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {fields.ctaType !== "none" && (
+                                            <div>
+                                                <label className={labelClass}>Custom Button Label (optional)</label>
+                                                <input
+                                                    value={fields.ctaLabel}
+                                                    onChange={(e) => set("ctaLabel", e.target.value)}
+                                                    placeholder="e.g. Join Evening Yoga"
+                                                    className={inputClass}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className={labelClass}>Pairs with Related Content</label>
+                                            <select
+                                                value={fields.relatedContentId}
+                                                onChange={(e) => set("relatedContentId", e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                <option value="">None</option>
+                                                {contentOptions.map((o) => (
+                                                    <option key={o.value} value={o.value}>
+                                                        {o.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Pairs with Class Batch</label>
+                                            <select
+                                                value={fields.relatedClassBatchId}
+                                                onChange={(e) => set("relatedClassBatchId", e.target.value)}
+                                                className={inputClass}
+                                            >
+                                                <option value="">None</option>
+                                                {classBatchOptions.map((o) => (
+                                                    <option key={o.value} value={o.value}>
+                                                        {o.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </aside>
+                    </>
                 )}
             </div>
 
@@ -1305,6 +1601,12 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                 onChange={(e) => setLinkUrl(e.target.value)}
                                 className={inputClass}
                                 placeholder="https://… or /everyday-yoga"
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        applyLink();
+                                    }
+                                }}
                             />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
@@ -1317,24 +1619,33 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                 </div>
             )}
 
-            {/* ---------------------------------------------------- MARKDOWN CHEATSHEET MODAL */}
+            {/* ---------------------------------------------------- MARKDOWN & CHATGPT HELP MODAL */}
             {showHelpModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setShowHelpModal(false)}>
                     <div className="bg-surface border border-hairline rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between pb-2 border-b border-hairline">
                             <h4 className="font-semibold text-ink text-base flex items-center gap-1.5">
-                                <LuCircleHelp className="text-primary" /> Markdown Cheatsheet &amp; Shortcuts
+                                <LuCircleHelp className="text-primary" /> Markdown &amp; ChatGPT Copy-Paste
                             </h4>
                             <button type="button" onClick={() => setShowHelpModal(false)} className="text-ink-subtle hover:text-ink">
                                 <LuX />
                             </button>
                         </div>
                         <div className="text-xs space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                            <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-ink">
+                                <h5 className="font-semibold text-primary mb-1">📋 ChatGPT Paste Detection</h5>
+                                <p className="leading-relaxed text-ink-muted">
+                                    When you copy from ChatGPT or Google Docs and paste here (<kbd className="px-1.5 py-0.5 bg-surface rounded border text-[10px]">Cmd+V</kbd>), all <strong>Headings (H1, H2, H3)</strong>, <strong>Bold</strong>, <strong>Italics</strong>, <strong>Lists</strong>, <strong>Blockquotes</strong>, and <strong>Tables</strong> are automatically converted and preserved as clean Markdown.
+                                </p>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-2 pb-2 border-b border-hairline">
                                 <span className="font-mono text-ink-muted font-bold"># Heading 1</span>
                                 <span className="text-ink">Main section</span>
                                 <span className="font-mono text-ink-muted font-bold">## Heading 2</span>
                                 <span className="text-ink">Sub-section</span>
+                                <span className="font-mono text-ink-muted font-bold">### Heading 3</span>
+                                <span className="text-ink">Minor sub-section</span>
                                 <span className="font-mono text-ink-muted font-bold">**bold text**</span>
                                 <span className="text-ink font-bold">Bold</span>
                                 <span className="font-mono text-ink-muted font-bold">*italic text*</span>
@@ -1349,21 +1660,19 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                 <span className="text-ink">• Bullet list item</span>
                                 <span className="font-mono text-ink-muted font-bold">1. numbered</span>
                                 <span className="text-ink">1. Numbered item</span>
+                                <span className="font-mono text-ink-muted font-bold">- [ ] task</span>
+                                <span className="text-ink">Checklist item</span>
                             </div>
+
                             <div>
                                 <h5 className="font-semibold text-ink mb-1">Keyboard Shortcuts</h5>
                                 <ul className="space-y-1 text-ink-muted">
                                     <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Cmd/Ctrl + S</kbd> Save draft</li>
-                                    <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Cmd/Ctrl + B</kbd> Bold selection</li>
-                                    <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Cmd/Ctrl + I</kbd> Italic selection</li>
+                                    <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Cmd/Ctrl + B</kbd> Bold text (toggle on/off)</li>
+                                    <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Cmd/Ctrl + I</kbd> Italic text (toggle on/off)</li>
                                     <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Cmd/Ctrl + K</kbd> Insert link</li>
+                                    <li><kbd className="px-1.5 py-0.5 bg-surface-sunken border rounded text-[11px]">Tab</kbd> Indent 2 spaces</li>
                                 </ul>
-                            </div>
-                            <div className="pt-1">
-                                <h5 className="font-semibold text-ink mb-1">Image Uploading</h5>
-                                <p className="text-ink-muted">
-                                    You can drag-and-drop any image file directly into the editor body or click the image icon in the toolbar. It will automatically upload and insert into the article.
-                                </p>
                             </div>
                         </div>
                         <div className="flex justify-end pt-2">
