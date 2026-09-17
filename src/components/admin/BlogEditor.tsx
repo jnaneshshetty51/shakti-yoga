@@ -623,8 +623,9 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                 showToast("success", "Image inserted into article.");
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Upload failed");
-            showToast("error", "Image upload failed");
+            const msg = err instanceof Error ? err.message : "Upload failed";
+            setError(msg);
+            showToast("error", msg);
         } finally {
             if (isCover) setUploadingImage(false);
             else setUploadingInline(false);

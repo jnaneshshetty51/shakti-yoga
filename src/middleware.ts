@@ -119,6 +119,7 @@ export async function middleware(request: NextRequest) {
 
     // ---- Auth gate (protected routes only) -------------------------------
     if (!needsAuth) {
+        if (isApi) return NextResponse.next();
         return finish(NextResponse.next({ request: { headers: forwarded } }));
     }
 
@@ -149,6 +150,7 @@ export async function middleware(request: NextRequest) {
         return finish(NextResponse.redirect(new URL('/teacher', request.url)));
     }
 
+    if (isApi) return NextResponse.next();
     return finish(NextResponse.next({ request: { headers: forwarded } }));
 }
 
