@@ -728,131 +728,305 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
 
     return (
         <div className="min-h-screen flex flex-col bg-surface select-text w-full">
-            {/* ---------------------------------------------------- TOP STUDIO NAVIGATION BAR */}
-            <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-md border-b border-hairline px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs">
-                {/* Left: Back & Document Status */}
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <Link
-                        href="/admin/content"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-ink-subtle hover:text-ink p-1.5 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-surface-sunken transition-colors shrink-0"
-                        title="Back to all posts"
-                    >
-                        <LuArrowLeft /> <span className="hidden sm:inline">All Posts</span>
-                    </Link>
-                    <div className="h-4 w-px bg-hairline hidden md:block" />
-                    <Badge
-                        tone={
-                            fields.status === "PUBLISHED"
-                                ? "green"
-                                : fields.status === "APPROVED"
-                                  ? "blue"
-                                  : fields.status === "IN_REVIEW"
-                                    ? "amber"
-                                    : "gray"
-                        }
-                    >
-                        {STATUS_LABEL[fields.status] ?? fields.status}
-                    </Badge>
-                    <span className="hidden lg:inline-flex items-center gap-1.5 text-xs text-ink-subtle">
-                        <LuClock className="text-xs" />
-                        <span>{wordsCount} words</span>
-                        <span>·</span>
-                        <span>{estMinutes} min read</span>
-                    </span>
-                    {isDirty && (
-                        <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 hidden xl:inline">
-                            ● Unsaved changes
-                        </span>
-                    )}
-                </div>
-
-                {/* Center: View Mode Switcher */}
-                <div className="flex items-center bg-surface-sunken p-0.5 rounded-full border border-hairline text-xs font-medium shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => setViewMode("write")}
-                        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full transition-all ${
-                            viewMode === "write" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
-                        }`}
-                        title="Distraction-free Writing Canvas"
-                    >
-                        <LuPenLine />
-                        <span>Write</span>
-                    </button>
-                    {/* Hide split on small mobile (< 768px) where side-by-side cannot fit */}
-                    <button
-                        type="button"
-                        onClick={() => setViewMode("split")}
-                        className={`hidden md:flex items-center gap-1 px-3 py-1 rounded-full transition-all ${
-                            viewMode === "split" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
-                        }`}
-                        title="Side-by-side Editor & Live Preview"
-                    >
-                        <LuColumns2 />
-                        <span>Split</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setViewMode("preview")}
-                        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full transition-all ${
-                            viewMode === "preview" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
-                        }`}
-                        title="Full Public Article Preview"
-                    >
-                        <LuEye />
-                        <span>Preview</span>
-                    </button>
-                </div>
-
-                {/* Right: Actions & Inspector Toggle */}
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => setShowHelpModal(true)}
-                        className="p-1.5 text-ink-subtle hover:text-ink rounded-full hover:bg-surface-sunken transition-colors text-sm"
-                        title="Markdown & ChatGPT Paste Help"
-                    >
-                        <LuCircleHelp />
-                    </button>
-                    {fields.status === "PUBLISHED" && effectiveSlug && (
-                        <a
-                            href={`/blog/${effectiveSlug}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-strong px-2.5 py-1.5 rounded-full hover:bg-primary/5 transition-colors"
+            {/* ---------------------------------------------------- UNIFIED STICKY STUDIO TOPBAR & TOOLBAR */}
+            <div className="sticky top-0 z-40 bg-surface/95 backdrop-blur-md border-b border-hairline shadow-xs">
+                {/* ----------------- TOP STUDIO NAVIGATION BAR */}
+                <header className="px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
+                    {/* Left: Back & Document Status */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <Link
+                            href="/admin/content"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-ink-subtle hover:text-ink p-1.5 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-surface-sunken transition-colors shrink-0"
+                            title="Back to all posts"
                         >
-                            View Live <LuExternalLink />
-                        </a>
-                    )}
-                    <Button
-                        variant="secondary"
-                        onClick={() => save("DRAFT")}
-                        loading={saving === "DRAFT"}
-                        className="text-xs px-2.5 sm:px-3 py-1.5"
-                    >
-                        Save
-                    </Button>
-                    <Button
-                        onClick={() => save(primaryAction.status)}
-                        loading={saving === primaryAction.status}
-                        className="text-xs px-3 sm:px-3.5 py-1.5 font-semibold"
-                    >
-                        {primaryAction.label}
-                    </Button>
-                    <button
-                        type="button"
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className={`p-1.5 rounded-control border transition-all text-sm ${
-                            sidebarOpen
-                                ? "bg-primary text-white border-primary"
-                                : "bg-surface text-ink-muted border-hairline hover:text-ink"
-                        }`}
-                        title="Post Settings (SEO, Slug, Cover, Tags)"
-                    >
-                        <LuSettings />
-                    </button>
-                </div>
-            </header>
+                            <LuArrowLeft /> <span className="hidden sm:inline">All Posts</span>
+                        </Link>
+                        <div className="h-4 w-px bg-hairline hidden md:block" />
+                        <Badge
+                            tone={
+                                fields.status === "PUBLISHED"
+                                    ? "green"
+                                    : fields.status === "APPROVED"
+                                      ? "blue"
+                                      : fields.status === "IN_REVIEW"
+                                        ? "amber"
+                                        : "gray"
+                            }
+                        >
+                            {STATUS_LABEL[fields.status] ?? fields.status}
+                        </Badge>
+                        <span className="hidden lg:inline-flex items-center gap-1.5 text-xs text-ink-subtle">
+                            <LuClock className="text-xs" />
+                            <span>{wordsCount} words</span>
+                            <span>·</span>
+                            <span>{estMinutes} min read</span>
+                        </span>
+                        {isDirty && (
+                            <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 hidden xl:inline">
+                                ● Unsaved changes
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Center: View Mode Switcher */}
+                    <div className="flex items-center bg-surface-sunken p-0.5 rounded-full border border-hairline text-xs font-medium shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("write")}
+                            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full transition-all ${
+                                viewMode === "write" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
+                            }`}
+                            title="Distraction-free Writing Canvas"
+                        >
+                            <LuPenLine />
+                            <span>Write</span>
+                        </button>
+                        {/* Hide split on small mobile (< 768px) where side-by-side cannot fit */}
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("split")}
+                            className={`hidden md:flex items-center gap-1 px-3 py-1 rounded-full transition-all ${
+                                viewMode === "split" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
+                            }`}
+                            title="Side-by-side Editor & Live Preview"
+                        >
+                            <LuColumns2 />
+                            <span>Split</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("preview")}
+                            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full transition-all ${
+                                viewMode === "preview" ? "bg-white text-ink shadow-xs font-semibold" : "text-ink-muted hover:text-ink"
+                            }`}
+                            title="Full Public Article Preview"
+                        >
+                            <LuEye />
+                            <span>Preview</span>
+                        </button>
+                    </div>
+
+                    {/* Right: Actions & Inspector Toggle */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setShowHelpModal(true)}
+                            className="p-1.5 text-ink-subtle hover:text-ink rounded-full hover:bg-surface-sunken transition-colors text-sm"
+                            title="Markdown & ChatGPT Paste Help"
+                        >
+                            <LuCircleHelp />
+                        </button>
+                        {fields.status === "PUBLISHED" && effectiveSlug && (
+                            <a
+                                href={`/blog/${effectiveSlug}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-strong px-2.5 py-1.5 rounded-full hover:bg-primary/5 transition-colors"
+                            >
+                                View Live <LuExternalLink />
+                            </a>
+                        )}
+                        <Button
+                            variant="secondary"
+                            onClick={() => save("DRAFT")}
+                            loading={saving === "DRAFT"}
+                            className="text-xs px-2.5 sm:px-3 py-1.5"
+                        >
+                            Save
+                        </Button>
+                        <Button
+                            onClick={() => save(primaryAction.status)}
+                            loading={saving === primaryAction.status}
+                            className="text-xs px-3 sm:px-3.5 py-1.5 font-semibold"
+                        >
+                            {primaryAction.label}
+                        </Button>
+                        <button
+                            type="button"
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className={`p-1.5 rounded-control border transition-all text-sm ${
+                                sidebarOpen
+                                    ? "bg-primary text-white border-primary"
+                                    : "bg-surface text-ink-muted border-hairline hover:text-ink"
+                            }`}
+                            title="Post Settings (SEO, Slug, Cover, Tags)"
+                        >
+                            <LuSettings />
+                        </button>
+                    </div>
+                </header>
+
+                {/* ----------------- FORMATTING TOOLBAR (shown in Write & Split views, stationary right below header) */}
+                {viewMode !== "preview" && (
+                    <div className="border-t border-hairline px-3 sm:px-8 py-2 flex items-center gap-1 overflow-x-auto no-scrollbar flex-nowrap bg-surface/80">
+                        {/* Headings */}
+                        <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => toggleHeading(1)}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
+                                title="Heading 1 (#)"
+                            >
+                                <LuHeading1 />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleHeading(2)}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
+                                title="Heading 2 (##)"
+                            >
+                                <LuHeading2 />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleHeading(3)}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
+                                title="Heading 3 (###)"
+                            >
+                                <LuHeading3 />
+                            </button>
+                        </div>
+
+                        {/* Inline styles */}
+                        <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => toggleWrap("**", "**", "bold text")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Bold (Cmd+B)"
+                            >
+                                <LuBold />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleWrap("*", "*", "italic text")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Italic (Cmd+I)"
+                            >
+                                <LuItalic />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleWrap("~~", "~~", "strikethrough text")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Strikethrough (~~)"
+                            >
+                                <LuStrikethrough />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleWrap("`", "`", "code")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Inline Code (`)"
+                            >
+                                <LuCode />
+                            </button>
+                        </div>
+
+                        {/* Lists & Quotes */}
+                        <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => toggleList("bullet")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Bullet List (-)"
+                            >
+                                <LuList />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleList("ordered")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Numbered List (1.)"
+                            >
+                                <LuListOrdered />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleList("check")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Task Checklist (- [ ])"
+                            >
+                                <LuSquareCheck />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={toggleBlockquote}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Blockquote (>)"
+                            >
+                                <LuQuote />
+                            </button>
+                        </div>
+
+                        {/* Inserts: Links, Media, Tables, Callouts */}
+                        <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                                type="button"
+                                onClick={openLinkModal}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Insert Link (Cmd+K)"
+                            >
+                                <LuLink />
+                            </button>
+                            <button
+                                type="button"
+                                disabled={uploadingInline}
+                                onClick={() => inlineImageInputRef.current?.click()}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Upload & Insert Inline Image"
+                            >
+                                <LuImage />
+                                {uploadingInline && <span className="text-[10px] animate-pulse ml-0.5">…</span>}
+                            </button>
+                            <input
+                                ref={inlineImageInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = "";
+                                    if (f) uploadImageFile(f, "inline");
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    insertTextAtCursor(
+                                        "\n\n| Concept | Meaning | Practice |\n| :--- | :--- | :--- |\n| Asana | Physical posture | Stability & ease |\n| Pranayama | Breath control | Energy balance |\n\n",
+                                    )
+                                }
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Insert Markdown Table"
+                            >
+                                <LuTable />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => insertTextAtCursor("\n\n---\n\n")}
+                                className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
+                                title="Insert Horizontal Divider"
+                            >
+                                <LuMinus />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    insertTextAtCursor(
+                                        "\n\n> 💡 **Yogic Insight:** \n> The breath is the bridge which connects life to consciousness, which unites your body to your thoughts.\n\n",
+                                    )
+                                }
+                                className="px-2 py-1 rounded hover:bg-surface-sunken text-ink-muted hover:text-primary text-xs font-semibold flex items-center gap-1 shrink-0"
+                                title="Insert Callout Card"
+                            >
+                                <LuSparkles className="text-secondary" />
+                                <span className="hidden sm:inline">Callout</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {error && (
                 <div className="m-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-control text-sm flex items-center justify-between">
@@ -867,177 +1041,6 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
             <div className="flex-1 flex relative items-start min-w-0">
                 {/* ----------------- Editor / Split / Preview Viewport */}
                 <div className="flex-1 flex flex-col min-w-0">
-                    {/* FORMATTING TOOLBAR (shown in Write & Split views, sticky below top header) */}
-                    {viewMode !== "preview" && (
-                        <div className="sticky top-[53px] z-30 bg-surface/95 backdrop-blur-md border-b border-hairline px-3 sm:px-8 py-2 flex items-center gap-1 shadow-xs overflow-x-auto no-scrollbar flex-nowrap">
-                            {/* Headings */}
-                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleHeading(1)}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
-                                    title="Heading 1 (#)"
-                                >
-                                    <LuHeading1 />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleHeading(2)}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
-                                    title="Heading 2 (##)"
-                                >
-                                    <LuHeading2 />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleHeading(3)}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm font-bold"
-                                    title="Heading 3 (###)"
-                                >
-                                    <LuHeading3 />
-                                </button>
-                            </div>
-
-                            {/* Inline styles */}
-                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleWrap("**", "**", "bold text")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Bold (Cmd+B)"
-                                >
-                                    <LuBold />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleWrap("*", "*", "italic text")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Italic (Cmd+I)"
-                                >
-                                    <LuItalic />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleWrap("~~", "~~", "strikethrough text")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Strikethrough (~~)"
-                                >
-                                    <LuStrikethrough />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleWrap("`", "`", "code")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Inline Code (`)"
-                                >
-                                    <LuCode />
-                                </button>
-                            </div>
-
-                            {/* Lists & Quotes */}
-                            <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleList("bullet")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Bullet List (-)"
-                                >
-                                    <LuList />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleList("ordered")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Numbered List (1.)"
-                                >
-                                    <LuListOrdered />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleList("check")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Task Checklist (- [ ])"
-                                >
-                                    <LuSquareCheck />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={toggleBlockquote}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Blockquote (>)"
-                                >
-                                    <LuQuote />
-                                </button>
-                            </div>
-
-                            {/* Inserts: Links, Media, Tables, Callouts */}
-                            <div className="flex items-center gap-0.5 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={openLinkModal}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Insert Link (Cmd+K)"
-                                >
-                                    <LuLink />
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={uploadingInline}
-                                    onClick={() => inlineImageInputRef.current?.click()}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Upload & Insert Inline Image"
-                                >
-                                    <LuImage />
-                                    {uploadingInline && <span className="text-[10px] animate-pulse ml-0.5">…</span>}
-                                </button>
-                                <input
-                                    ref={inlineImageInputRef}
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp,image/gif"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        const f = e.target.files?.[0];
-                                        e.target.value = "";
-                                        if (f) uploadImageFile(f, "inline");
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        insertTextAtCursor(
-                                            "\n\n| Concept | Meaning | Practice |\n| :--- | :--- | :--- |\n| Asana | Physical posture | Stability & ease |\n| Pranayama | Breath control | Energy balance |\n\n",
-                                        )
-                                    }
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Insert Markdown Table"
-                                >
-                                    <LuTable />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => insertTextAtCursor("\n\n---\n\n")}
-                                    className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded hover:bg-surface-sunken text-ink-muted hover:text-ink text-sm"
-                                    title="Insert Horizontal Divider"
-                                >
-                                    <LuMinus />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        insertTextAtCursor(
-                                            "\n\n> 💡 **Yogic Insight:** \n> The breath is the bridge which connects life to consciousness, which unites your body to your thoughts.\n\n",
-                                        )
-                                    }
-                                    className="px-2 py-1 rounded hover:bg-surface-sunken text-ink-muted hover:text-primary text-xs font-semibold flex items-center gap-1 shrink-0"
-                                    title="Insert Callout Card"
-                                >
-                                    <LuSparkles className="text-secondary" />
-                                    <span className="hidden sm:inline">Callout</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
                     {/* WRITING WORKSPACE */}
                     <div className="flex-1 flex items-stretch min-w-0">
                         {/* Editor Canvas (shown in "write" or "split") */}
@@ -1260,15 +1263,15 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                     </div>
                 </div>
 
-                {/* ----------------- INSPECTOR / SETTINGS DRAWER (Responsive Slide-over or Docked) */}
+                {/* ----------------- INSPECTOR / SETTINGS DRAWER (Slide-over) */}
                 {sidebarOpen && (
                     <>
-                        {/* Backdrop on mobile/tablets (< 1280px) */}
+                        {/* Backdrop */}
                         <div
-                            className="fixed inset-0 bg-black/40 z-40 xl:hidden backdrop-blur-xs animate-fade-in"
+                            className="fixed inset-0 bg-black/30 z-50 backdrop-blur-xs animate-fade-in"
                             onClick={() => setSidebarOpen(false)}
                         />
-                        <aside className="fixed inset-y-0 right-0 z-50 xl:sticky xl:top-[53px] xl:h-[calc(100vh-53px)] xl:z-20 w-80 sm:w-92 border-l border-hairline bg-surface overflow-y-auto flex flex-col shrink-0 shadow-2xl xl:shadow-none animate-slide-left xl:animate-none">
+                        <aside className="fixed inset-y-0 right-0 z-50 w-80 sm:w-96 border-l border-hairline bg-surface overflow-y-auto flex flex-col shrink-0 shadow-2xl animate-slide-left">
                             {/* Sidebar Header */}
                             <div className="p-4 border-b border-hairline flex items-center justify-between">
                                 <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
