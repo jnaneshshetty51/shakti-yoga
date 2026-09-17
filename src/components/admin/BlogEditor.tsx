@@ -1053,10 +1053,10 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                             type="button"
                                             onClick={() => coverImageInputRef.current?.click()}
                                             disabled={uploadingImage}
-                                            className="inline-flex items-center gap-1.5 text-xs text-ink-subtle hover:text-ink font-medium px-3 py-1.5 rounded-full hover:bg-surface-sunken border border-dashed border-hairline transition-colors"
+                                            className="inline-flex items-center gap-2 text-xs text-ink-subtle hover:text-ink font-medium px-3.5 py-1.5 rounded-full hover:bg-surface-sunken border border-dashed border-hairline transition-colors"
                                         >
-                                            <LuImage className="text-sm" />
-                                            <span>{uploadingImage ? "Uploading Cover…" : "+ Add Cover Image"}</span>
+                                            <LuImage className="text-sm text-primary" />
+                                            <span>{uploadingImage ? "Uploading Thumbnail…" : "+ Add Thumbnail / Cover Image"}</span>
                                         </button>
                                     </div>
                                 )}
@@ -1358,6 +1358,43 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                                 placeholder="Optional note for editors or reviewers…"
                                                 className={inputClass}
                                             />
+                                        </div>
+
+                                        <div className="pt-3 border-t border-hairline space-y-2">
+                                            <label className={labelClass}>Featured Thumbnail / Cover</label>
+                                            {fields.imageUrl ? (
+                                                <div className="relative group rounded-xl overflow-hidden aspect-16/9 bg-surface-sunken border border-hairline">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={fields.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => coverImageInputRef.current?.click()}
+                                                            className="px-2.5 py-1 rounded bg-white/95 hover:bg-white text-ink text-[11px] font-semibold shadow-xs flex items-center gap-1"
+                                                        >
+                                                            <LuUpload className="text-xs" /> Change
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => set("imageUrl", "")}
+                                                            className="px-2.5 py-1 rounded bg-red-600/90 hover:bg-red-600 text-white text-[11px] font-semibold shadow-xs flex items-center gap-1"
+                                                        >
+                                                            <LuTrash2 className="text-xs" /> Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => coverImageInputRef.current?.click()}
+                                                    disabled={uploadingImage}
+                                                    className="w-full p-3.5 rounded-xl border border-dashed border-hairline hover:border-primary/50 hover:bg-surface-sunken text-center flex flex-col items-center justify-center gap-1 text-ink-subtle hover:text-ink transition-colors cursor-pointer"
+                                                >
+                                                    <LuImage className="text-xl text-ink-muted" />
+                                                    <span className="text-xs font-semibold text-ink">{uploadingImage ? "Uploading…" : "Upload Thumbnail Image"}</span>
+                                                    <span className="text-[10px] text-ink-subtle">Displays on blog cards, search, & header</span>
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="pt-2 border-t border-hairline space-y-2">
