@@ -363,6 +363,17 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
         setClassBatchOptions(data.classBatchOptions || []);
     }, [id]);
 
+    const adjustTextareaHeight = useCallback(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${Math.max(el.scrollHeight, 550)}px`;
+    }, []);
+
+    useEffect(() => {
+        adjustTextareaHeight();
+    }, [fields.body, viewMode, adjustTextareaHeight]);
+
     useEffect(() => {
         (async () => {
             setLoading(true);
@@ -704,13 +715,13 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
               : { label: "Submit for Review", status: "IN_REVIEW" };
 
     return (
-        <div className="min-h-screen -mx-4 -mt-6 sm:-mx-8 sm:-mt-8 flex flex-col bg-surface select-text">
+        <div className="min-h-screen flex flex-col bg-surface select-text w-full">
             {/* ---------------------------------------------------- TOP STUDIO NAVIGATION BAR */}
-            <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-hairline px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs">
+            <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-md border-b border-hairline px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs">
                 {/* Left: Back & Document Status */}
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     <Link
-                        href="/admin/blog"
+                        href="/admin/content"
                         className="inline-flex items-center gap-1 text-xs font-semibold text-ink-subtle hover:text-ink p-1.5 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-surface-sunken transition-colors shrink-0"
                         title="Back to all posts"
                     >
@@ -841,12 +852,12 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
             )}
 
             {/* ---------------------------------------------------- MAIN BODY WORKSPACE */}
-            <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 flex relative items-start min-w-0">
                 {/* ----------------- Editor / Split / Preview Viewport */}
-                <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
-                    {/* FORMATTING TOOLBAR (shown in Write & Split views) */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    {/* FORMATTING TOOLBAR (shown in Write & Split views, sticky below top header) */}
                     {viewMode !== "preview" && (
-                        <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-hairline px-3 sm:px-8 py-2 flex items-center gap-1 shadow-2xs overflow-x-auto no-scrollbar flex-nowrap">
+                        <div className="sticky top-[53px] z-30 bg-surface/95 backdrop-blur-md border-b border-hairline px-3 sm:px-8 py-2 flex items-center gap-1 shadow-xs overflow-x-auto no-scrollbar flex-nowrap">
                             {/* Headings */}
                             <div className="flex items-center gap-0.5 border-r border-hairline pr-1.5 mr-1 shrink-0">
                                 <button
@@ -1016,14 +1027,14 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                     )}
 
                     {/* WRITING WORKSPACE */}
-                    <div className="flex-1 flex overflow-hidden">
+                    <div className="flex-1 flex items-stretch min-w-0">
                         {/* Editor Canvas (shown in "write" or "split") */}
                         {(viewMode === "write" || viewMode === "split") && (
                             <div
-                                className={`overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 transition-all ${
+                                className={`px-4 sm:px-8 lg:px-12 py-6 sm:py-8 transition-all flex flex-col ${
                                     viewMode === "split"
-                                        ? "w-full md:w-1/2 border-r border-hairline bg-surface"
-                                        : "max-w-4xl mx-auto w-full bg-surface"
+                                        ? "w-full md:w-1/2 border-r border-hairline bg-surface min-h-[calc(100vh-106px)]"
+                                        : "max-w-4xl mx-auto w-full bg-surface min-h-[calc(100vh-106px)]"
                                 }`}
                             >
                                 {/* Cover Photo Banner */}
@@ -1145,13 +1156,18 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                                 <textarea
                                     ref={textareaRef}
                                     value={fields.body}
-                                    onChange={(e) => set("body", e.target.value)}
-                                    onPaste={handlePaste}
+                                    onChange={(e) => {
+                                        set("body", e.target.value);
+                                        adjustTextareaHeight();
+                                    }}
+                                    onPaste={(e) => {
+                                        handlePaste(e);
+                                        setTimeout(adjustTextareaHeight, 20);
+                                    }}
                                     onDrop={handleDrop}
                                     onKeyDown={handleKeyDownInTextarea}
                                     placeholder="Paste your ChatGPT article or write directly here… (All headings, bold, italics, lists, and blockquotes from ChatGPT are preserved automatically on paste!)"
-                                    rows={28}
-                                    className="w-full text-base sm:text-lg leading-relaxed text-ink font-serif bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none min-h-[500px]"
+                                    className="w-full text-base sm:text-lg leading-relaxed text-ink font-serif bg-transparent border-0 outline-none p-0 focus:ring-0 resize-none overflow-hidden min-h-[550px]"
                                 />
                             </div>
                         )}
@@ -1159,8 +1175,10 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                         {/* Live Rendered Article Preview (shown in "split" or "preview") */}
                         {(viewMode === "split" || viewMode === "preview") && (
                             <div
-                                className={`overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 bg-surface-subtle transition-all ${
-                                    viewMode === "split" ? "hidden md:block md:w-1/2" : "max-w-4xl mx-auto w-full"
+                                className={`px-4 sm:px-8 lg:px-12 py-6 sm:py-8 bg-surface-subtle transition-all flex flex-col ${
+                                    viewMode === "split"
+                                        ? "hidden md:block md:w-1/2 min-h-[calc(100vh-106px)]"
+                                        : "max-w-4xl mx-auto w-full min-h-[calc(100vh-106px)]"
                                 }`}
                             >
                                 <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
@@ -1235,7 +1253,7 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                             className="fixed inset-0 bg-black/40 z-40 xl:hidden backdrop-blur-xs animate-fade-in"
                             onClick={() => setSidebarOpen(false)}
                         />
-                        <aside className="fixed inset-y-0 right-0 z-50 xl:static xl:z-auto w-80 sm:w-92 border-l border-hairline bg-surface overflow-y-auto flex flex-col shrink-0 shadow-2xl xl:shadow-none animate-slide-left xl:animate-none">
+                        <aside className="fixed inset-y-0 right-0 z-50 xl:sticky xl:top-[53px] xl:h-[calc(100vh-53px)] xl:z-20 w-80 sm:w-92 border-l border-hairline bg-surface overflow-y-auto flex flex-col shrink-0 shadow-2xl xl:shadow-none animate-slide-left xl:animate-none">
                             {/* Sidebar Header */}
                             <div className="p-4 border-b border-hairline flex items-center justify-between">
                                 <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
