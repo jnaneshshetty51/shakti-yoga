@@ -36,7 +36,7 @@ const FLAG_META: { key: keyof Settings; label: string; hint: string; type: "bool
     { key: "flag_annualDefault", label: "Default to annual", hint: "Paywall opens on the annual toggle", type: "bool" },
     { key: "flag_showStarter", label: "Show Starter tier", hint: "The ₹699 / 2-classes-a-week rung", type: "bool" },
     { key: "flag_showFamily", label: "Show Family plan", hint: "Two-member plan", type: "bool" },
-    { key: "flag_trialPaywallDay", label: "Trial paywall day", hint: "Day of the 7-day trial the hard paywall appears", type: "num" },
+    { key: "flag_trialPaywallDay", label: "Trial paywall day", hint: "Day of the trial when the paywall appears (default after 1st session)", type: "num" },
 ];
 
 interface Integrations {

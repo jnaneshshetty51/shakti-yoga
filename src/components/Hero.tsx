@@ -5,13 +5,25 @@ import Image from "next/image";
 import Link from "next/link";
 import VideoModal from "./VideoModal";
 
+import { useAuth } from "@/context/AuthContext";
+import TrialLink from "./TrialLink";
+
 import type { HomePageContent } from "@/lib/cms";
 
 export default function Hero({ content }: { content?: HomePageContent }) {
+    const { user } = useAuth();
     const [isVideoOpen, setIsVideoOpen] = useState(false);
     const headline = content?.hero_headline || "Authentic Yoga & Personalized Therapy, Guided Live from India to the World";
     const subtext = content?.hero_subtext || "Daily live classes across global time zones + dedicated 1:1 clinical yoga therapy.";
     const badge = content?.hero_badge || "Live from India · Batches for US, UK, Europe & Asia · Direct teacher corrections";
+
+    const isMember =
+        user &&
+        (user.role === "member_everyday" ||
+            user.role === "member_starter" ||
+            user.role === "member_therapy" ||
+            user.role === "trial" ||
+            user.role === "admin");
 
     return (
         <section className="relative min-h-[85vh] py-16 sm:py-20 w-full flex items-center justify-center text-center text-white overflow-hidden">
@@ -37,12 +49,21 @@ export default function Hero({ content }: { content?: HomePageContent }) {
                 </p>
 
                 <div className="mt-2 flex w-full flex-col gap-3 sm:mt-4 sm:w-auto sm:flex-row sm:gap-4 items-center">
-                    <Link
-                        href="/trial"
-                        className="w-full sm:w-auto text-center px-8 py-3.5 bg-secondary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-primary transition-colors shadow-lg"
-                    >
-                        Start Free Trial
-                    </Link>
+                    {isMember ? (
+                        <Link
+                            href={user.role === "admin" ? "/admin" : "/dashboard"}
+                            className="w-full sm:w-auto text-center px-8 py-3.5 bg-secondary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-primary transition-colors shadow-lg"
+                        >
+                            {user.role === "admin" ? "Admin Portal" : "Go to Dashboard"}
+                        </Link>
+                    ) : (
+                        <TrialLink
+                            href="/trial"
+                            className="w-full sm:w-auto text-center px-8 py-3.5 bg-secondary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-primary transition-colors shadow-lg"
+                        >
+                            Start Free Trial
+                        </TrialLink>
+                    )}
                     <Link
                         href="/yoga-therapy/start"
                         className="w-full sm:w-auto text-center px-8 py-3.5 bg-white hover:bg-accent text-text font-sans font-bold text-sm uppercase tracking-widest rounded transition-all transform hover:-translate-y-0.5 shadow-lg"

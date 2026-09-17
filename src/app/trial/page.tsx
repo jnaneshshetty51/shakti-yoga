@@ -81,7 +81,7 @@ function TrialContent() {
             <main className="min-h-screen flex items-center justify-center bg-accent/30 py-20 px-4">
                 <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-xl text-center border-t-4 border-secondary">
                     <h1 className="font-serif text-3xl text-primary mb-4">Start Your Free Trial</h1>
-                    <p className="text-text/70 mb-8">Create an account or log in to activate your 7-day free trial.</p>
+                    <p className="text-text/70 mb-8">Create an account or log in to book your free trial class (first session free).</p>
                     <div className="space-y-4">
                         <Link href={`/signup?from=${encodeURIComponent(back)}`} className="block w-full py-3.5 bg-secondary text-white font-bold uppercase tracking-widest rounded hover:bg-primary transition-colors">
                             Create Account
@@ -96,28 +96,49 @@ function TrialContent() {
     }
 
     const isAppAdmin = user.role === "admin";
-    const alreadyMember = user.role === "member_everyday" || user.role === "member_therapy" || user.role === "trial" || isAppAdmin;
+    const alreadyMember =
+        user.role === "member_everyday" ||
+        user.role === "member_starter" ||
+        user.role === "member_therapy" ||
+        user.role === "trial" ||
+        isAppAdmin;
 
     return (
         <main className="min-h-screen bg-gray-50 py-12 sm:py-16 px-4">
             <div className="max-w-lg mx-auto">
                 <h1 className="font-serif text-3xl text-primary mb-2 text-center">Your Free Trial Class</h1>
-                <p className="text-center text-text/60 mb-10">Includes 1 live Everyday Yoga group class. No card required.</p>
+                <p className="text-center text-text/60 mb-10">Includes 1 live Everyday Yoga group class (first session free). No card required.</p>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sm:p-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
                     {alreadyMember ? (
-                        <div className="text-center">
-                            <p className="text-text/80 mb-6">
+                        <div className="text-center py-4 space-y-4">
+                            <div className="w-14 h-14 mx-auto rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-2xl">
+                                🌿
+                            </div>
+                            <h2 className="font-serif text-2xl font-bold text-primary">
+                                You Are Already a Member
+                            </h2>
+                            <p className="text-text/70 text-sm leading-relaxed max-w-sm mx-auto">
                                 {isAppAdmin
-                                    ? "You are logged in as an Administrator with full platform access."
-                                    : `You already have ${user.role === "trial" ? "an active trial" : "an active membership"}. Head to your dashboard for today's class.`}
+                                    ? "You are logged in as an Administrator with full platform and schedule access."
+                                    : user.role === "trial"
+                                    ? "You already have an active trial pass. Your complimentary session is ready in your dashboard!"
+                                    : "Your active membership gives you complete access to all live daily sessions and practice materials. You don't need a trial pass!"}
                             </p>
-                            <Link
-                                href={isAppAdmin ? "/admin" : "/dashboard"}
-                                className="inline-block px-8 py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary transition-colors"
-                            >
-                                {isAppAdmin ? "Go to Admin Panel" : "Go to Dashboard"}
-                            </Link>
+                            <div className="pt-2 flex flex-col gap-3">
+                                <Link
+                                    href={isAppAdmin ? "/admin" : "/dashboard"}
+                                    className="w-full inline-block py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
+                                >
+                                    {isAppAdmin ? "Go to Admin Panel" : "Go to My Dashboard"}
+                                </Link>
+                                <Link
+                                    href={isAppAdmin ? "/admin/schedule" : "/schedule"}
+                                    className="w-full inline-block py-3 border border-primary/20 bg-primary/5 text-primary font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-primary/10 transition-colors"
+                                >
+                                    View Class Schedule
+                                </Link>
+                            </div>
                         </div>
                     ) : (
                         <>

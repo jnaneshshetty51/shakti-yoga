@@ -1,4 +1,5 @@
 import Link from "next/link";
+import TrialLink from "@/components/TrialLink";
 
 const PRACTICES = [
     "2-minute breathing",
@@ -10,8 +11,11 @@ const PRACTICES = [
 
 export default function TakeAMoment() {
     return (
-        <section className="py-12 sm:py-20 px-4 sm:px-8 bg-primary text-white text-center">
-            <div className="max-w-3xl mx-auto">
+        <section className="py-16 sm:py-24 px-4 sm:px-8 bg-secondary text-white text-center">
+            <div className="max-w-4xl mx-auto">
+                <p className="text-xs uppercase tracking-widest opacity-80 mb-3 font-sans">
+                    Everyday Wellness
+                </p>
                 <h2 className="font-serif text-3xl md:text-4xl mb-4 sm:mb-6">A Little Yoga, Wherever You Are.</h2>
                 <p className="font-sans text-base sm:text-lg opacity-90 mb-8 sm:mb-10 font-light">
                     Short, guided practices you can reach for between classes — right from the Shakti app.
@@ -29,12 +33,12 @@ export default function TakeAMoment() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <Link
+                    <TrialLink
                         href="/trial"
                         className="w-full sm:w-auto px-8 py-3.5 bg-white text-primary font-sans font-bold uppercase tracking-widest text-sm rounded hover:bg-secondary hover:text-white transition-all transform hover:-translate-y-0.5 shadow-lg"
                     >
-                        Try Free for 7 Days →
-                    </Link>
+                        Experience First Class Free →
+                    </TrialLink>
                     <Link
                         href="/everyday-yoga"
                         className="w-full sm:w-auto px-8 py-3.5 border border-white/40 text-white font-sans font-bold uppercase tracking-widest text-sm rounded hover:bg-white/10 transition-colors"

@@ -1,11 +1,36 @@
 import React from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Card, Heading, BodyText, Button, Badge } from "@/components/ui";
 import { colors, spacing, radius, shadows } from "@/theme";
+import { useAuth } from "@/context/AuthContext";
 
 export function VisitorHeroSection() {
+  const { user } = useAuth();
+  const isMember =
+    user &&
+    (user.role === "member_everyday" ||
+      user.role === "member_starter" ||
+      user.role === "member_therapy" ||
+      user.role === "trial" ||
+      user.role === "admin");
+
+  const handleTrialPress = () => {
+    if (isMember) {
+      Alert.alert(
+        "You are already a member 🌿",
+        "Your active membership already gives you full access to our live Everyday Yoga sessions.",
+        [
+          { text: "View Schedule", onPress: () => router.push("/(tabs)/classes") },
+          { text: "OK", style: "cancel" },
+        ]
+      );
+      return;
+    }
+    router.push("/(auth)/signup");
+  };
+
   return (
     <View style={styles.container}>
       {/* Brand Hero Card */}
@@ -38,9 +63,9 @@ export function VisitorHeroSection() {
           </BodyText>
           <Button
             style={{ marginTop: spacing.md }}
-            onPress={() => router.push("/(auth)/signup")}
+            onPress={handleTrialPress}
           >
-            Claim Free Trial Class
+            {isMember ? "Go to My Classes" : "Claim Free Trial Class"}
           </Button>
         </View>
       </Card>

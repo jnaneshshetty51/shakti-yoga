@@ -18,10 +18,10 @@ export default function RefundPolicyPage() {
             <div className="max-w-3xl mx-auto px-4 sm:px-8 py-12 sm:py-16 prose prose-lg prose-headings:font-serif prose-headings:text-primary prose-a:text-secondary">
                 <p className="text-sm text-text/50">Last updated 6 September 2026</p>
 
-                <h2>Free trial</h2>
+                <h2>Free trial class</h2>
                 <p>
-                    The 7-day free trial requires no payment and no card. It expires automatically after 7 days —
-                    nothing is charged, and no action is needed to end it. To keep practising, choose a paid plan.
+                    The free trial requires no payment and no card. It allows you to attend 1 live Everyday Yoga group session completely free —
+                    nothing is charged, and no action is needed to end it. To keep practising after your trial session, choose a paid plan.
                 </p>
 
                 <h2>Everyday Yoga subscription (₹2,000/month)</h2>

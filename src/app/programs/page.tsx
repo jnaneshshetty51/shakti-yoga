@@ -8,10 +8,12 @@ import CurrencyToggle from "@/components/CurrencyToggle";
 
 export const dynamic = "force-dynamic";
 
+import TrialLink from "@/components/TrialLink";
+
 export const metadata: Metadata = {
     title: "Programs & Pricing",
     description:
-        "Starter, Everyday Yoga (unlimited live classes) and 1:1 Yoga Therapy. Monthly or annual, priced in ₹ for India and $ for everyone else. 7-day free trial.",
+        "Starter, Everyday Yoga (unlimited live classes) and 1:1 Yoga Therapy. Monthly or annual, priced in ₹ for India and $ for everyone else. First session free.",
     alternates: { canonical: "/programs" },
 };
 
@@ -23,9 +25,9 @@ const CHECK = (
 );
 
 const TIERS: { key: PlanKey; annualKey?: PlanKey; blurb: string; cta: string; href: string }[] = [
-    { key: "starter", blurb: "Build the habit with a couple of classes a week.", cta: "Start free trial", href: "/trial" },
-    { key: "everyday", annualKey: "everyday_annual", blurb: "Unlimited daily classes and the full library.", cta: "Start free trial", href: "/trial" },
-    { key: "family", annualKey: "family_annual", blurb: "Two members, unlimited classes each.", cta: "Start free trial", href: "/trial" },
+    { key: "starter", blurb: "Build the habit with a couple of classes a week.", cta: "First session free", href: "/trial" },
+    { key: "everyday", annualKey: "everyday_annual", blurb: "Unlimited daily classes and the full library.", cta: "First session free", href: "/trial" },
+    { key: "family", annualKey: "family_annual", blurb: "Two members, unlimited classes each.", cta: "First session free", href: "/trial" },
     { key: "therapy", annualKey: "therapy_annual", blurb: "Private 1:1 sessions for specific health goals.", cta: "Book a consultation", href: "/yoga-therapy/start" },
 ];
 
@@ -40,7 +42,7 @@ export default async function ProgramsPage() {
         <main>
             <PageHeader
                 title="Programs & pricing"
-                subtitle="From building a daily habit to deep 1:1 healing. Every plan starts with a free week."
+                subtitle="From building a daily habit to deep 1:1 healing. Group plans start with your first class free."
             />
 
             <section className="bg-background px-4 py-14 sm:px-8">
@@ -56,6 +58,13 @@ export default async function ProgramsPage() {
                         {TIERS.map(({ key, annualKey, blurb, cta, href }) => {
                             const plan = PLANS[key];
                             const featured = key === "everyday";
+                            const isTrialHref = href === "/trial";
+                            const btnClassName = `mt-6 block rounded-full py-3 text-center font-sans text-xs font-bold uppercase tracking-widest transition-colors ${
+                                featured
+                                    ? "bg-primary text-white hover:bg-primary/90"
+                                    : "border-2 border-primary text-primary hover:bg-primary hover:text-white"
+                            }`;
+
                             return (
                                 <div
                                     key={key}
@@ -84,23 +93,22 @@ export default async function ProgramsPage() {
                                             <li key={f} className="flex gap-2.5">{CHECK}<span>{f}</span></li>
                                         ))}
                                     </ul>
-                                    <Link
-                                        href={href}
-                                        className={`mt-6 block rounded-full py-3 text-center font-sans text-xs font-bold uppercase tracking-widest transition-colors ${
-                                            featured
-                                                ? "bg-primary text-white hover:bg-primary/90"
-                                                : "border-2 border-primary text-primary hover:bg-primary hover:text-white"
-                                        }`}
-                                    >
-                                        {cta}
-                                    </Link>
+                                    {isTrialHref ? (
+                                        <TrialLink href={href} className={btnClassName}>
+                                            {cta}
+                                        </TrialLink>
+                                    ) : (
+                                        <Link href={href} className={btnClassName}>
+                                            {cta}
+                                        </Link>
+                                    )}
                                 </div>
                             );
                         })}
                     </div>
 
                     <p className="mt-8 text-center font-sans text-sm text-text/60">
-                        All plans: 7-day free trial, cancel anytime, no card required to start.
+                        Group plans: first live class free for new practitioners, cancel anytime, no card required to start.
                     </p>
                 </div>
             </section>

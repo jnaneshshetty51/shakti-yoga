@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import TrialLink from '@/components/TrialLink';
 import { priceFor, formatPrice, type PlanConfig } from '@/lib/pricing';
 import { resolvedPlans } from '@/lib/plans';
 import { resolveRegion } from '@/lib/region';
@@ -24,7 +25,7 @@ export default async function Programs() {
                     <p className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-secondary">Membership</p>
                     <h2 className="mt-2 font-serif text-3xl text-primary sm:text-4xl md:text-[2.75rem]">Choose your path</h2>
                     <p className="mx-auto mt-3 max-w-lg font-sans text-text/70">
-                        Daily group energy, or personalised one-on-one healing. Start either with a free week.
+                        Daily group energy, or personalised one-on-one healing. Group plans start with your first class free.
                     </p>
                 </div>
 
@@ -51,13 +52,13 @@ export default async function Programs() {
                                 <li key={f} className="flex gap-3">{CHECK}<span>{f}</span></li>
                             ))}
                         </ul>
-                        <Link
+                        <TrialLink
                             href="/trial"
                             className="mt-7 block rounded-full bg-primary py-3.5 text-center font-sans text-sm font-bold uppercase tracking-widest text-white transition-colors hover:bg-primary/90"
                         >
-                            Start free trial
-                        </Link>
-                        <p className="mt-3 text-center font-sans text-xs text-text/50">7 days free · no card required</p>
+                            Start with free trial
+                        </TrialLink>
+                        <p className="mt-3 text-center font-sans text-xs text-text/50">First session free · no card required</p>
                     </div>
 
                     {/* Yoga Therapy */}

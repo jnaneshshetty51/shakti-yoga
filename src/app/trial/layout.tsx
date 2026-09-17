@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Start Your 7-Day Free Trial",
-    description: "Try Shakti Yoga free for 7 days — full access to every live Everyday Yoga class. No card required.",
+    title: "Book Your Free Trial Class",
+    description: "Experience your first session free with Shakti Yoga — 1 live Everyday Yoga group class. No card required.",
     alternates: { canonical: "/trial" },
 };
 

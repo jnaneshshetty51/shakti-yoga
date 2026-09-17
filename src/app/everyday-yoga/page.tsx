@@ -3,6 +3,7 @@
 import { useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
+import TrialLink from "@/components/TrialLink";
 
 type TimeZoneKey = "IST" | "EST" | "PST" | "GMT" | "AEST";
 
@@ -199,12 +200,12 @@ export default function EverydayYogaPage() {
                                 </div>
 
                                 <div className="md:w-1/6 flex md:justify-end">
-                                    <Link
+                                    <TrialLink
                                         href="/trial"
                                         className="inline-block px-4 py-2 bg-secondary text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-primary transition-colors text-center"
                                     >
                                         Try Slot →
-                                    </Link>
+                                    </TrialLink>
                                 </div>
                             </div>
                         ))}
@@ -213,15 +214,15 @@ export default function EverydayYogaPage() {
 
                 <div className="mt-10 text-center space-y-4">
                     <p className="font-sans text-xs sm:text-sm text-text/60">
-                        * All classes run live over Google Meet. Unlimited access to any batch comes included with all Everyday Yoga memberships.
+                        * All classes run live over Google Meet. Unlimited access to any batch comes included with all Everyday Yoga memberships. First session is free for new practitioners.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-                        <Link
+                        <TrialLink
                             href="/trial"
                             className="px-8 py-3.5 bg-secondary text-white font-sans font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-primary transition-colors shadow-md text-center"
                         >
-                            Start 7-Day Free Trial
-                        </Link>
+                            Book Free Trial Class
+                        </TrialLink>
                         <Link
                             href="/programs"
                             className="px-8 py-3.5 border-2 border-primary text-primary font-sans font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-primary hover:text-white transition-colors text-center"

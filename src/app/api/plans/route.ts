@@ -39,7 +39,7 @@ export async function GET(request: Request) {
                 name: PLANS.trial.name,
                 price: 0,
                 currency: priceFor(PLANS.trial, region).currency,
-                period: '7 days',
+                period: '1 session',
                 features: PLANS.trial.features,
             },
             plans: LADDER.map(rung),

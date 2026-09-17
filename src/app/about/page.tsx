@@ -2,6 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import WhyUs from "@/components/WhyUs";
 import Image from "next/image";
 import Link from "next/link";
+import TrialLink from "@/components/TrialLink";
 import type { Metadata } from "next";
 import { getAboutPageContent } from "@/lib/cms";
 
@@ -149,12 +150,12 @@ export default async function AboutPage() {
                             Experience our warm teaching style, real-time posture adjustments, and daily community support.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Link
+                            <TrialLink
                                 href="/trial"
                                 className="px-8 py-3.5 bg-secondary text-white font-sans text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary transition-colors shadow-md"
                             >
-                                Start 7-Day Free Trial
-                            </Link>
+                                Book Free Trial Class
+                            </TrialLink>
                             <Link
                                 href="/yoga-therapy/start"
                                 className="px-8 py-3.5 border-2 border-primary text-primary font-sans text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary hover:text-white transition-colors"

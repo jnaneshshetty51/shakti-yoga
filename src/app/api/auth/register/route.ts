@@ -91,8 +91,8 @@ export async function POST(request: Request) {
             to: user.email,
             subject: 'Welcome to Shakti Yoga',
             html: emailLayout(
-                `<p>Namaste ${firstName},</p>
-                 <p>Your account is ready. Start with a <a href="${SITE_URL}/trial" style="color:#4A6741;font-weight:bold">7-day free trial</a> — full access to every live Everyday Yoga class, no card required.</p>
+                 `<p>Namaste ${firstName},</p>
+                 <p>Your account is ready. Start with a <a href="${SITE_URL}/trial" style="color:#4A6741;font-weight:bold">free trial class</a> — your first live Everyday Yoga session is on us, no card required.</p>
                  <p><a href="${verifyUrl}" style="color:#4A6741;font-weight:bold">Confirm your email address</a> to make sure you don't miss booking and billing notifications.</p>
                  <p>Questions any time: just reply to this email.</p>`,
             ),

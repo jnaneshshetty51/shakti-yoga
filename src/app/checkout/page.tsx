@@ -208,7 +208,7 @@ function CheckoutContent() {
                         <div>
                             <h3 className="font-bold text-lg text-gray-800">{selectedPlan.name}</h3>
                             <p className="text-sm text-gray-500">
-                                {isFree ? "7-day free trial" : cadence}
+                                {isFree ? "1 free trial class" : cadence}
                             </p>
                         </div>
                         <div className="text-2xl font-bold text-primary">
