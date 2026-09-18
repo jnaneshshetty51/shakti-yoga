@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
+import { StatCard } from "@/components/admin/StatCard";
 import {
     PageHeader, PageLoading, Tabs, Badge, StatusBadge, TableActions, ActionButton, useConfirmDialog,
 } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 import { CURRENCY_OPTIONS } from "@/lib/pricing";
+import { LuMessageCircle, LuCalendar, LuUsers, LuBadgeCheck } from "react-icons/lu";
 
 type Retreat = {
     id: string;
@@ -128,51 +131,86 @@ export function AdminRetreatsContent({ embedded = false }: { embedded?: boolean 
 
     if (!retreats || !enquiries) return <PageLoading title="Retreats & Events" />;
 
+    const publishedCount = retreats.filter((r) => r.status === "PUBLISHED").length;
+    const confirmedCount = enquiries.filter((e) => e.status === "CONFIRMED" || e.status === "PAID").length;
+    const totalParticipants = enquiries.reduce((acc, e) => acc + (e.participantsCount || 1), 0);
+
     const retreatColumns = [
         { header: "Name", accessor: (r: Retreat) => (
             <div><div className="font-semibold text-ink">{r.name}</div><div className="text-xs text-ink-subtle">{r.location || "—"}</div></div>
         ) },
         { header: "Kind", accessor: (r: Retreat) => <Badge tone="purple">{r.kind}</Badge> },
-        { header: "Dates", accessor: (r: Retreat) => `${new Date(r.startDate).toLocaleDateString("en-IN")} – ${new Date(r.endDate).toLocaleDateString("en-IN")}` },
+        { header: "Dates", accessor: (r: Retreat) => `${new Date(r.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(r.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` },
+        { header: "Price", accessor: (r: Retreat) => r.price != null ? `${r.currency} ${r.price.toLocaleString("en-IN")}` : "—" },
         { header: "Status", accessor: (r: Retreat) => <StatusBadge status={r.status} /> },
-        { header: "Enquiries", accessor: (r: Retreat) => r._count.enquiries },
+        { header: "Enquiries", accessor: (r: Retreat) => (
+            <span className="inline-flex items-center gap-1 font-medium text-ink">
+                <LuUsers className="w-3.5 h-3.5 text-ink-subtle" />
+                {r._count.enquiries}
+            </span>
+        ) },
     ];
 
     const enquiryColumns = [
         { header: "Contact", accessor: (e: Enquiry) => (
-            <div><div className="font-semibold text-ink">{e.name}</div><div className="text-xs text-ink-subtle">{e.email}</div></div>
+            <div>
+                <div className="font-semibold text-ink">{e.name}</div>
+                <div className="text-xs text-ink-subtle flex items-center gap-1.5 flex-wrap">
+                    <span>{e.email}</span>
+                    {e.phone && (
+                        <>
+                            <span>•</span>
+                            <a
+                                href={`https://wa.me/${e.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${e.name}, thank you for your enquiry regarding ${e.retreat.name} at Shakthi Yoga!`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium"
+                                title="Chat on WhatsApp"
+                                onClick={(ev) => ev.stopPropagation()}
+                            >
+                                <LuMessageCircle className="w-3 h-3" />
+                                <span>{e.phone}</span>
+                            </a>
+                        </>
+                    )}
+                </div>
+            </div>
         ) },
-        { header: "For", accessor: (e: Enquiry) => <span>{e.retreat.name}</span> },
-        { header: "Participants", accessor: (e: Enquiry) => e.participantsCount },
+        { header: "For Event", accessor: (e: Enquiry) => <span className="font-medium text-ink">{e.retreat.name}</span> },
+        { header: "Participants", accessor: (e: Enquiry) => (
+            <span className="inline-flex items-center gap-1 font-medium text-ink">
+                <LuUsers className="w-3.5 h-3.5 text-ink-subtle" />
+                {e.participantsCount}
+            </span>
+        ) },
         { header: "Status", accessor: (e: Enquiry) => <StatusBadge status={e.status} /> },
     ];
 
     return (
         <div>
             {dialog}
-            {embedded ? (
-                <div className="mb-4">
-                    <Tabs
-                        tabs={[
-                            { key: "retreats", label: "Retreats & Events", count: retreats.length },
-                            { key: "enquiries", label: "Enquiries", count: enquiries.length },
-                        ]}
-                        active={tab}
-                        onChange={setTab}
-                    />
-                </div>
-            ) : (
-                <PageHeader title="Retreats & Events" subtitle="Retreats, workshops and one-off events — enquiry to manual payment.">
-                    <Tabs
-                        tabs={[
-                            { key: "retreats", label: "Retreats & Events", count: retreats.length },
-                            { key: "enquiries", label: "Enquiries", count: enquiries.length },
-                        ]}
-                        active={tab}
-                        onChange={setTab}
-                    />
-                </PageHeader>
+            {!embedded && (
+                <PageHeader title="Retreats & Events" subtitle="Retreats, workshops and one-off events — enquiry to manual payment." />
             )}
+
+            {/* Top KPI StatCards */}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                <StatCard title="Active Retreats" value={publishedCount} suffix={`/ ${retreats.length}`} icon={<LuCalendar />} accent="terracotta" />
+                <StatCard title="Total Enquiries" value={enquiries.length} icon={<LuUsers />} accent="blue" />
+                <StatCard title="Confirmed / Paid" value={confirmedCount} icon={<LuBadgeCheck />} accent="green" />
+                <StatCard title="Total Interested" value={totalParticipants} suffix=" guests" icon={<LuUsers />} accent="amber" />
+            </div>
+
+            <div className="mb-4">
+                <Tabs
+                    tabs={[
+                        { key: "retreats", label: "Retreats & Events", count: retreats.length },
+                        { key: "enquiries", label: "Enquiries", count: enquiries.length },
+                    ]}
+                    active={tab}
+                    onChange={(k) => setTab(k as "retreats" | "enquiries")}
+                />
+            </div>
 
             {tab === "retreats" ? (
                 <DTable
@@ -196,7 +234,7 @@ export function AdminRetreatsContent({ embedded = false }: { embedded?: boolean 
                     filters={[{ key: "status", label: "Status", options: ENQUIRY_STATUS_OPTIONS }]}
                     actions={(e) => (
                         <TableActions>
-                            <a href={`/admin/retreats/enquiries/${e.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>
+                            <Link href={`/admin/retreats/enquiries/${e.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
                             <ActionButton onClick={() => setEditingEnquiry(e)}>Update status</ActionButton>
                         </TableActions>
                     )}

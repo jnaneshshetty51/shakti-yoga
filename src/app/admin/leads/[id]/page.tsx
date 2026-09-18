@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { LuArrowLeft, LuCalendar, LuUserCheck } from "react-icons/lu";
+import { LuArrowLeft, LuCalendar, LuUserCheck, LuMessageCircle, LuCreditCard } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, Badge, ErrorState, Button, inputClass, labelClass } from "@/components/admin/ui";
 import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTimeline";
 import { useToast } from "@/components/admin/Toast";
@@ -165,8 +165,27 @@ export default function LeadDetailPage() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Card padded>
                     <h3 className="font-semibold text-ink mb-3 text-sm">Lead Details</h3>
-                    <dl className="text-sm grid grid-cols-2 gap-y-1.5">
-                        <dt className="text-ink-subtle">Phone</dt><dd>{lead.phone || "—"}</dd>
+                    <dl className="text-sm grid grid-cols-2 gap-y-2">
+                        <dt className="text-ink-subtle">Phone</dt>
+                        <dd>
+                            {lead.phone ? (
+                                <div className="flex items-center gap-2">
+                                    <span>{lead.phone}</span>
+                                    <a
+                                        href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${lead.name}, this is from Shakthi Yoga. Reaching out regarding your interest in our sessions!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"
+                                        title="Chat on WhatsApp"
+                                    >
+                                        <LuMessageCircle className="w-3.5 h-3.5" />
+                                        WhatsApp
+                                    </a>
+                                </div>
+                            ) : (
+                                "—"
+                            )}
+                        </dd>
                         <dt className="text-ink-subtle">Country</dt><dd>{lead.country || "—"}</dd>
                         <dt className="text-ink-subtle">Program interest</dt><dd>{lead.programInterest ? lead.programInterest.replace(/_/g, " ") : "—"}</dd>
                         <dt className="text-ink-subtle">Campaign</dt><dd>{lead.campaign || "—"}</dd>
@@ -175,8 +194,31 @@ export default function LeadDetailPage() {
                         <dt className="text-ink-subtle">Trial date</dt><dd>{d(lead.trialDate)}</dd>
                         <dt className="text-ink-subtle">Trial attended</dt><dd>{lead.trialAttended ? "Yes" : "No"}</dd>
                         <dt className="text-ink-subtle">Created</dt><dd>{d(lead.createdAt)}</dd>
-                        <dt className="text-ink-subtle">Account linked</dt><dd>{lead.linkedUserId ? "Yes — signed up" : "No"}</dd>
-                        <dt className="text-ink-subtle">Converted (paid)</dt><dd>{lead.convertedAt ? d(lead.convertedAt) : "No"}</dd>
+                        <dt className="text-ink-subtle">Account linked</dt>
+                        <dd>
+                            {lead.linkedUserId ? (
+                                <Link href={`/admin/members/${lead.linkedUserId}`} className="text-xs font-semibold text-brand hover:text-brand-strong inline-flex items-center gap-1">
+                                    Yes — View Member &rarr;
+                                </Link>
+                            ) : (
+                                "No"
+                            )}
+                        </dd>
+                        <dt className="text-ink-subtle">Converted (paid)</dt>
+                        <dd>
+                            {lead.convertedAt ? (
+                                <span className="font-semibold text-emerald-600">Yes ({d(lead.convertedAt)})</span>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <span>No</span>
+                                    <Link href={`/admin/finance?tab=payments&userId=${lead.linkedUserId || ""}&email=${encodeURIComponent(lead.email)}`}>
+                                        <span className="text-xs text-brand hover:text-brand-strong font-medium underline">
+                                            Record payment &rarr;
+                                        </span>
+                                    </Link>
+                                </div>
+                            )}
+                        </dd>
                     </dl>
                     {lead.notes && <p className="text-sm mt-3 pt-3 border-t border-hairline"><span className="text-ink-subtle font-medium">Notes: </span>{lead.notes}</p>}
                 </Card>

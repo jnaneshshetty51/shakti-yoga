@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { PageHeader, PageLoading, Tabs } from "@/components/admin/ui";
 import { AdminMembersContent } from "@/app/admin/members/page";
 import { AdminUsersContent } from "@/app/admin/users/page";
@@ -29,15 +29,21 @@ const TABS: { key: TabKey; label: string }[] = [
  * bookings, referrals, certificates, support history).
  */
 function StudentsHub() {
-    const tabParam = useSearchParams().get("tab") as TabKey | null;
-    const [tab, setTab] = useState<TabKey>(tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "members");
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab") as TabKey | null;
+    const tab = tabParam && TABS.some((t) => t.key === tabParam) ? tabParam : "members";
+
+    const handleTabChange = (k: string) => {
+        router.replace(`/admin/students?tab=${k}`, { scroll: false });
+    };
 
     return (
         <div>
             <PageHeader title="Students" subtitle="The central student database — members, accounts, family plans, progress, and certificates." />
 
             <div className="mb-6">
-                <Tabs active={tab} onChange={(k) => setTab(k as TabKey)} tabs={TABS} />
+                <Tabs active={tab} onChange={handleTabChange} tabs={TABS} />
             </div>
 
             {tab === "members" && <AdminMembersContent embedded />}

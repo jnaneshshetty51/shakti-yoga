@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { LuArrowLeft, LuUserCheck, LuIndianRupee } from "react-icons/lu";
+import { LuArrowLeft, LuUserCheck, LuIndianRupee, LuMessageCircle } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, Badge, ErrorState } from "@/components/admin/ui";
 import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTimeline";
 import { useToast } from "@/components/admin/Toast";
@@ -172,7 +172,26 @@ export default function CorporateDetailPage() {
                 <Card padded>
                     <h3 className="font-semibold text-ink mb-3 text-sm">Details</h3>
                     <dl className="text-sm grid grid-cols-2 gap-y-1.5">
-                        <dt className="text-ink-subtle">Phone</dt><dd>{lead.contactPhone || "—"}</dd>
+                        <dt className="text-ink-subtle">Phone</dt>
+                        <dd>
+                            {lead.contactPhone ? (
+                                <div className="flex items-center gap-2">
+                                    <span>{lead.contactPhone}</span>
+                                    <a
+                                        href={`https://wa.me/${lead.contactPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${lead.contactName}, this is from Shakthi Yoga. Reaching out regarding corporate wellness for ${lead.companyName}!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"
+                                        title="Chat on WhatsApp"
+                                    >
+                                        <LuMessageCircle className="w-3.5 h-3.5" />
+                                        WhatsApp
+                                    </a>
+                                </div>
+                            ) : (
+                                "—"
+                            )}
+                        </dd>
                         <dt className="text-ink-subtle">Employees</dt><dd>{lead.employeeCount ?? "—"}</dd>
                         <dt className="text-ink-subtle">Programme</dt><dd>{lead.programInterest || "—"}</dd>
                         <dt className="text-ink-subtle">Campaign</dt><dd>{lead.campaign || "—"}</dd>

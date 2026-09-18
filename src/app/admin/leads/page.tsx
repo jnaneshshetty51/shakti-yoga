@@ -8,7 +8,7 @@ import { StatCard } from "@/components/admin/StatCard";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
 import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog, Button } from "@/components/admin/ui";
-import { LuKanban, LuTable, LuMessageCircle, LuClock, LuUsers, LuTarget, LuCalendar, LuArrowRight, LuArrowLeft, LuPlus } from "react-icons/lu";
+import { LuKanban, LuTable, LuMessageCircle, LuClock, LuUsers, LuTarget, LuCalendar, LuArrowRight, LuArrowLeft, LuPlus, LuSearch } from "react-icons/lu";
 
 const PAGE_SIZE = 25;
 
@@ -368,7 +368,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
 
             {/* View Mode Switcher and Quick Actions Bar */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-surface p-3 rounded-xl border border-hairline">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                     <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">View:</span>
                     <div className="inline-flex rounded-control border border-hairline bg-surface-raised p-0.5">
                         <button
@@ -391,6 +391,20 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                         >
                             <LuTable className="w-3.5 h-3.5" /> Data Table
                         </button>
+                    </div>
+
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Filter leads..."
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setPage(1);
+                            }}
+                            className="text-xs rounded-control border border-hairline bg-surface-raised px-2.5 py-1 pl-7 text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand w-40 sm:w-52"
+                        />
+                        <LuSearch className="w-3.5 h-3.5 absolute left-2 top-1.5 text-ink-subtle" />
                     </div>
                 </div>
 
