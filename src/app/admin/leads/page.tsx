@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
+import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
@@ -88,14 +89,10 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
 
     async function fetchStaffList() {
         try {
-            const response = await fetch('/api/admin/users');
+            const response = await fetch('/api/admin/staff');
             if (response.ok) {
                 const data = await response.json();
-                const staff = (data.users || []).filter((u: { role: string }) => {
-                    const r = String(u.role).toUpperCase();
-                    return r === 'SUPER_ADMIN' || r === 'STAFF_ADMIN' || r === 'TEACHER';
-                });
-                setStaffList(staff);
+                setStaffList((data.staff || []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
             }
         } catch (error) {
             console.error('Failed to fetch staff list:', error);
@@ -294,7 +291,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                 }}
                 actions={(lead) => (
                     <TableActions>
-                        <a href={`/admin/leads/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>
+                        <Link href={`/admin/leads/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
                         <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
                         <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
                     </TableActions>

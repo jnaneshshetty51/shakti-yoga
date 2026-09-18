@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
+import Link from "next/link";
 import DTable from "@/components/admin/DTable";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
@@ -71,11 +72,14 @@ function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
     }, [page, search, statusFilter]);
 
     const fetchStaffList = useCallback(async () => {
-        const res = await fetch('/api/admin/users');
-        if (res.ok) {
-            const data = await res.json();
-            setStaffList((data.users || []).filter((u: { role: string }) =>
-                ['SUPER_ADMIN', 'STAFF_ADMIN'].includes(String(u.role).toUpperCase())));
+        try {
+            const res = await fetch('/api/admin/staff');
+            if (res.ok) {
+                const data = await res.json();
+                setStaffList((data.staff || []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
+            }
+        } catch (error) {
+            console.error('Failed to fetch staff list:', error);
         }
     }, []);
 
@@ -188,7 +192,7 @@ function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
                 }}
                 actions={(lead) => (
                     <TableActions>
-                        <a href={`/admin/corporate/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</a>
+                        <Link href={`/admin/corporate/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
                         <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
                         <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
                     </TableActions>

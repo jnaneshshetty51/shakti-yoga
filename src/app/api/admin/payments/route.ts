@@ -5,6 +5,8 @@ import { auditAs } from '@/lib/audit';
 import { issueInvoiceForPayment } from '@/lib/invoice';
 import { activatePlan } from '@/lib/subscription';
 import { getPlan, isPlanKey } from '@/lib/pricing';
+import { markLeadConverted } from '@/lib/leads';
+import { markReferralConverted } from '@/lib/referral';
 import { PaymentStatus, PlanType, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -147,6 +149,8 @@ export async function POST(request: Request) {
                 amount,
                 currency,
             });
+            void markLeadConverted(userId, planType).catch(() => {});
+            void markReferralConverted(userId, planType).catch(() => {});
         }
 
         await auditAs({ id: admin.id, email: admin.email }, request)({

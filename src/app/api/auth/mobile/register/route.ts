@@ -10,6 +10,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
 import { redeemReferral } from '@/lib/referral';
+import { linkLeadToUser } from '@/lib/leads';
 import { sendEmail, emailLayout } from '@/lib/email';
 import { SITE_URL } from '@/lib/site';
 import { adminTier } from '@/lib/permissions';
@@ -81,6 +82,8 @@ export async function POST(request: Request) {
             platform: 'mobile',
             userAgent: request.headers.get('user-agent'),
         });
+
+        await linkLeadToUser(user.id, email);
 
         const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))
             .catch(() => false);
