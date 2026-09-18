@@ -39,7 +39,7 @@ export default function ChallengesScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load challenges" subtitle={error} />
+        <EmptyState title="Couldn't load challenges" subtitle={error} onRetry={reload} />
       ) : challenges.length === 0 ? (
         <EmptyState title="No challenges right now" subtitle="Check back soon for the next one." />
       ) : (

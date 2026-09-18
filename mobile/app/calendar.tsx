@@ -101,7 +101,11 @@ export default function CalendarScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load your calendar" subtitle={error} />
+        <EmptyState
+          title="Couldn't load your calendar"
+          subtitle={error}
+          onRetry={() => { classes.reload(); bookings.reload(); retreats.reload(); }}
+        />
       ) : byDay.length === 0 ? (
         <EmptyState title="Nothing scheduled" subtitle="Your classes, therapy sessions and events show here." />
       ) : (

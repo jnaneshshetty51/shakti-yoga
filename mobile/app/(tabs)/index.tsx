@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
-import { Link, router } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import { Screen, Heading, BodyText, Card, Button, LoadingView, EmptyState } from "@/components/ui";
@@ -282,6 +282,18 @@ function ExploreHome({
 export default function HomeScreen() {
   const { user } = useAuth();
   const { data, loading, error, reload } = useResource(() => api.get<HomeResponse>("/api/me/home"), []);
+
+  // Session balance / therapy credits can change on another tab (joining a
+  // class, cancelling a therapy session) — refetch whenever Home regains
+  // focus so those numbers don't sit stale until a cold restart. Skips the
+  // very first focus (the mount-time useResource fetch already covers it).
+  const mounted = useRef(false);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (mounted.current) reload();
+      mounted.current = true;
+    }, [reload]),
+  );
 
   const role = user?.role;
   const isEveryday = role === "member_everyday" || role === "member_starter" || role === "trial";

@@ -62,25 +62,86 @@ export async function readSessionToken(): Promise<string | null> {
     return cookieStore.get('token')?.value ?? null;
 }
 
+/**
+ * The one place that decides whether a still-cryptographically-valid JWT's
+ * claimed session is actually still live. Shared by getSession() and
+ * /api/auth/me (which can't just delegate wholesale to getSession() — it
+ * needs the raw payload/user for its own claims-refresh logic — so it
+ * duplicates the *call*, not the *rule*).
+ *
+ * Two independent revocation levers, both must pass:
+ *   - tokenVersion: all-or-nothing (password reset, admin deactivation, "log
+ *     out everywhere") — a token predating the `tv` claim skips this.
+ *   - Session.revokedAt/expiresAt: single-device logout — a token predating
+ *     the `jti` claim (issued before this model existed) skips this and is
+ *     judged on tokenVersion alone until it naturally expires.
+ */
+export async function isSessionValid(
+    payload: SessionPayload,
+    user: { tokenVersion: number; active: boolean },
+): Promise<boolean> {
+    if (!user.active) return false;
+    if (typeof payload.tv === 'number' && payload.tv !== user.tokenVersion) return false;
+
+    if (typeof payload.jti === 'string') {
+        const session = await prisma.session.findUnique({
+            where: { id: payload.jti },
+            select: { revokedAt: true, expiresAt: true },
+        });
+        if (!session || session.revokedAt || session.expiresAt.getTime() < Date.now()) return false;
+        // Best-effort — never let a logging failure fail the auth check.
+        void prisma.session.update({ where: { id: payload.jti }, data: { lastSeenAt: new Date() } }).catch(() => {});
+    }
+
+    return true;
+}
+
 export async function getSession(): Promise<SessionPayload | null> {
     const token = await readSessionToken();
     if (!token) return null;
     const payload = await verifyToken(token);
     if (!payload) return null;
 
-    // Enforce session revocation (password reset / account deactivation) —
-    // without this, a still-valid JWT keeps working for up to
-    // SESSION_MAX_AGE_REMEMBER after either event. A token that predates the
-    // `tv` claim (undefined) is allowed through, same as admin-auth.ts.
-    if (typeof payload.tv === 'number') {
-        const user = await prisma.user.findUnique({
-            where: { id: payload.id },
-            select: { tokenVersion: true, active: true },
-        });
-        if (!user || !user.active || user.tokenVersion !== payload.tv) return null;
+    // A token with neither claim predates both revocation mechanisms —
+    // nothing to check, so skip the DB round-trip entirely.
+    if (typeof payload.tv !== 'number' && typeof payload.jti !== 'string') {
+        return payload;
     }
 
+    const user = await prisma.user.findUnique({
+        where: { id: payload.id },
+        select: { tokenVersion: true, active: true },
+    });
+    if (!user || !(await isSessionValid(payload, user))) return null;
+
     return payload;
+}
+
+/**
+ * Create a tracked `Session` row and mint its JWT together — the one path
+ * every login/register/refresh flow should use instead of calling
+ * signToken() directly, so every real session is revocable on its own
+ * (see isSessionValid()). Pass `replacesJti` when reissuing a token for an
+ * *already-established* session (claims refresh, near-expiry rollover) so
+ * the old row is retired rather than left orphaned.
+ */
+export async function issueSession(
+    user: Parameters<typeof sessionClaims>[0],
+    opts: { maxAgeSeconds?: number; userAgent?: string | null; platform?: string | null; replacesJti?: string | null } = {},
+): Promise<string> {
+    const maxAgeSeconds = opts.maxAgeSeconds ?? SESSION_MAX_AGE;
+    const session = await prisma.session.create({
+        data: {
+            userId: user.id,
+            expiresAt: new Date(Date.now() + maxAgeSeconds * 1000),
+            userAgent: opts.userAgent ?? null,
+            platform: opts.platform ?? null,
+        },
+    });
+    if (opts.replacesJti) {
+        await prisma.session.update({ where: { id: opts.replacesJti }, data: { revokedAt: new Date() } }).catch(() => {});
+    }
+    return signToken(sessionClaims(user), maxAgeSeconds, session.id);
 }
 
 /** Issue the session cookie. Single source of truth for the cookie's options. */

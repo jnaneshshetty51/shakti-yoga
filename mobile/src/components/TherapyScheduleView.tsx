@@ -4,7 +4,9 @@ import { Heading, BodyText, Card, Button, Badge, LoadingView, EmptyState } from 
 import { api, ApiError } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
 import { useJoin } from "@/lib/useJoin";
+import { useAuth } from "@/context/AuthContext";
 import { formatClassTime } from "@/lib/format";
+import { istParts, istYmd } from "@/lib/ist";
 import { TherapyProgress } from "@/components/TherapyProgress";
 import { colors, spacing, radius } from "@/theme";
 import type { BookingRow } from "@/lib/types";
@@ -17,15 +19,12 @@ const STATUS_TONE: Record<BookingRow["status"], "success" | "warning" | "danger"
   NO_SHOW: "danger",
 };
 
-function ymd(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
 function within24h(iso: string) {
   return new Date(iso).getTime() - Date.now() < 24 * 3600_000;
 }
 
 function RescheduleModal({ booking, onClose, onDone }: { booking: BookingRow; onClose: () => void; onDone: () => void }) {
-  const [date, setDate] = useState<string>(ymd(new Date(Date.now() + 2 * 86_400_000)));
+  const [date, setDate] = useState<string>(istYmd(new Date(Date.now() + 2 * 86_400_000)));
   const [slot, setSlot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -57,13 +56,14 @@ function RescheduleModal({ booking, onClose, onDone }: { booking: BookingRow; on
           <Heading size="sm">Reschedule session</Heading>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs, paddingVertical: spacing.sm }}>
             {days.map((d) => {
-              const k = ymd(d);
+              const k = istYmd(d);
+              const { day, weekday } = istParts(d);
               return (
                 <Pressable key={k} onPress={() => { setDate(k); setSlot(null); }} style={[styles.day, date === k && styles.on]}>
                   <BodyText style={{ color: date === k ? colors.white : colors.text, fontSize: 12 }}>
-                    {d.toLocaleDateString("en-IN", { weekday: "short" })}
+                    {weekday}
                   </BodyText>
-                  <BodyText style={{ color: date === k ? colors.white : colors.text, fontWeight: "700" }}>{d.getDate()}</BodyText>
+                  <BodyText style={{ color: date === k ? colors.white : colors.text, fontWeight: "700" }}>{day}</BodyText>
                 </Pressable>
               );
             })}
@@ -99,26 +99,36 @@ function RescheduleModal({ booking, onClose, onDone }: { booking: BookingRow; on
 export function TherapyScheduleView() {
   const { data, loading, error, reload } = useResource(() => api.get<{ bookings: BookingRow[] }>("/api/bookings"), []);
   const { joiningId, joinBooking } = useJoin();
+  const { refreshUser } = useAuth();
   const [rescheduling, setRescheduling] = useState<BookingRow | null>(null);
 
   const cancel = useCallback((b: BookingRow) => {
-    Alert.alert("Cancel this session?", "Your session credit is restored.", [
-      { text: "Keep it", style: "cancel" },
-      {
-        text: "Cancel session",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const res = await api.del<{ creditsRestored: number }>(`/api/bookings/${b.id}`);
-            Alert.alert("Cancelled", res.creditsRestored > 0 ? `${res.creditsRestored} credit restored.` : "Session cancelled.");
-            reload();
-          } catch (e) {
-            Alert.alert("Couldn't cancel", e instanceof ApiError ? e.message : "Please try again.");
-          }
+    // A same-day cancel never gets refunded (see cancelBooking()'s own rule,
+    // src/lib/booking.ts) — only promise a credit back when one is actually
+    // coming, so this dialog can't tell the member something that isn't true.
+    const willRefund = !within24h(b.date);
+    Alert.alert(
+      "Cancel this session?",
+      willRefund ? "Your session credit is restored." : "This is within 24 hours of your session, so the credit won't be restored.",
+      [
+        { text: "Keep it", style: "cancel" },
+        {
+          text: "Cancel session",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await api.del<{ creditsRestored: number }>(`/api/bookings/${b.id}`);
+              Alert.alert("Cancelled", res.creditsRestored > 0 ? `${res.creditsRestored} credit restored.` : "Session cancelled.");
+              reload();
+              void refreshUser();
+            } catch (e) {
+              Alert.alert("Couldn't cancel", e instanceof ApiError ? e.message : "Please try again.");
+            }
+          },
         },
-      },
-    ]);
-  }, [reload]);
+      ],
+    );
+  }, [reload, refreshUser]);
 
   if (loading) return <LoadingView />;
   if (error) return <EmptyState title="Couldn't load your sessions" subtitle={error} />;

@@ -90,7 +90,7 @@ export default function ActivityScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load activity" subtitle={error} />
+        <EmptyState title="Couldn't load activity" subtitle={error} onRetry={reload} />
       ) : items.length === 0 ? (
         <EmptyState title="You're all caught up" subtitle="Reminders about classes, sessions and billing show up here." />
       ) : (

@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
     hashPassword,
-    signToken,
+    issueSession,
     mapDatabaseRole,
-    sessionClaims,
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
@@ -77,7 +76,11 @@ export async function POST(request: Request) {
         });
 
         const mappedRole = mapDatabaseRole(user.role);
-        const token = await signToken(sessionClaims(user), SESSION_MAX_AGE_REMEMBER);
+        const token = await issueSession(user, {
+            maxAgeSeconds: SESSION_MAX_AGE_REMEMBER,
+            platform: 'mobile',
+            userAgent: request.headers.get('user-agent'),
+        });
 
         const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))
             .catch(() => false);

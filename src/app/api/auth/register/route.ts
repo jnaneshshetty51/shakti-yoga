@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes, createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
+import { hashPassword, issueSession, mapDatabaseRole, setSessionCookie } from '@/lib/auth';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { readJson, str, optStr, email as parseEmail, handleValidationError } from '@/lib/validation';
 import { recordEvent } from '@/lib/analytics';
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         // called on the first real paid membership instead).
         await linkLeadToUser(user.id, email);
 
-        const token = await signToken(sessionClaims(user));
+        const token = await issueSession(user, { platform: 'web', userAgent: request.headers.get('user-agent') });
 
         await setSessionCookie(token);
         const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))

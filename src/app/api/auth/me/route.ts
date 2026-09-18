@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import {
     readSessionToken,
     verifyToken,
-    signToken,
+    issueSession,
     mapDatabaseRole,
-    sessionClaims,
+    isSessionValid,
     setSessionCookie,
     clearSessionCookie,
     SESSION_MAX_AGE_REMEMBER,
@@ -54,8 +54,9 @@ export async function GET() {
             return NextResponse.json({ user: null });
         }
 
-        // Session revoked (password reset / log-out-everywhere) — reject and clear.
-        if (typeof payload.tv === 'number' && payload.tv !== user.tokenVersion) {
+        // Session revoked (password reset / log-out-everywhere / this one
+        // device logged out) — reject and clear.
+        if (!(await isSessionValid(payload, user))) {
             await clearSessionCookie();
             return NextResponse.json({ user: null });
         }
@@ -83,7 +84,10 @@ export async function GET() {
             const ttl = nearExpiry || secondsLeft === null
                 ? SESSION_MAX_AGE_REMEMBER
                 : Math.max(60, secondsLeft);
-            freshToken = await signToken(sessionClaims({ ...user, role: effectiveRole }), ttl);
+            freshToken = await issueSession(
+                { ...user, role: effectiveRole },
+                { maxAgeSeconds: ttl, replacesJti: typeof payload.jti === 'string' ? payload.jti : null },
+            );
             await setSessionCookie(freshToken, ttl);
         }
 

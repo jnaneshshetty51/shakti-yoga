@@ -10,6 +10,12 @@ export interface ClassView {
   joinable: boolean;
   /** Whether the caller has attended this instance — per-member, not the instance's own status. */
   attended: boolean;
+  /** True when a substitute is covering this occurrence instead of the batch's usual teacher — `teacher` above is already the correct effective name either way. */
+  isSubstitute?: boolean;
+  /** Free/special class — no membership or session credit required to join. */
+  openAccess?: boolean;
+  capacity?: number | null;
+  attendanceCount?: number;
 }
 
 /** Per-cycle session-credit balance for capped plans (monthly Everyday / Family). */

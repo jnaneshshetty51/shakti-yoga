@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
     getSession,
-    signToken,
-    sessionClaims,
+    issueSession,
     setSessionCookie,
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/auth';
@@ -11,11 +10,12 @@ import { rateLimit } from '@/lib/rate-limit';
 
 /**
  * Revokes every session (web browsers, phones, tablets) for the caller except
- * this current one. Bumps `User.tokenVersion` so every other outstanding JWT is
- * immediately rejected by `getSession()`, and mints a fresh token with the new
- * `tokenVersion` for the current device so the user stays signed in.
+ * this current one. Bumps `User.tokenVersion` (belt-and-suspenders — kills
+ * even a legacy token that predates per-session tracking) AND explicitly
+ * revokes every `Session` row, then mints a fresh tracked session for the
+ * current device so the user stays signed in.
  */
-export async function POST() {
+export async function POST(request: Request) {
     try {
         const payload = await getSession();
         if (!payload) {
@@ -44,11 +44,19 @@ export async function POST() {
             },
         });
 
-        // Issue a fresh session for the current client with the updated tokenVersion.
-        const freshToken = await signToken(
-            sessionClaims(user),
-            SESSION_MAX_AGE_REMEMBER,
-        );
+        // Explicitly revoke every tracked session too, so a "your devices" view
+        // (or this same jti check) reflects reality rather than relying solely
+        // on the tokenVersion mismatch to reject them.
+        await prisma.session.updateMany({
+            where: { userId: user.id, revokedAt: null },
+            data: { revokedAt: new Date() },
+        });
+
+        // Issue a fresh, freshly-tracked session for the current client.
+        const freshToken = await issueSession(user, {
+            maxAgeSeconds: SESSION_MAX_AGE_REMEMBER,
+            userAgent: request.headers.get('user-agent'),
+        });
 
         // Update the HTTP-only cookie if this request originated from a browser.
         await setSessionCookie(freshToken, SESSION_MAX_AGE_REMEMBER);

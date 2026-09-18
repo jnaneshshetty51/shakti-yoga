@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FlatList, View, Image, StyleSheet, Pressable } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, FlatList, RefreshControl, View, Image, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, BodyText, Card, LoadingView, EmptyState, Button } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -40,16 +40,26 @@ function timeAgo(iso: string): string {
  * link, which is a different feature (the WhatsApp groups, not this feed).
  */
 export default function CommunityScreen() {
-  const { data, loading, error } = useResource(() => api.get<FeedResponse>("/api/community/feed"), []);
+  const { data, loading, error, reload } = useResource(() => api.get<FeedResponse>("/api/community/feed"), []);
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const list = posts ?? data?.posts ?? [];
-  if (posts === null && data) {
-    setPosts(data.posts);
-    setNextCursor(data.nextCursor);
-  }
+  useEffect(() => {
+    if (data) {
+      setPosts(data.posts);
+      setNextCursor(data.nextCursor);
+    }
+  }, [data]);
+
+  const list = posts ?? [];
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await reload();
+    setRefreshing(false);
+  };
 
   const toggleLike = async (post: Post) => {
     setPosts((prev) =>
@@ -81,8 +91,9 @@ export default function CommunityScreen() {
       setNextCursor(more.nextCursor);
     } catch (err) {
       // A failed "load more" shouldn't lose what's already on screen — the
-      // user can just try the button again.
-      void (err instanceof ApiError ? err.message : null);
+      // user can just try the button again — but they do need to know it
+      // failed rather than silently seeing the spinner stop.
+      Alert.alert("Couldn't load more", err instanceof ApiError ? err.message : "Please try again.");
     } finally {
       setLoadingMore(false);
     }
@@ -94,7 +105,7 @@ export default function CommunityScreen() {
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load the community feed" subtitle={error} />
+        <EmptyState title="Couldn't load the community feed" subtitle={error} onRetry={reload} />
       ) : list.length === 0 ? (
         <EmptyState title="No posts yet" subtitle="Member posts will show up here." />
       ) : (
@@ -102,6 +113,7 @@ export default function CommunityScreen() {
           data={list}
           keyExtractor={(p) => p.id}
           contentContainerStyle={{ padding: spacing.lg }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListFooterComponent={
             nextCursor != null ? (

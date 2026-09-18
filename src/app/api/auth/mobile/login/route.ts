@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
     verifyPassword,
-    signToken,
+    issueSession,
     mapDatabaseRole,
-    sessionClaims,
     SESSION_MAX_AGE_REMEMBER,
 } from '@/lib/auth';
 import { syncSubscriptionState } from '@/lib/subscription';
@@ -71,9 +70,9 @@ export async function POST(request: Request) {
 
         const effectiveRole = await syncSubscriptionState(user.id, user.role);
         const mappedRole = mapDatabaseRole(effectiveRole);
-        const token = await signToken(
-            sessionClaims({ ...user, role: effectiveRole }),
-            SESSION_MAX_AGE_REMEMBER,
+        const token = await issueSession(
+            { ...user, role: effectiveRole },
+            { maxAgeSeconds: SESSION_MAX_AGE_REMEMBER, platform: 'mobile', userAgent: request.headers.get('user-agent') },
         );
 
         const { passwordHash: _p, tokenVersion: _tv, ...safeUser } = user;

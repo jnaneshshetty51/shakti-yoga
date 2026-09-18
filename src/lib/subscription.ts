@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { signToken, mapDatabaseRole, sessionClaims, setSessionCookie } from '@/lib/auth';
+import { issueSession, mapDatabaseRole, setSessionCookie } from '@/lib/auth';
 import { type PlanConfig, type Region, priceFor } from '@/lib/pricing';
 import { grantCycleCredits } from '@/lib/sessionCredits';
 import { Role, SubscriptionStatus } from '@prisma/client';
@@ -211,7 +211,7 @@ export async function activatePlan(
     const mappedRole = mapDatabaseRole(user.role);
 
     if (!opts.skipCookie) {
-        await setSessionCookie(await signToken(sessionClaims(user)));
+        await setSessionCookie(await issueSession(user));
     }
 
     return { user, mappedRole };

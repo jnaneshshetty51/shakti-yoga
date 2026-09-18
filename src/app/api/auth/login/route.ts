@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
     verifyPassword,
-    signToken,
+    issueSession,
     mapDatabaseRole,
-    sessionClaims,
     setSessionCookie,
     SESSION_MAX_AGE,
     SESSION_MAX_AGE_REMEMBER,
@@ -69,9 +68,9 @@ export async function POST(request: Request) {
         const mappedRole = mapDatabaseRole(effectiveRole);
 
         const maxAge = remember ? SESSION_MAX_AGE_REMEMBER : SESSION_MAX_AGE;
-        const token = await signToken(
-            sessionClaims({ ...user, role: effectiveRole }),
-            maxAge,
+        const token = await issueSession(
+            { ...user, role: effectiveRole },
+            { maxAgeSeconds: maxAge, platform: 'web', userAgent: request.headers.get('user-agent') },
         );
         await setSessionCookie(token, maxAge);
 

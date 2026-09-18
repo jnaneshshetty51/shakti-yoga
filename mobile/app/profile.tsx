@@ -31,7 +31,10 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 
 export default function ProfileScreen() {
   const { logout, refreshUser } = useAuth();
-  const { data, loading, reload } = useResource(() => api.get<ProfileResponse>("/api/profile"), []);
+  const { data, loading, reload } = useResource(
+    () => api.get<{ profile: ProfileResponse }>("/api/profile").then((r) => r.profile),
+    [],
+  );
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", country: "", timezone: "", goals: "", communicationPref: "" });
   const [saving, setSaving] = useState(false);

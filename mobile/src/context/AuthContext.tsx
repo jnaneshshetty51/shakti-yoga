@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, typ
 import { api, getToken, setToken, setUnauthorizedHandler, ApiError } from "@/lib/api";
 import { registerForPush, unregisterForPush } from "@/lib/push";
 import { loginPurchases, logoutPurchases } from "@/lib/purchases";
+import { setCrashReportingUser, clearCrashReportingUser } from "@/lib/crashReporting";
 
 export type UserRole =
   | "visitor"
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         void registerForPush();
         void loginPurchases(data.user.id);
+        setCrashReportingUser(data.user.id);
       } else {
         await setToken(null);
       }
@@ -102,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     void registerForPush();
     void loginPurchases(data.user.id);
+    setCrashReportingUser(data.user.id);
   }, []);
 
   const register = useCallback(async (fields: Parameters<AuthContextValue["register"]>[0]) => {
@@ -110,13 +113,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     void registerForPush();
     void loginPurchases(data.user.id);
+    setCrashReportingUser(data.user.id);
   }, []);
 
   const logout = useCallback(async () => {
-    await unregisterForPush(); // needs the bearer token — must run before setToken(null)
+    // Both need the bearer token — must run before setToken(null). Best-effort:
+    // a network hiccup shouldn't block the user from logging out locally, and
+    // the session will still expire on its own even if this call fails.
+    await unregisterForPush().catch(() => {});
+    await api.post("/api/auth/logout").catch(() => {});
     await setToken(null);
     setUser(null);
     void logoutPurchases();
+    clearCrashReportingUser();
   }, []);
 
   // Fires on a 401 from an already-authenticated request — the token itself

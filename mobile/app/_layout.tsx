@@ -15,11 +15,14 @@ import { resolveNotificationPath, resolveIncomingUrl, isPublicAuthPath } from "@
 import { isVersionBelow } from "@/lib/version";
 import { api } from "@/lib/api";
 import { initPurchases } from "@/lib/purchases";
+import { initCrashReporting, captureException } from "@/lib/crashReporting";
 import { colors, spacing } from "@/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 // A no-op until EXPO_PUBLIC_REVENUECAT_*_KEY is set — see src/lib/purchases.ts.
 initPurchases();
+// A no-op until EXPO_PUBLIC_SENTRY_DSN is set — see src/lib/crashReporting.ts.
+initCrashReporting();
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -229,6 +232,7 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { error: Er
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("Unhandled error in app tree:", error, info.componentStack);
+    captureException(error, { componentStack: info.componentStack ?? undefined });
   }
 
   reset = () => this.setState({ error: null });

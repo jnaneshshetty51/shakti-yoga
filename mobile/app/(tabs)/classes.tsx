@@ -1,7 +1,7 @@
 import React from "react";
 import { View, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import { Link } from "expo-router";
-import { Screen, Heading, BodyText, Card, Button, LoadingView, EmptyState } from "@/components/ui";
+import { Screen, Heading, BodyText, Card, Badge, Button, LoadingView, EmptyState } from "@/components/ui";
 import { SessionBalanceCard } from "@/components/SessionBalanceCard";
 import { TherapyScheduleView } from "@/components/TherapyScheduleView";
 import { useAuth } from "@/context/AuthContext";
@@ -12,21 +12,28 @@ import { formatClassTime, formatDay } from "@/lib/format";
 import { colors, spacing } from "@/theme";
 import type { ClassesResponse, ClassView } from "@/lib/types";
 
-/** "Opens in 12 min" / "Opens at 6:45 PM" — derived from the real join-window
- *  open time the server computed, never a hardcoded guess (that previously
- *  said "30 min" while the server actually enforced 15). */
-function opensLabel(joinOpensAt: string): string {
-  const minutesUntil = Math.round((new Date(joinOpensAt).getTime() - Date.now()) / 60_000);
+/** "Opens in 12 min" / "Opens at 6:45 PM" / "Ended" — derived from the real
+ *  join-window the server computed, never a hardcoded guess (that previously
+ *  said "30 min" while the server actually enforced 15, and separately never
+ *  distinguished "hasn't opened yet" from "already over"). */
+function statusLabel(item: ClassView): string {
+  if (new Date(item.endsAt).getTime() + 15 * 60_000 < Date.now()) return "Ended";
+  const minutesUntil = Math.round((new Date(item.joinOpensAt).getTime() - Date.now()) / 60_000);
   if (minutesUntil <= 0) return "Opens shortly";
   if (minutesUntil <= 90) return `Opens in ${minutesUntil} min`;
-  return `Opens ${formatClassTime(joinOpensAt)}`;
+  return `Opens ${formatClassTime(item.joinOpensAt)}`;
 }
 
-function ClassCard({ item }: { item: ClassView }) {
-  const { joiningId, joinClass } = useJoin();
+function ClassCard({ item, onChanged }: { item: ClassView; onChanged: () => void }) {
+  const { joiningId, leavingId, joinClass, leaveClass } = useJoin();
+  const canLeave = item.attended && item.status !== "Cancelled" && new Date(item.endsAt).getTime() > Date.now();
   return (
     <Card style={styles.card}>
-      <BodyText style={{ fontWeight: "700" }}>{item.batchName}</BodyText>
+      <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.xs }}>
+        <BodyText style={{ fontWeight: "700" }}>{item.batchName}</BodyText>
+        {item.openAccess && <Badge tone="success">Free</Badge>}
+        {item.isSubstitute && <Badge tone="warning">Substitute</Badge>}
+      </View>
       <BodyText muted style={{ marginBottom: spacing.sm }}>
         {formatClassTime(item.startsAt)} · {item.teacher}
       </BodyText>
@@ -36,8 +43,20 @@ function ClassCard({ item }: { item: ClassView }) {
         loading={joiningId === item.id}
         onPress={() => joinClass(item.id)}
       >
-        {item.status === "Cancelled" ? "Cancelled" : item.joinable ? "Join Class" : opensLabel(item.joinOpensAt)}
+        {item.status === "Cancelled" ? "Cancelled" : item.joinable ? "Join Class" : statusLabel(item)}
       </Button>
+      {canLeave && (
+        <Button
+          variant="ghost"
+          loading={leavingId === item.id}
+          onPress={async () => {
+            if (await leaveClass(item.id)) onChanged();
+          }}
+          style={{ marginTop: spacing.xs }}
+        >
+          Leave class
+        </Button>
+      )}
     </Card>
   );
 }
@@ -94,7 +113,7 @@ export default function ClassesScreen() {
           {data.today.length === 0 ? (
             <BodyText muted style={{ marginBottom: spacing.lg }}>No more classes today.</BodyText>
           ) : (
-            data.today.map((c) => <ClassCard key={c.id} item={c} />)
+            data.today.map((c) => <ClassCard key={c.id} item={c} onChanged={reload} />)
           )}
 
           {data.upcoming.length > 0 && (

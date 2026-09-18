@@ -69,6 +69,31 @@ placeholders right now, just enough for `app.json` to point at a real file.
      see above — this can't be verified from this environment at all).
   Until all three are done, `subscribe.tsx` shows an honest "not set up yet"
   state with a link to the web checkout instead of pretending to work.
+- **OTA (over-the-air) JS updates via EAS Update** — fully configured
+  (`app.json`'s `updates`/`runtimeVersion` + the `expo-updates` package),
+  checks automatically on every cold start (`checkAutomatically: "ON_LOAD"`).
+  `runtimeVersion.policy: "appVersion"` means an OTA update is only ever
+  offered to installs whose native binary version matches — bump `version` in
+  `app.json` (and do a real store build) for any change that touches native
+  code or dependencies; anything JS-only can ship OTA instead. Publishing one
+  is a separate, deliberate step this codebase doesn't do for you:
+  ```bash
+  eas update --branch production --message "describe the change"
+  ```
+  (`preview`/`production` channels already exist in `eas.json`.) There is no
+  cron or CI hook publishing updates automatically — someone has to run this.
+- **Crash/error reporting via Sentry** — `src/lib/crashReporting.ts` wraps
+  `@sentry/react-native`, following the exact same pattern as the RevenueCat
+  wiring above: fully coded and wired into the app (the top-level
+  `ErrorBoundary` in `app/_layout.tsx` reports every caught render error;
+  `AuthContext` keeps Sentry's user context in sync with login/logout), but
+  requires one thing outside this codebase before it reports anything: create
+  a project at [sentry.io](https://sentry.io) (platform: React Native) and set
+  `EXPO_PUBLIC_SENTRY_DSN` in `.env` to its DSN. Until that's set,
+  `initCrashReporting()` logs a warning and every other function in that file
+  is a no-op — nothing crashes, errors just aren't reported anywhere but the
+  device's own console. Also disabled outright in dev builds (`__DEV__`) even
+  with a DSN set, so local development never pollutes a shared Sentry project.
 
 ### What's deliberately NOT built yet — see `../MOBILE_APP_PLAN.md`
 Yoga Therapy assessment/intake (the web already has this at `/yoga-therapy/intake` —

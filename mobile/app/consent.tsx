@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, View, Pressable, Linking, StyleSheet } from "react-native";
+import { Alert, ScrollView, View, Pressable, Linking, StyleSheet } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Calendar from "expo-calendar";
 import * as ImagePicker from "expo-image-picker";
@@ -46,7 +46,20 @@ export default function ConsentScreen() {
   useEffect(() => { refresh(); }, [refresh]);
 
   const togglePush = async () => {
-    if (push === "granted") { await unregisterForPush(); setPush("denied"); return; }
+    if (push === "granted") {
+      // We can only unregister this device from our own push backend — the
+      // OS permission itself can't be revoked programmatically, only from
+      // Settings. refresh() below re-reads the real OS state (still
+      // "granted") rather than showing a fake "Off" that would silently
+      // flip back the next time this screen mounts.
+      await unregisterForPush();
+      Alert.alert(
+        "Notifications turned off",
+        "Shakti won't send you push notifications anymore. Your phone's notification permission itself stays on — turn it off from your device Settings if you'd also like to block it there.",
+      );
+      refresh();
+      return;
+    }
     const res = await Notifications.requestPermissionsAsync();
     if (res.status === "granted") { await registerForPush(); }
     else Linking.openSettings();

@@ -211,6 +211,7 @@ model User {
   assignedLeads Lead[]
 
   passwordResetTokens     PasswordResetToken[]
+  sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
   webHandoffTokens        WebHandoffToken[]
 
@@ -1065,6 +1066,29 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// One issued login session — its `id` IS the JWT's `jti` claim (see
+/// lib/jwt.ts / lib/auth.ts's issueSession()). This is what makes a single
+/// "log out this device" actually possible: the previous-only revocation
+/// lever, User.tokenVersion, is all-or-nothing (bumping it kills every
+/// outstanding token for that user at once, used by password-reset and
+/// "log out everywhere"). A token signed before this model existed carries
+/// no `jti` at all and is checked against tokenVersion alone until it
+/// naturally expires — see getSession()'s isSessionValid().
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  platform   String? // 'web' | 'mobile' — best-effort, not load-bearing
 
   @@index([userId])
   @@index([expiresAt])

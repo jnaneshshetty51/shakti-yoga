@@ -5,14 +5,11 @@ import { Screen, Heading, BodyText, Button, LoadingView } from "@/components/ui"
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { api, ApiError } from "@/lib/api";
 import { useResource } from "@/lib/useResource";
+import { istParts, istYmd } from "@/lib/ist";
 import { colors, spacing, radius } from "@/theme";
 
-function ymd(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
 export default function BookConsultScreen() {
-  const [date, setDate] = useState(ymd(new Date(Date.now() + 86_400_000)));
+  const [date, setDate] = useState(istYmd(new Date(Date.now() + 86_400_000)));
   const [slot, setSlot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -56,13 +53,14 @@ export default function BookConsultScreen() {
             <Heading size="sm" style={{ marginBottom: spacing.sm }}>Choose a day</Heading>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
               {days.map((d) => {
-                const k = ymd(d);
+                const k = istYmd(d);
+                const { day, weekday } = istParts(d);
                 return (
                   <Pressable key={k} onPress={() => { setDate(k); setSlot(null); }} style={[styles.day, date === k && styles.on]}>
                     <BodyText style={{ color: date === k ? colors.white : colors.text, fontSize: 12 }}>
-                      {d.toLocaleDateString("en-IN", { weekday: "short" })}
+                      {weekday}
                     </BodyText>
-                    <BodyText style={{ color: date === k ? colors.white : colors.text, fontWeight: "700" }}>{d.getDate()}</BodyText>
+                    <BodyText style={{ color: date === k ? colors.white : colors.text, fontWeight: "700" }}>{day}</BodyText>
                   </Pressable>
                 );
               })}

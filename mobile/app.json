@@ -111,7 +111,9 @@
       ],
       "expo-sharing",
       "expo-video",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-updates",
+      "@sentry/react-native"
     ],
     "extra": {
       "router": {},
@@ -119,6 +121,14 @@
         "projectId": "31c0b7b9-3129-42a2-b05b-9c97ce9b338e"
       }
     },
-    "owner": "shaktiyogas-team"
+    "owner": "shaktiyogas-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/31c0b7b9-3129-42a2-b05b-9c97ce9b338e",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

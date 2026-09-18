@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 /** Shared "tap Join -> check in -> open Google Meet" flow for group classes and 1:1 bookings. */
 export function useJoin() {
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
 
   const handleError = (err: unknown) => {
     if (err instanceof ApiError) {
@@ -48,5 +49,19 @@ export function useJoin() {
     }
   };
 
-  return { joiningId, joinClass, joinBooking };
+  /** Undo a self check-in on a class before a teacher finalises attendance. Returns whether it succeeded, so callers can refetch their list. */
+  const leaveClass = async (instanceId: string): Promise<boolean> => {
+    setLeavingId(instanceId);
+    try {
+      await api.del(`/api/classes/${instanceId}/join`);
+      return true;
+    } catch (err) {
+      handleError(err);
+      return false;
+    } finally {
+      setLeavingId(null);
+    }
+  };
+
+  return { joiningId, leavingId, joinClass, joinBooking, leaveClass };
 }

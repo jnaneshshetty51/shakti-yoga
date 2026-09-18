@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { ScrollView, View, StyleSheet, Alert, Pressable } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -53,6 +53,17 @@ const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "neutral"> 
 export default function MembershipScreen() {
   const { data, loading, error, reload } = useResource(() => api.get<BillingResponse>("/api/billing"), []);
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Credits/session balance can change from another screen (e.g. cancelling
+  // a therapy session restores a credit) — refetch on focus so this doesn't
+  // show a stale number until a cold restart.
+  const mounted = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (mounted.current) reload();
+      mounted.current = true;
+    }, [reload]),
+  );
   const sub = data?.subscription ?? null;
   const storeManaged = sub?.provider === "apple" || sub?.provider === "google";
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { verifyToken } from '@/lib/jwt';
-import { signToken, sessionClaims, SESSION_MAX_AGE } from '@/lib/auth';
+import { issueSession, SESSION_MAX_AGE } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { countryForIp } from '@/lib/geoip';
 
@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
             const user = await prisma.user.findUnique({ where: { id: row.userId } });
             if (user) {
                 await prisma.webHandoffToken.update({ where: { id: row.id }, data: { usedAt: new Date() } });
-                const jwt = await signToken(sessionClaims(user));
+                const jwt = await issueSession(user, { maxAgeSeconds: SESSION_MAX_AGE, platform: 'web', userAgent: request.headers.get('user-agent') });
                 const res = NextResponse.redirect(clean);
                 res.cookies.set('token', jwt, {
                     httpOnly: true,
