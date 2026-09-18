@@ -32,7 +32,7 @@ export function PageHeader({
             <div className="min-w-0">
                 {eyebrow && <p className="text-sm text-ink-subtle">{eyebrow}</p>}
                 <h1 className="text-xl font-semibold text-ink leading-tight tracking-tight">{title}</h1>
-                {subtitle && <p className="text-sm text-ink-muted mt-1 max-w-2xl">{subtitle}</p>}
+                {subtitle && <p className="text-sm text-ink-muted mt-1 max-w-3xl">{subtitle}</p>}
             </div>
             {children && <div className="flex flex-wrap items-center gap-2 shrink-0">{children}</div>}
         </div>
@@ -57,7 +57,7 @@ export function Toolbar({
                 <h1 className="text-xl font-semibold text-ink tracking-tight">{title}</h1>
                 {meta && <span className="text-xs text-ink-subtle num truncate">{meta}</span>}
             </div>
-            {children && <div className="flex items-center gap-2 shrink-0">{children}</div>}
+            {children && <div className="flex flex-wrap items-center gap-2 shrink-0">{children}</div>}
         </div>
     );
 }

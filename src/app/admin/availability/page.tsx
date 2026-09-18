@@ -103,7 +103,7 @@ export function AdminAvailabilityContent({ embedded = false }: { embedded?: bool
     };
 
     return (
-        <div className="max-w-4xl">
+        <div className="w-full space-y-6">
             {dialog}
             {!embedded && (
                 <PageHeader
@@ -112,7 +112,7 @@ export function AdminAvailabilityContent({ embedded = false }: { embedded?: bool
                 />
             )}
 
-            <form onSubmit={add} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-4 sm:p-6 mb-8 grid grid-cols-1 gap-3 sm:grid-cols-6 items-end">
+            <form onSubmit={add} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-4 sm:p-6 grid grid-cols-1 gap-3 sm:grid-cols-6 items-end">
                 <label className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-gray-500">
                     Teacher
                     <select value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })} className="mt-1 w-full p-2 border border-gray-200 rounded text-sm font-normal normal-case">
@@ -142,7 +142,7 @@ export function AdminAvailabilityContent({ embedded = false }: { embedded?: bool
             </form>
 
             <Card className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[500px] text-sm">
                     <thead>
                         <tr className="bg-gray-50/70 text-left text-[11px] uppercase tracking-wider text-gray-400">
                             <th className="px-4 py-3 font-semibold">Teacher</th>

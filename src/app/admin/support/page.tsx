@@ -158,35 +158,45 @@ export function AdminSupportContent({ embedded = false }: { embedded?: boolean }
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-4">
-                <Card>
-                    {visibleRows.length === 0 ? (
-                        <EmptyState icon={LuLifeBuoy} title={q ? "No matching conversations" : `No ${filter.toLowerCase()} conversations`} />
-                    ) : (
-                        <div className="divide-y divide-hairline">
-                            {visibleRows.map((r) => (
-                                <button
-                                    key={r.id}
-                                    onClick={() => open(r.id)}
-                                    className={`w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors ${selected?.id === r.id ? "bg-brand/5" : ""}`}
-                                >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="font-medium text-ink truncate">{r.userName}</span>
-                                        <StatusBadge status={r.status} />
-                                    </div>
-                                    <div className="text-xs text-ink-subtle truncate mt-0.5">{r.subject || "No subject"} · {r.messageCount} message{r.messageCount === 1 ? "" : "s"}</div>
-                                    <div className="text-xs text-ink-subtle mt-0.5">{when(r.lastMessageAt)}{r.assignedToName ? ` · ${r.assignedToName}` : ""}</div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </Card>
+                <div className={selected ? "hidden lg:block" : "block"}>
+                    <Card>
+                        {visibleRows.length === 0 ? (
+                            <EmptyState icon={LuLifeBuoy} title={q ? "No matching conversations" : `No ${filter.toLowerCase()} conversations`} />
+                        ) : (
+                            <div className="divide-y divide-hairline">
+                                {visibleRows.map((r) => (
+                                    <button
+                                        key={r.id}
+                                        onClick={() => open(r.id)}
+                                        className={`w-full text-left px-4 py-3 hover:bg-surface-hover transition-colors ${selected?.id === r.id ? "bg-brand/5" : ""}`}
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium text-ink truncate">{r.userName}</span>
+                                            <StatusBadge status={r.status} />
+                                        </div>
+                                        <div className="text-xs text-ink-subtle truncate mt-0.5">{r.subject || "No subject"} · {r.messageCount} message{r.messageCount === 1 ? "" : "s"}</div>
+                                        <div className="text-xs text-ink-subtle mt-0.5">{when(r.lastMessageAt)}{r.assignedToName ? ` · ${r.assignedToName}` : ""}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
 
-                <Card padded>
-                    {!selected ? (
-                        <EmptyState icon={LuLifeBuoy} title="Select a conversation" hint="Pick one from the list to view and reply." />
-                    ) : (
-                        <div>
-                            <div className="flex items-start justify-between gap-3 mb-4">
+                <div className={!selected ? "hidden lg:block" : "block"}>
+                    <Card padded>
+                        {!selected ? (
+                            <EmptyState icon={LuLifeBuoy} title="Select a conversation" hint="Pick one from the list to view and reply." />
+                        ) : (
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelected(null)}
+                                    className="lg:hidden inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-strong mb-3"
+                                >
+                                    ← Back to list
+                                </button>
+                                <div className="flex items-start justify-between gap-3 mb-4">
                                 <div>
                                     <div className="font-semibold text-ink">{selected.userName}</div>
                                     <div className="text-xs text-ink-subtle">{selected.userEmail}</div>
@@ -224,6 +234,7 @@ export function AdminSupportContent({ embedded = false }: { embedded?: boolean }
                         </div>
                     )}
                 </Card>
+                </div>
             </div>
         </div>
     );

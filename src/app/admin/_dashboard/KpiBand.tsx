@@ -64,11 +64,11 @@ export function KpiBand({ data }: { data: Dashboard }) {
                 />
             </div>
 
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2.5">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 {secondary.map((s) => (
-                    <div key={s.label} className="bg-surface border border-hairline rounded-control px-3 py-2.5">
+                    <div key={s.label} className="bg-surface border border-hairline rounded-control px-3 py-2.5 min-w-0">
                         <div className="text-[11px] font-medium text-ink-subtle truncate">{s.label}</div>
-                        <div className="text-sm font-semibold text-ink mt-0.5 num">{s.value}</div>
+                        <div className="text-sm font-semibold text-ink mt-0.5 num truncate">{s.value}</div>
                     </div>
                 ))}
             </div>

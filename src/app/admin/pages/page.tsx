@@ -58,7 +58,7 @@ export function AdminPagesContent({ embedded = false }: { embedded?: boolean } =
     if (!data) return <PageLoading title="Pages CMS" />;
 
     return (
-        <div className={embedded ? "space-y-6" : "max-w-5xl space-y-6"}>
+        <div className="w-full space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 {embedded ? (
                     <h2 className="font-serif text-lg font-bold text-ink-base">Pages CMS &amp; Content Editor</h2>

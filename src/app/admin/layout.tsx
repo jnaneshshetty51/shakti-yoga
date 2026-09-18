@@ -134,7 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <AdminStudentProvider>
             <ToastProvider>
-                <div data-app-shell className="min-h-screen flex bg-surface">
+                <div data-app-shell className="w-full min-h-screen flex bg-surface">
                     {/* Desktop sidebar */}
                     <aside className="w-64 bg-surface border-r border-hairline hidden lg:flex flex-col fixed h-full z-10">
                         <div className="px-5 pt-5 pb-3">
@@ -178,12 +178,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </aside>
 
                     {/* Main */}
-                    <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
+                    <div className="flex-1 lg:ml-64 flex flex-col min-w-0 w-full">
                         {!isBlogEditor && (
                             <header className="sticky top-0 z-30 bg-surface-sunken/85 backdrop-blur-md border-b border-hairline">
-                                <div className="flex items-center gap-2 sm:gap-3 px-4 lg:px-8 h-16">
+                                <div className="flex items-center gap-1.5 sm:gap-3 px-3.5 sm:px-6 lg:px-8 h-16 w-full">
                                     <button
-                                        className="lg:hidden p-2 -ml-2 shrink-0 text-ink-muted hover:bg-surface-hover rounded-control"
+                                        className="lg:hidden p-2 -ml-1.5 shrink-0 text-ink-muted hover:bg-surface-hover rounded-control"
                                         onClick={() => setIsMenuOpen(true)}
                                         aria-label="Open menu"
                                     >
@@ -191,7 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     </button>
                                     <button
                                         onClick={() => cmd.setIsOpen(true)}
-                                        className="min-w-0 flex-1 max-w-sm sm:max-w-md lg:max-w-xl flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-surface border border-hairline text-sm text-ink-subtle hover:border-brand/30 transition-colors"
+                                        className="min-w-0 flex-1 max-w-xs sm:max-w-md lg:max-w-xl flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full bg-surface border border-hairline text-xs sm:text-sm text-ink-subtle hover:border-brand/30 transition-colors"
                                     >
                                         <LuSearch className="text-base shrink-0" />
                                         <span className="flex-1 text-left truncate">
@@ -206,7 +206,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         <GlobalStudentSelector />
                                     </div>
 
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                                         <NotificationsBell />
                                         <a
                                             href="/contact"
@@ -224,7 +224,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </header>
                         )}
 
-                        <main className={`flex-1 flex flex-col min-w-0 ${isBlogEditor ? "" : "p-4 lg:p-8"}`}>{children}</main>
+                        <main className={`w-full min-w-0 flex-1 flex flex-col ${isBlogEditor ? "" : "px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6"}`}>{children}</main>
                     </div>
 
                     <CommandPalette isOpen={cmd.isOpen} onClose={() => cmd.setIsOpen(false)} department={department} isSuper={isSuper} />

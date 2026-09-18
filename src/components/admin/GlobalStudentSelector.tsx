@@ -95,7 +95,7 @@ export function GlobalStudentSelector() {
             <button
                 type="button"
                 onClick={() => setIsOpen((prev) => !prev)}
-                className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-full border text-xs sm:text-sm font-medium transition-all shadow-xs ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full border text-xs sm:text-sm font-medium transition-all shadow-xs shrink-0 ${
                     selectedStudent
                         ? "bg-brand/10 border-brand/30 text-brand hover:bg-brand/15"
                         : "bg-surface border-hairline text-ink-muted hover:border-brand/40 hover:text-ink hover:bg-surface-hover"
@@ -112,7 +112,7 @@ export function GlobalStudentSelector() {
                                 selectedStudent.name.charAt(0) || "S"
                             )}
                         </div>
-                        <span className="truncate max-w-[90px] sm:max-w-[140px] font-semibold text-ink">
+                        <span className="truncate max-w-[75px] sm:max-w-[140px] font-semibold text-ink">
                             {selectedStudent.name}
                         </span>
                         <span className="hidden md:inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded bg-brand/15 text-brand truncate max-w-[100px]">
@@ -123,7 +123,10 @@ export function GlobalStudentSelector() {
                 ) : (
                     <>
                         <LuGraduationCap className="w-4 h-4 text-brand shrink-0" />
-                        <span className="truncate max-w-[110px] sm:max-w-none">Select student…</span>
+                        <span className="truncate max-w-[65px] xs:max-w-[110px] sm:max-w-none">
+                            <span className="xs:hidden">Student</span>
+                            <span className="hidden xs:inline">Select student…</span>
+                        </span>
                         <LuChevronDown className="w-3.5 h-3.5 text-ink-subtle shrink-0" />
                     </>
                 )}

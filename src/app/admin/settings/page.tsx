@@ -158,10 +158,10 @@ function SettingsInner({ embedded = false }: { embedded?: boolean } = {}) {
             {!embedded && <PageHeader title="Platform Settings" subtitle="General settings and integration status." />}
 
             {status && (
-                <div className="mb-6 p-3 rounded-xl bg-accent/40 border border-primary/10 text-sm text-text max-w-3xl">{status}</div>
+                <div className="mb-6 p-3 rounded-xl bg-accent/40 border border-primary/10 text-sm text-text w-full">{status}</div>
             )}
 
-            <form onSubmit={save} className="max-w-3xl">
+            <form onSubmit={save} className="w-full">
                 <Card padded>
                     <h2 className="font-bold text-gray-800 mb-6">General Configuration</h2>
 

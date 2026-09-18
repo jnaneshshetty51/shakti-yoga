@@ -71,10 +71,10 @@ function AuditLogInner({ embedded = false }: { embedded?: boolean } = {}) {
 
     useEffect(() => { load(); }, [load]);
 
-    const input = "rounded-control border border-hairline px-2 py-1.5 text-sm";
+    const input = "rounded-control border border-hairline px-2.5 py-1.5 text-sm bg-surface text-ink w-full sm:w-auto";
 
     return (
-        <div className="max-w-5xl">
+        <div className="w-full space-y-4">
             {embedded ? (
                 <div className="flex justify-end mb-4">
                     <a href={`/api/admin/audit?format=csv&${qs().toString()}`} className="text-sm font-semibold text-brand hover:text-brand-strong">Export CSV</a>
@@ -95,13 +95,13 @@ function AuditLogInner({ embedded = false }: { embedded?: boolean } = {}) {
                 <input className={input} type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} />
                 <input className={input} type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} />
                 {(f.entity || f.action || f.actor || f.from || f.to) && (
-                    <button className="text-sm text-ink-subtle hover:text-ink" onClick={() => setF({ entity: "", action: "", actor: "", from: "", to: "" })}>clear</button>
+                    <button className="text-sm text-ink-subtle hover:text-ink px-2 py-1" onClick={() => setF({ entity: "", action: "", actor: "", from: "", to: "" })}>clear</button>
                 )}
             </div>
 
             <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[600px] text-sm">
                         <thead>
                             <tr className="bg-gray-50/70 text-left text-[11px] uppercase tracking-wider text-gray-400">
                                 <th className="px-4 py-3 font-semibold">When</th>

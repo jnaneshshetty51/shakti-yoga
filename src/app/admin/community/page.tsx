@@ -108,7 +108,7 @@ export function AdminWhatsAppContent({ embedded = false }: { embedded?: boolean 
     };
 
     return (
-        <div className="max-w-4xl">
+        <div className="w-full space-y-6">
             {dialog}
             {embedded ? (
                 <div className="flex justify-end mb-4">

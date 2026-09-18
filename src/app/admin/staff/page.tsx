@@ -209,7 +209,7 @@ export function AdminStaffContent({ embedded = false }: { embedded?: boolean } =
     };
 
     return (
-        <div className="max-w-4xl">
+        <div className="w-full space-y-6">
             {dialog}
             {embedded ? (
                 <div className="flex justify-end mb-4">
@@ -230,7 +230,7 @@ export function AdminStaffContent({ embedded = false }: { embedded?: boolean } =
 
             {creating && (
                 <form onSubmit={create} className="bg-white border border-gray-100 rounded-2xl shadow-[0_1px_3px_rgba(16,24,40,0.04)] p-5 mb-6">
-                    <div className="flex gap-4 items-start">
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
                         <PhotoInput
                             current={newPhotoPreview}
                             onFile={(f) => { setNewPhoto(f); setNewPhotoPreview(URL.createObjectURL(f)); }}
@@ -320,7 +320,7 @@ export function AdminStaffContent({ embedded = false }: { embedded?: boolean } =
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex gap-4">
+                                <div className="flex flex-col sm:flex-row gap-4">
                                     <div className="shrink-0">
                                         <PhotoInput current={s.photoUrl} onFile={(f) => changePhoto(s, f)} />
                                         {s.photoUrl && (
