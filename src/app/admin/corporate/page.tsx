@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import DTable from "@/components/admin/DTable";
+import { KanbanBoard } from "@/components/admin/KanbanBoard";
+import { StatCard } from "@/components/admin/StatCard";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
-import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog } from "@/components/admin/ui";
+import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog, Button } from "@/components/admin/ui";
+import { LuKanban, LuTable, LuBuilding, LuBriefcase, LuIndianRupee, LuTrophy, LuPlus, LuArrowRight, LuArrowLeft, LuMessageCircle } from "react-icons/lu";
 
 export type CorporateLead = {
     id: string;
@@ -22,6 +25,13 @@ export type CorporateLead = {
     createdAt: string;
     assignedTo: { id: string; name: string } | null;
     _count: { activities: number };
+};
+
+type CorporateMetrics = {
+    totalDeals: number;
+    totalPipelineValue: number;
+    wonValue: number;
+    stageBreakdown: Record<string, { count: number; value: number }>;
 };
 
 const STATUS_TONE = {
@@ -46,6 +56,8 @@ function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
+    const [metrics, setMetrics] = useState<CorporateMetrics | null>(null);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -57,7 +69,12 @@ function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
     const fetchLeads = useCallback(async () => {
         setLoading(true);
         try {
-            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            const isKanban = viewMode === "kanban";
+            const params = new URLSearchParams({
+                page: isKanban ? "1" : String(page),
+                pageSize: isKanban ? "250" : String(PAGE_SIZE),
+            });
+            if (isKanban) params.set('view', 'kanban');
             if (search) params.set('q', search);
             if (statusFilter) params.set('status', statusFilter);
             const res = await fetch(`/api/admin/corporate?${params}`);
@@ -65,11 +82,12 @@ function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
                 const data = await res.json();
                 setLeads(data.leads || []);
                 setTotalCount(data.totalCount ?? 0);
+                if (data.metrics) setMetrics(data.metrics);
             }
         } finally {
             setLoading(false);
         }
-    }, [page, search, statusFilter]);
+    }, [page, search, statusFilter, viewMode]);
 
     const fetchStaffList = useCallback(async () => {
         try {
@@ -166,38 +184,251 @@ function CorporateDashboard({ embedded = false }: { embedded?: boolean }) {
         },
     ];
 
-    if (loading) return <PageLoading title="Corporate" />;
+    const handleQuickMoveStage = async (dealId: string, nextStatus: CorporateLead['status']) => {
+        setLeads((prev) => prev.map((l) => (l.id === dealId ? { ...l, status: nextStatus } : l)));
+        try {
+            const res = await fetch(`/api/admin/corporate/${dealId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: nextStatus }),
+            });
+            if (res.ok) {
+                showToast('success', `Deal moved to ${nextStatus.toLowerCase()}`);
+            } else {
+                showToast('error', 'Failed to update deal stage');
+                fetchLeads();
+            }
+        } catch {
+            showToast('error', 'Network error moving deal');
+            fetchLeads();
+        }
+    };
+
+    const inr = (n: number | null) => (n == null ? "—" : new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n));
+
+    const KANBAN_COLUMNS = [
+        { id: 'NEW' as const, title: 'New', tone: 'blue' as const },
+        { id: 'CONTACTED' as const, title: 'Contacted', tone: 'amber' as const },
+        { id: 'DISCUSSION' as const, title: 'Discussion', tone: 'amber' as const },
+        { id: 'PROPOSAL' as const, title: 'Proposal', tone: 'purple' as const },
+        { id: 'CONFIRMED' as const, title: 'Confirmed', tone: 'green' as const },
+        { id: 'PAYMENT' as const, title: 'Payment', tone: 'green' as const },
+        { id: 'COMPLETED' as const, title: 'Completed', tone: 'green' as const },
+        { id: 'LOST' as const, title: 'Lost', tone: 'red' as const },
+    ];
+
+    if (loading && leads.length === 0) return <PageLoading title="Corporate" />;
 
     return (
         <div>
             {dialog}
-            {!embedded && <PageHeader title="Corporate Wellness" subtitle="B2B wellness proposals, corporate workshops, and institutional wellness contracts." />}
+            {!embedded && <PageHeader title="Corporate Wellness" subtitle="B2B wellness proposals, corporate workshops, and institutional contracts." />}
 
-            <DTable
-                data={leads}
-                columns={columns}
-                title="Corporate Leads"
-                onCreate={handleCreate}
-                filters={[{ key: "status", label: "Status", options: Object.keys(STATUS_TONE).map((s) => ({ label: s, value: s })) }]}
-                server={{
-                    page,
-                    pageSize: PAGE_SIZE,
-                    totalCount,
-                    onPageChange: setPage,
-                    onSearchChange: (q) => { setSearch(q); setPage(1); },
-                    onFilterChange: (key, value) => {
-                        if (key === "status") setStatusFilter(value);
-                        setPage(1);
-                    },
-                }}
-                actions={(lead) => (
-                    <TableActions>
-                        <Link href={`/admin/corporate/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
-                        <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
-                        <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
-                    </TableActions>
-                )}
-            />
+            {/* Pipeline KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatCard
+                    title="Active Pipeline Value"
+                    value={inr(metrics?.totalPipelineValue ?? 0)}
+                    icon={<LuIndianRupee />}
+                    accent="blue"
+                    change={metrics ? `${metrics.totalDeals} total deals` : undefined}
+                />
+                <StatCard
+                    title="Won Contracts Value"
+                    value={inr(metrics?.wonValue ?? 0)}
+                    icon={<LuTrophy />}
+                    accent="green"
+                    suffix=""
+                />
+                <StatCard
+                    title="In Proposal / Discussion"
+                    value={
+                        (metrics?.stageBreakdown?.PROPOSAL?.count ?? 0) +
+                        (metrics?.stageBreakdown?.DISCUSSION?.count ?? 0)
+                    }
+                    icon={<LuBriefcase />}
+                    accent="amber"
+                    suffix=" active deals"
+                />
+                <StatCard
+                    title="Corporate Inquiries"
+                    value={metrics?.totalDeals ?? totalCount}
+                    icon={<LuBuilding />}
+                    accent="terracotta"
+                    suffix=" companies"
+                />
+            </div>
+
+            {/* View Mode Switcher and Quick Actions Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-surface p-3 rounded-xl border border-hairline">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">View:</span>
+                    <div className="inline-flex rounded-control border border-hairline bg-surface-raised p-0.5">
+                        <button
+                            onClick={() => setViewMode("kanban")}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-control transition-colors ${
+                                viewMode === "kanban"
+                                    ? "bg-surface text-ink shadow-sm"
+                                    : "text-ink-subtle hover:text-ink"
+                            }`}
+                        >
+                            <LuKanban className="w-3.5 h-3.5" /> Pipeline Board
+                        </button>
+                        <button
+                            onClick={() => setViewMode("table")}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-control transition-colors ${
+                                viewMode === "table"
+                                    ? "bg-surface text-ink shadow-sm"
+                                    : "text-ink-subtle hover:text-ink"
+                            }`}
+                        >
+                            <LuTable className="w-3.5 h-3.5" /> Data Table
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Button variant="primary" size="sm" icon={LuPlus} onClick={handleCreate}>
+                        Add Corporate Deal
+                    </Button>
+                </div>
+            </div>
+
+            {viewMode === "kanban" ? (
+                <KanbanBoard<CorporateLead, CorporateLead['status']>
+                    columns={KANBAN_COLUMNS}
+                    items={leads}
+                    getItemId={(l) => l.id}
+                    getItemColumnId={(l) => l.status}
+                    onMoveItem={(id, nextColId) => handleQuickMoveStage(id, nextColId)}
+                    onAddInColumn={(colId) => {
+                        handleCreate();
+                        setFormData((prev) => ({ ...prev, status: colId }));
+                    }}
+                    renderCard={(lead, { prevColId, nextColId, moveToCol }) => {
+                        const phoneDigits = lead.contactPhone ? lead.contactPhone.replace(/[^0-9]/g, '') : '';
+
+                        return (
+                            <div className="bg-surface rounded-xl p-3.5 border border-hairline shadow-sm hover:shadow-md hover:border-brand/40 transition-all flex flex-col gap-2.5">
+                                <div className="flex items-start justify-between gap-2">
+                                    <Link
+                                        href={`/admin/corporate/${lead.id}`}
+                                        className="font-semibold text-sm text-ink hover:text-brand transition-colors line-clamp-1"
+                                    >
+                                        {lead.companyName}
+                                    </Link>
+                                    <button
+                                        onClick={() => handleEdit(lead)}
+                                        className="text-[11px] font-medium text-ink-subtle hover:text-ink transition-colors"
+                                    >
+                                        Edit
+                                    </button>
+                                </div>
+
+                                <div className="text-xs text-ink-subtle space-y-0.5">
+                                    <div className="font-medium text-ink">{lead.contactName}</div>
+                                    <div className="truncate">{lead.contactEmail}</div>
+                                    {lead.contactPhone && (
+                                        <div className="flex items-center justify-between pt-0.5">
+                                            <span>{lead.contactPhone}</span>
+                                            {phoneDigits && (
+                                                <a
+                                                    href={`https://wa.me/${phoneDigits}?text=${encodeURIComponent(`Namaste ${lead.contactName}! Thank you for your inquiry on behalf of ${lead.companyName} regarding Shakti Yoga corporate wellness.`)}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title="Open WhatsApp Chat"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded"
+                                                >
+                                                    <LuMessageCircle className="w-3 h-3" /> WhatsApp
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Deal Value & Employees Badge */}
+                                <div className="flex items-center justify-between pt-1">
+                                    <span className="text-xs font-bold text-ink">
+                                        {inr(lead.dealValue)}
+                                    </span>
+                                    {lead.employeeCount && (
+                                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-surface-raised border border-hairline text-ink-subtle">
+                                            {lead.employeeCount} employees
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Requirement preview */}
+                                {lead.requirement && (
+                                    <p className="text-[11px] text-ink-subtle line-clamp-2 italic bg-surface-raised/50 p-1.5 rounded border border-hairline/40">
+                                        &ldquo;{lead.requirement}&rdquo;
+                                    </p>
+                                )}
+
+                                {/* Owner Bar */}
+                                <div className="pt-2 border-t border-hairline/60 flex items-center justify-between text-[11px]">
+                                    <span className="text-ink-subtle truncate max-w-[120px]" title={lead.assignedTo?.name || "Unassigned"}>
+                                        Owner: {lead.assignedTo ? lead.assignedTo.name : "Unassigned"}
+                                    </span>
+                                    <span className="text-ink-subtle/70 text-[10px]">
+                                        {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
+                                    </span>
+                                </div>
+
+                                {/* Quick Stage Movement Arrows */}
+                                <div className="pt-1.5 border-t border-hairline/40 flex items-center justify-between">
+                                    {prevColId ? (
+                                        <button
+                                            onClick={() => moveToCol(prevColId)}
+                                            title="Move backward"
+                                            className="p-1 rounded text-ink-subtle hover:text-ink hover:bg-surface-raised transition-colors text-xs flex items-center gap-0.5"
+                                        >
+                                            <LuArrowLeft className="w-3 h-3" />
+                                        </button>
+                                    ) : <span />}
+
+                                    {nextColId && (
+                                        <button
+                                            onClick={() => moveToCol(nextColId)}
+                                            title="Move forward"
+                                            className="p-1 rounded text-ink-subtle hover:text-brand hover:bg-surface-raised transition-colors text-xs flex items-center gap-0.5 font-medium ml-auto"
+                                        >
+                                            Next Stage <LuArrowRight className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }}
+                />
+            ) : (
+                <DTable
+                    data={leads}
+                    columns={columns}
+                    title="Corporate Leads"
+                    onCreate={handleCreate}
+                    filters={[{ key: "status", label: "Status", options: Object.keys(STATUS_TONE).map((s) => ({ label: s, value: s })) }]}
+                    server={{
+                        page,
+                        pageSize: PAGE_SIZE,
+                        totalCount,
+                        onPageChange: setPage,
+                        onSearchChange: (q) => { setSearch(q); setPage(1); },
+                        onFilterChange: (key, value) => {
+                            if (key === "status") setStatusFilter(value);
+                            setPage(1);
+                        },
+                    }}
+                    actions={(lead) => (
+                        <TableActions>
+                            <Link href={`/admin/corporate/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
+                            <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
+                            <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
+                        </TableActions>
+                    )}
+                />
+            )}
 
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>

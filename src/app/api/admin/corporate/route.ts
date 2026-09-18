@@ -15,8 +15,11 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const q = searchParams.get('q')?.trim();
+        const view = searchParams.get('view');
+        const isKanban = view === 'kanban';
         const page = Math.max(1, Number(searchParams.get('page')) || 1);
-        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+        const maxLimit = isKanban ? 300 : MAX_PAGE_SIZE;
+        const pageSize = Math.min(maxLimit, Math.max(1, Number(searchParams.get('pageSize')) || (isKanban ? 200 : DEFAULT_PAGE_SIZE)));
 
         const statusKey = status?.toUpperCase();
         const where: Prisma.CorporateLeadWhereInput = {
@@ -29,12 +32,13 @@ export async function GET(request: Request) {
                           { companyName: { contains: q, mode: 'insensitive' } },
                           { contactName: { contains: q, mode: 'insensitive' } },
                           { contactEmail: { contains: q, mode: 'insensitive' } },
+                          { contactPhone: { contains: q, mode: 'insensitive' } },
                       ],
                   }
                 : {}),
         };
 
-        const [leads, totalCount] = await Promise.all([
+        const [leads, totalCount, stageGroup, totalValueAgg, wonValueAgg] = await Promise.all([
             prisma.corporateLead.findMany({
                 where,
                 include: {
@@ -42,13 +46,41 @@ export async function GET(request: Request) {
                     _count: { select: { activities: true } },
                 },
                 orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * pageSize,
+                skip: isKanban ? 0 : (page - 1) * pageSize,
                 take: pageSize,
             }),
             prisma.corporateLead.count({ where }),
+            prisma.corporateLead.groupBy({
+                by: ['status'],
+                _count: { id: true },
+                _sum: { dealValue: true },
+            }),
+            prisma.corporateLead.aggregate({
+                where: { status: { not: CorporateLeadStatus.LOST } },
+                _sum: { dealValue: true },
+            }),
+            prisma.corporateLead.aggregate({
+                where: { status: { in: [CorporateLeadStatus.CONFIRMED, CorporateLeadStatus.PAYMENT, CorporateLeadStatus.COMPLETED] } },
+                _sum: { dealValue: true },
+            }),
         ]);
 
-        return NextResponse.json({ leads, page, pageSize, totalCount });
+        const stageBreakdown: Record<string, { count: number; value: number }> = {};
+        for (const g of stageGroup) {
+            stageBreakdown[g.status] = {
+                count: g._count.id,
+                value: g._sum.dealValue || 0,
+            };
+        }
+
+        const metrics = {
+            totalDeals: totalCount,
+            totalPipelineValue: totalValueAgg._sum.dealValue || 0,
+            wonValue: wonValueAgg._sum.dealValue || 0,
+            stageBreakdown,
+        };
+
+        return NextResponse.json({ leads, page, pageSize, totalCount, metrics });
     } catch (error) {
         console.error('Admin corporate leads API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

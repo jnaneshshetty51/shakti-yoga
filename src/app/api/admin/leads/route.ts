@@ -15,8 +15,11 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const search = searchParams.get('search')?.trim();
+        const view = searchParams.get('view');
+        const isKanban = view === 'kanban';
         const page = Math.max(1, Number(searchParams.get('page')) || 1);
-        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE));
+        const maxLimit = isKanban ? 300 : MAX_PAGE_SIZE;
+        const pageSize = Math.min(maxLimit, Math.max(1, Number(searchParams.get('pageSize')) || (isKanban ? 200 : DEFAULT_PAGE_SIZE)));
 
         const whereClause: Prisma.LeadWhereInput = {};
 
@@ -27,11 +30,12 @@ export async function GET(request: Request) {
         if (search) {
             whereClause.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } }
+                { email: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
             ];
         }
 
-        const [leads, totalCount] = await Promise.all([
+        const [leads, totalCount, stageGroup, overdueCount] = await Promise.all([
             prisma.lead.findMany({
                 where: whereClause,
                 include: {
@@ -39,13 +43,43 @@ export async function GET(request: Request) {
                     _count: { select: { activities: true } }
                 },
                 orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * pageSize,
+                skip: isKanban ? 0 : (page - 1) * pageSize,
                 take: pageSize,
             }),
             prisma.lead.count({ where: whereClause }),
+            prisma.lead.groupBy({
+                by: ['status'],
+                _count: { id: true },
+            }),
+            prisma.lead.count({
+                where: {
+                    nextFollowUpAt: { lte: new Date() },
+                    status: { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] },
+                },
+            }),
         ]);
 
-        return NextResponse.json({ leads, page, pageSize, totalCount });
+        const countsByStatus: Record<string, number> = {
+            NEW: 0, CONTACTED: 0, TRIAL: 0, CONVERTED: 0, LOST: 0,
+        };
+        let grandTotal = 0;
+        for (const g of stageGroup) {
+            countsByStatus[g.status] = g._count.id;
+            grandTotal += g._count.id;
+        }
+
+        const metrics = {
+            total: grandTotal,
+            new: countsByStatus.NEW || 0,
+            contacted: countsByStatus.CONTACTED || 0,
+            trial: countsByStatus.TRIAL || 0,
+            converted: countsByStatus.CONVERTED || 0,
+            lost: countsByStatus.LOST || 0,
+            overdue: overdueCount,
+            conversionRate: grandTotal > 0 ? Math.round(((countsByStatus.CONVERTED || 0) / grandTotal) * 100) : 0,
+        };
+
+        return NextResponse.json({ leads, page, pageSize, totalCount, metrics });
     } catch (error) {
         console.error('Admin leads API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
