@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-shaktiyoga}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -22,7 +22,7 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: shakti-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -30,8 +30,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     ports:
-      - "9000:9000"  # MinIO API
-      - "9001:9001"  # MinIO Console
+      - "127.0.0.1:9000:9000"  # MinIO API
+      - "127.0.0.1:9001:9001"  # MinIO Console
     volumes:
       - minio_data:/data
     networks:
@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
     command: redis-server --save "" --appendonly no
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     networks:
       - shakti-network
     healthcheck:
@@ -59,7 +59,7 @@ services:
 
   # MinIO Client for initial bucket setup
   minio-setup:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     container_name: shakti-minio-setup
     depends_on:
       minio:
