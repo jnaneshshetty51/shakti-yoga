@@ -27,7 +27,10 @@ nano .env
 | `APPLE_APP_ID` **or** `APPLE_TEAM_ID` | For iOS universal links | Makes `/.well-known/apple-app-site-aasa` serve a valid file so `shaktiyoga.in/r/*` and `/reset-password*` links open the app. `APPLE_APP_ID` = full `TEAMID.in.shaktiyoga.app`; or just `APPLE_TEAM_ID` and it composes with `in.shaktiyoga.app` (override via `IOS_BUNDLE_ID`). Unset = that path 404s and links open the website. |
 | `ANDROID_SHA256_CERT_FINGERPRINTS` | For Android app links | Comma-separated signing-cert SHA-256 fingerprints (colon-hex) from `eas credentials -p android` — list both the upload key and the Play app-signing key. Makes `/.well-known/assetlinks.json` valid. Unset = 404 (links open the website). |
 | `EMAIL_FROM` | For email | Verified sender, e.g. `Shakti Yoga <hello@shaktiyoga.in>`. Defaults to Resend's sandbox address. |
-| `ADMIN_EMAIL` | For email | Address that receives contact-form enquiries. |
+| `ADMIN_EMAIL` | For email | Address that receives contact-form enquiries and instant notifications for new leads. |
+| `META_APP_ID` / `META_APP_SECRET` | For Facebook Lead Ads | App ID and Secret from developers.facebook.com for webhook signature verification. |
+| `META_WEBHOOK_VERIFY_TOKEN` | For Facebook Lead Ads | Handshake token configured in Facebook Webhooks product (defaults to `shakti_yoga_verify_2024`). |
+| `META_PAGE_ACCESS_TOKEN` | For Facebook Lead Ads | Page Access Token with `leads_retrieval` permission to fetch lead form data from Meta Graph API. |
 | `SEED_PASSWORD` | No | Password for seeded demo accounts. Unset = random, printed once. Not read client-side - the dev-only Quick Login buttons on `/login` always use the fixed default `Password123!`, so they only work if you left `SEED_PASSWORD` unset. |
 | `ALLOW_PROD_SEED` | No | Must be `"true"` to run `npm run db:seed` with `NODE_ENV=production`. |
 
