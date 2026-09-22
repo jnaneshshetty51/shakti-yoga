@@ -83,7 +83,12 @@ export async function POST(request: Request) {
             userAgent: request.headers.get('user-agent'),
         });
 
-        await linkLeadToUser(user.id, email);
+        const programInterest = optStr(body.programInterest, { label: 'Program interest', max: 50 });
+
+        await linkLeadToUser(user.id, email, {
+            programInterest: programInterest ?? 'EVERYDAY_YOGA',
+            campaign: 'mobile_app',
+        });
 
         const referralApplied = await redeemReferral(user.id, optStr(body.referralCode, { label: 'Referral code', max: 24 }))
             .catch(() => false);

@@ -47,6 +47,7 @@ interface AuthContextValue {
     country?: string;
     phone?: string;
     referralCode?: string;
+    programInterest?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;

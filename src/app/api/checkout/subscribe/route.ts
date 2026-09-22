@@ -70,6 +70,24 @@ export async function POST(request: Request) {
             }
             const { mappedRole } = await activatePlan(user.id, plan, { region });
             recordEvent('TRIAL_START', { userId: user.id });
+
+            // Sync CRM Lead to TRIAL stage and log activity
+            const linkedLead = await prisma.lead.findFirst({ where: { linkedUserId: user.id } });
+            if (linkedLead) {
+                await prisma.lead.update({
+                    where: { id: linkedLead.id },
+                    data: { status: 'TRIAL', trialRequestedAt: new Date() },
+                }).catch(() => {});
+                await prisma.leadActivity.create({
+                    data: {
+                        leadId: linkedLead.id,
+                        type: 'STATUS_CHANGE',
+                        content: 'Claimed Complimentary Free Trial Pass',
+                        performedBy: 'system',
+                    },
+                }).catch(() => {});
+            }
+
             return NextResponse.json({
                 free: true,
                 user: { id: user.id, name: user.name, email: user.email, role: mappedRole },

@@ -1,13 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Card, Heading, BodyText, Button, Badge } from "@/components/ui";
 import { colors, spacing, radius, shadows } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
+import { api, ApiError } from "@/lib/api";
 
 export function VisitorHeroSection() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const [activating, setActivating] = useState(false);
   const isMember =
     user &&
     (user.role === "member_everyday" ||
@@ -16,7 +18,7 @@ export function VisitorHeroSection() {
       user.role === "trial" ||
       user.role === "admin");
 
-  const handleTrialPress = () => {
+  const handleTrialPress = async () => {
     if (isMember) {
       Alert.alert(
         "You are already a member 🌿",
@@ -28,7 +30,30 @@ export function VisitorHeroSection() {
       );
       return;
     }
-    router.push("/(auth)/signup");
+
+    if (!user) {
+      router.push("/(auth)/signup");
+      return;
+    }
+
+    // User is logged in as visitor — activate their free trial
+    setActivating(true);
+    try {
+      await api.post("/api/checkout/subscribe", { planType: "trial" });
+      await refreshUser();
+      Alert.alert(
+        "Complimentary Pass Activated! 🌿",
+        "Your free trial is now active. You can join any live Everyday Yoga batch today!",
+        [{ text: "View Timetable", onPress: () => router.push("/(tabs)/classes") }]
+      );
+    } catch (err) {
+      Alert.alert(
+        "Trial Activation",
+        err instanceof ApiError ? err.message : "Could not activate your complimentary pass. Please try again."
+      );
+    } finally {
+      setActivating(false);
+    }
   };
 
   return (
@@ -64,6 +89,7 @@ export function VisitorHeroSection() {
           <Button
             style={{ marginTop: spacing.md }}
             onPress={handleTrialPress}
+            loading={activating}
           >
             {isMember ? "Go to My Classes" : "Claim Free Trial Class"}
           </Button>

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { LeadStatus, type PlanType } from '@prisma/client';
+import { LeadStatus, LeadSource, type PlanType } from '@prisma/client';
 import { recordAudit } from '@/lib/audit';
 
 /**
@@ -9,14 +9,52 @@ import { recordAudit } from '@/lib/audit';
  * clears markLeadConverted() below, on an actual qualifying payment. Advances
  * NEW/CONTACTED leads to TRIAL (they've now started using the product) but
  * never downgrades a lead already at TRIAL/CONVERTED/LOST.
+ *
+ * If no lead exists for this user (e.g. fresh mobile app signup), automatically
+ * creates a Lead so admissions counselors can track and follow up via CRM.
  */
-export async function linkLeadToUser(userId: string, email: string): Promise<void> {
+export async function linkLeadToUser(
+    userId: string,
+    email: string,
+    opts?: { programInterest?: string; source?: LeadSource; campaign?: string },
+): Promise<void> {
     try {
         const leads = await prisma.lead.findMany({
             where: { email: { equals: email, mode: 'insensitive' }, linkedUserId: null },
             select: { id: true, status: true },
         });
-        if (leads.length === 0) return;
+
+        if (leads.length === 0) {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { id: true, name: true, email: true, phone: true, country: true },
+            });
+            if (user) {
+                const newLead = await prisma.lead.create({
+                    data: {
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone,
+                        country: user.country,
+                        source: opts?.source ?? LeadSource.OTHER,
+                        campaign: opts?.campaign ?? 'mobile_app',
+                        status: LeadStatus.NEW,
+                        programInterest: opts?.programInterest ?? 'EVERYDAY_YOGA',
+                        linkedUserId: userId,
+                        notes: 'Registered via Shakti Yoga Mobile App',
+                    },
+                });
+                await prisma.leadActivity.create({
+                    data: {
+                        leadId: newLead.id,
+                        type: 'NOTE',
+                        content: 'Registered via Mobile App',
+                        performedBy: 'system',
+                    },
+                });
+            }
+            return;
+        }
 
         for (const lead of leads) {
             const nextStatus = lead.status === LeadStatus.NEW || lead.status === LeadStatus.CONTACTED

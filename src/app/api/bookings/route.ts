@@ -205,6 +205,27 @@ export async function POST(request: Request) {
             ),
         }).catch(() => { });
 
+        // Log consultation booking in CRM Lead Activity
+        if (isConsultation) {
+            const linkedLead = await prisma.lead.findFirst({ where: { linkedUserId: user.id } });
+            if (linkedLead) {
+                await prisma.leadActivity.create({
+                    data: {
+                        leadId: linkedLead.id,
+                        type: 'NOTE',
+                        content: `Booked Free 1:1 Consultation for ${whenLabel} IST`,
+                        performedBy: 'system',
+                    },
+                }).catch(() => {});
+                if (linkedLead.status === 'NEW') {
+                    await prisma.lead.update({
+                        where: { id: linkedLead.id },
+                        data: { status: 'CONTACTED' },
+                    }).catch(() => {});
+                }
+            }
+        }
+
         return NextResponse.json({
             success: true,
             booking: { id: booking.id, date: booking.date.toISOString(), status: booking.status },
