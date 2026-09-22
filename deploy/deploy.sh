@@ -14,7 +14,7 @@ set -euo pipefail
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 BRANCH="${DEPLOY_BRANCH:-main}"
 APP_NAME="shaktiyoga"   # must match ecosystem.config.js
-PORT=3001
+PORT="${PORT:-3015}"
 
 command -v pm2 >/dev/null || { echo -e "${RED}pm2 not found${NC}"; exit 1; }
 command -v git >/dev/null || { echo -e "${RED}git not found${NC}"; exit 1; }
