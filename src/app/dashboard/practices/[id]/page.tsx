@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PageHeader, PageLoading, ErrorState, Card, Badge, Button } from "@/components/ui";
-import { LuArrowLeft, LuClock, LuPlay, LuCheck, LuSparkles } from "react-icons/lu";
+import { LuArrowLeft, LuClock, LuCheck, LuSparkles } from "react-icons/lu";
 
 interface Practice {
     id: string;

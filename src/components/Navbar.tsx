@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { LuMenu, LuX, LuSparkles, LuPhoneCall, LuArrowRight, LuUserCheck, LuLogOut } from "react-icons/lu";
+import { LuMenu, LuX, LuPhoneCall, LuArrowRight, LuLogOut } from "react-icons/lu";
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);

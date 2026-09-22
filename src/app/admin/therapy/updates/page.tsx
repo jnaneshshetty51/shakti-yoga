@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader, PageLoading, Card, Badge, SegmentedControl, Button, Tabs, ErrorState } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 
@@ -11,6 +12,7 @@ type Update = {
 };
 
 export default function PatientUpdatesPage() {
+    const router = useRouter();
     const { showToast } = useToast();
     const [rows, setRows] = useState<Update[] | null>(null);
     const [loadError, setLoadError] = useState(false);
@@ -71,7 +73,7 @@ export default function PatientUpdatesPage() {
                 <Tabs
                     active="updates"
                     onChange={(k) => {
-                        if (k === "intakes") window.location.href = "/admin/therapy";
+                        if (k === "intakes") router.push("/admin/therapy");
                     }}
                     tabs={[
                         { key: "intakes", label: "Intake Assessments" },

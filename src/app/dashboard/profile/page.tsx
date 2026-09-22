@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader, PageLoading, Card, inputClass, labelClass } from "@/components/ui";
 
@@ -39,6 +40,7 @@ function prefsToString(form: ProfileForm): string {
 }
 
 export default function ProfilePage() {
+    const router = useRouter();
     const { refreshUser, logout } = useAuth();
     const [formData, setFormData] = useState<ProfileForm>(EMPTY_FORM);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -179,7 +181,7 @@ export default function ProfilePage() {
                 throw new Error(data.error || "Could not delete your account");
             }
             await logout();
-            window.location.href = "/";
+            router.push("/");
         } catch (err) {
             setDeleteError(err instanceof Error ? err.message : "Could not delete account. Please try again.");
             setDeletingAccount(false);

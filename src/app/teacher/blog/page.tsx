@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-    LuPenLine, LuPlus, LuEye, LuTrash2, LuCalendar,
-    LuFileText, LuCheck, LuClock, LuSearch,
+    LuPenLine, LuPlus, LuEye, LuTrash2,
+    LuFileText, LuSearch,
 } from "react-icons/lu";
 import { useToast } from "@/components/admin/Toast";
 import { useConfirmDialog, StatusBadge, EmptyState } from "@/components/admin/ui";
@@ -34,7 +33,6 @@ const TABS = [
 ];
 
 export default function TeacherBlogPage() {
-    const router = useRouter();
     const { showToast } = useToast();
     const { confirm, dialog } = useConfirmDialog();
 
@@ -104,7 +102,7 @@ export default function TeacherBlogPage() {
                         My Articles & Blog
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Articles you have written and published under your name on The Shakti Journal
+                        Articles {teacherName ? `by ${teacherName}` : "you have written and published"} under your name on The Shakti Journal
                     </p>
                 </div>
 

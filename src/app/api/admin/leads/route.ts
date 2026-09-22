@@ -21,10 +21,26 @@ export async function GET(request: Request) {
         const maxLimit = isKanban ? 300 : MAX_PAGE_SIZE;
         const pageSize = Math.min(maxLimit, Math.max(1, Number(searchParams.get('pageSize')) || (isKanban ? 200 : DEFAULT_PAGE_SIZE)));
 
+        const source = searchParams.get('source');
+        const programInterest = searchParams.get('programInterest');
+        const assignedToId = searchParams.get('assignedToId');
+
         const whereClause: Prisma.LeadWhereInput = {};
 
         if (status && status !== 'all' && status.toUpperCase() in LeadStatus) {
             whereClause.status = status.toUpperCase() as LeadStatus;
+        }
+
+        if (source && source !== 'all' && source.toUpperCase() in LeadSource) {
+            whereClause.source = source.toUpperCase() as LeadSource;
+        }
+
+        if (programInterest && programInterest !== 'all') {
+            whereClause.programInterest = programInterest;
+        }
+
+        if (assignedToId && assignedToId !== 'all') {
+            whereClause.assignedToId = assignedToId === 'unassigned' ? null : assignedToId;
         }
 
         if (search) {

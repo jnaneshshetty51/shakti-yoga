@@ -63,6 +63,11 @@ const nextConfig: NextConfig = {
         destination: "/delete-account",
         permanent: true,
       },
+      {
+        source: "/pricing",
+        destination: "/programs",
+        permanent: true,
+      },
     ];
   },
   async headers() {

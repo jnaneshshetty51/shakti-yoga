@@ -125,6 +125,7 @@ function PaymentsTable({ embedded = false }: { embedded?: boolean }) {
         if (!p) return;
         const amount = refundAmount.trim() ? Number(refundAmount) : undefined;
         setRefunding(true);
+        setBusyId(p.id);
         try {
             const res = await fetch(`/api/admin/payments/${p.id}`, {
                 method: "POST",
@@ -141,6 +142,7 @@ function PaymentsTable({ embedded = false }: { embedded?: boolean }) {
             showToast("error", e instanceof Error ? e.message : "Refund failed");
         } finally {
             setRefunding(false);
+            setBusyId(null);
         }
     };
 

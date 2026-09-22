@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     LuArrowLeft, LuBold, LuItalic, LuHeading2, LuHeading3,
-    LuList, LuListOrdered, LuQuote, LuCode, LuLink, LuImage,
-    LuEye, LuPenLine, LuColumns2, LuCheck, LuUpload, LuClock,
-    LuUser, LuSparkles, LuTrash2,
+    LuList, LuListOrdered, LuQuote, LuLink, LuImage,
+    LuCheck, LuUpload, LuClock,
+    LuUser, LuTrash2,
 } from "react-icons/lu";
 import { useToast } from "@/components/admin/Toast";
 import { CATEGORY_LABEL, readMinutes } from "@/lib/content";

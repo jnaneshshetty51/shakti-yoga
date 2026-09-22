@@ -59,7 +59,6 @@ export function AdminPayoutsContent({ embedded = false }: { embedded?: boolean }
         }
     }, [month]);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount / month-change
     useEffect(() => { load(); }, [load]);
 
     const recordPayout = async (row: PayoutRow) => {

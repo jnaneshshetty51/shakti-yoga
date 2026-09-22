@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Badge } from "@/components/admin/ui";
-import { LuChevronLeft, LuChevronRight, LuPlus } from "react-icons/lu";
+import { LuPlus } from "react-icons/lu";
 
 export type KanbanColumn<TId extends string = string> = {
     id: TId;

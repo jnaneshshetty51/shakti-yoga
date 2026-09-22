@@ -32,7 +32,6 @@ export default function ShareButtons({
             // eslint-disable-next-line react-hooks/set-state-in-effect -- client URL synchronization
             setCurrentUrl(window.location.href);
         } else if (url && !url.startsWith("http") && typeof window !== "undefined") {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- client URL synchronization
             setCurrentUrl(`${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`);
         }
         if (typeof navigator !== "undefined" && typeof navigator.share === "function") {

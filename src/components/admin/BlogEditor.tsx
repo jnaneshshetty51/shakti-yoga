@@ -6,9 +6,9 @@ import Link from "next/link";
 import {
     LuArrowLeft, LuBold, LuItalic, LuStrikethrough, LuHeading1, LuHeading2, LuHeading3,
     LuList, LuListOrdered, LuSquareCheck, LuQuote, LuCode, LuLink, LuImage, LuMinus,
-    LuTable, LuEye, LuPenLine, LuColumns2, LuSettings, LuCheck, LuCopy, LuExternalLink,
-    LuCalendar, LuUpload, LuTrash2, LuSparkles, LuCircleHelp, LuClock, LuFileText,
-    LuX, LuChevronDown, LuChevronRight, LuGlobe, LuLock, LuShieldCheck, LuUndo,
+    LuTable, LuEye, LuPenLine, LuColumns2, LuSettings, LuExternalLink,
+    LuUpload, LuTrash2, LuSparkles, LuCircleHelp, LuClock,
+    LuX, LuGlobe,
 } from "react-icons/lu";
 import { Button, Badge, labelClass, inputClass } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
@@ -301,10 +301,10 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
     const [linkUrl, setLinkUrl] = useState("");
     const [linkText, setLinkText] = useState("");
 
-    // Auto-adjust viewMode on mobile screens
+    // Auto-adjust viewMode on mobile screens on mount
     useEffect(() => {
         if (typeof window !== "undefined") {
-            if (window.innerWidth < 1024 && viewMode === "split") {
+            if (window.innerWidth < 1024) {
                 setViewMode("write");
             }
             if (window.innerWidth >= 1280) {
@@ -766,10 +766,16 @@ export default function BlogEditor({ mode, id }: { mode: "create" | "edit"; id?:
                             <span>·</span>
                             <span>{estMinutes} min read</span>
                         </span>
-                        {isDirty && (
+                        {isDirty ? (
                             <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 hidden xl:inline">
                                 ● Unsaved changes
                             </span>
+                        ) : (
+                            lastSaved && (
+                                <span className="text-[11px] text-ink-subtle hidden xl:inline">
+                                    Saved at {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                            )
                         )}
                     </div>
 

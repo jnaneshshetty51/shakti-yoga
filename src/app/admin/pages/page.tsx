@@ -5,7 +5,7 @@ import { PageHeader, PageLoading, Tabs, Card, labelClass } from "@/components/ad
 import { useToast } from "@/components/admin/Toast";
 import type { AboutPageContent, HomePageContent, CorporatePageContent } from "@/lib/cms";
 import Link from "next/link";
-import { LuExternalLink, LuSave, LuRotateCcw } from "react-icons/lu";
+import { LuExternalLink, LuSave } from "react-icons/lu";
 
 type CmsTab = "about" | "home" | "corporate";
 

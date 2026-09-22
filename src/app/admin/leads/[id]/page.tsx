@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { LuArrowLeft, LuCalendar, LuUserCheck, LuMessageCircle, LuCreditCard } from "react-icons/lu";
-import { PageHeader, PageLoading, Card, Badge, ErrorState, Button, inputClass, labelClass } from "@/components/admin/ui";
+import { LuArrowLeft, LuCalendar, LuUserCheck, LuMessageCircle, LuPhoneCall, LuCalendarCheck } from "react-icons/lu";
+import { PageHeader, PageLoading, Card, Badge, ErrorState, inputClass, labelClass } from "@/components/admin/ui";
 import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTimeline";
 import { useToast } from "@/components/admin/Toast";
-import { toWhatsAppUrl } from "@/lib/phone";
+import { WhatsAppTemplateModal } from "@/components/admin/crm/WhatsAppTemplateModal";
+import { QuickLogModal } from "@/components/admin/crm/QuickLogModal";
 
 type Lead = {
     id: string; name: string; email: string; phone: string | null; country: string | null;
@@ -38,6 +39,12 @@ export default function LeadDetailPage() {
     const [loadError, setLoadError] = useState(false);
     const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
     const [updating, setUpdating] = useState(false);
+
+    // Modals
+    const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+    const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
+    const [trialModalOpen, setTrialModalOpen] = useState(false);
+    const [trialDateInput, setTrialDateInput] = useState("");
 
     const load = useCallback(async () => {
         setLoadError(false);
@@ -84,6 +91,47 @@ export default function LeadDetailPage() {
         }
     };
 
+    const handleSnoozeFollowUp = async (daysAhead: number) => {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysAhead);
+        await updateLeadField({ nextFollowUpAt: targetDate.toISOString() });
+    };
+
+    const handleScheduleTrial = async () => {
+        if (!trialDateInput) {
+            showToast('error', 'Please choose a trial date');
+            return;
+        }
+        setUpdating(true);
+        try {
+            const trialIso = new Date(trialDateInput).toISOString();
+            await fetch(`/api/admin/leads/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'TRIAL',
+                    trialDate: trialIso,
+                    trialRequestedAt: new Date().toISOString(),
+                }),
+            });
+            await fetch(`/api/admin/leads/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'NOTE',
+                    content: `Trial scheduled for ${new Date(trialDateInput).toLocaleDateString('en-IN')}`,
+                }),
+            });
+            showToast('success', 'Trial scheduled successfully');
+            setTrialModalOpen(false);
+            await load();
+        } catch {
+            showToast('error', 'Failed to schedule trial');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     if (loadError) {
         return (
             <div>
@@ -101,6 +149,63 @@ export default function LeadDetailPage() {
 
     return (
         <div>
+            {/* WhatsApp Template Modal */}
+            <WhatsAppTemplateModal
+                lead={lead}
+                isOpen={isWhatsAppOpen}
+                onClose={() => setIsWhatsAppOpen(false)}
+                onLogged={load}
+            />
+
+            {/* Quick Log Modal */}
+            <QuickLogModal
+                lead={lead}
+                isOpen={isQuickLogOpen}
+                onClose={() => setIsQuickLogOpen(false)}
+                onSuccess={load}
+            />
+
+            {/* Quick Trial Scheduling Modal */}
+            {trialModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setTrialModalOpen(false)}>
+                    <div className="bg-surface border border-hairline rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-3 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                            <LuCalendarCheck className="w-5 h-5 text-terracotta" />
+                            <h3 className="font-bold text-sm text-ink">Schedule Trial Session</h3>
+                        </div>
+                        <p className="text-xs text-ink-subtle">
+                            Sets {lead.name}&apos;s trial session date and automatically advances the pipeline stage to Trial.
+                        </p>
+                        <div>
+                            <label className={labelClass}>Trial Session Date</label>
+                            <input
+                                type="date"
+                                value={trialDateInput}
+                                onChange={(e) => setTrialDateInput(e.target.value)}
+                                className={inputClass}
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setTrialModalOpen(false)}
+                                className="px-3 py-1.5 text-xs text-ink-subtle hover:text-ink"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={updating}
+                                onClick={handleScheduleTrial}
+                                className="px-4 py-1.5 rounded-control bg-brand text-white text-xs font-semibold hover:bg-brand-strong"
+                            >
+                                Confirm Trial
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Link href="/admin/crm?tab=leads" className="inline-flex items-center gap-1 text-sm text-ink-subtle hover:text-ink mb-3">
                 <LuArrowLeft /> Leads
             </Link>
@@ -133,6 +238,28 @@ export default function LeadDetailPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    {/* Quick Touch Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsQuickLogOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-control bg-brand/10 text-brand border border-brand/20 hover:bg-brand/20 transition-colors"
+                    >
+                        <LuPhoneCall className="w-3.5 h-3.5" /> Quick Touch Log
+                    </button>
+
+                    {/* Schedule Trial Button */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTrialDateInput(new Date().toISOString().slice(0, 10));
+                            setTrialModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-control bg-terracotta/10 text-terracotta border border-terracotta/20 hover:bg-terracotta/20 transition-colors"
+                    >
+                        <LuCalendarCheck className="w-3.5 h-3.5" /> Schedule Trial
+                    </button>
+
+                    {/* Owner Assign */}
                     <div className="flex items-center gap-1.5 text-xs text-ink-subtle">
                         <LuUserCheck className="w-3.5 h-3.5 text-brand" />
                         <span>Owner:</span>
@@ -149,6 +276,7 @@ export default function LeadDetailPage() {
                         </select>
                     </div>
 
+                    {/* Follow-up with snooze */}
                     <div className="flex items-center gap-1.5 text-xs text-ink-subtle">
                         <LuCalendar className="w-3.5 h-3.5 text-brand" />
                         <span>Follow-up:</span>
@@ -159,29 +287,55 @@ export default function LeadDetailPage() {
                             onChange={(e) => updateLeadField({ nextFollowUpAt: e.target.value ? new Date(e.target.value).toISOString() : null })}
                             className="text-xs rounded-control border border-hairline bg-surface px-2 py-1 text-ink focus:outline-none focus:border-brand"
                         />
+                        <button
+                            type="button"
+                            title="Snooze 1 day"
+                            onClick={() => handleSnoozeFollowUp(1)}
+                            className="px-1.5 py-0.5 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink text-[11px]"
+                        >
+                            +1d
+                        </button>
+                        <button
+                            type="button"
+                            title="Snooze 3 days"
+                            onClick={() => handleSnoozeFollowUp(3)}
+                            className="px-1.5 py-0.5 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink text-[11px]"
+                        >
+                            +3d
+                        </button>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Card padded>
-                    <h3 className="font-semibold text-ink mb-3 text-sm">Lead Details</h3>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-ink text-sm">Lead Details</h3>
+                        {lead.phone && (
+                            <button
+                                type="button"
+                                onClick={() => setIsWhatsAppOpen(true)}
+                                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-control bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold border border-emerald-200 transition-colors"
+                            >
+                                <LuMessageCircle className="w-3.5 h-3.5" /> WhatsApp Studio Templates
+                            </button>
+                        )}
+                    </div>
                     <dl className="text-sm grid grid-cols-2 gap-y-2">
                         <dt className="text-ink-subtle">Phone</dt>
                         <dd>
                             {lead.phone ? (
                                 <div className="flex items-center gap-2">
                                     <span>{lead.phone}</span>
-                                    <a
-                                        href={toWhatsAppUrl(lead.phone, `Hi ${lead.name}, this is from Shakthi Yoga. Reaching out regarding your interest in our sessions!`)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsWhatsAppOpen(true)}
                                         className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"
                                         title="Chat on WhatsApp"
                                     >
                                         <LuMessageCircle className="w-3.5 h-3.5" />
                                         WhatsApp
-                                    </a>
+                                    </button>
                                 </div>
                             ) : (
                                 "—"
@@ -192,8 +346,35 @@ export default function LeadDetailPage() {
                         <dt className="text-ink-subtle">Campaign</dt><dd>{lead.campaign || "—"}</dd>
                         <dt className="text-ink-subtle">Assigned to</dt><dd>{lead.assignedTo?.name || "Unassigned"}</dd>
                         <dt className="text-ink-subtle">Next follow-up</dt><dd>{d(lead.nextFollowUpAt)}</dd>
-                        <dt className="text-ink-subtle">Trial date</dt><dd>{d(lead.trialDate)}</dd>
-                        <dt className="text-ink-subtle">Trial attended</dt><dd>{lead.trialAttended ? "Yes" : "No"}</dd>
+                        <dt className="text-ink-subtle">Trial date</dt>
+                        <dd>
+                            {lead.trialDate ? (
+                                <span className="font-semibold text-terracotta">{d(lead.trialDate)}</span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTrialDateInput(new Date().toISOString().slice(0, 10));
+                                        setTrialModalOpen(true);
+                                    }}
+                                    className="text-xs text-brand hover:underline font-medium"
+                                >
+                                    + Schedule trial
+                                </button>
+                            )}
+                        </dd>
+                        <dt className="text-ink-subtle">Trial attended</dt>
+                        <dd>
+                            <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={lead.trialAttended}
+                                    onChange={(e) => updateLeadField({ trialAttended: e.target.checked })}
+                                    className="w-3.5 h-3.5 rounded text-brand focus:ring-brand"
+                                />
+                                <span className="text-xs">{lead.trialAttended ? "Yes — Attended" : "No"}</span>
+                            </label>
+                        </dd>
                         <dt className="text-ink-subtle">Created</dt><dd>{d(lead.createdAt)}</dd>
                         <dt className="text-ink-subtle">Account linked</dt>
                         <dd>

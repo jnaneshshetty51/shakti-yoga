@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { LuArrowLeft, LuMessageCircle, LuCalendar, LuCreditCard } from "react-icons/lu";
+import { LuArrowLeft, LuMessageCircle, LuCreditCard } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, Button, StatusBadge, ErrorState, useConfirmDialog, Badge } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
 import { toWhatsAppUrl } from "@/lib/phone";

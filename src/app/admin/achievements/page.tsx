@@ -22,7 +22,6 @@ export function AdminAchievementsContent({ embedded = false }: { embedded?: bool
         const res = await fetch(`/api/admin/achievements${qs}`);
         if (res.ok) setData(await res.json());
     }, []);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
 
     const lookup = () => load(email.trim());

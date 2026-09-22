@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import {
-    LuMessageSquare, LuCalendarClock, LuArrowRight, LuExternalLink, LuTriangleAlert,
+    LuCalendarClock, LuArrowRight, LuExternalLink, LuTriangleAlert,
     LuHeart, LuSparkles, LuTrendingUp, LuCreditCard,
 } from "react-icons/lu";
 import { Card, Badge } from "@/components/ui";

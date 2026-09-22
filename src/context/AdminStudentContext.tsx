@@ -33,7 +33,6 @@ export function AdminStudentProvider({ children }: { children: React.ReactNode }
             }
             const savedRecents = localStorage.getItem(STORAGE_KEY_RECENTS);
             if (savedRecents) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-only hydration from localStorage
                 setRecentStudents(JSON.parse(savedRecents));
             }
         } catch (e) {

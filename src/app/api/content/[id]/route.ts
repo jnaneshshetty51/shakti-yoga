@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { serializeContent, isFeedType } from '@/lib/content';
-import { audienceWhere, canAccessContent } from '@/lib/content-audience';
+import { canAccessContent } from '@/lib/content-audience';
 
 export const dynamic = 'force-dynamic';
 

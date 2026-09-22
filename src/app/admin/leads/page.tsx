@@ -8,8 +8,14 @@ import { StatCard } from "@/components/admin/StatCard";
 import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
 import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog, Button } from "@/components/admin/ui";
-import { LuKanban, LuTable, LuMessageCircle, LuClock, LuUsers, LuTarget, LuCalendar, LuArrowRight, LuArrowLeft, LuPlus, LuSearch } from "react-icons/lu";
-import { cleanWhatsAppPhone } from "@/lib/phone";
+import {
+    LuKanban, LuTable, LuMessageCircle, LuClock, LuUsers, LuTarget,
+    LuCalendar, LuArrowRight, LuArrowLeft, LuPlus, LuSearch, LuDownload,
+    LuUpload, LuPhoneCall, LuCircleCheck, LuFilter, LuTrash2
+} from "react-icons/lu";
+import { QuickLogModal, type QuickLogLead } from "@/components/admin/crm/QuickLogModal";
+import { WhatsAppTemplateModal, type WhatsAppLead } from "@/components/admin/crm/WhatsAppTemplateModal";
+import { LeadImportModal } from "@/components/admin/crm/LeadImportModal";
 
 const PAGE_SIZE = 25;
 
@@ -53,15 +59,29 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
     const [totalCount, setTotalCount] = useState(0);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [sourceFilter, setSourceFilter] = useState("");
+    const [programFilter, setProgramFilter] = useState("");
+    const [staffFilter, setStaffFilter] = useState("");
     const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
     const [metrics, setMetrics] = useState<LeadMetrics | null>(null);
 
-    // Modal State
+    // Modals
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
+    // Quick Log & WhatsApp & Import Modals
+    const [quickLogLead, setQuickLogLead] = useState<QuickLogLead | null>(null);
+    const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
+    const [whatsAppLead, setWhatsAppLead] = useState<WhatsAppLead | null>(null);
+    const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+    const [isImportOpen, setIsImportOpen] = useState(false);
+
+    // Multi-Select for Bulk Actions
+    const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+    const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -75,8 +95,8 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         notes: '',
         assignedToId: ''
     });
-    
-    const [staffList, setStaffList] = useState<{id: string, name: string}[]>([]);
+
+    const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
 
     const fetchLeads = useCallback(async () => {
         try {
@@ -88,6 +108,10 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             if (isKanban) params.set("view", "kanban");
             if (search) params.set("search", search);
             if (statusFilter) params.set("status", statusFilter);
+            if (sourceFilter) params.set("source", sourceFilter);
+            if (programFilter) params.set("programInterest", programFilter);
+            if (staffFilter) params.set("assignedToId", staffFilter);
+
             const response = await fetch(`/api/admin/leads?${params}`);
             if (response.ok) {
                 const data = await response.json();
@@ -100,7 +124,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         } finally {
             setLoading(false);
         }
-    }, [page, search, statusFilter, viewMode]);
+    }, [page, search, statusFilter, sourceFilter, programFilter, staffFilter, viewMode]);
 
     useEffect(() => {
         fetchLeads();
@@ -155,7 +179,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         setIsSubmitting(true);
         try {
             const done = await submitLead();
-            if (!done) return; // user backed out of the duplicate confirmation
+            if (!done) return;
             setIsModalOpen(false);
             setEditingLeadId(null);
             showToast('success', `Lead ${isEditMode ? 'updated' : 'created'}`);
@@ -215,8 +239,6 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             const res = await fetch(`/api/admin/leads/${lead.id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete lead');
             showToast('success', `Lead "${lead.name}" deleted`);
-            // Removing the last row on a page beyond the first would otherwise
-            // leave the admin looking at a page that no longer exists.
             if (leads.length === 1 && page > 1) setPage((p) => p - 1);
             else fetchLeads();
         } catch (err) {
@@ -226,14 +248,6 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
 
     const statusTone = (status: string) =>
         ({ NEW: "blue", CONTACTED: "amber", TRIAL: "purple", CONVERTED: "green", LOST: "red" } as const)[status] ?? "gray";
-
-    const STATUS_FILTER = [
-        { label: "New", value: "NEW" },
-        { label: "Contacted", value: "CONTACTED" },
-        { label: "Trial", value: "TRIAL" },
-        { label: "Converted", value: "CONVERTED" },
-        { label: "Lost", value: "LOST" },
-    ];
 
     const handleQuickMoveStage = async (leadId: string, nextStatus: Lead['status']) => {
         setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: nextStatus } : l)));
@@ -255,6 +269,126 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         }
     };
 
+    const handleSnoozeFollowUp = async (leadId: string, daysAhead: number) => {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysAhead);
+        const isoString = targetDate.toISOString();
+
+        setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, nextFollowUpAt: isoString } : l)));
+        try {
+            const res = await fetch(`/api/admin/leads/${leadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nextFollowUpAt: isoString }),
+            });
+            if (res.ok) {
+                showToast('success', `Follow-up postponed by ${daysAhead} day${daysAhead > 1 ? 's' : ''}`);
+            } else {
+                fetchLeads();
+            }
+        } catch {
+            fetchLeads();
+        }
+    };
+
+    const handleExportCsv = () => {
+        const params = new URLSearchParams();
+        if (search) params.set("search", search);
+        if (statusFilter) params.set("status", statusFilter);
+        if (sourceFilter) params.set("source", sourceFilter);
+        if (programFilter) params.set("programInterest", programFilter);
+        if (staffFilter) params.set("assignedToId", staffFilter);
+
+        window.open(`/api/admin/leads/export?${params.toString()}`, "_blank");
+        showToast("success", "Exporting leads CSV...");
+    };
+
+    // Bulk action handlers
+    const handleBulkStage = async (status: string) => {
+        if (selectedLeadIds.length === 0) return;
+        setBulkSubmitting(true);
+        try {
+            const res = await fetch('/api/admin/leads/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadIds: selectedLeadIds, action: 'update_status', value: status }),
+            });
+            if (res.ok) {
+                showToast('success', `Updated ${selectedLeadIds.length} leads to ${status.toLowerCase()}`);
+                setSelectedLeadIds([]);
+                fetchLeads();
+            }
+        } catch {
+            showToast('error', 'Bulk update failed');
+        } finally {
+            setBulkSubmitting(false);
+        }
+    };
+
+    const handleBulkAssign = async (staffId: string) => {
+        if (selectedLeadIds.length === 0) return;
+        setBulkSubmitting(true);
+        try {
+            const res = await fetch('/api/admin/leads/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadIds: selectedLeadIds, action: 'assign_staff', value: staffId }),
+            });
+            if (res.ok) {
+                showToast('success', `Assigned ${selectedLeadIds.length} leads`);
+                setSelectedLeadIds([]);
+                fetchLeads();
+            }
+        } catch {
+            showToast('error', 'Bulk assignment failed');
+        } finally {
+            setBulkSubmitting(false);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedLeadIds.length === 0) return;
+        const ok = await confirm({
+            title: `Delete ${selectedLeadIds.length} selected leads?`,
+            message: "This will permanently remove these leads and their activity logs.",
+            confirmLabel: "Delete All",
+            tone: "danger",
+        });
+        if (!ok) return;
+
+        setBulkSubmitting(true);
+        try {
+            const res = await fetch('/api/admin/leads/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadIds: selectedLeadIds, action: 'delete' }),
+            });
+            if (res.ok) {
+                showToast('success', `Deleted ${selectedLeadIds.length} leads`);
+                setSelectedLeadIds([]);
+                fetchLeads();
+            }
+        } catch {
+            showToast('error', 'Bulk deletion failed');
+        } finally {
+            setBulkSubmitting(false);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedLeadIds.length === leads.length) {
+            setSelectedLeadIds([]);
+        } else {
+            setSelectedLeadIds(leads.map((l) => l.id));
+        }
+    };
+
+    const toggleSelectLead = (id: string) => {
+        setSelectedLeadIds((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+        );
+    };
+
     const KANBAN_COLUMNS = [
         { id: 'NEW' as const, title: 'New', tone: 'blue' as const },
         { id: 'CONTACTED' as const, title: 'Contacted', tone: 'amber' as const },
@@ -263,36 +397,58 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         { id: 'LOST' as const, title: 'Lost', tone: 'red' as const },
     ];
 
-    const cleanPhone = (phone: string | null) => cleanWhatsAppPhone(phone);
-
     const columns = [
+        {
+            header: "Select",
+            accessor: (lead: Lead) => (
+                <input
+                    type="checkbox"
+                    checked={selectedLeadIds.includes(lead.id)}
+                    onChange={() => toggleSelectLead(lead.id)}
+                    className="w-4 h-4 rounded border-hairline text-brand focus:ring-brand"
+                />
+            ),
+        },
         {
             header: "Contact Info",
             accessor: (lead: Lead) => (
                 <div>
-                    <div className="font-bold text-gray-800">{lead.name}</div>
+                    <Link href={`/admin/leads/${lead.id}`} className="font-bold text-gray-800 hover:text-brand transition-colors">
+                        {lead.name}
+                    </Link>
                     <div className="text-xs text-gray-500">{lead.email}</div>
                     {lead.phone && (
                         <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
                             <span>{lead.phone}</span>
-                            <a
-                                href={`https://wa.me/${cleanPhone(lead.phone)}?text=${encodeURIComponent(`Namaste ${lead.name}! Thank you for your interest in Shakti Yoga. How may we assist your yoga journey today?`)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="Chat on WhatsApp"
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setWhatsAppLead(lead);
+                                    setIsWhatsAppOpen(true);
+                                }}
+                                title="Open WhatsApp Template"
                                 className="inline-flex items-center text-emerald-600 hover:text-emerald-700"
                             >
                                 <LuMessageCircle className="w-3.5 h-3.5" />
-                            </a>
+                            </button>
                         </div>
                     )}
                 </div>
             )
         },
         {
-            header: "Source",
+            header: "Program / Source",
             accessor: (lead: Lead) => (
-                <Badge tone="gray" className="capitalize">{lead.source.replace('_', ' ').toLowerCase()}</Badge>
+                <div className="space-y-1">
+                    {lead.programInterest && (
+                        <div className="text-xs font-medium text-ink truncate max-w-[140px]">
+                            {lead.programInterest.replace(/_/g, " ")}
+                        </div>
+                    )}
+                    <Badge tone="gray" className="capitalize text-[10px]">
+                        {lead.source.replace('_', ' ').toLowerCase()}
+                    </Badge>
+                </div>
             )
         },
         {
@@ -301,7 +457,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         },
         {
             header: "Assigned To",
-            accessor: (lead: Lead) => lead.assignedTo ? lead.assignedTo.name : <span className="text-gray-400 italic">Unassigned</span>
+            accessor: (lead: Lead) => lead.assignedTo ? lead.assignedTo.name : <span className="text-gray-400 italic text-xs">Unassigned</span>
         },
         {
             header: "Follow-up",
@@ -310,9 +466,27 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                 const due = new Date(lead.nextFollowUpAt);
                 const overdue = due.getTime() <= Date.now() && lead.status !== 'CONVERTED' && lead.status !== 'LOST';
                 return (
-                    <span className={`text-xs font-medium ${overdue ? "text-red-600 font-semibold" : "text-gray-600"}`}>
-                        {overdue ? "⚠ Overdue — " : ""}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                    </span>
+                    <div>
+                        <div className={`text-xs font-medium ${overdue ? "text-red-600 font-semibold" : "text-gray-600"}`}>
+                            {overdue ? "⚠ Overdue — " : ""}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        </div>
+                        {overdue && (
+                            <div className="flex gap-1 mt-0.5 text-[10px]">
+                                <button
+                                    onClick={() => handleSnoozeFollowUp(lead.id, 1)}
+                                    className="px-1 py-0.2 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink"
+                                >
+                                    +1d
+                                </button>
+                                <button
+                                    onClick={() => handleSnoozeFollowUp(lead.id, 3)}
+                                    className="px-1 py-0.2 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink"
+                                >
+                                    +3d
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 );
             }
         },
@@ -332,7 +506,37 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
     return (
         <div>
             {dialog}
-            {!embedded && <PageHeader title="Leads CRM" subtitle="Track and convert potential members through your live sales pipeline." />}
+
+            {/* Quick Log Modal */}
+            <QuickLogModal
+                lead={quickLogLead}
+                isOpen={isQuickLogOpen}
+                onClose={() => setIsQuickLogOpen(false)}
+                onSuccess={fetchLeads}
+            />
+
+            {/* WhatsApp Template Modal */}
+            <WhatsAppTemplateModal
+                lead={whatsAppLead}
+                isOpen={isWhatsAppOpen}
+                onClose={() => setIsWhatsAppOpen(false)}
+                onLogged={fetchLeads}
+            />
+
+            {/* Lead Import Modal */}
+            <LeadImportModal
+                isOpen={isImportOpen}
+                onClose={() => setIsImportOpen(false)}
+                onSuccess={fetchLeads}
+                staffList={staffList}
+            />
+
+            {!embedded && (
+                <PageHeader
+                    title="Leads Pipeline"
+                    subtitle="Track, engage, and convert prospective students through an active admissions pipeline."
+                />
+            )}
 
             {/* Pipeline KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -367,55 +571,218 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                 />
             </div>
 
-            {/* View Mode Switcher and Quick Actions Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-surface p-3 rounded-xl border border-hairline">
-                <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">View:</span>
-                    <div className="inline-flex rounded-control border border-hairline bg-surface-raised p-0.5">
-                        <button
-                            onClick={() => setViewMode("kanban")}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-control transition-colors ${
-                                viewMode === "kanban"
-                                    ? "bg-surface text-ink shadow-sm"
-                                    : "text-ink-subtle hover:text-ink"
-                            }`}
-                        >
-                            <LuKanban className="w-3.5 h-3.5" /> Pipeline Board
-                        </button>
-                        <button
-                            onClick={() => setViewMode("table")}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-control transition-colors ${
-                                viewMode === "table"
-                                    ? "bg-surface text-ink shadow-sm"
-                                    : "text-ink-subtle hover:text-ink"
-                            }`}
-                        >
-                            <LuTable className="w-3.5 h-3.5" /> Data Table
-                        </button>
+            {/* Comprehensive Toolbar & Filters */}
+            <div className="bg-surface p-3.5 rounded-2xl border border-hairline mb-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* View Switcher & Search */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="inline-flex rounded-control border border-hairline bg-surface-raised p-0.5">
+                            <button
+                                onClick={() => setViewMode("kanban")}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-control transition-colors ${
+                                    viewMode === "kanban"
+                                        ? "bg-surface text-ink shadow-sm font-semibold"
+                                        : "text-ink-subtle hover:text-ink"
+                                }`}
+                            >
+                                <LuKanban className="w-3.5 h-3.5" /> Pipeline Board
+                            </button>
+                            <button
+                                onClick={() => setViewMode("table")}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-control transition-colors ${
+                                    viewMode === "table"
+                                        ? "bg-surface text-ink shadow-sm font-semibold"
+                                        : "text-ink-subtle hover:text-ink"
+                                }`}
+                            >
+                                <LuTable className="w-3.5 h-3.5" /> Data Table
+                            </button>
+                        </div>
+
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Search by name, email, phone..."
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="text-xs rounded-control border border-hairline bg-surface-raised px-2.5 py-1.5 pl-8 text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand w-48 sm:w-60"
+                            />
+                            <LuSearch className="w-3.5 h-3.5 absolute left-2.5 top-2 text-ink-subtle" />
+                        </div>
                     </div>
 
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Filter leads..."
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setPage(1);
-                            }}
-                            className="text-xs rounded-control border border-hairline bg-surface-raised px-2.5 py-1 pl-7 text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand w-40 sm:w-52"
-                        />
-                        <LuSearch className="w-3.5 h-3.5 absolute left-2 top-1.5 text-ink-subtle" />
+                    {/* Actions: Add Lead, Import, Export */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsImportOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control border border-hairline bg-surface hover:bg-surface-raised text-xs font-medium text-ink transition-colors"
+                        >
+                            <LuUpload className="w-3.5 h-3.5 text-blue-600" /> Import
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleExportCsv}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control border border-hairline bg-surface hover:bg-surface-raised text-xs font-medium text-ink transition-colors"
+                        >
+                            <LuDownload className="w-3.5 h-3.5 text-emerald-600" /> Export CSV
+                        </button>
+                        <Button variant="primary" size="sm" icon={LuPlus} onClick={handleCreate}>
+                            Add New Lead
+                        </Button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Button variant="primary" size="sm" icon={LuPlus} onClick={handleCreate}>
-                        Add New Lead
-                    </Button>
+                {/* Filter Dropdowns */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-hairline/60 text-xs">
+                    <span className="text-ink-subtle flex items-center gap-1 font-semibold text-[11px] uppercase tracking-wider">
+                        <LuFilter className="w-3 h-3" /> Filter:
+                    </span>
+
+                    {/* Status filter */}
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                        className="rounded-control border border-hairline bg-surface px-2 py-1 text-ink text-xs focus:outline-none focus:border-brand"
+                    >
+                        <option value="">All Stages</option>
+                        <option value="NEW">New</option>
+                        <option value="CONTACTED">Contacted</option>
+                        <option value="TRIAL">Trial</option>
+                        <option value="CONVERTED">Converted</option>
+                        <option value="LOST">Lost</option>
+                    </select>
+
+                    {/* Source filter */}
+                    <select
+                        value={sourceFilter}
+                        onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+                        className="rounded-control border border-hairline bg-surface px-2 py-1 text-ink text-xs focus:outline-none focus:border-brand"
+                    >
+                        <option value="">All Sources</option>
+                        <option value="WEBSITE">Website</option>
+                        <option value="WHATSAPP">WhatsApp</option>
+                        <option value="SOCIAL_MEDIA">Social Media / Meta</option>
+                        <option value="REFERRAL">Referral</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+
+                    {/* Program filter */}
+                    <select
+                        value={programFilter}
+                        onChange={(e) => { setProgramFilter(e.target.value); setPage(1); }}
+                        className="rounded-control border border-hairline bg-surface px-2 py-1 text-ink text-xs focus:outline-none focus:border-brand"
+                    >
+                        <option value="">All Programs</option>
+                        <option value="EVERYDAY_YOGA">Everyday Yoga</option>
+                        <option value="YOGA_THERAPY">Yoga Therapy</option>
+                    </select>
+
+                    {/* Assigned Counselor */}
+                    <select
+                        value={staffFilter}
+                        onChange={(e) => { setStaffFilter(e.target.value); setPage(1); }}
+                        className="rounded-control border border-hairline bg-surface px-2 py-1 text-ink text-xs focus:outline-none focus:border-brand"
+                    >
+                        <option value="">All Counselors</option>
+                        <option value="unassigned">Unassigned</option>
+                        {staffList.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
+
+                    {(statusFilter || sourceFilter || programFilter || staffFilter || search) && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setStatusFilter("");
+                                setSourceFilter("");
+                                setProgramFilter("");
+                                setStaffFilter("");
+                                setSearch("");
+                                setPage(1);
+                            }}
+                            className="text-[11px] text-brand hover:underline font-medium ml-auto"
+                        >
+                            Reset filters
+                        </button>
+                    )}
                 </div>
             </div>
 
+            {/* Bulk Selection Bar in Table View */}
+            {viewMode === "table" && selectedLeadIds.length > 0 && (
+                <div className="mb-4 p-3 rounded-xl bg-brand/5 border border-brand/20 flex flex-wrap items-center justify-between gap-3 animate-fade-in text-xs">
+                    <div className="flex items-center gap-2">
+                        <LuCircleCheck className="w-4 h-4 text-brand" />
+                        <span className="font-semibold text-ink">
+                            {selectedLeadIds.length} lead{selectedLeadIds.length === 1 ? '' : 's'} selected
+                        </span>
+                        <button
+                            type="button"
+                            onClick={toggleSelectAll}
+                            className="text-xs text-brand hover:underline font-medium ml-2"
+                        >
+                            {selectedLeadIds.length === leads.length ? "Deselect All" : "Select All"}
+                        </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Bulk Move Stage */}
+                        <div className="flex items-center gap-1">
+                            <span className="text-ink-subtle">Move:</span>
+                            <select
+                                disabled={bulkSubmitting}
+                                onChange={(e) => {
+                                    if (e.target.value) handleBulkStage(e.target.value);
+                                    e.target.value = "";
+                                }}
+                                className="rounded-control border border-hairline bg-surface px-2 py-1 text-xs text-ink"
+                            >
+                                <option value="">Select Stage...</option>
+                                <option value="CONTACTED">Contacted</option>
+                                <option value="TRIAL">Trial</option>
+                                <option value="CONVERTED">Converted</option>
+                                <option value="LOST">Lost</option>
+                            </select>
+                        </div>
+
+                        {/* Bulk Assign */}
+                        <div className="flex items-center gap-1">
+                            <span className="text-ink-subtle">Assign:</span>
+                            <select
+                                disabled={bulkSubmitting}
+                                onChange={(e) => {
+                                    if (e.target.value) handleBulkAssign(e.target.value);
+                                    e.target.value = "";
+                                }}
+                                className="rounded-control border border-hairline bg-surface px-2 py-1 text-xs text-ink"
+                            >
+                                <option value="">Select Staff...</option>
+                                <option value="">Unassign</option>
+                                {staffList.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Bulk Delete */}
+                        <button
+                            type="button"
+                            disabled={bulkSubmitting}
+                            onClick={handleBulkDelete}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-control bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 text-xs font-medium transition-colors"
+                        >
+                            <LuTrash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Main View: Kanban or Table */}
             {viewMode === "kanban" ? (
                 <KanbanBoard<Lead, Lead['status']>
                     columns={KANBAN_COLUMNS}
@@ -430,7 +797,6 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                     renderCard={(lead, { prevColId, nextColId, moveToCol }) => {
                         const due = lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt) : null;
                         const isOverdue = due && due.getTime() <= Date.now() && lead.status !== 'CONVERTED' && lead.status !== 'LOST';
-                        const phoneDigits = cleanPhone(lead.phone);
 
                         return (
                             <div className="bg-surface rounded-xl p-3.5 border border-hairline shadow-sm hover:shadow-md hover:border-brand/40 transition-all flex flex-col gap-2.5">
@@ -441,12 +807,26 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                                     >
                                         {lead.name}
                                     </Link>
-                                    <button
-                                        onClick={() => handleEdit(lead)}
-                                        className="text-[11px] font-medium text-ink-subtle hover:text-ink transition-colors"
-                                    >
-                                        Edit
-                                    </button>
+                                    <div className="flex items-center gap-1.5">
+                                        {/* Quick Log Touch Button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setQuickLogLead(lead);
+                                                setIsQuickLogOpen(true);
+                                            }}
+                                            title="Quick Log Touch (Call, Note, Outcome)"
+                                            className="p-1 rounded text-brand hover:bg-brand/10 transition-colors"
+                                        >
+                                            <LuPhoneCall className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleEdit(lead)}
+                                            className="text-[11px] font-medium text-ink-subtle hover:text-ink transition-colors"
+                                        >
+                                            Edit
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="text-xs text-ink-subtle space-y-0.5">
@@ -454,16 +834,17 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                                     {lead.phone && (
                                         <div className="flex items-center justify-between pt-0.5">
                                             <span>{lead.phone}</span>
-                                            <a
-                                                href={`https://wa.me/${phoneDigits}?text=${encodeURIComponent(`Namaste ${lead.name}! Thank you for your interest in Shakti Yoga. How can we help you get started with your trial?`)}`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                title="Open WhatsApp Chat"
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded"
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setWhatsAppLead(lead);
+                                                    setIsWhatsAppOpen(true);
+                                                }}
+                                                title="Open WhatsApp Templates"
+                                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded transition-colors"
                                             >
                                                 <LuMessageCircle className="w-3 h-3" /> WhatsApp
-                                            </a>
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -482,16 +863,44 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
 
                                 {/* Follow-up & Owner Bar */}
                                 <div className="pt-2 border-t border-hairline/60 flex items-center justify-between text-[11px]">
-                                    <span className="text-ink-subtle truncate max-w-[110px]" title={lead.assignedTo?.name || "Unassigned"}>
+                                    <span className="text-ink-subtle truncate max-w-[100px]" title={lead.assignedTo?.name || "Unassigned"}>
                                         {lead.assignedTo ? lead.assignedTo.name : "Unassigned"}
                                     </span>
 
                                     {due ? (
-                                        <span className={`font-medium ${isOverdue ? "text-red-600 font-semibold" : "text-ink-subtle"}`}>
-                                            {isOverdue ? "⚠ Due " : "Follow-up "}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            <span className={`font-medium ${isOverdue ? "text-red-600 font-semibold" : "text-ink-subtle"}`}>
+                                                {isOverdue ? "⚠ Due " : "Due "}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                                            </span>
+                                            {isOverdue && (
+                                                <div className="flex gap-0.5 text-[9px]">
+                                                    <button
+                                                        type="button"
+                                                        title="Snooze 1 Day"
+                                                        onClick={() => handleSnoozeFollowUp(lead.id, 1)}
+                                                        className="px-1 py-0.2 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
+                                                    >
+                                                        +1d
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        title="Snooze 3 Days"
+                                                        onClick={() => handleSnoozeFollowUp(lead.id, 3)}
+                                                        className="px-1 py-0.2 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
+                                                    >
+                                                        +3d
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     ) : (
-                                        <span className="text-ink-subtle/60 text-[10px]">No follow-up</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSnoozeFollowUp(lead.id, 2)}
+                                            className="text-brand text-[10px] hover:underline"
+                                        >
+                                            + Set follow-up
+                                        </button>
                                     )}
                                 </div>
 
@@ -526,7 +935,6 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                     data={leads}
                     columns={columns}
                     title="All Leads"
-                    filters={[{ key: "status", label: "Status", options: STATUS_FILTER }]}
                     onCreate={handleCreate}
                     server={{
                         page,
@@ -534,14 +942,22 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                         totalCount,
                         onPageChange: setPage,
                         onSearchChange: (q) => { setSearch(q); setPage(1); },
-                        onFilterChange: (key, value) => {
-                            if (key === 'status') setStatusFilter(value);
-                            setPage(1);
-                        },
                     }}
                     actions={(lead) => (
                         <TableActions>
-                            <Link href={`/admin/leads/${lead.id}`} className="text-xs font-semibold text-brand hover:text-brand-strong">View</Link>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setQuickLogLead(lead);
+                                    setIsQuickLogOpen(true);
+                                }}
+                                className="text-xs font-semibold text-brand hover:underline"
+                            >
+                                Quick Touch
+                            </button>
+                            <Link href={`/admin/leads/${lead.id}`} className="text-xs font-semibold text-ink hover:underline">
+                                View
+                            </Link>
                             <ActionButton onClick={() => handleEdit(lead)}>Update</ActionButton>
                             <ActionButton tone="danger" onClick={() => handleDelete(lead)}>Delete</ActionButton>
                         </TableActions>
@@ -549,7 +965,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                 />
             )}
 
-            {/* Modal */}
+            {/* Create / Edit Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setIsModalOpen(false)}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
