@@ -4,25 +4,25 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Materialise upcoming class instances every 30 min
-*/30 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/ensure-instances.ts >> /var/log/shakti-cron.log 2>&1
+*/30 * * * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/ensure-instances.ts >> /var/log/shakti-cron.log 2>&1
 
 # Daily class reminder email — 00:30 UTC = 06:00 IST
-30 0 * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/send-class-reminders.ts >> /var/log/shakti-cron.log 2>&1
+30 0 * * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/send-class-reminders.ts >> /var/log/shakti-cron.log 2>&1
 
 # "Class starting soon" push to the mobile app — every 5 min (self-dedupes per class)
-*/5 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/send-class-push.ts >> /var/log/shakti-cron.log 2>&1
+*/5 * * * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/send-class-push.ts >> /var/log/shakti-cron.log 2>&1
 
 # Nightly backup — 03:00 server time
-0 3 * * * root /root/shaktiyoga/app/deploy/backup.sh >> /var/log/shakti-backup.log 2>&1
+0 3 * * * root APP_DIR=/var/www/shaktiyoga BACKUP_DIR=/var/www/shaktiyoga/backups /var/www/shaktiyoga/deploy/backup.sh >> /var/log/shakti-backup.log 2>&1
 
 # Host + app health check every 15 min (alerts admin on transition)
-*/15 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/host-check.ts >> /var/log/shakti-cron.log 2>&1
+*/15 * * * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/host-check.ts >> /var/log/shakti-cron.log 2>&1
 
 # Publish scheduled content (reels / posts / blogs) every 10 min
-*/10 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/publish-scheduled-content.ts >> /var/log/shakti-cron.log 2>&1
+*/10 * * * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/publish-scheduled-content.ts >> /var/log/shakti-cron.log 2>&1
 
 # Reconcile family seats + apply scheduled plan downgrades — hourly
-17 * * * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/reconcile-subscriptions.ts >> /var/log/shakti-cron.log 2>&1
+17 * * * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/reconcile-subscriptions.ts >> /var/log/shakti-cron.log 2>&1
 
 # Refresh the GeoIP country DB (₹ vs $ pricing) — monthly, 04:00 on the 1st
-0 4 1 * * root cd /root/shaktiyoga/app && set -a && . ./.env.local && set +a && node_modules/.bin/tsx scripts/refresh-geoip.ts >> /var/log/shakti-cron.log 2>&1
+0 4 1 * * root cd /var/www/shaktiyoga && set -a && . ./.env.production && set +a && node_modules/.bin/tsx scripts/refresh-geoip.ts >> /var/log/shakti-cron.log 2>&1

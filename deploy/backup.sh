@@ -24,21 +24,29 @@ cd "$APP_DIR"
 set -a; . ./.env.local; set +a
 
 # --- Postgres ---------------------------------------------------------------
-PG_RE='^postgres(ql)?://([^:]+):([^@]+)@[^/]+/([^?]+)'
+PG_RE='^postgres(ql)?://([^:]+):([^@]+)@([^:/]+)(:[0-9]+)?/([^?]+)'
 if [[ "${DATABASE_URL:-}" =~ $PG_RE ]]; then
-    PGU="${BASH_REMATCH[2]}"; PGP="${BASH_REMATCH[3]}"; PGDB="${BASH_REMATCH[4]}"
+    PGU="${BASH_REMATCH[2]}"; PGP="${BASH_REMATCH[3]}"; PGH="${BASH_REMATCH[4]}"; PGDB="${BASH_REMATCH[6]}"
     OUT="$BACKUP_DIR/daily/pg-${STAMP}.sql.gz"
     echo "$(date -Is) pg_dump -> $OUT"
-    docker exec -e PGPASSWORD="$PGP" "$PG_CONTAINER" pg_dump -U "$PGU" "$PGDB" | gzip > "$OUT"
+    if command -v pg_dump >/dev/null; then
+        PGPASSWORD="$PGP" pg_dump -h "$PGH" -U "$PGU" "$PGDB" | gzip > "$OUT"
+    elif docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+        docker exec -e PGPASSWORD="$PGP" "$PG_CONTAINER" pg_dump -U "$PGU" "$PGDB" | gzip > "$OUT"
+    else
+        echo "Neither host pg_dump nor docker container $PG_CONTAINER available"; exit 1
+    fi
     [ -s "$OUT" ] || { echo "pg_dump produced an empty file"; exit 1; }
 else
     echo "DATABASE_URL not a postgres URL — skipping pg dump"; exit 1
 fi
 
 # --- MinIO ---------------------------------------------------------------
-# The MinIO image is minimal (no tar), so archive the Docker volume from the host.
 MC_OUT="$BACKUP_DIR/daily/minio-${STAMP}.tar.gz"
-if docker ps --format '{{.Names}}' | grep -qx "$MINIO_CONTAINER"; then
+if [ -d "/data/minio/shakti-yoga-assets" ]; then
+    echo "$(date -Is) minio directory /data/minio/shakti-yoga-assets -> $MC_OUT"
+    tar -C "/data/minio" -czf "$MC_OUT" "shakti-yoga-assets" || echo "  (minio archive failed, continuing)"
+elif docker ps --format '{{.Names}}' | grep -qx "$MINIO_CONTAINER"; then
     MINIO_VOL="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}' "$MINIO_CONTAINER" 2>/dev/null || true)"
     if [ -n "$MINIO_VOL" ] && [ -d "$MINIO_VOL" ]; then
         echo "$(date -Is) minio volume $MINIO_VOL -> $MC_OUT"
