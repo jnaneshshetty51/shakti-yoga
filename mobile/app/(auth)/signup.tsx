@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TextInput, StyleSheet, ScrollView } from "react-native";
+import { View, TextInput, StyleSheet, ScrollView, Pressable } from "react-native";
 import { router, Link, useLocalSearchParams } from "expo-router";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { useAuth, ApiError } from "@/context/AuthContext";
@@ -17,7 +17,9 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 export default function SignupScreen() {
   const { register } = useAuth();
   const { ref } = useLocalSearchParams<{ ref?: string }>();
-  const referralCode = typeof ref === "string" ? ref.trim().toUpperCase().slice(0, 24) : "";
+  const initialRef = typeof ref === "string" ? ref.trim().toUpperCase().slice(0, 24) : "";
+  const [referralCode, setReferralCode] = useState(initialRef);
+  const [showReferralInput, setShowReferralInput] = useState(Boolean(initialRef));
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,7 +42,7 @@ export default function SignupScreen() {
         password,
         country: country || undefined,
         phone: phone || undefined,
-        referralCode: referralCode || undefined,
+        referralCode: referralCode.trim() || undefined,
       });
       router.replace("/(tabs)");
     } catch (err) {
@@ -60,10 +62,10 @@ export default function SignupScreen() {
 
         {error && <BodyText style={styles.error}>{error}</BodyText>}
 
-        {referralCode ? (
+        {initialRef ? (
           <View style={styles.referralBanner}>
             <BodyText style={{ color: colors.primary, fontSize: 13 }}>
-              Referral code <BodyText style={{ fontWeight: "700" }}>{referralCode}</BodyText> applied — you&rsquo;ll get a discount on your first month at checkout.
+              Referral code <BodyText style={{ fontWeight: "700" }}>{initialRef}</BodyText> applied — you&rsquo;ll get a discount on your first month at checkout.
             </BodyText>
           </View>
         ) : null}
@@ -76,6 +78,20 @@ export default function SignupScreen() {
         <Field label="Phone (optional)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <Field label="Country (optional)" value={country} onChangeText={setCountry} />
         <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 8 characters" />
+
+        {!showReferralInput ? (
+          <Pressable onPress={() => setShowReferralInput(true)} style={{ marginTop: spacing.xs, marginBottom: spacing.sm, alignSelf: "flex-start" }}>
+            <BodyText style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>+ Have a referral code?</BodyText>
+          </Pressable>
+        ) : !initialRef ? (
+          <Field
+            label="Referral code (optional)"
+            value={referralCode}
+            onChangeText={(t) => setReferralCode(t.toUpperCase().slice(0, 24))}
+            autoCapitalize="characters"
+            placeholder="e.g. YOGI1234"
+          />
+        ) : null}
 
         <BodyText muted style={{ fontSize: 12, marginTop: spacing.xs }}>
           By continuing you agree to Shakti&rsquo;s Terms, Privacy Policy and Refund Policy.

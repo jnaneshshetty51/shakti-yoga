@@ -3,7 +3,7 @@ import { View, ScrollView, TextInput, Pressable, StyleSheet, Alert, Image, Platf
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, BodyText, Card, Button, LoadingView } from "@/components/ui";
+import { Screen, Heading, BodyText, Card, Button, LoadingView } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError, API_URL, getToken } from "@/lib/api";
@@ -30,10 +30,11 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 }
 
 export default function ProfileScreen() {
-  const { logout, refreshUser } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const isVisitor = !user || user.role === "visitor";
   const { data, loading, reload } = useResource(
-    () => api.get<{ profile: ProfileResponse }>("/api/profile").then((r) => r.profile),
-    [],
+    () => (isVisitor ? Promise.resolve(null) : api.get<{ profile: ProfileResponse }>("/api/profile").then((r) => r.profile)),
+    [isVisitor],
   );
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", country: "", timezone: "", goals: "", communicationPref: "" });
@@ -134,6 +135,33 @@ export default function ProfileScreen() {
       ]);
     }
   };
+
+  if (isVisitor) {
+    return (
+      <Screen>
+        <ScreenHeader title="Profile" />
+        <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+          <Card style={{ alignItems: "center", paddingVertical: spacing.xl, paddingHorizontal: spacing.lg }}>
+            <View style={[styles.avatar, styles.avatarEmpty, { marginBottom: spacing.md }]}>
+              <Ionicons name="person-outline" size={36} color={colors.primary} />
+            </View>
+            <Heading size="md" style={{ textAlign: "center", marginBottom: spacing.xs }}>
+              Welcome to Shakti Yoga
+            </Heading>
+            <BodyText muted style={{ textAlign: "center", marginBottom: spacing.lg }}>
+              Log in or create an account to view and manage your profile, schedule, and personal practice.
+            </BodyText>
+            <Button style={{ width: "100%", marginBottom: spacing.sm }} onPress={() => router.push("/(auth)/login")}>
+              Log In
+            </Button>
+            <Button variant="outline" style={{ width: "100%" }} onPress={() => router.push("/(auth)/signup")}>
+              Create Account
+            </Button>
+          </Card>
+        </ScrollView>
+      </Screen>
+    );
+  }
 
   if (loading) return <Screen><ScreenHeader title="Profile" /><LoadingView /></Screen>;
 

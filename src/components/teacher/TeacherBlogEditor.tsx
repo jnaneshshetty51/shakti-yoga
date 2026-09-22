@@ -140,8 +140,8 @@ export default function TeacherBlogEditor({ mode, postId }: TeacherBlogEditorPro
 
             setForm((prev) => ({ ...prev, imageUrl: result.url }));
             showToast("success", "Cover image uploaded successfully!");
-        } catch (err: any) {
-            showToast("error", err.message || "Failed to upload image");
+        } catch (err: unknown) {
+            showToast("error", err instanceof Error ? err.message : "Failed to upload image");
         } finally {
             setUploadingImage(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -190,8 +190,8 @@ export default function TeacherBlogEditor({ mode, postId }: TeacherBlogEditorPro
             );
 
             router.push("/teacher/blog");
-        } catch (err: any) {
-            showToast("error", err.message || "Failed to save article");
+        } catch (err: unknown) {
+            showToast("error", err instanceof Error ? err.message : "Failed to save article");
         } finally {
             setSaving(false);
         }

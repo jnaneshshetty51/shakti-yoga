@@ -34,7 +34,7 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
             return NextResponse.json({ error: 'This class has already ended.' }, { status: 400 });
         }
 
-        if (instance.batch.planType !== 'EVERYDAY_YOGA') {
+        if (instance.batch.planType !== 'EVERYDAY_YOGA' && instance.batch.planType !== 'TRIAL') {
             return NextResponse.json({ error: 'This class is not a group class.' }, { status: 400 });
         }
 

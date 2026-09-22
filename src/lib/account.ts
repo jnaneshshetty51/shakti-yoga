@@ -35,6 +35,25 @@ export async function deleteAccount(userId: string): Promise<void> {
         }
     }
 
+    // Clean up family plan memberships if this user owns or belongs to one
+    if (sub?.familyOwnerId) {
+        await prisma.subscription.updateMany({
+            where: { userId: sub.familyOwnerId, seatsClaimed: { gt: 0 } },
+            data: { seatsClaimed: { decrement: 1 } },
+        }).catch(() => {});
+    } else if (sub?.planType === 'FAMILY' && !sub.familyOwnerId) {
+        const seats = await prisma.subscription.findMany({
+            where: { familyOwnerId: userId },
+            select: { id: true, userId: true },
+        });
+        for (const seat of seats) {
+            await prisma.$transaction([
+                prisma.subscription.update({ where: { id: seat.id }, data: { status: 'EXPIRED' } }),
+                prisma.user.update({ where: { id: seat.userId }, data: { role: 'VISITOR' } }),
+            ]).catch(() => {});
+        }
+    }
+
     await prisma.$transaction([
         prisma.pushToken.deleteMany({ where: { userId } }),
         prisma.userProfile.deleteMany({ where: { userId } }),

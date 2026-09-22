@@ -7,6 +7,7 @@ import { LuArrowLeft, LuCalendar, LuUserCheck, LuMessageCircle, LuCreditCard } f
 import { PageHeader, PageLoading, Card, Badge, ErrorState, Button, inputClass, labelClass } from "@/components/admin/ui";
 import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTimeline";
 import { useToast } from "@/components/admin/Toast";
+import { toWhatsAppUrl } from "@/lib/phone";
 
 type Lead = {
     id: string; name: string; email: string; phone: string | null; country: string | null;
@@ -172,7 +173,7 @@ export default function LeadDetailPage() {
                                 <div className="flex items-center gap-2">
                                     <span>{lead.phone}</span>
                                     <a
-                                        href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${lead.name}, this is from Shakthi Yoga. Reaching out regarding your interest in our sessions!`)}`}
+                                        href={toWhatsAppUrl(lead.phone, `Hi ${lead.name}, this is from Shakthi Yoga. Reaching out regarding your interest in our sessions!`)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"

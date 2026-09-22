@@ -35,15 +35,28 @@ export default function SignupPage() {
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const [referralCode] = useState(refFromUrl);
+    const [referralCode, setReferralCode] = useState(refFromUrl);
+    const [showReferralInput, setShowReferralInput] = useState(Boolean(refFromUrl()));
     const [refereeDiscountInr, setRefereeDiscountInr] = useState<number | null>(null);
+
+    const onReferralCodeChange = (code: string) => {
+        const next = code.toUpperCase().slice(0, 24);
+        setReferralCode(next);
+        if (!next) setRefereeDiscountInr(null);
+    };
 
     useEffect(() => {
         if (!referralCode) return;
+        let active = true;
         fetch("/api/referral/settings")
             .then((r) => r.json())
-            .then((d) => setRefereeDiscountInr(typeof d.refereeDiscountInr === "number" ? d.refereeDiscountInr : null))
+            .then((d) => {
+                if (active) setRefereeDiscountInr(typeof d.refereeDiscountInr === "number" ? d.refereeDiscountInr : null);
+            })
             .catch(() => {});
+        return () => {
+            active = false;
+        };
     }, [referralCode]);
 
     const set = (key: keyof typeof form) => (
@@ -147,6 +160,33 @@ export default function SignupPage() {
                     <div>
                         <label htmlFor="phone" className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">WhatsApp / Phone <span className="text-xs font-normal normal-case opacity-50">(Optional)</span></label>
                         <input type="tel" id="phone" value={form.phone} onChange={set("phone")} className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition" placeholder="+91 98765 43210" />
+                    </div>
+
+                    <div>
+                        {!showReferralInput ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowReferralInput(true)}
+                                className="text-xs font-semibold text-primary hover:text-secondary transition-colors"
+                            >
+                                + Have a referral code?
+                            </button>
+                        ) : (
+                            <div>
+                                <label htmlFor="referralCode" className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                                    Referral Code <span className="text-xs font-normal normal-case opacity-50">(Optional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="referralCode"
+                                    value={referralCode}
+                                    onChange={(e) => onReferralCodeChange(e.target.value)}
+                                    placeholder="e.g. YOGI1234"
+                                    maxLength={24}
+                                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <button type="submit" disabled={loading} className="w-full py-3 bg-primary text-white font-semibold text-sm rounded-full hover:bg-primary/90 transition-colors disabled:opacity-70">

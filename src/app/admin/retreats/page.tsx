@@ -11,6 +11,7 @@ import {
 import { useToast } from "@/components/admin/Toast";
 import { CURRENCY_OPTIONS } from "@/lib/pricing";
 import { LuMessageCircle, LuCalendar, LuUsers, LuBadgeCheck } from "react-icons/lu";
+import { toWhatsAppUrl } from "@/lib/phone";
 
 type Retreat = {
     id: string;
@@ -161,7 +162,7 @@ export function AdminRetreatsContent({ embedded = false }: { embedded?: boolean 
                         <>
                             <span>•</span>
                             <a
-                                href={`https://wa.me/${e.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${e.name}, thank you for your enquiry regarding ${e.retreat.name} at Shakthi Yoga!`)}`}
+                                href={toWhatsAppUrl(e.phone, `Hi ${e.name}, thank you for your enquiry regarding ${e.retreat.name} at Shakthi Yoga!`)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium"

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, View, TextInput, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { Screen, Heading, BodyText, Card, Button, LoadingView } from "@/components/ui";
@@ -87,11 +87,13 @@ export default function TherapyIntakeScreen() {
   const intake = data?.intake ?? null;
 
   // Seed the form once from the loaded intake / the signed-in user's name.
-  if (!loading && !seeded) {
-    if (intake) setForm(fromIntake(intake));
-    else if (user) setForm((f) => ({ ...f, fullName: user.name }));
-    setSeeded(true);
-  }
+  useEffect(() => {
+    if (!loading && !seeded) {
+      if (intake) setForm(fromIntake(intake));
+      else if (user) setForm((f) => ({ ...f, fullName: user.name }));
+      setSeeded(true);
+    }
+  }, [loading, seeded, intake, user]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
 

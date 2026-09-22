@@ -41,8 +41,8 @@ export default function DeleteAccountPage() {
             }
 
             setSubmitted(true);
-        } catch (err: any) {
-            setError(err.message || "Failed to submit deletion request. Please email support@shaktiyoga.in.");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to submit deletion request. Please email support@shaktiyoga.in.");
         } finally {
             setSubmitting(false);
         }

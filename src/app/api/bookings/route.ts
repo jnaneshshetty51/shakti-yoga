@@ -54,51 +54,56 @@ export async function POST(request: Request) {
         const user = await prisma.user.findUnique({ where: { id: session.id } });
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Everyday members and Trial users join the group class — they don't book 1:1 sessions.
-        // Free trial is strictly 1 Everyday Yoga group class, not a therapy session.
-        if (user.role === 'MEMBER_EVERYDAY') {
-            return NextResponse.json(
-                { error: 'Your plan is the daily group class — just tap Join on your dashboard, no booking needed.' },
-                { status: 400 },
-            );
-        }
-        if (user.role === 'TRIAL') {
-            return NextResponse.json(
-                {
-                    error: 'Your free trial includes 1 Everyday Yoga group class, not 1:1 therapy sessions. Subscribe to Yoga Therapy to book personal sessions.',
-                    paywall: true,
-                },
-                { status: 403 },
-            );
-        }
-        if (user.role !== 'MEMBER_THERAPY') {
-            return NextResponse.json(
-                { error: 'An active Yoga Therapy membership is required to book a session.', paywall: true },
-                { status: 403 },
-            );
-        }
-
         const body = await readJson(request);
         const dateStr = str(body.date, { label: 'date', pattern: /^\d{4}-\d{2}-\d{2}$/ });
         const slot = str(body.slot, { label: 'slot', min: 5, max: 40 });
         const notes = optStr(body.notes, { label: 'notes', max: 1000 });
+        const requestedType = optStr(body.type, { label: 'type', max: 30 });
 
-        let when: Date;
-        try {
-            when = bookingInstant(dateStr, slot);
-        } catch {
-            throw new ValidationError('Pick a valid date and time slot.');
-        }
-        if (when.getTime() < Date.now()) {
-            throw new ValidationError('That time has already passed. Pick a later slot.');
-        }
+        const isConsultation = requestedType === 'CONSULTATION' || (!requestedType && user.role !== 'MEMBER_THERAPY');
 
-        const isTherapy = user.role === 'MEMBER_THERAPY';
+        if (isConsultation) {
+            const existingConsultation = await prisma.booking.findFirst({
+                where: {
+                    userId: user.id,
+                    type: 'CONSULTATION',
+                    status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
+                },
+            });
+            if (existingConsultation) {
+                return NextResponse.json(
+                    { error: 'You have already booked your free consultation. Check your upcoming sessions on the dashboard.' },
+                    { status: 409 },
+                );
+            }
+        } else {
+            // Everyday members and Trial users join the group class — they don't book 1:1 sessions.
+            // Free trial is strictly 1 Everyday Yoga group class, not a therapy session.
+            if (user.role === 'MEMBER_EVERYDAY') {
+                return NextResponse.json(
+                    { error: 'Your plan is the daily group class — just tap Join on your dashboard, no booking needed.' },
+                    { status: 400 },
+                );
+            }
+            if (user.role === 'TRIAL') {
+                return NextResponse.json(
+                    {
+                        error: 'Your free trial includes 1 Everyday Yoga group class, not 1:1 therapy sessions. Subscribe to Yoga Therapy to book personal sessions.',
+                        paywall: true,
+                    },
+                    { status: 403 },
+                );
+            }
+            if (user.role !== 'MEMBER_THERAPY') {
+                return NextResponse.json(
+                    { error: 'An active Yoga Therapy membership is required to book a session.', paywall: true },
+                    { status: 403 },
+                );
+            }
 
-        // A therapist's recommendation is what a Yoga Therapy plan is actually
-        // gated on — credits alone don't mean the member has been cleared for
-        // 1:1 sessions yet (or was cleared "with conditions" that still apply).
-        if (isTherapy) {
+            // A therapist's recommendation is what a Yoga Therapy plan is actually
+            // gated on — credits alone don't mean the member has been cleared for
+            // 1:1 sessions yet (or was cleared "with conditions" that still apply).
             const intake = await getIntake(user.id);
             if (!intake || !INTAKE_ELIGIBLE.has(intake.status)) {
                 return NextResponse.json(
@@ -110,9 +115,26 @@ export async function POST(request: Request) {
                     { status: 403 },
                 );
             }
+
+            if (user.credits <= 0) {
+                return NextResponse.json(
+                    { error: 'You have no 1:1 session credits left. Renew your Yoga Therapy plan to add more.' },
+                    { status: 403 },
+                );
+            }
         }
 
+        let when: Date;
+        try {
+            when = bookingInstant(dateStr, slot);
+        } catch {
+            throw new ValidationError('Pick a valid date and time slot.');
+        }
+        if (when.getTime() < Date.now()) {
+            throw new ValidationError('That time has already passed. Pick a later slot.');
+        }
 
+        const isTherapy = !isConsultation;
 
         // Resolve the teacher whose availability covers this slot (fall back to any teacher).
         const teachers = await prisma.user.findMany({ where: { role: 'TEACHER' }, select: { id: true } });
@@ -134,13 +156,6 @@ export async function POST(request: Request) {
         const anyRules = await prisma.teacherAvailability.count({ where: { active: true } });
         if (anyRules > 0 && !slotOk) {
             return NextResponse.json({ error: 'That slot is no longer available. Please pick another.' }, { status: 409 });
-        }
-
-        if (isTherapy && user.credits <= 0) {
-            return NextResponse.json(
-                { error: 'You have no 1:1 session credits left. Renew your Yoga Therapy plan to add more.' },
-                { status: 403 },
-            );
         }
 
         let booking;

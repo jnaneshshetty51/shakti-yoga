@@ -45,10 +45,28 @@ export async function familyView(userId: string): Promise<FamilyView> {
     }
 
     if (sub.familyOwnerId) {
-        const owner = await prisma.user.findUnique({ where: { id: sub.familyOwnerId }, select: { name: true } });
+        const [owner, siblings] = await Promise.all([
+            prisma.user.findUnique({ where: { id: sub.familyOwnerId }, select: { id: true, name: true } }),
+            prisma.subscription.findMany({
+                where: { familyOwnerId: sub.familyOwnerId },
+                select: { user: { select: { id: true, name: true } } },
+            }),
+        ]);
+        const allMembers = [
+            { id: owner?.id, name: owner?.name ?? 'Plan Owner', owner: true },
+            ...siblings.map((s) => ({
+                id: s.user.id,
+                name: s.user.id === userId ? `${s.user.name} (You)` : s.user.name,
+                owner: false,
+            })),
+        ];
         return {
-            isFamily: true, isOwner: false, code: null,
-            seatsUsed: 0, seatsTotal: FAMILY_SEATS, members: [],
+            isFamily: true,
+            isOwner: false,
+            code: null,
+            seatsUsed: 1 + siblings.length,
+            seatsTotal: FAMILY_SEATS,
+            members: allMembers,
             ownerName: owner?.name ?? 'the plan owner',
         };
     }
@@ -129,6 +147,20 @@ export async function joinFamily(userId: string, rawCode: string): Promise<JoinR
     const me = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
     if (me && ['MEMBER_EVERYDAY', 'MEMBER_THERAPY', 'MEMBER_STARTER'].includes(me.role)) {
         return { ok: false, error: 'You already have a membership. Cancel it first to join a family plan.', status: 409 };
+    }
+
+    // Check actual active seats count to prevent desynchronization
+    const activeSeatsCount = await prisma.subscription.count({
+        where: { familyOwnerId: ownerSub.userId, status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] } },
+    });
+    if (activeSeatsCount >= PLANS.family.extraSeats) {
+        return { ok: false, error: 'This family plan is full.', status: 409 };
+    }
+    if (ownerSub.seatsClaimed < activeSeatsCount) {
+        await prisma.subscription.update({
+            where: { id: ownerSub.id },
+            data: { seatsClaimed: activeSeatsCount },
+        }).catch(() => {});
     }
 
     // Atomically claim a seat: a single conditional UPDATE is race-free at the

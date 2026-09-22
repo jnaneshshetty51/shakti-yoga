@@ -96,12 +96,14 @@ function TrialContent() {
     }
 
     const isAppAdmin = user.role === "admin";
+    const isTeacher = user.role === "teacher";
     const alreadyMember =
         user.role === "member_everyday" ||
         user.role === "member_starter" ||
         user.role === "member_therapy" ||
         user.role === "trial" ||
-        isAppAdmin;
+        isAppAdmin ||
+        isTeacher;
 
     return (
         <main className="min-h-screen bg-gray-50 py-12 sm:py-16 px-4">
@@ -121,16 +123,18 @@ function TrialContent() {
                             <p className="text-text/70 text-sm leading-relaxed max-w-sm mx-auto">
                                 {isAppAdmin
                                     ? "You are logged in as an Administrator with full platform and schedule access."
+                                    : isTeacher
+                                    ? "You are logged in as a Yoga Teacher / Instructor. Your classes and attendance are managed in the Teacher Portal."
                                     : user.role === "trial"
                                     ? "You already have an active trial pass. Your complimentary session is ready in your dashboard!"
                                     : "Your active membership gives you complete access to all live daily sessions and practice materials. You don't need a trial pass!"}
                             </p>
                             <div className="pt-2 flex flex-col gap-3">
                                 <Link
-                                    href={isAppAdmin ? "/admin" : "/dashboard"}
+                                    href={isAppAdmin ? "/admin" : isTeacher ? "/teacher" : "/dashboard"}
                                     className="w-full inline-block py-3.5 bg-primary text-white font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
                                 >
-                                    {isAppAdmin ? "Go to Admin Panel" : "Go to My Dashboard"}
+                                    {isAppAdmin ? "Go to Admin Panel" : isTeacher ? "Go to Teacher Portal" : "Go to My Dashboard"}
                                 </Link>
                                 <Link
                                     href={isAppAdmin ? "/admin/schedule" : "/schedule"}

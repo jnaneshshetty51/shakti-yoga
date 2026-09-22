@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { ScrollView, View, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import { Screen, Heading, BodyText, Button, LoadingView } from "@/components/ui";
+import { Screen, Heading, BodyText, Button, Card, LoadingView } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { useResource } from "@/lib/useResource";
 import { istParts, istYmd } from "@/lib/ist";
 import { colors, spacing, radius } from "@/theme";
 
 export default function BookConsultScreen() {
+  const { user } = useAuth();
   const [date, setDate] = useState(istYmd(new Date(Date.now() + 86_400_000)));
   const [slot, setSlot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23,7 +25,7 @@ export default function BookConsultScreen() {
     setBusy(true);
     setErr(null);
     try {
-      await api.post("/api/bookings", { date, slot });
+      await api.post("/api/bookings", { date, slot, type: "CONSULTATION" });
       setDone(true);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not book your consultation");
@@ -31,6 +33,23 @@ export default function BookConsultScreen() {
       setBusy(false);
     }
   };
+
+  if (!user) {
+    return (
+      <Screen>
+        <ScreenHeader title="Free Consultation" />
+        <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+          <Card>
+            <Heading size="md" style={{ marginBottom: spacing.xs }}>Sign in to book</Heading>
+            <BodyText muted style={{ marginBottom: spacing.md }}>
+              Create an account or log in to book your free 1:1 consultation with a Shakti Yoga Therapist.
+            </BodyText>
+            <Button onPress={() => router.push("/(auth)/welcome")}>Log in / Sign up</Button>
+          </Card>
+        </ScrollView>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

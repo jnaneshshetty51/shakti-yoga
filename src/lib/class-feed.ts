@@ -28,7 +28,7 @@ export async function getClassFeed(userId: string): Promise<ClassFeed> {
         where: {
             date: { gte: new Date(now.getTime() - 3 * 3_600_000), lte: horizon },
             status: { not: 'Cancelled' },
-            batch: { active: true, planType: 'EVERYDAY_YOGA' },
+            batch: { active: true, planType: { in: ['EVERYDAY_YOGA', 'TRIAL'] } },
         },
         include: {
             teacher: { select: { id: true, name: true } },

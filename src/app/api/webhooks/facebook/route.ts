@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyMetaSignature, saveMetaLead } from '@/lib/meta';
 
-const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'shakti_yoga_verify_2024';
+const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
 
 /**
  * Facebook Webhook verification endpoint (handshake).
@@ -14,12 +14,17 @@ export async function GET(request: Request) {
     const token = searchParams.get('hub.verify_token');
     const challenge = searchParams.get('hub.challenge');
 
+    if (!VERIFY_TOKEN) {
+        console.warn('[facebook-webhook] META_WEBHOOK_VERIFY_TOKEN not configured');
+        return new Response('Webhook not configured', { status: 503 });
+    }
+
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
         console.log('[facebook-webhook] Verification handshake successful');
         return new Response(challenge, { status: 200 });
     }
 
-    console.warn('[facebook-webhook] Verification failed. Provided token:', token);
+    console.warn('[facebook-webhook] Verification failed.');
     return new Response('Forbidden', { status: 403 });
 }
 
@@ -31,8 +36,13 @@ export async function POST(request: Request) {
     const rawBody = await request.text();
     const signature = request.headers.get('x-hub-signature-256');
 
+    if (!process.env.META_APP_SECRET) {
+        console.warn('[facebook-webhook] META_APP_SECRET not configured — rejecting webhook');
+        return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+    }
+
     // Verify cryptographic signature from Meta
-    if (process.env.META_APP_SECRET && !verifyMetaSignature(rawBody, signature)) {
+    if (!verifyMetaSignature(rawBody, signature)) {
         console.error('[facebook-webhook] Invalid HMAC signature');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }

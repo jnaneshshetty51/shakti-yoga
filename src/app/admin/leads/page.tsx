@@ -9,6 +9,7 @@ import { useToast } from "@/components/admin/Toast";
 import { formatDistanceToNow } from "date-fns";
 import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass, inputClass, useConfirmDialog, Button } from "@/components/admin/ui";
 import { LuKanban, LuTable, LuMessageCircle, LuClock, LuUsers, LuTarget, LuCalendar, LuArrowRight, LuArrowLeft, LuPlus, LuSearch } from "react-icons/lu";
+import { cleanWhatsAppPhone } from "@/lib/phone";
 
 const PAGE_SIZE = 25;
 
@@ -262,7 +263,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         { id: 'LOST' as const, title: 'Lost', tone: 'red' as const },
     ];
 
-    const cleanPhone = (phone: string | null) => (phone ? phone.replace(/[^0-9]/g, '') : '');
+    const cleanPhone = (phone: string | null) => cleanWhatsAppPhone(phone);
 
     const columns = [
         {

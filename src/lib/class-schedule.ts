@@ -212,7 +212,7 @@ export async function ensureInstances(daysAhead = 7): Promise<number> {
     // time (see api/admin/schedule/one-time) and must never have another one
     // generated for it just because its weekday/timeSlot happens to recur.
     const batches = await prisma.classBatch.findMany({
-        where: { active: true, planType: 'EVERYDAY_YOGA', oneTime: false },
+        where: { active: true, planType: { in: ['EVERYDAY_YOGA', 'TRIAL'] }, oneTime: false },
     });
     if (batches.length === 0) return 0;
 

@@ -17,15 +17,23 @@ export default function ShareButtons({
     variant = "card",
     className = "",
 }: ShareButtonsProps) {
-    const [currentUrl, setCurrentUrl] = useState(url || "");
+    const resolvedUrl = url
+        ? url.startsWith("http")
+            ? url
+            : `https://shaktiyoga.in${url.startsWith("/") ? "" : "/"}${url}`
+        : "";
+
+    const [currentUrl, setCurrentUrl] = useState(resolvedUrl);
     const [copied, setCopied] = useState(false);
     const [canNativeShare, setCanNativeShare] = useState(false);
 
     useEffect(() => {
         if (!url && typeof window !== "undefined") {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- client URL synchronization
             setCurrentUrl(window.location.href);
-        } else if (url) {
-            setCurrentUrl(url.startsWith("http") ? url : `${window.location.origin}${url}`);
+        } else if (url && !url.startsWith("http") && typeof window !== "undefined") {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- client URL synchronization
+            setCurrentUrl(`${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`);
         }
         if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
             setCanNativeShare(true);
@@ -34,7 +42,7 @@ export default function ShareButtons({
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(currentUrl);
+            await navigator.clipboard.writeText(currentUrl || window.location.href);
             setCopied(true);
             setTimeout(() => setCopied(false), 2200);
         } catch (err) {
@@ -48,7 +56,7 @@ export default function ShareButtons({
                 await navigator.share({
                     title,
                     text: title,
-                    url: currentUrl,
+                    url: currentUrl || window.location.href,
                 });
             } catch {
                 // User dismissed or aborted sharing
@@ -56,12 +64,83 @@ export default function ShareButtons({
         }
     };
 
-    const encodedUrl = encodeURIComponent(currentUrl);
+    const targetUrl = currentUrl || (typeof window !== "undefined" ? window.location.href : "https://shaktiyoga.in");
+    const encodedUrl = encodeURIComponent(targetUrl);
     const encodedTitle = encodeURIComponent(title);
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedTitle}%20-%20${encodedUrl}`;
     const twitterUrl = `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`;
     const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+
+    if (variant === "floating") {
+        return (
+            <div className={`fixed left-4 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col items-center gap-2 p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-secondary/15 ${className}`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-secondary py-0.5">Share</span>
+                {canNativeShare && (
+                    <button
+                        onClick={handleNativeShare}
+                        className="p-2 rounded-xl text-gray-700 hover:bg-primary/10 hover:text-primary transition-all duration-200"
+                        title="Share"
+                        aria-label="Share via device"
+                    >
+                        <LuShare2 className="w-4 h-4" />
+                    </button>
+                )}
+                <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-xl text-[#25D366] hover:bg-[#25D366]/15 transition-all duration-200"
+                    title="Share on WhatsApp"
+                    aria-label="Share on WhatsApp"
+                >
+                    <FaWhatsapp className="w-4 h-4" />
+                </a>
+                <a
+                    href={twitterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-xl text-gray-700 hover:bg-gray-100 hover:text-black transition-all duration-200"
+                    title="Share on X (Twitter)"
+                    aria-label="Share on X"
+                >
+                    <FaTwitter className="w-4 h-4" />
+                </a>
+                <a
+                    href={linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-xl text-[#0A66C2] hover:bg-[#0A66C2]/15 transition-all duration-200"
+                    title="Share on LinkedIn"
+                    aria-label="Share on LinkedIn"
+                >
+                    <FaLinkedin className="w-4 h-4" />
+                </a>
+                <a
+                    href={facebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-xl text-[#1877F2] hover:bg-[#1877F2]/15 transition-all duration-200"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
+                >
+                    <FaFacebook className="w-4 h-4" />
+                </a>
+                <button
+                    onClick={handleCopy}
+                    className={`p-2 rounded-xl transition-all duration-200 ${
+                        copied
+                            ? "bg-emerald-500 text-white shadow-sm"
+                            : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    title="Copy Link"
+                    aria-label="Copy link"
+                >
+                    {copied ? <LuCheck className="w-4 h-4 text-white" /> : <LuLink className="w-4 h-4" />}
+                </button>
+            </div>
+        );
+    }
 
     if (variant === "compact") {
         return (

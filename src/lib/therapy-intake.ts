@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { ValidationError } from '@/lib/validation';
 import { TherapyIntakeStatus, type TherapyIntake } from '@prisma/client';
+import { sendEmail, emailLayout } from '@/lib/email';
+import { sendPush } from '@/lib/push';
+import { SITE_URL } from '@/lib/site';
 
 /** Fields the applicant can fill in, one sitting, saved as they go. */
 export interface IntakeDraftFields {
@@ -135,7 +138,7 @@ export async function decideIntake(
     decision: Decision,
     notes: string | undefined,
 ): Promise<TherapyIntake> {
-    return prisma.therapyIntake.update({
+    const intake = await prisma.therapyIntake.update({
         where: { id: intakeId },
         data: {
             status: decision,
@@ -143,7 +146,32 @@ export async function decideIntake(
             reviewedById: adminId,
             reviewNotes: notes ?? null,
         },
+        include: { user: { select: { id: true, name: true, email: true } } },
     });
+
+    if (decision === 'RECOMMENDED' || decision === 'RECOMMENDED_WITH_CONDITIONS') {
+        const firstName = intake.user.name?.split(' ')[0] || 'there';
+        sendEmail({
+            to: intake.user.email,
+            subject: 'Your Yoga Therapy assessment recommendation is ready',
+            html: emailLayout(
+                `<p>Namaste ${firstName},</p>
+                 <p>A Shakti Yoga Therapist has reviewed your assessment and you are <strong>recommended for Yoga Therapy</strong>.${decision === 'RECOMMENDED_WITH_CONDITIONS' ? ' Our team noted a few conditions to consider as we tailor your program.' : ''}</p>
+                 ${notes ? `<p style="background:#F7F5F0;padding:12px;border-radius:8px;border-left:3px solid #4A6741;"><strong>Therapist Notes:</strong> ${notes}</p>` : ''}
+                 <p>You can now book your free consultation to discuss your personalized therapy plan:</p>
+                 <p><a href="${SITE_URL}/dashboard/therapy" style="background:#4A6741;color:#fff;padding:10px 20px;border-radius:24px;text-decoration:none;display:inline-block;font-weight:bold;">View Your Assessment & Book Consultation</a></p>`,
+            ),
+        }).catch(() => {});
+
+        sendPush(intake.userId, {
+            title: 'Assessment Reviewed',
+            body: 'Your Yoga Therapy assessment is recommended! Tap to book your consultation.',
+            url: '/therapy-intake',
+            channelId: 'sessions',
+        }).catch(() => {});
+    }
+
+    return intake;
 }
 
 /**

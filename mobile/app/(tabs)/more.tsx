@@ -41,13 +41,18 @@ export default function MoreScreen() {
         <Heading size="lg">More</Heading>
       </View>
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {isMember && (
+        {isMember ? (
           <Card style={styles.section}>
             <Row icon="card-outline" label="Membership" onPress={() => router.push("/membership")} />
             <Row icon="qr-code-outline" label="Membership Card" onPress={() => router.push("/membership-card")} />
             <Row icon="gift-outline" label="Refer & Earn" onPress={() => router.push("/refer")} />
             <Row icon="people-outline" label="Family" onPress={() => router.push("/family")} />
             <Row icon="ribbon-outline" label="Certificates" onPress={() => router.push("/certificates")} />
+          </Card>
+        ) : (
+          <Card style={styles.section}>
+            <Row icon="gift-outline" label="Refer & Earn" onPress={() => router.push("/refer")} />
+            <Row icon="people-outline" label="Family Plan (Join with code)" onPress={() => router.push("/family")} />
           </Card>
         )}
 
@@ -78,7 +83,11 @@ export default function MoreScreen() {
         </Card>
 
         <Card style={styles.section}>
-          <Row icon="log-out-outline" label="Log out" onPress={confirmLogout} />
+          {user && user.role !== "visitor" ? (
+            <Row icon="log-out-outline" label="Log out" onPress={confirmLogout} />
+          ) : (
+            <Row icon="log-in-outline" label="Log in / Create account" onPress={() => router.push("/(auth)/welcome")} />
+          )}
         </Card>
       </ScrollView>
     </Screen>

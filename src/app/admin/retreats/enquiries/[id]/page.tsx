@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { LuArrowLeft, LuMessageCircle, LuCalendar, LuCreditCard } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, Button, StatusBadge, ErrorState, useConfirmDialog, Badge } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/Toast";
+import { toWhatsAppUrl } from "@/lib/phone";
 
 type Enquiry = {
     id: string; name: string; email: string; phone: string | null; message: string | null;
@@ -38,6 +39,7 @@ export default function EnquiryDetailPage() {
         }
     }, [id]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount
     useEffect(() => { load(); }, [load]);
 
     const setStatus = async (status: string) => {
@@ -115,7 +117,7 @@ export default function EnquiryDetailPage() {
                                 <div className="flex items-center gap-2">
                                     <span>{e.phone}</span>
                                     <a
-                                        href={`https://wa.me/${e.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${e.name}, thank you for your enquiry regarding ${e.retreat.name} at Shakthi Yoga!`)}`}
+                                        href={toWhatsAppUrl(e.phone, `Hi ${e.name}, thank you for your enquiry regarding ${e.retreat.name} at Shakthi Yoga!`)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"

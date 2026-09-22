@@ -165,8 +165,9 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
                             </p>
                         </div>
                         <span className="hidden sm:inline text-gray-300">•</span>
-                        <ShareButtons title={post.title} variant="compact" />
+                        <ShareButtons title={post.title} url={`/blog/${params.slug}`} variant="compact" />
                     </div>
+                    <ShareButtons title={post.title} url={`/blog/${params.slug}`} variant="floating" />
                     <div className="w-24 h-1 bg-secondary mx-auto rounded-full mt-6"></div>
                 </header>
 
@@ -232,7 +233,7 @@ export default async function BlogPostPage(props: { params: Promise<{ slug: stri
 
                 {/* Share Card */}
                 <div className="mt-12">
-                    <ShareButtons title={post.title} variant="card" />
+                    <ShareButtons title={post.title} url={`/blog/${params.slug}`} variant="card" />
                 </div>
 
                 {/* Back Link */}

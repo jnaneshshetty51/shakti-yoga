@@ -7,6 +7,7 @@ import { LuArrowLeft, LuUserCheck, LuIndianRupee, LuMessageCircle } from "react-
 import { PageHeader, PageLoading, Card, Badge, ErrorState } from "@/components/admin/ui";
 import { ActivityTimeline, type Activity } from "@/components/admin/ActivityTimeline";
 import { useToast } from "@/components/admin/Toast";
+import { toWhatsAppUrl } from "@/lib/phone";
 
 type Lead = {
     id: string; companyName: string; contactName: string; contactEmail: string; contactPhone: string | null;
@@ -178,7 +179,7 @@ export default function CorporateDetailPage() {
                                 <div className="flex items-center gap-2">
                                     <span>{lead.contactPhone}</span>
                                     <a
-                                        href={`https://wa.me/${lead.contactPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi ${lead.contactName}, this is from Shakthi Yoga. Reaching out regarding corporate wellness for ${lead.companyName}!`)}`}
+                                        href={toWhatsAppUrl(lead.contactPhone, `Hi ${lead.contactName}, this is from Shakthi Yoga. Reaching out regarding corporate wellness for ${lead.companyName}!`)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"

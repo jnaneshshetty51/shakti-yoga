@@ -26,7 +26,7 @@ export function FromShaktiCard({ item }: { item: FeedItem | null | undefined }) 
   if (!item) return null;
 
   const meta =
-    item.kind === "founder_message"
+    item.kind === "founder_message" || item.kind === "announcement"
       ? null
       : item.kind === "article"
       ? item.readMinutes
@@ -47,8 +47,8 @@ export function FromShaktiCard({ item }: { item: FeedItem | null | undefined }) 
             {subtitle}
           </BodyText>
         )}
-        <View style={styles.buttonRow}>
-          <Button variant="outline" onPress={() => router.push(`/content/${item.id}`)}>
+        <View style={styles.buttonRow} pointerEvents="none">
+          <Button variant="outline">
             {CTA_LABEL[item.kind]}
           </Button>
         </View>
