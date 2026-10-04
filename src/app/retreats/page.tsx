@@ -41,6 +41,7 @@ const FEATURED_COHORTS = [
             "Intimate cohort limited to 14 participants",
         ],
         badge: "Open for Applications",
+        href: "/retreats/rishikesh-yoga-retreat",
     },
     {
         tag: "Coastal Immersion",
@@ -183,13 +184,22 @@ export default function RetreatsPage() {
                                         ))}
                                     </ul>
                                 </div>
-                                <a
-                                    href="#inquiry-form"
-                                    onClick={() => setFormData((prev) => ({ ...prev, interest: cohort.title }))}
-                                    className="block w-full py-3 bg-primary text-white text-center font-sans text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-secondary transition-colors"
-                                >
-                                    Apply for Next Cohort →
-                                </a>
+                                {cohort.href ? (
+                                    <Link
+                                        href={cohort.href}
+                                        className="block w-full py-3 bg-secondary text-white text-center font-sans text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary transition-colors shadow-sm"
+                                    >
+                                        Explore 7-Day Journey &amp; Reserve →
+                                    </Link>
+                                ) : (
+                                    <a
+                                        href="#inquiry-form"
+                                        onClick={() => setFormData((prev) => ({ ...prev, interest: cohort.title }))}
+                                        className="block w-full py-3 bg-primary text-white text-center font-sans text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-secondary transition-colors"
+                                    >
+                                        Apply for Next Cohort →
+                                    </a>
+                                )}
                             </div>
                         </div>
                     ))}

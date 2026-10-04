@@ -16,6 +16,7 @@ const STATIC_PATHS: { path: string; priority: number; changeFrequency: MetadataR
     { path: '/blog', priority: 0.7, changeFrequency: 'weekly' },
     { path: '/teachers', priority: 0.6, changeFrequency: 'monthly' },
     { path: '/retreats', priority: 0.6, changeFrequency: 'weekly' },
+    { path: '/retreats/rishikesh-yoga-retreat', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/corporate', priority: 0.5, changeFrequency: 'monthly' },
     { path: '/contact', priority: 0.5, changeFrequency: 'yearly' },
     { path: '/privacy', priority: 0.2, changeFrequency: 'yearly' },
