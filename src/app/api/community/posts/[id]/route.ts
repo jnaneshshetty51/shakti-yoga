@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { serializeCommunityPost } from '@/lib/community';
+import { serializeCommunityPost, getReactionSummary } from '@/lib/community';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,15 +21,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     });
     if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    let liked = false;
-    if (session) {
-        liked = !!(await prisma.communityInteraction.findFirst({
-            where: { userId: session.id, postId: id },
-            select: { id: true },
-        }));
-    }
+    const summary = await getReactionSummary(id, session.id);
+
     return NextResponse.json(
-        { post: serializeCommunityPost(post, session?.id ?? null, liked) },
+        { post: serializeCommunityPost(post, session.id, summary.myReaction, summary.reactionCounts) },
         { headers: { 'Cache-Control': 'no-store' } },
     );
 }

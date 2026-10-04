@@ -131,7 +131,9 @@ export default async function CorporatePage() {
             </section>
 
             {/* Corporate Enquiry Form */}
-            <CorporateForm />
+            <section id="enquiry" className="scroll-mt-20">
+                <CorporateForm />
+            </section>
         </main>
     );
 }

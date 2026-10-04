@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Image, StyleSheet, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Card, Heading, BodyText, Button, Badge } from "@/components/ui";
 import { colors, spacing, radius, shadows } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
+
+const logo = require("../../assets/splash.png");
 
 export function VisitorHeroSection() {
   const { user, refreshUser } = useAuth();
@@ -61,9 +63,7 @@ export function VisitorHeroSection() {
       {/* Brand Hero Card */}
       <Card style={styles.heroCard}>
         <View style={styles.heroHeader}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="flower-outline" size={22} color={colors.secondary} />
-          </View>
+          <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
           <Badge tone="success">TRADITION &amp; SCIENCE</Badge>
         </View>
 
@@ -175,13 +175,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.sm,
   },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.pill,
-    backgroundColor: colors.secondaryLight,
-    alignItems: "center",
-    justifyContent: "center",
+  heroLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
   },
   heroTitle: {
     fontSize: 24,

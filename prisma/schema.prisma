@@ -371,6 +371,8 @@ model Subscription {
   pendingPlanKey    String? // a scheduled downgrade — applied at the next renewal
   pausedAt          DateTime? // set when the member pauses; access still runs to renewalDate
   currentCycleStart DateTime? // start of the active session-credit window (capped plans only; null = uncapped)
+  currentBatchId    String? // the member's assigned recurring batch/timeslot (admin "Switch Batch"); informational — attendance isn't gated to it, any open class instance can still be joined
+  currentBatch      ClassBatch? @relation(fields: [currentBatchId], references: [id], onDelete: SetNull)
 }
 
 model Setting {
@@ -432,7 +434,8 @@ model ClassBatch {
   oneTime     Boolean  @default(false) // created via the "one-time class" shortcut — hidden from the recurring-batch list, exactly one instance expected
   openAccess  Boolean  @default(false) // free/special: bypasses the membership-required check in canJoinGroupClass for every instance of this batch
 
-  instances ClassInstance[]
+  instances     ClassInstance[]
+  subscriptions Subscription[] // members whose home/assigned batch this is (Subscription.currentBatchId)
 }
 
 model ClassInstance {
@@ -827,29 +830,34 @@ model CommunityPost {
 }
 
 model CommunityComment {
-  id          String        @id @default(cuid())
+  id          String             @id @default(cuid())
   postId      String
-  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post        CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     CommunityComment[] @relation("CommentReplies")
   body        String
-  hidden      Boolean       @default(false)
-  reportCount Int           @default(0)
-  createdAt   DateTime      @default(now())
+  hidden      Boolean            @default(false)
+  reportCount Int                @default(0)
+  createdAt   DateTime           @default(now())
 
   reports CommunityReport[]
 
   @@index([postId, hidden, createdAt])
+  @@index([parentId])
   @@index([reportCount])
 }
 
-/// A like on a community post. One row per (user, post).
+/// A like or emoji reaction on a community post. One row per (user, post).
 model CommunityInteraction {
   id        String        @id @default(cuid())
   userId    String
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   postId    String
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reaction  String        @default("❤️")
   createdAt DateTime      @default(now())
 
   @@unique([userId, postId])

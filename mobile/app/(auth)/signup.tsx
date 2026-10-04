@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { View, TextInput, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, TextInput, Image, StyleSheet, ScrollView, Pressable } from "react-native";
 import { router, Link, useLocalSearchParams } from "expo-router";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { useAuth, ApiError } from "@/context/AuthContext";
 import { colors, spacing, radius } from "@/theme";
+
+const logo = require("../../assets/splash.png");
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
   return (
@@ -55,6 +57,7 @@ export default function SignupScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
         <Heading size="lg">Create your account</Heading>
         <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
           You don&rsquo;t have to pick a program yet — explore first if you like.
@@ -111,6 +114,7 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   screen: { padding: spacing.lg },
+  logo: { width: 72, height: 72, alignSelf: "center", marginBottom: spacing.md },
   row: { flexDirection: "row", gap: spacing.sm },
   field: { marginBottom: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },

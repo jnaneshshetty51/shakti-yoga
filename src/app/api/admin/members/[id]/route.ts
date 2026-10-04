@@ -14,17 +14,43 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const user = await prisma.user.findUnique({
         where: { id },
         include: {
-            subscription: true,
+            subscription: {
+                include: { currentBatch: { select: { id: true, name: true, timeSlot: true } } },
+            },
             profile: true,
             referralReceived: { include: { referrer: { select: { name: true, email: true } } } },
             referralsSent: { include: { referee: { select: { name: true, email: true } } }, orderBy: { createdAt: 'desc' } },
             certificates: { orderBy: { issuedAt: 'desc' } },
-            therapyIntake: { select: { status: true, submittedAt: true, reviewedAt: true } },
+            therapyIntake: {
+                select: {
+                    id: true,
+                    status: true,
+                    submittedAt: true,
+                    reviewedAt: true,
+                    reviewedBy: { select: { id: true, name: true } },
+                    reviewNotes: true,
+                    fullName: true,
+                    age: true,
+                    gender: true,
+                    heightCm: true,
+                    weightKg: true,
+                    primaryConcern: true,
+                    concernDuration: true,
+                    concernDescription: true,
+                    injuriesSurgeries: true,
+                    medicalConditions: true,
+                    medications: true,
+                    familyHistory: true,
+                    priorYogaTherapy: true,
+                    emergencyContactName: true,
+                    emergencyContactPhone: true,
+                },
+            },
         },
     });
     if (!user) return NextResponse.json({ error: 'Member not found' }, { status: 404 });
 
-    const [payments, bookings, attendanceCount, recentAttendance, ledger, balance, audit, familySeats] =
+    const [payments, bookings, attendanceCount, recentAttendance, ledger, balance, audit, familySeats, notesAudit, latestBatchSwitch] =
         await Promise.all([
             prisma.payment.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
             prisma.booking.findMany({
@@ -36,19 +62,28 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
             prisma.classAttendance.count({ where: { userId: id } }),
             prisma.classAttendance.findMany({
                 where: { userId: id },
-                include: { classInstance: { select: { date: true, batch: { select: { name: true } } } } },
+                include: { classInstance: { select: { date: true, batch: { select: { id: true, name: true, timeSlot: true } } } } },
                 orderBy: { joinedAt: 'desc' },
                 take: 10,
             }),
             prisma.sessionCreditEntry.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
             getSessionBalance(id),
-            prisma.auditLog.findMany({ where: { entityId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+            prisma.auditLog.findMany({ where: { entityId: id }, orderBy: { createdAt: 'desc' }, take: 25 }),
             user.subscription?.planType === 'FAMILY' && !user.subscription.familyOwnerId
                 ? prisma.subscription.findMany({
                       where: { familyOwnerId: id },
                       include: { user: { select: { name: true, email: true } } },
                   })
                 : Promise.resolve([]),
+            prisma.auditLog.findMany({
+                where: { entityId: id, action: 'student.note.create' },
+                orderBy: { createdAt: 'desc' },
+                take: 50,
+            }),
+            prisma.auditLog.findFirst({
+                where: { entityId: id, action: 'student.batch.switch' },
+                orderBy: { createdAt: 'desc' },
+            }),
         ]);
 
     return NextResponse.json({
@@ -120,8 +155,61 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
             id: c.id, title: c.title, status: c.status, at: c.issuedAt.toISOString(),
         })),
         therapyIntake: user.therapyIntake
-            ? { status: user.therapyIntake.status, submittedAt: user.therapyIntake.submittedAt?.toISOString() ?? null }
+            ? {
+                  id: user.therapyIntake.id,
+                  status: user.therapyIntake.status,
+                  submittedAt: user.therapyIntake.submittedAt?.toISOString() ?? null,
+                  reviewedAt: user.therapyIntake.reviewedAt?.toISOString() ?? null,
+                  reviewedBy: user.therapyIntake.reviewedBy?.name ?? null,
+                  reviewNotes: user.therapyIntake.reviewNotes,
+                  fullName: user.therapyIntake.fullName,
+                  age: user.therapyIntake.age,
+                  gender: user.therapyIntake.gender,
+                  heightCm: user.therapyIntake.heightCm,
+                  weightKg: user.therapyIntake.weightKg,
+                  primaryConcern: user.therapyIntake.primaryConcern,
+                  concernDuration: user.therapyIntake.concernDuration,
+                  concernDescription: user.therapyIntake.concernDescription,
+                  injuriesSurgeries: user.therapyIntake.injuriesSurgeries,
+                  medicalConditions: user.therapyIntake.medicalConditions,
+                  medications: user.therapyIntake.medications,
+                  familyHistory: user.therapyIntake.familyHistory,
+                  priorYogaTherapy: user.therapyIntake.priorYogaTherapy,
+                  emergencyContactName: user.therapyIntake.emergencyContactName,
+                  emergencyContactPhone: user.therapyIntake.emergencyContactPhone,
+              }
             : null,
+        // Prefer the real assignment (Subscription.currentBatchId) over the audit-log trail —
+        // that field only exists for members switched before this was a real column.
+        assignedBatch: user.subscription?.currentBatch
+            ? {
+                  batchId: user.subscription.currentBatch.id,
+                  batchName: user.subscription.currentBatch.name,
+                  timeSlot: user.subscription.currentBatch.timeSlot,
+              }
+            : latestBatchSwitch?.after
+            ? (latestBatchSwitch.after as { batchId?: string; batchName?: string; timeSlot?: string })
+            : recentAttendance[0]
+            ? {
+                  batchId: recentAttendance[0].classInstance.batch.id,
+                  batchName: recentAttendance[0].classInstance.batch.name,
+                  timeSlot: recentAttendance[0].classInstance.batch.timeSlot,
+              }
+            : null,
+        observationNotes: notesAudit
+            .map((n) => {
+                const payload = (n.after as { category?: string; note?: string; isPinned?: boolean }) || {};
+                return {
+                    id: n.id,
+                    author: n.actorEmail || 'Staff',
+                    category: payload.category || 'GENERAL',
+                    note: payload.note || (typeof n.after === 'string' ? n.after : ''),
+                    isPinned: Boolean(payload.isPinned),
+                    at: n.createdAt.toISOString(),
+                };
+            })
+            // Matches notes/route.ts's GET — pinned notes surface first regardless of age.
+            .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0)),
         audit: audit.map((a) => ({
             id: a.id, action: a.action, actor: a.actorEmail, at: a.createdAt.toISOString(),
         })),

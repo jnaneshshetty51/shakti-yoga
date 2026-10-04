@@ -157,4 +157,80 @@ export const api = {
     request<T>(path, { ...opts, method: "POST", body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  upload: async <T>(path: string, formData: FormData): Promise<T> => {
+    const token = await getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30_000);
+
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        method: "POST",
+        headers,
+        body: formData,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new ApiError("The upload timed out. Check your connection and try again.", 0);
+      }
+      throw new ApiError("Upload failed. Check your connection and try again.", 0);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new ApiError(
+          res.ok ? "Unexpected response from server." : `Upload failed (${res.status}).`,
+          res.status,
+        );
+      }
+    }
+
+    if (!res.ok) {
+      if (res.status === 401) onUnauthorized?.();
+      throw new ApiError((data?.error as string) || `Upload failed (${res.status})`, res.status, data);
+    }
+
+    return data as T;
+  },
 };
+
+function guessImageMime(uri: string): string {
+  const ext = uri.split("?")[0].split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+}
+
+/**
+ * Appends a locally-picked image to a FormData "file" part. Native RN has a fetch/FormData
+ * polyfill that knows how to read the special {uri,type,name} object; the web platform (now
+ * supported via react-native-web) has no such polyfill and needs a real Blob, fetched from
+ * the local blob:/data: URI first.
+ */
+export async function appendImageFile(
+  formData: FormData,
+  field: string,
+  uri: string,
+  mimeType: string | null | undefined,
+  filename: string,
+): Promise<void> {
+  const type = mimeType || guessImageMime(uri);
+  if (Platform.OS === "web") {
+    const blob = await (await fetch(uri)).blob();
+    formData.append(field, blob, filename);
+  } else {
+    formData.append(field, { uri, type, name: filename } as unknown as Blob);
+  }
+}
+

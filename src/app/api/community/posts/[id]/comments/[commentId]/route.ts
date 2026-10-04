@@ -19,11 +19,18 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Deleting a parent comment cascades to its replies (schema onDelete: Cascade) —
+    // commentCount must drop by the whole removed subtree, not just this one row.
+    const visibleReplyCount = await prisma.communityComment.count({
+        where: { parentId: commentId, hidden: false },
+    });
+    const totalRemoved = (comment.hidden ? 0 : 1) + visibleReplyCount;
+
     await prisma.$transaction([
         prisma.communityComment.delete({ where: { id: commentId } }),
-        ...(comment.hidden
-            ? []
-            : [prisma.communityPost.update({ where: { id }, data: { commentCount: { decrement: 1 } } })]),
+        ...(totalRemoved > 0
+            ? [prisma.communityPost.update({ where: { id }, data: { commentCount: { decrement: totalRemoved } } })]
+            : []),
     ]);
     return NextResponse.json({ ok: true });
 }

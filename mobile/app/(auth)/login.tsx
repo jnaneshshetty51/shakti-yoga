@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { View, TextInput, StyleSheet } from "react-native";
+import { View, TextInput, Image, StyleSheet } from "react-native";
 import { router, Link } from "expo-router";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { useAuth, ApiError } from "@/context/AuthContext";
 import { colors, spacing, radius } from "@/theme";
+
+const logo = require("../../assets/splash.png");
 
 export default function LoginScreen() {
   const { login, sessionMessage, clearSessionMessage } = useAuth();
@@ -34,6 +36,7 @@ export default function LoginScreen() {
 
   return (
     <Screen style={styles.screen}>
+      <Image source={logo} style={styles.logo} resizeMode="contain" />
       <Heading size="lg">Welcome back</Heading>
       <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
         Log in to continue your practice.
@@ -81,7 +84,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { padding: spacing.lg, justifyContent: "center" },
+  screen: { padding: spacing.lg, justifyContent: "center", alignItems: "stretch" },
+  logo: { width: 80, height: 80, alignSelf: "center", marginBottom: spacing.lg },
   field: { marginBottom: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   input: {

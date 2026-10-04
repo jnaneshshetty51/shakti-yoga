@@ -12,9 +12,14 @@ Full redesign per a Content Management spec: one CMS should be the source of tru
 everything (videos, audio, articles, practices, founder messages, announcements) across
 web + mobile, with backend-enforced membership gating, a review workflow, versioning, and
 archive-not-delete. **Decisions locked in:** full model consolidation (not just extension),
-skip offline/DRM downloads for v1 (conflicts with mobile's Expo Go / zero-native-modules
-constraint — same open tradeoff as RevenueCat), add a Draft → In Review → Approved →
-Published gate.
+add a Draft → In Review → Approved → Published gate.
+
+**Revisited 2026-09-27:** the "skip offline/DRM downloads for v1" call above was made when
+the mobile app was still Expo-Go/zero-native-module constrained; that constraint no longer
+holds (expo-video, expo-file-system, expo-calendar, and other native modules already ship
+in the app). Offline downloads for practices shipped natively (`mobile/src/lib/offlineStorage.ts`),
+gated to native platforms only — the feature is unavailable (not broken) on mobile web,
+since expo-file-system has no browser implementation.
 
 - **Schema** — `Content`, `Practice` and `BlogPost` are now ONE `Content` model.
   `ContentType`: `VIDEO | AUDIO | ARTICLE | SHORT_PRACTICE | TAKE_A_MOMENT |

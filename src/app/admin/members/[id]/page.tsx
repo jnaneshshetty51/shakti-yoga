@@ -3,13 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { LuArrowLeft } from "react-icons/lu";
+import { LuArrowLeft, LuClock, LuCalendar, LuSparkles } from "react-icons/lu";
 import { PageHeader, PageLoading, Card, Badge, StatusBadge, Button, useConfirmDialog } from "@/components/admin/ui";
 import EntityFormModal, { type EntityValues } from "@/components/admin/EntityFormModal";
 import { MeasurementsPanel } from "@/components/admin/MeasurementsPanel";
 import { useToast } from "@/components/admin/Toast";
 import { useAdminStudent } from "@/context/AdminStudentContext";
 import { PLAN_OPTIONS, CURRENCY_OPTIONS, getPlan, priceFor } from "@/lib/pricing";
+import { MedicalSafetyBanner, type TherapyIntakeData } from "@/components/admin/students/MedicalSafetyBanner";
+import { BatchSwitchModal } from "@/components/admin/students/BatchSwitchModal";
+import { ObservationTimeline, type ObservationNote } from "@/components/admin/students/ObservationTimeline";
+import { MembershipActionModal } from "@/components/admin/students/MembershipActionModal";
 
 type Data = {
     member: {
@@ -32,7 +36,9 @@ type Data = {
     referrals: { referredBy: { name: string; status: string } | null; invited: { name: string; status: string; reward: number; at: string }[] };
     family: { name: string; email: string; status: string }[];
     certificates: { id: string; title: string; status: string; at: string }[];
-    therapyIntake: { status: string; submittedAt: string | null } | null;
+    therapyIntake: TherapyIntakeData;
+    assignedBatch: { batchId?: string; batchName?: string; timeSlot?: string } | null;
+    observationNotes: ObservationNote[];
     audit: { id: string; action: string; actor: string | null; at: string }[];
 };
 
@@ -56,6 +62,8 @@ export default function MemberDetailPage() {
     const [data, setData] = useState<Data | null>(null);
     const [credit, setCredit] = useState(false);
     const [takeCashOpen, setTakeCashOpen] = useState(false);
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+    const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
 
     const load = useCallback(async () => {
         const res = await fetch(`/api/admin/members/${id}`);
@@ -145,11 +153,17 @@ export default function MemberDetailPage() {
                 <LuArrowLeft /> Members
             </Link>
             <PageHeader title={m.name} subtitle={m.email} eyebrow={<Badge tone="gray">{m.role.replace(/_/g, " ").toLowerCase()}</Badge>}>
+                {data.subscription && (
+                    <Button variant="primary" onClick={() => setIsMembershipModalOpen(true)}>Manage Membership</Button>
+                )}
+                <Button variant="ghost" onClick={() => setIsBatchModalOpen(true)}>Switch Batch</Button>
                 <Button onClick={() => setTakeCashOpen(true)}>Take cash / payment</Button>
                 <Button variant="ghost" onClick={() => setCredit(true)}>Adjust credits</Button>
-                <Link href="/admin/finance?tab=subscriptions"><Button variant="ghost">Change plan</Button></Link>
                 <Button variant={m.active ? "ghost" : "primary"} onClick={toggleActive}>{m.active ? "Deactivate" : "Reactivate"}</Button>
             </PageHeader>
+
+            {/* Clinical Health & Safety Alert Banner */}
+            <MedicalSafetyBanner intake={data.therapyIntake} studentName={m.name} />
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Section title="Profile">
@@ -162,6 +176,22 @@ export default function MemberDetailPage() {
                         <dt className="text-ink-subtle">Active</dt><dd>{m.active ? "Yes" : "No"}</dd>
                         <dt className="text-ink-subtle">Comms pref</dt><dd>{m.communicationPref || "—"}</dd>
                         <dt className="text-ink-subtle">Referral wallet</dt><dd>{money(m.referralCreditBalance)}</dd>
+                        <dt className="text-ink-subtle">Assigned Batch</dt>
+                        <dd className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-brand">
+                                {data.assignedBatch?.batchName || "Unassigned"}
+                            </span>
+                            {data.assignedBatch?.timeSlot && (
+                                <span className="text-xs text-ink-subtle">({data.assignedBatch.timeSlot})</span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setIsBatchModalOpen(true)}
+                                className="text-xs text-brand hover:underline font-semibold ml-1"
+                            >
+                                Change
+                            </button>
+                        </dd>
                     </dl>
                     {m.goals && <p className="text-sm mt-3"><span className="text-ink-subtle">Goals: </span>{m.goals}</p>}
                 </Section>
@@ -277,7 +307,37 @@ export default function MemberDetailPage() {
                         </ul>
                     )}
                 </Section>
+
+                <div className="lg:col-span-2">
+                    <Section title="Teacher & Clinical Observations">
+                        <ObservationTimeline
+                            memberId={m.id}
+                            notes={data.observationNotes || []}
+                            onNoteAdded={load}
+                        />
+                    </Section>
+                </div>
             </div>
+
+            {/* Batch Switch Modal */}
+            <BatchSwitchModal
+                memberId={m.id}
+                studentName={m.name}
+                currentBatchId={data.assignedBatch?.batchId}
+                isOpen={isBatchModalOpen}
+                onClose={() => setIsBatchModalOpen(false)}
+                onSuccess={load}
+            />
+
+            {/* Membership Lifecycle Action Modal */}
+            <MembershipActionModal
+                memberId={m.id}
+                studentName={m.name}
+                currentSubscription={data.subscription}
+                isOpen={isMembershipModalOpen}
+                onClose={() => setIsMembershipModalOpen(false)}
+                onSuccess={load}
+            />
 
             {credit && (
                 <EntityFormModal

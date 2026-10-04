@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
-import { AppState, View, StyleSheet, Platform, Linking as RNLinking } from "react-native";
+import { AppState, View, Image, StyleSheet, Platform, Linking as RNLinking } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
 import Constants from "expo-constants";
@@ -17,6 +17,8 @@ import { api } from "@/lib/api";
 import { initPurchases } from "@/lib/purchases";
 import { initCrashReporting, captureException } from "@/lib/crashReporting";
 import { colors, spacing } from "@/theme";
+
+const logo = require("../assets/splash.png");
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 // A no-op until EXPO_PUBLIC_REVENUECAT_*_KEY is set — see src/lib/purchases.ts.
@@ -165,6 +167,7 @@ function VersionGate({ children }: { children: ReactNode }) {
 
   return (
     <Screen style={{ alignItems: "center", justifyContent: "center", padding: spacing.xl }}>
+      <Image source={logo} style={styles.gateLogo} resizeMode="contain" />
       <Heading size="md">Update required</Heading>
       <BodyText muted style={{ marginTop: spacing.sm, textAlign: "center" }}>
         A new version of Shakti Yoga is required to continue. Please update from the {Platform.OS === "android" ? "Play Store" : "App Store"}.
@@ -177,6 +180,7 @@ function VersionGate({ children }: { children: ReactNode }) {
 /** Biometric app-lock gate — blocks the UI until unlocked, re-locks on background. */
 function LockGate({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { closeFullPlayer, pauseAll } = usePlayer();
   const [locked, setLocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const wentBackground = useRef(false);
@@ -188,15 +192,23 @@ function LockGate({ children }: { children: ReactNode }) {
     if (ok) setLocked(false);
   };
 
+  const lock = () => {
+    // The full-screen video player is a native Modal, which renders above this overlay
+    // regardless of RN z-order — it must be closed and paused before the lock can be trusted.
+    closeFullPlayer();
+    pauseAll();
+    setLocked(true);
+  };
+
   // eslint-disable-next-line react-hooks/set-state-in-effect -- app-lock gate: check on mount + on resume
   useEffect(() => {
     if (!user) { setLocked(false); return; }
-    isAppLockOn().then((on) => { if (on) { setLocked(true); attempt(); } });
+    isAppLockOn().then((on) => { if (on) { lock(); attempt(); } });
     const sub = AppState.addEventListener("change", (s) => {
       if (s === "background" || s === "inactive") wentBackground.current = true;
       if (s === "active" && wentBackground.current) {
         wentBackground.current = false;
-        isAppLockOn().then((on) => { if (on) { setLocked(true); attempt(); } });
+        isAppLockOn().then((on) => { if (on) { lock(); attempt(); } });
       }
     });
     return () => sub.remove();
@@ -207,6 +219,7 @@ function LockGate({ children }: { children: ReactNode }) {
       {children}
       {locked && (
         <Screen style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center", padding: spacing.xl }}>
+          <Image source={logo} style={styles.gateLogo} resizeMode="contain" />
           <Heading size="md">Shakti is locked</Heading>
           <BodyText muted style={{ marginTop: spacing.sm, textAlign: "center" }}>Unlock with Face ID or your passcode.</BodyText>
           <Button loading={busy} style={{ marginTop: spacing.lg }} onPress={attempt}>Unlock</Button>
@@ -241,6 +254,7 @@ class ErrorBoundary extends React.Component<{ children: ReactNode }, { error: Er
     if (this.state.error) {
       return (
         <Screen style={styles.crash}>
+          <Image source={logo} style={styles.gateLogo} resizeMode="contain" />
           <Heading size="md" style={{ textAlign: "center" }}>Something went wrong</Heading>
           <BodyText muted style={{ marginTop: spacing.sm, textAlign: "center" }}>
             An unexpected error occurred. You can try again — if it keeps happening, close and reopen the app.
@@ -273,6 +287,10 @@ function OfflineBanner() {
   );
 }
 
+import { PlayerProvider, usePlayer } from "@/context/PlayerContext";
+import { MiniPlayerBar } from "@/components/MiniPlayerBar";
+import { FullPlayerModal } from "@/components/FullPlayerModal";
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
@@ -280,13 +298,19 @@ export default function RootLayout() {
         <VersionGate>
           <AuthProvider>
             <AuthGate>
-              <LockGate>
-                <StatusBar style="dark" />
-                {Platform.OS !== "web" && <NotificationRouter />}
-                <UrlRouter />
-                <OfflineBanner />
-                <Stack screenOptions={{ headerShown: false }} />
-              </LockGate>
+              {/* PlayerProvider wraps LockGate (not the other way around) so the lock gate can
+                  reach usePlayer() and stop/hide anything playing before it shows the lock screen. */}
+              <PlayerProvider>
+                <LockGate>
+                  <StatusBar style="dark" />
+                  {Platform.OS !== "web" && <NotificationRouter />}
+                  <UrlRouter />
+                  <OfflineBanner />
+                  <Stack screenOptions={{ headerShown: false }} />
+                  <MiniPlayerBar />
+                  <FullPlayerModal />
+                </LockGate>
+              </PlayerProvider>
             </AuthGate>
           </AuthProvider>
         </VersionGate>
@@ -297,6 +321,7 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   crash: { alignItems: "center", justifyContent: "center", padding: spacing.xl },
+  gateLogo: { width: 80, height: 80, marginBottom: spacing.lg },
   offlineBanner: { backgroundColor: colors.text, paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
   offlineText: { color: colors.white, textAlign: "center", fontSize: 12, fontWeight: "700" },
 });

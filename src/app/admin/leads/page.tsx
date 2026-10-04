@@ -11,11 +11,13 @@ import { PageHeader, PageLoading, Badge, TableActions, ActionButton, labelClass,
 import {
     LuKanban, LuTable, LuMessageCircle, LuClock, LuUsers, LuTarget,
     LuCalendar, LuArrowRight, LuArrowLeft, LuPlus, LuSearch, LuDownload,
-    LuUpload, LuPhoneCall, LuCircleCheck, LuFilter, LuTrash2
+    LuUpload, LuPhoneCall, LuCircleCheck, LuFilter, LuTrash2, LuCircleAlert,
+    LuCalendarDays, LuBell
 } from "react-icons/lu";
 import { QuickLogModal, type QuickLogLead } from "@/components/admin/crm/QuickLogModal";
 import { WhatsAppTemplateModal, type WhatsAppLead } from "@/components/admin/crm/WhatsAppTemplateModal";
 import { LeadImportModal } from "@/components/admin/crm/LeadImportModal";
+import { LostReasonModal } from "@/components/admin/crm/LostReasonModal";
 
 const PAGE_SIZE = 25;
 
@@ -47,6 +49,8 @@ type LeadMetrics = {
     converted: number;
     lost: number;
     overdue: number;
+    dueToday?: number;
+    dueWeek?: number;
     conversionRate: number;
 };
 
@@ -62,6 +66,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
     const [sourceFilter, setSourceFilter] = useState("");
     const [programFilter, setProgramFilter] = useState("");
     const [staffFilter, setStaffFilter] = useState("");
+    const [followUpFilter, setFollowUpFilter] = useState<"overdue" | "today" | "week" | null>(null);
     const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
     const [metrics, setMetrics] = useState<LeadMetrics | null>(null);
 
@@ -71,12 +76,16 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
     const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Quick Log & WhatsApp & Import Modals
+    // Quick Log & WhatsApp & Import & Lost Modals
     const [quickLogLead, setQuickLogLead] = useState<QuickLogLead | null>(null);
     const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
     const [whatsAppLead, setWhatsAppLead] = useState<WhatsAppLead | null>(null);
+    const [whatsAppTemplateId, setWhatsAppTemplateId] = useState<string | null>(null);
     const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
     const [isImportOpen, setIsImportOpen] = useState(false);
+    const [lostLead, setLostLead] = useState<Lead | null>(null);
+    const [lostBulkLeads, setLostBulkLeads] = useState<Lead[] | null>(null);
+    const [isLostModalOpen, setIsLostModalOpen] = useState(false);
 
     // Multi-Select for Bulk Actions
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -111,6 +120,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             if (sourceFilter) params.set("source", sourceFilter);
             if (programFilter) params.set("programInterest", programFilter);
             if (staffFilter) params.set("assignedToId", staffFilter);
+            if (followUpFilter) params.set("followUp", followUpFilter);
 
             const response = await fetch(`/api/admin/leads?${params}`);
             if (response.ok) {
@@ -124,7 +134,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         } finally {
             setLoading(false);
         }
-    }, [page, search, statusFilter, sourceFilter, programFilter, staffFilter, viewMode]);
+    }, [page, search, statusFilter, sourceFilter, programFilter, staffFilter, followUpFilter, viewMode]);
 
     useEffect(() => {
         fetchLeads();
@@ -146,14 +156,17 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         }
     }
 
-    const submitLead = async (confirmDuplicate = false) => {
+    const submitLead = async (confirmDuplicate = false, statusOverride?: string) => {
         const url = isEditMode ? `/api/admin/leads/${editingLeadId}` : '/api/admin/leads';
         const method = isEditMode ? 'PUT' : 'POST';
+
+        const payload = { ...formData, confirmDuplicate } as typeof formData & { confirmDuplicate: boolean };
+        if (statusOverride !== undefined) payload.status = statusOverride;
 
         const res = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...formData, confirmDuplicate }),
+            body: JSON.stringify(payload),
         });
         const data = await res.json();
 
@@ -164,7 +177,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                 confirmLabel: "Create anyway",
                 tone: "danger",
             });
-            if (proceed) return submitLead(true);
+            if (proceed) return submitLead(true, statusOverride);
             return false;
         }
 
@@ -178,12 +191,41 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            const currentLead = isEditMode ? leads.find((l) => l.id === editingLeadId) : null;
+
+            // The Kanban drag path requires a reason before a lead can move to LOST —
+            // route the edit form through the same gate instead of silently skipping it.
+            if (isEditMode && currentLead && formData.status === 'LOST' && currentLead.status !== 'LOST') {
+                const done = await submitLead(false, currentLead.status);
+                if (!done) return;
+                setIsModalOpen(false);
+                setEditingLeadId(null);
+                fetchLeads();
+                setLostLead(currentLead);
+                setIsLostModalOpen(true);
+                return;
+            }
+
             const done = await submitLead();
             if (!done) return;
             setIsModalOpen(false);
             setEditingLeadId(null);
             showToast('success', `Lead ${isEditMode ? 'updated' : 'created'}`);
             fetchLeads();
+
+            // Mirrors the Kanban drag path's automated WhatsApp outreach for the same
+            // stage transitions, so the edit form isn't a silent way around it.
+            if (isEditMode && currentLead && currentLead.status !== formData.status && currentLead.phone) {
+                if (formData.status === 'CONTACTED') {
+                    setWhatsAppLead(currentLead);
+                    setWhatsAppTemplateId('trial-invite');
+                    setIsWhatsAppOpen(true);
+                } else if (formData.status === 'TRIAL') {
+                    setWhatsAppLead(currentLead);
+                    setWhatsAppTemplateId('trial-reminder');
+                    setIsWhatsAppOpen(true);
+                }
+            }
         } catch (err) {
             showToast('error', err instanceof Error ? err.message : 'Something went wrong');
         } finally {
@@ -250,6 +292,15 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
         ({ NEW: "blue", CONTACTED: "amber", TRIAL: "purple", CONVERTED: "green", LOST: "red" } as const)[status] ?? "gray";
 
     const handleQuickMoveStage = async (leadId: string, nextStatus: Lead['status']) => {
+        const targetLead = leads.find((l) => l.id === leadId);
+
+        // If moving to LOST, capture lost reason via modal
+        if (nextStatus === 'LOST' && targetLead) {
+            setLostLead(targetLead);
+            setIsLostModalOpen(true);
+            return;
+        }
+
         setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: nextStatus } : l)));
         try {
             const res = await fetch(`/api/admin/leads/${leadId}`, {
@@ -259,6 +310,19 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             });
             if (res.ok) {
                 showToast('success', `Lead moved to ${nextStatus.toLowerCase()}`);
+
+                // Automated WhatsApp outreach triggers
+                if (targetLead && targetLead.phone) {
+                    if (nextStatus === 'CONTACTED') {
+                        setWhatsAppLead(targetLead);
+                        setWhatsAppTemplateId('trial-invite');
+                        setIsWhatsAppOpen(true);
+                    } else if (nextStatus === 'TRIAL') {
+                        setWhatsAppLead(targetLead);
+                        setWhatsAppTemplateId('trial-reminder');
+                        setIsWhatsAppOpen(true);
+                    }
+                }
             } else {
                 showToast('error', 'Failed to update lead stage');
                 fetchLeads();
@@ -519,7 +583,11 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             <WhatsAppTemplateModal
                 lead={whatsAppLead}
                 isOpen={isWhatsAppOpen}
-                onClose={() => setIsWhatsAppOpen(false)}
+                initialTemplateId={whatsAppTemplateId}
+                onClose={() => {
+                    setIsWhatsAppOpen(false);
+                    setWhatsAppTemplateId(null);
+                }}
                 onLogged={fetchLeads}
             />
 
@@ -531,6 +599,22 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                 staffList={staffList}
             />
 
+            {/* Lost Reason Modal */}
+            <LostReasonModal
+                lead={lostLead}
+                leads={lostBulkLeads}
+                isOpen={isLostModalOpen}
+                onClose={() => {
+                    setIsLostModalOpen(false);
+                    setLostLead(null);
+                    setLostBulkLeads(null);
+                }}
+                onSuccess={() => {
+                    setSelectedLeadIds([]);
+                    fetchLeads();
+                }}
+            />
+
             {!embedded && (
                 <PageHeader
                     title="Leads Pipeline"
@@ -539,7 +623,7 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
             )}
 
             {/* Pipeline KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 <StatCard
                     title="Total Leads"
                     value={metrics?.total ?? totalCount}
@@ -569,6 +653,87 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                     changeType="negative"
                     change={metrics && metrics.overdue > 0 ? "Requires action today" : "Up to date"}
                 />
+            </div>
+
+            {/* Follow-Up Action Alert Banner */}
+            <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-brand/5 to-blue-500/10 border border-hairline/80 rounded-2xl p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                        <LuBell className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
+                            Admissions Action Queue
+                        </div>
+                        <div className="text-xs sm:text-sm font-medium text-ink">
+                            Quickly target leads with scheduled follow-ups to maintain prompt response times.
+                        </div>
+                    </div>
+                </div>
+
+                {/* Quick Action Filter Pills */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFollowUpFilter((prev) => (prev === "overdue" ? null : "overdue"));
+                            setPage(1);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            followUpFilter === "overdue"
+                                ? "bg-red-600 text-white shadow-sm ring-2 ring-red-400/40"
+                                : "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
+                        }`}
+                    >
+                        <LuCircleAlert className="w-3.5 h-3.5" />
+                        <span>Overdue ({metrics?.overdue ?? 0})</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFollowUpFilter((prev) => (prev === "today" ? null : "today"));
+                            setPage(1);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            followUpFilter === "today"
+                                ? "bg-amber-600 text-white shadow-sm ring-2 ring-amber-400/40"
+                                : "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
+                        }`}
+                    >
+                        <LuCalendar className="w-3.5 h-3.5" />
+                        <span>Due Today ({metrics?.dueToday ?? 0})</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFollowUpFilter((prev) => (prev === "week" ? null : "week"));
+                            setPage(1);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            followUpFilter === "week"
+                                ? "bg-brand text-white shadow-sm ring-2 ring-brand/40"
+                                : "bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20"
+                        }`}
+                    >
+                        <LuCalendarDays className="w-3.5 h-3.5" />
+                        <span>This Week ({metrics?.dueWeek ?? 0})</span>
+                    </button>
+
+                    {followUpFilter && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFollowUpFilter(null);
+                                setPage(1);
+                            }}
+                            className="text-[11px] font-semibold text-ink-subtle hover:text-ink underline px-1.5 py-1"
+                        >
+                            Reset Queue Filter
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Comprehensive Toolbar & Filters */}
@@ -737,7 +902,14 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
                             <select
                                 disabled={bulkSubmitting}
                                 onChange={(e) => {
-                                    if (e.target.value) handleBulkStage(e.target.value);
+                                    if (e.target.value === 'LOST') {
+                                        // Same reason-capture gate as the Kanban drag path — a bulk
+                                        // move must not be a silent way to skip it.
+                                        setLostBulkLeads(leads.filter((l) => selectedLeadIds.includes(l.id)));
+                                        setIsLostModalOpen(true);
+                                    } else if (e.target.value) {
+                                        handleBulkStage(e.target.value);
+                                    }
                                     e.target.value = "";
                                 }}
                                 className="rounded-control border border-hairline bg-surface px-2 py-1 text-xs text-ink"
@@ -863,66 +1035,86 @@ function LeadsDashboard({ embedded = false }: { embedded?: boolean }) {
 
                                 {/* Follow-up & Owner Bar */}
                                 <div className="pt-2 border-t border-hairline/60 flex items-center justify-between text-[11px]">
-                                    <span className="text-ink-subtle truncate max-w-[100px]" title={lead.assignedTo?.name || "Unassigned"}>
+                                    <span className="text-ink-subtle truncate max-w-[95px]" title={lead.assignedTo?.name || "Unassigned"}>
                                         {lead.assignedTo ? lead.assignedTo.name : "Unassigned"}
                                     </span>
 
                                     {due ? (
                                         <div className="flex items-center gap-1">
                                             <span className={`font-medium ${isOverdue ? "text-red-600 font-semibold" : "text-ink-subtle"}`}>
-                                                {isOverdue ? "⚠ Due " : "Due "}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                                                {isOverdue ? "⚠ " : ""}{due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                                             </span>
-                                            {isOverdue && (
-                                                <div className="flex gap-0.5 text-[9px]">
-                                                    <button
-                                                        type="button"
-                                                        title="Snooze 1 Day"
-                                                        onClick={() => handleSnoozeFollowUp(lead.id, 1)}
-                                                        className="px-1 py-0.2 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
-                                                    >
-                                                        +1d
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        title="Snooze 3 Days"
-                                                        onClick={() => handleSnoozeFollowUp(lead.id, 3)}
-                                                        className="px-1 py-0.2 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
-                                                    >
-                                                        +3d
-                                                    </button>
-                                                </div>
-                                            )}
+                                            <div className="flex gap-0.5 text-[9px]">
+                                                <button
+                                                    type="button"
+                                                    title="Snooze 1 Day"
+                                                    onClick={() => handleSnoozeFollowUp(lead.id, 1)}
+                                                    className="px-1 py-0.5 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
+                                                >
+                                                    +1d
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    title="Snooze 3 Days"
+                                                    onClick={() => handleSnoozeFollowUp(lead.id, 3)}
+                                                    className="px-1 py-0.5 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
+                                                >
+                                                    +3d
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    title="Snooze 7 Days"
+                                                    onClick={() => handleSnoozeFollowUp(lead.id, 7)}
+                                                    className="px-1 py-0.5 rounded bg-surface-raised border border-hairline text-ink-subtle hover:text-ink font-semibold"
+                                                >
+                                                    +1w
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSnoozeFollowUp(lead.id, 2)}
-                                            className="text-brand text-[10px] hover:underline"
-                                        >
-                                            + Set follow-up
-                                        </button>
+                                        <div className="flex items-center gap-1 text-[10px]">
+                                            <span className="text-ink-subtle">Follow-up:</span>
+                                            <button
+                                                type="button"
+                                                title="Follow-up Tomorrow"
+                                                onClick={() => handleSnoozeFollowUp(lead.id, 1)}
+                                                className="px-1.5 py-0.5 rounded bg-surface-raised border border-hairline text-brand hover:bg-brand/10 font-medium"
+                                            >
+                                                +1d
+                                            </button>
+                                            <button
+                                                type="button"
+                                                title="Follow-up in 3 Days"
+                                                onClick={() => handleSnoozeFollowUp(lead.id, 3)}
+                                                className="px-1.5 py-0.5 rounded bg-surface-raised border border-hairline text-brand hover:bg-brand/10 font-medium"
+                                            >
+                                                +3d
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
 
-                                {/* Quick Stage Movement Arrows */}
-                                <div className="pt-1.5 border-t border-hairline/40 flex items-center justify-between">
+                                {/* Quick Stage Movement Arrows for Touch & Rapid Navigation */}
+                                <div className="pt-1.5 border-t border-hairline/40 flex items-center justify-between text-xs">
                                     {prevColId ? (
                                         <button
+                                            type="button"
                                             onClick={() => moveToCol(prevColId)}
-                                            title="Move backward"
-                                            className="p-1 rounded text-ink-subtle hover:text-ink hover:bg-surface-raised transition-colors text-xs flex items-center gap-0.5"
+                                            title={`Move back to ${prevColId.toLowerCase()}`}
+                                            className="px-2 py-1 rounded-lg border border-hairline bg-surface hover:bg-surface-raised text-ink-subtle hover:text-ink transition-colors text-[11px] font-medium flex items-center gap-1"
                                         >
-                                            <LuArrowLeft className="w-3 h-3" />
+                                            <LuArrowLeft className="w-3 h-3" /> Back
                                         </button>
                                     ) : <span />}
 
                                     {nextColId && (
                                         <button
+                                            type="button"
                                             onClick={() => moveToCol(nextColId)}
-                                            title="Move forward"
-                                            className="p-1 rounded text-ink-subtle hover:text-brand hover:bg-surface-raised transition-colors text-xs flex items-center gap-0.5 font-medium ml-auto"
+                                            title={`Advance to ${nextColId.toLowerCase()}`}
+                                            className="px-2 py-1 rounded-lg border border-hairline bg-surface hover:bg-surface-raised text-brand hover:border-brand/40 transition-colors text-[11px] font-semibold flex items-center gap-1 ml-auto"
                                         >
-                                            Next Stage <LuArrowRight className="w-3 h-3" />
+                                            Advance <LuArrowRight className="w-3 h-3" />
                                         </button>
                                     )}
                                 </div>

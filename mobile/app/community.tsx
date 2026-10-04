@@ -1,23 +1,39 @@
-import React, { useEffect, useState } from "react";
-import { Alert, FlatList, RefreshControl, View, Image, StyleSheet, Pressable } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  View,
+  Image,
+  StyleSheet,
+  Pressable,
+} from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, BodyText, Card, LoadingView, EmptyState, Button } from "@/components/ui";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { ReactionPills, ReactionPickerModal, type AllowedReaction } from "@/components/ReactionPicker";
+import { PostComposerModal } from "@/components/PostComposerModal";
+import { MemberProfileModal } from "@/components/MemberProfileModal";
 import { api, ApiError } from "@/lib/api";
-import { useResource } from "@/lib/useResource";
-import { colors, spacing, radius } from "@/theme";
+import { colors, spacing, radius, shadows } from "@/theme";
 
 interface Post {
   id: string;
   body: string;
   imageUrl: string | null;
   author: string;
+  authorId: string;
   avatarUrl: string | null;
   likeCount: number;
   commentCount: number;
   createdAt: string;
+  mine: boolean;
   liked: boolean;
+  userReaction: string | null;
+  reactionCounts: Record<string, number>;
 }
+
 interface FeedResponse {
   posts: Post[];
   nextCursor: number | null;
@@ -33,86 +49,218 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-/**
- * Read-only view of the web/member community wall (likes only, no posting or
- * commenting from here yet) — previously the app had no way to see this feed
- * at all; the home screen's "Community" card only opened an external WhatsApp
- * link, which is a different feature (the WhatsApp groups, not this feed).
- */
 export default function CommunityScreen() {
-  const { data, loading, error, reload } = useResource(() => api.get<FeedResponse>("/api/community/feed"), []);
+  const router = useRouter();
+
+  const [filter, setFilter] = useState<"all" | "mine">("all");
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modals
+  const [composerVisible, setComposerVisible] = useState(false);
+  const [pickerTargetPostId, setPickerTargetPostId] = useState<string | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+  const fetchFeed = useCallback(async (reset = true) => {
+    try {
+      setError(null);
+      const url = `/api/community/feed?cursor=0${filter === "mine" ? "&mine=true" : ""}`;
+      const res = await api.get<FeedResponse>(url);
+      setPosts(res.posts);
+      setNextCursor(res.nextCursor);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't load community feed.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [filter]);
 
   useEffect(() => {
-    if (data) {
-      setPosts(data.posts);
-      setNextCursor(data.nextCursor);
-    }
-  }, [data]);
-
-  const list = posts ?? [];
+    setLoading(true);
+    fetchFeed();
+  }, [fetchFeed]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await reload();
-    setRefreshing(false);
-  };
-
-  const toggleLike = async (post: Post) => {
-    setPosts((prev) =>
-      (prev ?? []).map((p) =>
-        p.id === post.id ? { ...p, liked: !p.liked, likeCount: p.likeCount + (p.liked ? -1 : 1) } : p,
-      ),
-    );
-    try {
-      const res = post.liked
-        ? await api.del<{ likeCount: number }>(`/api/community/posts/${post.id}/like`)
-        : await api.post<{ likeCount: number }>(`/api/community/posts/${post.id}/like`);
-      setPosts((prev) => (prev ?? []).map((p) => (p.id === post.id ? { ...p, likeCount: res.likeCount } : p)));
-    } catch {
-      // revert on failure
-      setPosts((prev) =>
-        (prev ?? []).map((p) =>
-          p.id === post.id ? { ...p, liked: post.liked, likeCount: post.likeCount } : p,
-        ),
-      );
-    }
+    await fetchFeed();
   };
 
   const loadMore = async () => {
     if (nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     try {
-      const more = await api.get<FeedResponse>(`/api/community/feed?cursor=${nextCursor}`);
+      const url = `/api/community/feed?cursor=${nextCursor}${filter === "mine" ? "&mine=true" : ""}`;
+      const more = await api.get<FeedResponse>(url);
       setPosts((prev) => [...(prev ?? []), ...more.posts]);
       setNextCursor(more.nextCursor);
     } catch (err) {
-      // A failed "load more" shouldn't lose what's already on screen — the
-      // user can just try the button again — but they do need to know it
-      // failed rather than silently seeing the spinner stop.
       Alert.alert("Couldn't load more", err instanceof ApiError ? err.message : "Please try again.");
     } finally {
       setLoadingMore(false);
     }
   };
 
+  const handleToggleReaction = async (post: Post, rx: AllowedReaction = "❤️") => {
+    const isTogglingOff = post.userReaction === rx;
+    const prevReaction = post.userReaction;
+    const prevCounts = { ...(post.reactionCounts || {}) };
+    const prevLikeCount = post.likeCount;
+
+    // Optimistic update
+    const newCounts = { ...prevCounts };
+    if (prevReaction) {
+      newCounts[prevReaction] = Math.max(0, (newCounts[prevReaction] || 1) - 1);
+    }
+    if (!isTogglingOff) {
+      newCounts[rx] = (newCounts[rx] || 0) + 1;
+    }
+
+    const optimisticPost: Post = {
+      ...post,
+      userReaction: isTogglingOff ? null : rx,
+      liked: !isTogglingOff,
+      likeCount: isTogglingOff ? prevLikeCount - 1 : prevReaction ? prevLikeCount : prevLikeCount + 1,
+      reactionCounts: newCounts,
+    };
+
+    setPosts((prev) => (prev ?? []).map((p) => (p.id === post.id ? optimisticPost : p)));
+
+    try {
+      const res = await api.post<{
+        on: boolean;
+        reaction: string | null;
+        likeCount: number;
+        reactionCounts: Record<string, number>;
+      }>(`/api/community/posts/${post.id}/like`, { reaction: rx });
+
+      setPosts((prev) =>
+        (prev ?? []).map((p) =>
+          p.id === post.id
+            ? {
+                ...p,
+                userReaction: res.reaction,
+                liked: res.on,
+                likeCount: res.likeCount,
+                reactionCounts: res.reactionCounts,
+              }
+            : p,
+        ),
+      );
+    } catch {
+      // Revert on failure
+      setPosts((prev) =>
+        (prev ?? []).map((p) =>
+          p.id === post.id
+            ? {
+                ...p,
+                userReaction: prevReaction,
+                liked: Boolean(prevReaction),
+                likeCount: prevLikeCount,
+                reactionCounts: prevCounts,
+              }
+            : p,
+        ),
+      );
+    }
+  };
+
+  const handlePostCreated = (newPost: Post) => {
+    setPosts((prev) => [newPost, ...(prev ?? [])]);
+  };
+
+  const handleReportPost = (postId: string) => {
+    Alert.alert("Report Post", "Flag this post for review?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Report",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.post(`/api/community/posts/${postId}/report`, { reason: "Inappropriate" });
+            Alert.alert("Reported", "Thank you. Our team will review this post.");
+          } catch {
+            Alert.alert("Error", "Could not submit report.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeletePost = (postId: string) => {
+    Alert.alert("Delete Post", "Are you sure you want to remove your post?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.del(`/api/community/posts/${postId}`);
+            setPosts((prev) => (prev ?? []).filter((p) => p.id !== postId));
+          } catch {
+            Alert.alert("Error", "Could not delete post.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const list = posts ?? [];
+  const targetPost = pickerTargetPostId ? list.find((p) => p.id === pickerTargetPostId) : null;
+
   return (
     <Screen>
-      <ScreenHeader title="Community" />
+      <ScreenHeader
+        title="Community"
+        rightAction={
+          <Pressable onPress={() => setComposerVisible(true)} hitSlop={8} style={styles.headerShareBtn}>
+            <Ionicons name="create-outline" size={22} color={colors.primary} />
+          </Pressable>
+        }
+      />
+
+      {/* Filter Tabs */}
+      <View style={styles.filterTabsRow}>
+        <Pressable
+          onPress={() => setFilter("all")}
+          style={[styles.filterTab, filter === "all" && styles.filterTabActive]}
+        >
+          <BodyText style={[styles.filterTabText, filter === "all" && styles.filterTabTextActive]}>
+            All Yogis
+          </BodyText>
+        </Pressable>
+        <Pressable
+          onPress={() => setFilter("mine")}
+          style={[styles.filterTab, filter === "mine" && styles.filterTabActive]}
+        >
+          <BodyText style={[styles.filterTabText, filter === "mine" && styles.filterTabTextActive]}>
+            My Shares
+          </BodyText>
+        </Pressable>
+      </View>
+
       {loading ? (
         <LoadingView />
       ) : error ? (
-        <EmptyState title="Couldn't load the community feed" subtitle={error} onRetry={reload} />
+        <EmptyState title="Couldn't load community feed" subtitle={error} onRetry={() => fetchFeed()} />
       ) : list.length === 0 ? (
-        <EmptyState title="No posts yet" subtitle="Member posts will show up here." />
+        <EmptyState
+          title={filter === "mine" ? "No shares yet" : "No posts yet"}
+          subtitle={
+            filter === "mine"
+              ? "Your reflections and shares will appear here."
+              : "Be the first to share an insight from your practice!"
+          }
+        />
       ) : (
         <FlatList
           data={list}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={{ padding: spacing.lg }}
+          contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListFooterComponent={
@@ -123,51 +271,228 @@ export default function CommunityScreen() {
             ) : null
           }
           renderItem={({ item }) => (
-            <Card>
-              <View style={styles.header}>
-                {item.avatarUrl ? (
-                  <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <BodyText style={{ color: colors.white, fontWeight: "700" }}>{item.author.charAt(0).toUpperCase()}</BodyText>
+            <Card style={styles.postCard}>
+              {/* Header */}
+              <View style={styles.cardHeader}>
+                <Pressable
+                  onPress={() => setSelectedProfileId(item.authorId)}
+                  style={styles.authorRow}
+                >
+                  {item.avatarUrl ? (
+                    <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+                  ) : (
+                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                      <BodyText style={{ color: colors.white, fontWeight: "700" }}>
+                        {item.author.charAt(0).toUpperCase()}
+                      </BodyText>
+                    </View>
+                  )}
+                  <View>
+                    <BodyText style={{ fontWeight: "700", fontSize: 14 }}>{item.author}</BodyText>
+                    <BodyText muted style={{ fontSize: 12 }}>{timeAgo(item.createdAt)}</BodyText>
                   </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <BodyText style={{ fontWeight: "700" }}>{item.author}</BodyText>
-                  <BodyText muted style={{ fontSize: 12 }}>{timeAgo(item.createdAt)}</BodyText>
+                </Pressable>
+
+                <View style={styles.headerRightActions}>
+                  {item.mine ? (
+                    <Pressable onPress={() => handleDeletePost(item.id)} hitSlop={8} style={styles.menuIconBtn}>
+                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                    </Pressable>
+                  ) : (
+                    <Pressable onPress={() => handleReportPost(item.id)} hitSlop={8} style={styles.menuIconBtn}>
+                      <Ionicons name="flag-outline" size={15} color={colors.muted} />
+                    </Pressable>
+                  )}
                 </View>
               </View>
-              <BodyText style={{ marginTop: spacing.sm }}>{item.body}</BodyText>
-              {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.postImage} />}
-              <View style={styles.actionRow}>
-                <Pressable
-                  onPress={() => toggleLike(item)}
-                  style={styles.action}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.liked ? "Unlike" : "Like"}
-                  accessibilityState={{ selected: item.liked }}
-                >
-                  <Ionicons name={item.liked ? "heart" : "heart-outline"} size={18} color={item.liked ? colors.danger : colors.muted} />
-                  <BodyText muted style={{ fontSize: 13 }}>{item.likeCount}</BodyText>
+
+              {/* Body — image-only posts store a single-space placeholder server-side */}
+              {item.body.trim() ? (
+                <Pressable onPress={() => router.push(`/community/${item.id}` as any)}>
+                  <BodyText style={styles.postBody}>{item.body}</BodyText>
                 </Pressable>
-                <View style={styles.action}>
-                  <Ionicons name="chatbubble-outline" size={16} color={colors.muted} />
+              ) : null}
+
+              {/* Image */}
+              {item.imageUrl && (
+                <Pressable onPress={() => router.push(`/community/${item.id}` as any)}>
+                  <Image source={{ uri: item.imageUrl }} style={styles.postImage} resizeMode="cover" />
+                </Pressable>
+              )}
+
+              {/* Actions Footer */}
+              <View style={styles.actionsFooter}>
+                <ReactionPills
+                  reactions={item.reactionCounts}
+                  userReaction={item.userReaction}
+                  likeCount={item.likeCount}
+                  onToggleReaction={(rx) => handleToggleReaction(item, rx)}
+                  onOpenPicker={() => setPickerTargetPostId(item.id)}
+                />
+
+                <Pressable
+                  onPress={() => router.push(`/community/${item.id}` as any)}
+                  style={styles.commentAction}
+                  hitSlop={6}
+                >
+                  <Ionicons name="chatbubble-outline" size={17} color={colors.muted} />
                   <BodyText muted style={{ fontSize: 13 }}>{item.commentCount}</BodyText>
-                </View>
+                </Pressable>
               </View>
             </Card>
           )}
         />
       )}
+
+      {/* Floating Action Button (Composer) */}
+      <Pressable
+        onPress={() => setComposerVisible(true)}
+        style={styles.fab}
+        accessibilityRole="button"
+        accessibilityLabel="Create post"
+      >
+        <Ionicons name="add" size={24} color={colors.white} />
+        <BodyText style={styles.fabText}>Share</BodyText>
+      </Pressable>
+
+      {/* Popovers / Modals */}
+      <PostComposerModal
+        visible={composerVisible}
+        onClose={() => setComposerVisible(false)}
+        onPostCreated={handlePostCreated}
+      />
+
+      <ReactionPickerModal
+        visible={!!pickerTargetPostId}
+        onClose={() => setPickerTargetPostId(null)}
+        onSelect={(rx) => {
+          if (targetPost) handleToggleReaction(targetPost, rx);
+        }}
+        currentReaction={targetPost?.userReaction}
+      />
+
+      <MemberProfileModal
+        memberId={selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+        onSelectPost={(postId) => router.push(`/community/${postId}` as any)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  avatar: { width: 36, height: 36, borderRadius: 18 },
-  avatarPlaceholder: { backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  postImage: { width: "100%", height: 180, borderRadius: radius.control, marginTop: spacing.sm },
-  actionRow: { flexDirection: "row", gap: spacing.lg, marginTop: spacing.sm },
-  action: { flexDirection: "row", alignItems: "center", gap: 4 },
+  headerShareBtn: {
+    padding: spacing.xs,
+  },
+  filterTabsRow: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  filterTab: {
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  filterTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  filterTabTextActive: {
+    color: colors.white,
+    fontWeight: "700",
+  },
+  listContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl * 2,
+  },
+  postCard: {
+    padding: spacing.md,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
+  avatarPlaceholder: {
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  menuIconBtn: {
+    padding: 6,
+  },
+  postBody: {
+    marginTop: spacing.sm,
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.text,
+  },
+  postImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: radius.control,
+    marginTop: spacing.sm,
+  },
+  actionsFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.md,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  commentAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  fab: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.secondary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: radius.pill,
+    ...shadows.card,
+    elevation: 4,
+  },
+  fabText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 15,
+  },
 });

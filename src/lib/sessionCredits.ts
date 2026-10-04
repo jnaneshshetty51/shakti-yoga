@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { AttendanceStatus, SessionCreditReason } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { getPlan, type PlanConfig } from '@/lib/pricing';
+import { localDayKey } from '@/lib/timezone';
 
 /**
  * Session-credit ledger for capped group-class plans (monthly Everyday Yoga and
@@ -262,6 +263,8 @@ export interface SessionHistoryRow {
     id: string;
     date: string;
     batchName: string;
+    batchTime: string;
+    teacherName: string;
     status: AttendanceStatus;
 }
 
@@ -272,7 +275,13 @@ export async function listSessionHistory(userId: string, limit = 60): Promise<Se
         select: {
             id: true,
             status: true,
-            classInstance: { select: { date: true, batch: { select: { name: true } } } },
+            classInstance: {
+                select: {
+                    date: true,
+                    batch: { select: { name: true, timeSlot: true, teacher: { select: { name: true } } } },
+                    teacher: { select: { name: true } }, // substitute teacher
+                },
+            },
         },
         orderBy: { classInstance: { date: 'desc' } },
         take: limit,
@@ -282,6 +291,72 @@ export async function listSessionHistory(userId: string, limit = 60): Promise<Se
         id: r.id,
         date: r.classInstance.date.toISOString(),
         batchName: r.classInstance.batch.name,
+        batchTime: r.classInstance.batch.timeSlot,
+        teacherName: r.classInstance.teacher?.name ?? r.classInstance.batch.teacher.name,
         status: r.status,
     }));
+}
+
+export interface SessionStats {
+    totalThisCycle: number;
+    totalAllTime: number;
+    currentStreak: number;
+}
+
+/** Summary stats for the session-history screen. */
+export async function getSessionStats(userId: string): Promise<SessionStats> {
+    const [user, sub] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+        prisma.subscription.findUnique({ where: { userId }, select: { currentCycleStart: true } }),
+    ]);
+
+    const [allTime, thisCycle, recentDates] = await Promise.all([
+        prisma.classAttendance.count({
+            where: { userId, status: { in: ['PRESENT', 'CHECKED_IN'] } },
+        }),
+        sub?.currentCycleStart
+            ? prisma.classAttendance.count({
+                where: {
+                    userId,
+                    status: { in: ['PRESENT', 'CHECKED_IN'] },
+                    classInstance: { date: { gte: sub.currentCycleStart } },
+                },
+            })
+            : Promise.resolve(0),
+        // Last 60 unique attendance dates to calculate streak
+        prisma.classAttendance.findMany({
+            where: { userId, status: { in: ['PRESENT', 'CHECKED_IN'] } },
+            select: { classInstance: { select: { date: true } } },
+            orderBy: { classInstance: { date: 'desc' } },
+            take: 60,
+        }),
+    ]);
+
+    // Calculate streak: consecutive days with attendance, bucketed by the member's own
+    // calendar day (not UTC) — an early-morning IST class must count for "today", not
+    // silently roll onto the previous UTC date. See src/lib/timezone.ts.
+    let streak = 0;
+    const uniqueDates = [...new Set(recentDates.map((r) => localDayKey(r.classInstance.date, user?.timezone)))].sort(
+        (a, b) => b.localeCompare(a),
+    );
+
+    if (uniqueDates.length > 0) {
+        const today = localDayKey(new Date(), user?.timezone);
+        const yesterday = localDayKey(new Date(Date.now() - 86_400_000), user?.timezone);
+
+        // Allow streak to start from today or yesterday
+        if (uniqueDates[0] === today || uniqueDates[0] === yesterday) {
+            let expected = new Date(`${uniqueDates[0]}T00:00:00.000Z`);
+            for (const d of uniqueDates) {
+                if (d === expected.toISOString().slice(0, 10)) {
+                    streak++;
+                    expected = new Date(expected.getTime() - 86_400_000);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    return { totalThisCycle: thisCycle, totalAllTime: allTime, currentStreak: streak };
 }

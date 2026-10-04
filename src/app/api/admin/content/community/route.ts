@@ -77,11 +77,17 @@ export async function DELETE(request: Request) {
     if (kind === 'comment') {
         const c = await prisma.communityComment.findUnique({ where: { id }, select: { hidden: true, postId: true } });
         if (c) {
+            // Deleting a parent comment cascades to its replies (onDelete: Cascade) —
+            // commentCount must drop by the whole removed subtree, not just this one row.
+            const visibleReplyCount = await prisma.communityComment.count({
+                where: { parentId: id, hidden: false },
+            });
+            const totalRemoved = (c.hidden ? 0 : 1) + visibleReplyCount;
             await prisma.$transaction([
                 prisma.communityComment.delete({ where: { id } }),
-                ...(c.hidden
-                    ? []
-                    : [prisma.communityPost.update({ where: { id: c.postId }, data: { commentCount: { decrement: 1 } } })]),
+                ...(totalRemoved > 0
+                    ? [prisma.communityPost.update({ where: { id: c.postId }, data: { commentCount: { decrement: totalRemoved } } })]
+                    : []),
             ]);
         }
     } else {

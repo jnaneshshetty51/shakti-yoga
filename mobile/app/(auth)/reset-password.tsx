@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { View, TextInput, StyleSheet } from "react-native";
+import { View, TextInput, Image, StyleSheet } from "react-native";
 import { router, Link, useLocalSearchParams } from "expo-router";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors, spacing, radius } from "@/theme";
+
+const logo = require("../../assets/splash.png");
 
 export default function ResetPasswordScreen() {
   // Arrives either as a route param (tapped from a deep link the OS handed
@@ -47,6 +49,7 @@ export default function ResetPasswordScreen() {
   if (!token) {
     return (
       <Screen style={styles.screen}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
         <Heading size="lg">Link missing its token</Heading>
         <BodyText muted style={{ marginTop: spacing.sm }}>
           This reset link is missing its token. Please request a new one.
@@ -61,6 +64,7 @@ export default function ResetPasswordScreen() {
   if (done) {
     return (
       <Screen style={styles.screen}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
         <Heading size="lg">Password updated</Heading>
         <BodyText muted style={{ marginTop: spacing.sm }}>
           You can now log in with your new password. Redirecting to log in&hellip;
@@ -71,6 +75,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <Screen style={styles.screen}>
+      <Image source={logo} style={styles.logo} resizeMode="contain" />
       <Heading size="lg">Choose a new password</Heading>
       <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
         Make it at least 8 characters.
@@ -114,6 +119,7 @@ export default function ResetPasswordScreen() {
 
 const styles = StyleSheet.create({
   screen: { padding: spacing.lg, justifyContent: "center" },
+  logo: { width: 72, height: 72, alignSelf: "center", marginBottom: spacing.lg },
   field: { marginBottom: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   input: {

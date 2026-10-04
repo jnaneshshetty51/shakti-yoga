@@ -64,6 +64,7 @@ export default function MoreScreen() {
           <Row icon="calendar-clear-outline" label="Calendar" onPress={() => router.push("/calendar")} />
           <Row icon="sparkles-outline" label="Workshops & Retreats" onPress={() => router.push("/events")} />
           <Row icon="bookmark-outline" label="Saved" onPress={() => router.push("/saved")} />
+          <Row icon="heart-outline" label="From the Founder" onPress={() => router.push("/founder-messages")} />
           {user?.role !== "member_therapy" && (
             <Row icon="medkit-outline" label="Begin Yoga Therapy Assessment" onPress={() => router.push("/therapy-intake")} />
           )}

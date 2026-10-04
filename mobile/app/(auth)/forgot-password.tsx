@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { View, TextInput, StyleSheet } from "react-native";
+import { View, TextInput, Image, StyleSheet } from "react-native";
 import { Link } from "expo-router";
 import { Screen, Heading, BodyText, Button } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors, spacing, radius } from "@/theme";
+
+const logo = require("../../assets/splash.png");
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
@@ -33,6 +35,7 @@ export default function ForgotPasswordScreen() {
   if (sent) {
     return (
       <Screen style={styles.screen}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
         <Heading size="lg">Check your email</Heading>
         <BodyText muted style={{ marginTop: spacing.sm }}>
           If an account exists for {email.trim() || "that address"}, we&rsquo;ve sent a link to reset your
@@ -47,6 +50,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <Screen style={styles.screen}>
+      <Image source={logo} style={styles.logo} resizeMode="contain" />
       <Heading size="lg">Reset your password</Heading>
       <BodyText muted style={{ marginTop: spacing.xs, marginBottom: spacing.lg }}>
         Enter your email and we&rsquo;ll send you a link to reset it.
@@ -80,6 +84,7 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   screen: { padding: spacing.lg, justifyContent: "center" },
+  logo: { width: 72, height: 72, alignSelf: "center", marginBottom: spacing.lg },
   field: { marginBottom: spacing.md },
   label: { fontWeight: "700", marginBottom: spacing.xs, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   input: {

@@ -3,6 +3,17 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { LeadSource, LeadStatus, Prisma } from '@prisma/client';
 import { auditAs } from '@/lib/audit';
+import { offsetMinutesFor } from '@/lib/timezone';
+
+const IST_OFFSET_MIN = offsetMinutesFor('IST');
+
+/** Start of the IST calendar day that is `daysAhead` days from `base`, expressed as a UTC instant. */
+function startOfIstDay(base: Date, daysAhead = 0): Date {
+    const shifted = new Date(base.getTime() + IST_OFFSET_MIN * 60_000);
+    shifted.setUTCHours(0, 0, 0, 0);
+    shifted.setUTCDate(shifted.getUTCDate() + daysAhead);
+    return new Date(shifted.getTime() - IST_OFFSET_MIN * 60_000);
+}
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
@@ -24,6 +35,7 @@ export async function GET(request: Request) {
         const source = searchParams.get('source');
         const programInterest = searchParams.get('programInterest');
         const assignedToId = searchParams.get('assignedToId');
+        const followUp = searchParams.get('followUp');
 
         const whereClause: Prisma.LeadWhereInput = {};
 
@@ -43,6 +55,24 @@ export async function GET(request: Request) {
             whereClause.assignedToId = assignedToId === 'unassigned' ? null : assignedToId;
         }
 
+        const now = new Date();
+        // "Today"/"this week" mean the admissions team's IST calendar day, not the
+        // server process's local timezone (which is UTC in production).
+        const startOfToday = startOfIstDay(now);
+        const endOfToday = new Date(startOfIstDay(now, 1).getTime() - 1);
+        const endOfWeek = new Date(startOfIstDay(now, 8).getTime() - 1);
+
+        if (followUp === 'overdue') {
+            whereClause.nextFollowUpAt = { lte: now };
+            whereClause.status = { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] };
+        } else if (followUp === 'today') {
+            whereClause.nextFollowUpAt = { gte: startOfToday, lte: endOfToday };
+            whereClause.status = { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] };
+        } else if (followUp === 'week') {
+            whereClause.nextFollowUpAt = { gte: startOfToday, lte: endOfWeek };
+            whereClause.status = { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] };
+        }
+
         if (search) {
             whereClause.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -51,7 +81,7 @@ export async function GET(request: Request) {
             ];
         }
 
-        const [leads, totalCount, stageGroup, overdueCount] = await Promise.all([
+        const [leads, totalCount, stageGroup, overdueCount, dueTodayCount, dueWeekCount] = await Promise.all([
             prisma.lead.findMany({
                 where: whereClause,
                 include: {
@@ -69,7 +99,19 @@ export async function GET(request: Request) {
             }),
             prisma.lead.count({
                 where: {
-                    nextFollowUpAt: { lte: new Date() },
+                    nextFollowUpAt: { lte: now },
+                    status: { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] },
+                },
+            }),
+            prisma.lead.count({
+                where: {
+                    nextFollowUpAt: { gte: startOfToday, lte: endOfToday },
+                    status: { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] },
+                },
+            }),
+            prisma.lead.count({
+                where: {
+                    nextFollowUpAt: { gte: startOfToday, lte: endOfWeek },
                     status: { notIn: [LeadStatus.CONVERTED, LeadStatus.LOST] },
                 },
             }),
@@ -92,6 +134,8 @@ export async function GET(request: Request) {
             converted: countsByStatus.CONVERTED || 0,
             lost: countsByStatus.LOST || 0,
             overdue: overdueCount,
+            dueToday: dueTodayCount,
+            dueWeek: dueWeekCount,
             conversionRate: grandTotal > 0 ? Math.round(((countsByStatus.CONVERTED || 0) / grandTotal) * 100) : 0,
         };
 

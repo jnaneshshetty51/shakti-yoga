@@ -101,16 +101,16 @@ export default async function BlogPage(props: { searchParams: Promise<{ category
                     {posts.map((post) => (
                         <article key={post.id} className="group cursor-pointer">
                             <Link href={`/blog/${post.slug ?? post.id}`}>
-                                <div className="bg-gray-100 aspect-[4/3] rounded-lg mb-6 overflow-hidden relative">
+                                <div className="bg-gray-50 aspect-[4/3] rounded-lg mb-6 overflow-hidden relative flex items-center justify-center border border-gray-100">
                                     {post.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={post.imageUrl} alt={post.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <img src={post.imageUrl} alt={post.title} className="w-full h-full object-contain" />
                                     ) : (
-                                        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-gray-400 font-serif text-4xl group-hover:scale-105 transition-transform duration-500">
+                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 font-serif text-4xl">
                                             {post.title.charAt(0)}
                                         </div>
                                     )}
-                                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded text-xs font-bold uppercase tracking-widest text-secondary">
+                                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded text-xs font-bold uppercase tracking-widest text-secondary shadow-sm">
                                         {CATEGORY_LABEL[post.category] ?? post.category}
                                     </div>
                                 </div>

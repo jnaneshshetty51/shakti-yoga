@@ -1,9 +1,11 @@
 import React from "react";
-import { View, Pressable, StyleSheet } from "react-native";
+import { View, Image, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { Card, Heading, BodyText, Button } from "@/components/ui";
-import { colors, spacing } from "@/theme";
+import { colors, spacing, radius, shadows } from "@/theme";
 import type { FeedItem } from "@/lib/types";
+
+const logo = require("../../assets/splash.png");
 
 const EYEBROW: Record<FeedItem["kind"], string> = {
   video: "New Practice",
@@ -25,8 +27,11 @@ const CTA_LABEL: Record<FeedItem["kind"], string> = {
 export function FromShaktiCard({ item }: { item: FeedItem | null | undefined }) {
   if (!item) return null;
 
+  const isFounder = item.kind === "founder_message";
+  const isAnnouncement = item.kind === "announcement";
+
   const meta =
-    item.kind === "founder_message" || item.kind === "announcement"
+    isFounder || isAnnouncement
       ? null
       : item.kind === "article"
       ? item.readMinutes
@@ -34,8 +39,56 @@ export function FromShaktiCard({ item }: { item: FeedItem | null | undefined }) 
         : null
       : EYEBROW[item.kind].replace("New ", "");
   const subtitle =
-    item.kind === "founder_message" ? "A short message for your practice" : item.excerpt || item.caption || null;
+    isFounder
+      ? "A short message for your practice"
+      : item.excerpt || item.caption || null;
 
+  // Founder messages get a special warm-toned card treatment
+  if (isFounder) {
+    return (
+      <Pressable
+        onPress={() => router.push(`/content/${item.id}`)}
+        style={({ pressed }) => pressed && { opacity: 0.9 }}
+      >
+        <Card style={styles.founderCard}>
+          {/* Warm accent bar at top */}
+          <View style={styles.founderAccent} />
+
+          <View style={styles.founderContent}>
+            {/* Header row with founder avatar */}
+            <View style={styles.founderHeader}>
+              <Image source={logo} style={styles.founderAvatar} resizeMode="contain" />
+              <View style={{ flex: 1 }}>
+                <BodyText style={styles.founderEyebrow}>{EYEBROW.founder_message}</BodyText>
+                <BodyText muted style={styles.founderBadge}>Founder's Message</BodyText>
+              </View>
+            </View>
+
+            {/* Title — larger for founder messages */}
+            <Heading size="md" style={styles.founderTitle}>
+              {item.title}
+            </Heading>
+
+            {/* Quote-style subtitle */}
+            {subtitle && (
+              <View style={styles.quoteContainer}>
+                <View style={styles.quoteLine} />
+                <BodyText muted style={styles.quoteText} numberOfLines={2}>
+                  {subtitle}
+                </BodyText>
+              </View>
+            )}
+
+            <View style={styles.buttonRow} pointerEvents="none">
+              <Button variant="secondary">{CTA_LABEL.founder_message}</Button>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+    );
+  }
+
+  // Default card for non-founder content
   return (
     <Pressable onPress={() => router.push(`/content/${item.id}`)} style={({ pressed }) => pressed && { opacity: 0.9 }}>
       <Card style={styles.card}>
@@ -58,9 +111,67 @@ export function FromShaktiCard({ item }: { item: FeedItem | null | undefined }) 
 }
 
 const styles = StyleSheet.create({
+  // ─── Default card ───────────────────────────────────
   card: { marginBottom: spacing.lg },
   eyebrow: { textTransform: "uppercase", fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
   meta: { fontSize: 12, marginTop: 2 },
   subtitle: { fontSize: 13, lineHeight: 18, marginTop: spacing.xs },
   buttonRow: { marginTop: spacing.md, alignItems: "flex-start" },
+
+  // ─── Founder card ───────────────────────────────────
+  founderCard: {
+    marginBottom: spacing.lg,
+    padding: 0,
+    overflow: "hidden",
+    backgroundColor: colors.secondaryLight,
+    borderColor: colors.secondary + "30",
+  },
+  founderAccent: {
+    height: 3,
+    backgroundColor: colors.secondary,
+  },
+  founderContent: {
+    padding: spacing.md,
+  },
+  founderHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  founderAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  founderEyebrow: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.secondary,
+  },
+  founderBadge: {
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  founderTitle: {
+    color: colors.primary,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  quoteContainer: {
+    flexDirection: "row",
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  quoteLine: {
+    width: 3,
+    backgroundColor: colors.secondary + "60",
+    borderRadius: 2,
+  },
+  quoteText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: "italic",
+  },
 });

@@ -16,6 +16,7 @@ export type WhatsAppLead = {
 type Props = {
     lead: WhatsAppLead | null;
     isOpen: boolean;
+    initialTemplateId?: string | null;
     onClose: () => void;
     onLogged?: () => void;
 };
@@ -67,17 +68,20 @@ const TEMPLATES: Template[] = [
 
 function WhatsAppTemplateForm({
     lead,
+    initialTemplateId,
     onClose,
     onLogged,
 }: {
     lead: WhatsAppLead;
+    initialTemplateId?: string | null;
     onClose: () => void;
     onLogged?: () => void;
 }) {
     const { showToast } = useToast();
-    const [selectedTemplateId, setSelectedTemplateId] = useState(TEMPLATES[0].id);
+    const defaultTmpl = TEMPLATES.find((t) => t.id === initialTemplateId) || TEMPLATES[0];
+    const [selectedTemplateId, setSelectedTemplateId] = useState(defaultTmpl.id);
     const [customMessage, setCustomMessage] = useState(
-        TEMPLATES[0].content(lead.name, lead.programInterest)
+        defaultTmpl.content(lead.name, lead.programInterest)
     );
     const [autoLog, setAutoLog] = useState(true);
 
@@ -227,7 +231,15 @@ function WhatsAppTemplateForm({
     );
 }
 
-export function WhatsAppTemplateModal({ lead, isOpen, onClose, onLogged }: Props) {
+export function WhatsAppTemplateModal({ lead, isOpen, initialTemplateId, onClose, onLogged }: Props) {
     if (!isOpen || !lead) return null;
-    return <WhatsAppTemplateForm key={lead.id} lead={lead} onClose={onClose} onLogged={onLogged} />;
+    return (
+        <WhatsAppTemplateForm
+            key={lead.id}
+            lead={lead}
+            initialTemplateId={initialTemplateId}
+            onClose={onClose}
+            onLogged={onLogged}
+        />
+    );
 }
